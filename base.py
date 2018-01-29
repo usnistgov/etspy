@@ -6,7 +6,7 @@ Created on Tue Feb 23 17:38:16 2016
 """
 
 import numpy as np
-from TomoTools import io , recon , align
+from tomotools import io , recon , align
 import copy
 import os
 import cv2
