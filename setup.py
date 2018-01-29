@@ -9,17 +9,9 @@ setup(
         "Hyperspy >= 1.0",
         "numpy",
         "scipy",
-        "numpy",
-        "os",
-        "PyQt4",
-        "collections",
-        "warnings",
         "cv2",
-        "copy",
         "matplotlib",
         "astra",
-        "tqdm",
-        "functools",
-        "multiprocessing"
+        "tqdm"
     ],
 )
