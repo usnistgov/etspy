@@ -11,7 +11,6 @@ setup(
         "scipy",
         "matplotlib",
         "astra-toolbox",
-        "opencv",
         "tqdm"
     ],
 )
