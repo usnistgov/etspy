@@ -4,7 +4,7 @@ Created on Wed Mar 11 09:39:29 2015
 
 @author: aherzing
 """
-import TomoTools
+import tomotools
 import numpy as np
 import os
 try:
