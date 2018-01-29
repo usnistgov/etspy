@@ -170,7 +170,6 @@ def LoadIMOD(filename):
         k = open(tiltfile,'w')              
         tilts.tofile(k,'\n')
         k.close()
-        print(tilts)
     stack.tilts = tilts
     return(stack)
 
