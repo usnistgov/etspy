@@ -9,7 +9,7 @@ setup(
         "Hyperspy >= 1.0",
         "numpy",
         "scipy",
-        "cv2",
+        "opencv3",
         "matplotlib",
         "astra",
         "tqdm"
