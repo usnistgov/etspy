@@ -11,6 +11,7 @@ setup(
         "scipy",
         "matplotlib",
         "astra-toolbox",
-        "tqdm"
+        "tqdm",
+        "cv2.cp35"
     ],
 )
