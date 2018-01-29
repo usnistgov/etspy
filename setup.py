@@ -12,6 +12,6 @@ setup(
         "matplotlib",
         "astra-toolbox",
         "tqdm",
-        "cv2.cp35"
+        "opencv-python"
     ],
 )
