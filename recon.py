@@ -4,7 +4,6 @@ Created on Tue Feb 23 16:13:35 2016
 
 @author: aherzing
 """
-#import os
 import numpy as np
 #try:
  #   from PyQt5 import QtGui
@@ -14,7 +13,6 @@ import astra
 from tqdm import tqdm
 from functools import partial
 from multiprocessing.pool import ThreadPool
-#from skimage.transform import radon
 from matplotlib import pylab as plt
 
 def run(stack,method,thickness,iterations=None,constrain=None,thresh=None,CUDA=True):
