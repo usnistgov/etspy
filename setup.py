@@ -10,7 +10,6 @@ setup(
         "numpy",
         "scipy",
         "matplotlib",
-        "astra",
         "tqdm"
     ],
 )
