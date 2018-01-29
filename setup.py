@@ -10,6 +10,8 @@ setup(
         "numpy",
         "scipy",
         "matplotlib",
+        "astra-toolbox",
+        "opencv",
         "tqdm"
     ],
 )
