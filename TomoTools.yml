@@ -3,6 +3,7 @@ channels:
 - astra-toolbox
 - conda-forge
 - defaults
+- andrewherzing
 dependencies:
 - astra-toolbox=1.8=np112py36_2
 - libastra=1.8=2
