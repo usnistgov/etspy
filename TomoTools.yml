@@ -1,4 +1,4 @@
-name: hyperspy
+name: tomotools
 channels:
 - astra-toolbox
 - conda-forge
@@ -171,5 +171,5 @@ dependencies:
   - prompt-toolkit==1.0.15
   - silx==0.6.1
   - win-inet-pton==1.0.1
-prefix: C:\Programs\MiniConda3\envs\hyperspy
+prefix: C:\Programs\MiniConda3\envs\tomotools
 
