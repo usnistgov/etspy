@@ -459,7 +459,7 @@ class Stack:
         """
         if outfile is None:
             app = QtGui.QApplication([])            
-            outfile = QtGui.QFileDialog.getSaveFileName(None,'Save tomography data','')[]
+            outfile = QtGui.QFileDialog.getSaveFileName(None,'Save tomography data','')[0]
         
         ext = os.path.splitext(outfile)[1]
         if ext in ['.HDF5','.hdf5','.hd5','.HD5']:
@@ -590,7 +590,7 @@ def load(filename=None,reader=None):
     """
     if filename is None:
         app = QtGui.QApplication([])
-        filename = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')[]
+        filename = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')[0]
     #if reader is None:
     ext = os.path.splitext(filename)[1]
     if (ext in ['.HDF5','.hdf5','.hd5','.HD5']) or (reader in ['HSPY','hspy']):
