@@ -8,7 +8,7 @@ import tomotools
 import numpy as np
 import os
 try:
-    from PyQt5 import QtGui
+    from PyQt5 import QtWidgets as QtGui
 except:
     from PyQt4 import QtGui
 from collections import OrderedDict
@@ -31,7 +31,7 @@ def LoadHspy(filename):
         file = filename
     else:
         app = QtGui.QApplication([])
-        file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')
+        file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')[0]
         
     stack = tomotools.base.Stack()
     temp = hspy.load(file)
@@ -72,7 +72,7 @@ def LoadIMOD(filename):
         file = filename
     else:
         app = QtGui.QApplication([])
-        file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')
+        file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')[0]
 
     with open(file,'rb') as h:
 
