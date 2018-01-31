@@ -14,23 +14,37 @@ and applied using the OpenCV library.
 Installation
 ------------
 
-Installation from GitHub:
+Anaconda (Preferred):
+* Install with YML file
 
-```bash
-pip install git+https://github.com/andrewherzing/tomotools.git
-```
-The OpenCV library is also required.  This can be installed through anaconda using:
+  Download the tomo.yml file located in the 'resources' directory and install via conda using:
 
-```bash
-conda install opencv
-```
+  ```bash
+  conda env create -f tomo.yml
+  ```
+* The package can also be installed into an existing environmnent without the YML file 
+  Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
+  ```bash
+  conda install -c conda-forge hyperspy
+  conda install -c conda-forge opencv
+  conda install -c astra-toolbox astra-toolbox
+  
+  pip install git+https://github.com/andrewherzing/tomotools.git
+  ```
 
-or through pip using:
+pip:
+* Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
 
-```bash
-pip install opencv-python
-```
+* See installation instructions for astra-toolbox at link below.  Then install remaining packages:
 
+  ```bash
+  pip install hyperspy
+  pip install opencv-python
+  pip install git+https://github.com/andrewherzing/tomotools.git
+  ```
+
+Removal
+-------
 The package can be removed with:
 
 ```bash
