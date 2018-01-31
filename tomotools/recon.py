@@ -5,10 +5,6 @@ Created on Tue Feb 23 16:13:35 2016
 @author: aherzing
 """
 import numpy as np
-#try:
- #   from PyQt5 import QtGui
-#except:
-   # from PyQt4 import QtGui
 import astra
 from tqdm import tqdm
 from functools import partial
