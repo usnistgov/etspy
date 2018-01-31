@@ -8,12 +8,24 @@ import tomotools
 import numpy as np
 import os
 try:
-    from PyQt5 import QtGui
+    from PyQt5 import QtWidgets
 except:
     from PyQt4 import QtGui
 from collections import OrderedDict
 import hyperspy.api as hspy
-    
+import sys
+
+def getFile(message='Choose files',filetypes='Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)'):
+    if 'PyQt5.QtWidgets' in sys.modules:
+        app = QtWidgets.QApplication([])
+        filename = QtWidgets.QFileDialog.getOpenFileName(None, message,os.getcwd(),filetypes)[0]
+    elif 'PyQt4.QtGui' in sys.modules:
+        app = QtGui.QApplication([])
+        filename = QtGui.QFileDialog.getOpenFileName(None, message,os.getcwd(),filetypes)
+    else:
+        raise NameError('GUI applications require either PyQt4 or PyQt5')
+    return(filename)
+
 def LoadHspy(filename):
     """
     Function to read an MRC file to a Stack object using the Hyperspy reader
@@ -30,8 +42,7 @@ def LoadHspy(filename):
     if filename:
         file = filename
     else:
-        app = QtGui.QApplication([])
-        file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')
+        file = getFile()
         
     stack = tomotools.base.Stack()
     temp = hspy.load(file)
@@ -71,9 +82,8 @@ def LoadIMOD(filename):
     if filename:
         file = filename
     else:
-        app = QtGui.QApplication([])
-        file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')
-
+        file = getFile()
+        
     with open(file,'rb') as h:
 
         # Read header from file
@@ -148,7 +158,7 @@ def LoadIMOD(filename):
             fmt = 'uint16'
          
         datasize = header['nx'][0]*header['ny'][0]*header['nz'][0]
-        stack = TomoTools.base.Stack()
+        stack = tomotools.base.Stack()
         stack.data = np.fromfile(h,fmt,datasize)
         
     stack.data = np.reshape(stack.data,(header['nz'][0],header['ny'][0],header['nx'][0]))
@@ -187,9 +197,11 @@ def WriteMRC(out,outfile=None):
         Filename of the output file. If None, user will be prompted to provide a filename.
     """
     if outfile == None:
-        app = QtGui.QApplication([])
+        #app = QtGui.QApplication([])
         #file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')
-        outfile = QtGui.QFileDialog.getSaveFileName(None,'Save tomography data','')   
+        #outfile = QtGui.QFileDialog.getSaveFileName(None,'Save tomography data','')  
+        outfile = getFile(message = 'Save tomography data',filetypes='')
+        
     #if (out.header == None) and (out.extheader == None) or newheader:
     out.header,out.extheader = MakeHeader(out.data)     
     if out.data.dtype == 'uint16':
