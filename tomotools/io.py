@@ -8,7 +8,7 @@ import tomotools
 import numpy as np
 import os
 try:
-    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import QtWidgets
 except:
     from PyQt4 import QtGui
 from collections import OrderedDict
