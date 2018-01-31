@@ -33,7 +33,7 @@ def LoadHspy(filename):
         app = QtGui.QApplication([])
         file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')
         
-    stack = TomoTools.base.Stack()
+    stack = tomotools.base.Stack()
     temp = hspy.load(file)
     stack.data = np.float32(temp)
     if stack.data.min() < 0:
