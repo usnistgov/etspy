@@ -13,10 +13,6 @@ import cv2
 import tqdm
 import pylab as plt
 import matplotlib.animation as animation
-try:
-    from PyQt5 import QtWidgets as QtGui
-except:
-    from PyQt4 import QtGui
 
 class Stack:
     """
@@ -458,8 +454,7 @@ class Stack:
             Filename for output. If None, a UI will prompt for a filename.
         """
         if outfile is None:
-            app = QtGui.QApplication([])            
-            outfile = QtGui.QFileDialog.getSaveFileName(None,'Save tomography data','')[0]
+            outfile = io.getFile(message='Save tomography data',filetype='')
         
         ext = os.path.splitext(outfile)[1]
         if ext in ['.HDF5','.hdf5','.hd5','.HD5']:
@@ -589,8 +584,8 @@ def load(filename=None,reader=None):
     stack : Stack object
     """
     if filename is None:
-        app = QtGui.QApplication([])
-        filename = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')[0]
+        filename = io.getFile()
+        
     #if reader is None:
     ext = os.path.splitext(filename)[1]
     if (ext in ['.HDF5','.hdf5','.hd5','.HD5']) or (reader in ['HSPY','hspy']):
