@@ -14,34 +14,36 @@ and applied using the OpenCV library.
 Installation
 ------------
 
-Anaconda (Preferred):
-* Install with YML file
+  Anaconda (Preferred):
+  ---------------------
+  * Install with YML file
 
-  Download the tomo.yml file located in the 'resources' directory and install via conda using:
+    Download the tomo.yml file located in the 'resources' directory and install via conda using:
 
-  ```bash
-  conda env create -f tomo.yml
-  ```
-* The package can also be installed into an existing environmnent without the YML file 
-  Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
-  ```bash
-  conda install -c conda-forge hyperspy
-  conda install -c conda-forge opencv
-  conda install -c astra-toolbox astra-toolbox
-  
-  pip install git+https://github.com/andrewherzing/tomotools.git
-  ```
+    ```bash
+    conda env create -f tomo.yml
+    ```
+  * The package can also be installed into an existing environmnent without the YML file 
+    Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
+    ```bash
+    conda install -c conda-forge hyperspy
+    conda install -c conda-forge opencv
+    conda install -c astra-toolbox astra-toolbox
 
-pip:
-* Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
+    pip install git+https://github.com/andrewherzing/tomotools.git
+    ```
 
-* See installation instructions for astra-toolbox at link below.  Then install remaining packages:
+  pip:
+  ----
+  * Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
 
-  ```bash
-  pip install hyperspy
-  pip install opencv-python
-  pip install git+https://github.com/andrewherzing/tomotools.git
-  ```
+  * See installation instructions for astra-toolbox at link below.  Then install remaining packages:
+
+    ```bash
+    pip install hyperspy
+    pip install opencv-python
+    pip install git+https://github.com/andrewherzing/tomotools.git
+    ```
 
 Removal
 -------
