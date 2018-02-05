@@ -590,8 +590,10 @@ def load(filename=None,reader=None):
     ext = os.path.splitext(filename)[1]
     if (ext in ['.HDF5','.hdf5','.hd5','.HD5']) or (reader in ['HSPY','hspy']):
         stack=io.LoadHspy(filename)
-    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) or (reader in ['IMOD','imod']):
+    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) and (reader in ['IMOD','imod']):
         stack = io.LoadIMOD(filename)
+    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) and (reader in ['FEI','fei']):
+        stack = io.LoadFEI(filename)
     else:
         raise ValueError("Unknown file type")
     return(stack)
