@@ -65,6 +65,127 @@ def LoadHspy(filename):
     stack.header,stack.extheader = MakeHeader(stack.data)
     return(stack)
 
+def LoadFEI(filename):
+    """
+    Function to read an FEI extended MRC file to a Stack object
+
+    Args
+    ----------
+    filename : string
+        Name of file that contains data to be read.  Accepted formats (.MRC, . ALI, .REC)
+        
+    Returns
+    ----------
+    stack : Stack object
+    """
+    
+    if filename:
+        file = filename
+    else:
+        file = getFile()
+        
+    with open(file,'rb') as h:
+        # Read header from file
+        header = OrderedDict()
+        header['nx'] = np.fromfile(h,'int32',1)
+        header['ny'] = np.fromfile(h,'int32',1)
+        header['nz'] = np.fromfile(h,'int32',1)
+        header['mode']= np.fromfile(h,'int32',1)
+        header['nxstart']= np.fromfile(h,'int32',1)
+        header['nystart']= np.fromfile(h,'int32',1)
+        header['nzstart']= np.fromfile(h,'int32',1)
+        header['mx']= np.fromfile(h,'int32',1)
+        header['my']= np.fromfile(h,'int32',1)
+        header['mz']= np.fromfile(h,'int32',1)
+        header['xlen']= np.fromfile(h,'float32',1)
+        header['ylen']= np.fromfile(h,'float32',1)
+        header['zlen']= np.fromfile(h,'float32',1)
+        header['alpha']= np.fromfile(h,'float32',1)
+        header['beta']= np.fromfile(h,'float32',1)
+        header['gamma']= np.fromfile(h,'float32',1)
+        header['mapc']= np.fromfile(h,'int32',1)
+        header['mapr']= np.fromfile(h,'int32',1)
+        header['maps']= np.fromfile(h,'int32',1)
+        header['amin']= np.fromfile(h,'float32',1)
+        header['amax']= np.fromfile(h,'float32',1)
+        header['amean']= np.fromfile(h,'float32',1)
+        header['ispg']= np.fromfile(h,'int16',1)
+        header['nsymbt']= np.fromfile(h,'int16',1)
+        header['next']= np.fromfile(h,'int32',1)
+        header['dvid']= np.fromfile(h,'int16',1)
+        strbits = np.fromfile(h,'int8',30)
+        header['extra'] = ''.join([chr(item) for item in strbits])
+        header['numintegers']= np.fromfile(h,'int16',1)
+        header['numfloats']= np.fromfile(h,'int16',1)
+        header['sub']= np.fromfile(h,'int16',1)
+        header['zfac']= np.fromfile(h,'int16',1)
+        header['min2']= np.fromfile(h,'float32',1)
+        header['max2']= np.fromfile(h,'float32',1)
+        header['min3']= np.fromfile(h,'float32',1)
+        header['max3']= np.fromfile(h,'float32',1)
+        header['min4']= np.fromfile(h,'float32',1)
+        header['max4']= np.fromfile(h,'float32',1)    
+        header['idtype']= np.fromfile(h,'int16',1)
+        header['lens']= np.fromfile(h,'int16',1)
+        header['nd1']= np.fromfile(h,'int16',1)
+        header['nd2']= np.fromfile(h,'int16',1)
+        header['vd1']= np.fromfile(h,'int16',1)
+        header['vd2']= np.fromfile(h,'int16',1)
+        header['tiltangles']= np.fromfile(h,'float32',9)
+        header['xorg']= np.fromfile(h,'float32',1)
+        header['yorg']= np.fromfile(h,'float32',1)
+        header['zorg']= np.fromfile(h,'float32',1)
+        header['nlabl']= np.fromfile(h,'int32',1)
+        header['labels'] = np.fromfile(h,'int8',800)
+        labels = ''.join([chr(item) for item in header['labels'][0:header['nlabl'][0]*80]])
+        header['labels'] = labels
+
+        extheader = OrderedDict()
+        for i in range(0,1024):    
+            extheader['a_tilt',i] = np.fromfile(h,'float32',1)
+            extheader['b_tilt',i] =  np.fromfile(h,'float32',1)
+            extheader['x_stage',i] =  np.fromfile(h,'float32',1)
+            extheader['y_stage',i] =  np.fromfile(h,'float32',1)
+            extheader['z_stage',i] =  np.fromfile(h,'float32',1)
+            extheader['x_shift',i] =  np.fromfile(h,'float32',1)
+            extheader['y_shift',i] =  np.fromfile(h,'float32',1)
+            extheader['defocus',i] =  np.fromfile(h,'float32',1)
+            extheader['exp_time',i] =  np.fromfile(h,'float32',1)
+            extheader['mean_int',i] =  np.fromfile(h,'float32',1)
+            extheader['tilt_axis',i] =  np.fromfile(h,'float32',1)
+            extheader['pixel_size',i] =  np.fromfile(h,'float32',1)
+            extheader['magnification',i] =  np.fromfile(h,'float32',1)
+            extheader['ht',i] =  np.fromfile(h,'float32',1)
+            extheader['binning',i] =  np.fromfile(h,'float32',1)
+            extheader['appliedDefocus',i] =  np.fromfile(h,'float32',1)
+            extheader['remainder',i] =  np.fromfile(h,'float32',16)
+
+        #Determine byte length of input data from Mode key in header
+        if header['mode'] == 0:
+            fmt = 'int8'
+        elif header['mode'] ==1:
+            fmt = 'int16'
+        elif header['mode'] == 2:
+            fmt = 'float32'
+        elif header['mode'] == 6:
+            fmt = 'uint16'
+        else:
+            fmt = 'uint16'
+
+        datasize = header['nx'][0]*header['ny'][0]*header['nz'][0]
+        stack = tomotools.base.Stack()
+        stack.data = np.fromfile(h,fmt,datasize)
+    
+    stack.data = np.reshape(stack.data,(header['nz'][0],header['ny'][0],header['nx'][0]))
+    stack.data = np.float32(stack.data)
+    stack.data += np.abs(np.min(stack.data))
+    stack.header = header
+    stack.extheader = extheader
+    stack.pixelsize = stack.header['xlen'][0]/stack.header['nx'][0]/10
+    stack.pixelunits = 'nm'
+
+    return(stack)
+
 def LoadIMOD(filename):
     """
     Function to read an MRC file to a Stack object using the Hyperspy reader
@@ -72,7 +193,7 @@ def LoadIMOD(filename):
     Args
     ----------
     filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC, .RAW/.RPL pair, .DM3, .DM4)
+        Name of file that contains data to be read.  Accepted formats (.MRC, .ALI, .REC)
         
     Returns
     ----------
