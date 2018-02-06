@@ -40,12 +40,12 @@ def run(stack,method,thickness,iterations=None,constrain=None,thresh=None,CUDA=T
     if method == 'astraWBP':
         if not astra.astra.use_cuda() or not CUDA:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
-            print('Reconstructing single slice using CPU-based WBP in the Astra Toolbox')
+            print('Reconstructing volume using CPU-based WBP in the Astra Toolbox')
             rec = astra2D_CPU(stack,thickness,method='FBP')
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or CUDA:
             '''ASTRA weighted-backprojection CUDA reconstruction of single slice'''
-            print('Reconstructing single-slice using CUDA Accelerated WBP in the Astra Toolbox')
+            print('Reconstructing volume using CUDA Accelerated WBP in the Astra Toolbox')
             rec = astra2D_CUDA(stack,thickness,method='FBP')
             print('Reconstruction complete')
         else:
@@ -53,12 +53,12 @@ def run(stack,method,thickness,iterations=None,constrain=None,thresh=None,CUDA=T
     elif method == 'astraSIRT':
         if not astra.astra.use_cuda() or not CUDA:
             '''ASTRA SIRT reconstruction of single slice'''
-            print('Reconstructing single slice using CPU-based SIRT in the Astra Toolbox')
+            print('Reconstructing volume using CPU-based SIRT in the Astra Toolbox')
             rec = astra2D_CPU(stack,thickness,iterations=iterations,constrain=constrain,thresh=thresh,method='SIRT')
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or CUDA:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
-            print('Reconstructing data using CUDA Accelerated SIRT in the Astra Toolbox')
+            print('Reconstructing volume using CUDA Accelerated SIRT in the Astra Toolbox')
             if len(stack.data.shape) == 2:
                 rec = astra2D_CUDA(stack,thickness,iterations=iterations,constrain=constrain,thresh=thresh,method='SIRT')
             elif len(stack.data.shape) == 3:
