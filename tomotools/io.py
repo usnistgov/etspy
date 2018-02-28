@@ -14,6 +14,59 @@ except:
 from collections import OrderedDict
 import hyperspy.api as hspy
 import sys
+from tomotools.base import TomoStack
+
+def signal_to_tomo_stack(s,tilts,manual_tilts=None):
+    """Make a TomoStack object from a HyperSpy signal.
+
+    This will retain both the axes information and the metadata.
+    If the signal is lazy, the function will return LazyPixelatedSTEM.
+
+    Parameters
+    ----------
+    s : HyperSpy signal
+        Should work for any HyperSpy signal.
+
+    Returns
+    -------
+    tomo_stack_signal : TomoStack object
+
+    """
+    tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(s.metadata.General.original_filename)[0])[1]))    
+
+    axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
+
+    metadata = s.metadata.as_dictionary()
+    original_metadata = s.original_metadata.as_dictionary()
+
+    s_new = TomoStack(s.data,axes=axes_list,metadata=metadata,original_metadata=original_metadata)
+    tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(s.metadata.General.original_filename)[0])[1]))
+    
+    
+    if s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
+        tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:s.data.shape[0]]
+        s_new.axes_manager[0].axis = tilts
+        print('Tilts found in metadata') 
+    
+    elif os.path.isfile(tiltfile)==True:
+        tilts = np.loadtxt(tiltfile)
+        s_new.axes_manager[0].axis = tilts
+        print('Tilts loaded from .RAWTLT File')
+    
+    elif manual_tilts:
+        negtilt = eval(input('Enter maximum negative tilt: '))
+        postilt = eval(input('Enter maximum positive tilt: '))    
+        tiltstep = eval(input('Enter tilt step: '))
+        tilts = np.arange(negtilt,postilt+tiltstep,tiltstep)
+        s_new.axes_manager[0].axis = tilts
+        print('User provided tilts stored')
+    
+    else:
+        print('Tilts not found.  Calibrate axis 0')
+    
+    s_new.axes_manager[0].units = 'degrees'
+
+    return s_new
 
 def getFile(message='Choose files',filetypes='Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)'):
     if 'PyQt5.QtWidgets' in sys.modules:
@@ -26,9 +79,9 @@ def getFile(message='Choose files',filetypes='Tilt Series Type (*.mrc *.ali *.re
         raise NameError('GUI applications require either PyQt4 or PyQt5')
     return(filename)
 
-def LoadHspy(filename):
+def LoadHspy(filename,tilts=None):
     """
-    Function to read an MRC file to a Stack object using the Hyperspy reader
+    Function to read an MRC file to a TomoStack object using the Hyperspy reader
 
     Args
     ----------
@@ -37,434 +90,48 @@ def LoadHspy(filename):
         
     Returns
     ----------
-    stack : Stack object
+    stack : TomoStack object
     """  
     if filename:
         file = filename
     else:
         file = getFile()
         
-    stack = tomotools.base.Stack()
-    temp = hspy.load(file)
-    stack.data = np.float32(temp)
+    stack = hspy.load(file)
     if stack.data.min() < 0:
+        stack.data = np.float32(stack.data)
         stack.data += np.abs(stack.data.min())
-    if isinstance(temp.axes_manager[0].units,str):
-        stack.tilts = temp.axes_manager[0].axis
-        stack.tilts = np.around(stack.tilts,decimals=1)
-        print('Tilts found in metadata!')
-    elif temp.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
-        if np.size(temp.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha) >= temp.data.shape[0]:
-            stack.tilts = temp.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:temp.data.shape[0]]
-            stack.tilts = np.around(stack.tilts,decimals=1)
-            print('Tilts found in metadata!')
-    else:
-        print('Tilts not found in metadata. Define Axis Zero')
-    stack.pixelsize = temp.axes_manager[1].scale
-    stack.pixelunits = temp.axes_manager[1].units
-    stack.header,stack.extheader = MakeHeader(stack.data)
-    return(stack)
+    return(signal_to_tomo_stack(stack,tilts))
 
-def LoadFEI(filename):
+def load(filename=None,reader=None,tilts=None):
     """
-    Function to read an FEI extended MRC file to a Stack object
+    Function to create a TomoStack object using data from a file
 
     Args
     ----------
     filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC, . ALI, .REC)
-        
+        Name of file that contains data to be read.  Accepted formats (.MRC, .RAW/.RPL pair, .DM3, .DM4)
+    reader : string
+        File reader to employ for loading the data. If None, Hyperspy's load function is used.
+
     Returns
     ----------
-    stack : Stack object
+    stack : TomoStack object
     """
-    
-    if filename:
-        file = filename
-    else:
-        file = getFile()
+    if filename is None:
+        filename = getFile()
         
-    with open(file,'rb') as h:
-        # Read header from file
-        header = OrderedDict()
-        header['nx'] = np.fromfile(h,'int32',1)
-        header['ny'] = np.fromfile(h,'int32',1)
-        header['nz'] = np.fromfile(h,'int32',1)
-        header['mode']= np.fromfile(h,'int32',1)
-        header['nxstart']= np.fromfile(h,'int32',1)
-        header['nystart']= np.fromfile(h,'int32',1)
-        header['nzstart']= np.fromfile(h,'int32',1)
-        header['mx']= np.fromfile(h,'int32',1)
-        header['my']= np.fromfile(h,'int32',1)
-        header['mz']= np.fromfile(h,'int32',1)
-        header['xlen']= np.fromfile(h,'float32',1)
-        header['ylen']= np.fromfile(h,'float32',1)
-        header['zlen']= np.fromfile(h,'float32',1)
-        header['alpha']= np.fromfile(h,'float32',1)
-        header['beta']= np.fromfile(h,'float32',1)
-        header['gamma']= np.fromfile(h,'float32',1)
-        header['mapc']= np.fromfile(h,'int32',1)
-        header['mapr']= np.fromfile(h,'int32',1)
-        header['maps']= np.fromfile(h,'int32',1)
-        header['amin']= np.fromfile(h,'float32',1)
-        header['amax']= np.fromfile(h,'float32',1)
-        header['amean']= np.fromfile(h,'float32',1)
-        header['ispg']= np.fromfile(h,'int16',1)
-        header['nsymbt']= np.fromfile(h,'int16',1)
-        header['next']= np.fromfile(h,'int32',1)
-        header['dvid']= np.fromfile(h,'int16',1)
-        strbits = np.fromfile(h,'int8',30)
-        header['extra'] = ''.join([chr(item) for item in strbits])
-        header['numintegers']= np.fromfile(h,'int16',1)
-        header['numfloats']= np.fromfile(h,'int16',1)
-        header['sub']= np.fromfile(h,'int16',1)
-        header['zfac']= np.fromfile(h,'int16',1)
-        header['min2']= np.fromfile(h,'float32',1)
-        header['max2']= np.fromfile(h,'float32',1)
-        header['min3']= np.fromfile(h,'float32',1)
-        header['max3']= np.fromfile(h,'float32',1)
-        header['min4']= np.fromfile(h,'float32',1)
-        header['max4']= np.fromfile(h,'float32',1)    
-        header['idtype']= np.fromfile(h,'int16',1)
-        header['lens']= np.fromfile(h,'int16',1)
-        header['nd1']= np.fromfile(h,'int16',1)
-        header['nd2']= np.fromfile(h,'int16',1)
-        header['vd1']= np.fromfile(h,'int16',1)
-        header['vd2']= np.fromfile(h,'int16',1)
-        header['tiltangles']= np.fromfile(h,'float32',9)
-        header['xorg']= np.fromfile(h,'float32',1)
-        header['yorg']= np.fromfile(h,'float32',1)
-        header['zorg']= np.fromfile(h,'float32',1)
-        header['nlabl']= np.fromfile(h,'int32',1)
-        header['labels'] = np.fromfile(h,'int8',800)
-        labels = ''.join([chr(item) for item in header['labels'][0:header['nlabl'][0]*80]])
-        header['labels'] = labels
-
-        extheader = OrderedDict()
-        for i in range(0,1024):    
-            extheader['a_tilt',i] = np.fromfile(h,'float32',1)
-            extheader['b_tilt',i] =  np.fromfile(h,'float32',1)
-            extheader['x_stage',i] =  np.fromfile(h,'float32',1)
-            extheader['y_stage',i] =  np.fromfile(h,'float32',1)
-            extheader['z_stage',i] =  np.fromfile(h,'float32',1)
-            extheader['x_shift',i] =  np.fromfile(h,'float32',1)
-            extheader['y_shift',i] =  np.fromfile(h,'float32',1)
-            extheader['defocus',i] =  np.fromfile(h,'float32',1)
-            extheader['exp_time',i] =  np.fromfile(h,'float32',1)
-            extheader['mean_int',i] =  np.fromfile(h,'float32',1)
-            extheader['tilt_axis',i] =  np.fromfile(h,'float32',1)
-            extheader['pixel_size',i] =  np.fromfile(h,'float32',1)
-            extheader['magnification',i] =  np.fromfile(h,'float32',1)
-            extheader['ht',i] =  np.fromfile(h,'float32',1)
-            extheader['binning',i] =  np.fromfile(h,'float32',1)
-            extheader['appliedDefocus',i] =  np.fromfile(h,'float32',1)
-            extheader['remainder',i] =  np.fromfile(h,'float32',16)
-
-        #Determine byte length of input data from Mode key in header
-        if header['mode'] == 0:
-            fmt = 'int8'
-        elif header['mode'] ==1:
-            fmt = 'int16'
-        elif header['mode'] == 2:
-            fmt = 'float32'
-        elif header['mode'] == 6:
-            fmt = 'uint16'
-        else:
-            fmt = 'uint16'
-
-        datasize = header['nx'][0]*header['ny'][0]*header['nz'][0]
-        stack = tomotools.base.Stack()
-        stack.data = np.fromfile(h,fmt,datasize)
-    
-    stack.data = np.reshape(stack.data,(header['nz'][0],header['ny'][0],header['nx'][0]))
-    stack.data = np.float32(stack.data)
-    stack.data += np.abs(np.min(stack.data))
-    stack.header = header
-    stack.extheader = extheader
-    stack.pixelsize = stack.header['xlen'][0]/stack.header['nx'][0]/10
-    stack.pixelunits = 'nm'
-
+    #if reader is None:
+    ext = os.path.splitext(filename)[1]
+    if ext in ['.HDF5','.hdf5','.hd5','.HD5','.MRC','.mrc','.ALI','.ali','.REC','.rec']:
+        stack = LoadHspy(filename,tilts)
+#    if (ext in ['.HDF5','.hdf5','.hd5','.HD5']) or (reader in ['HSPY','hspy']):
+#        stack = LoadHspy(filename)
+#    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) and (reader in ['IMOD','imod']):
+#        stack = LoadIMOD(filename)
+#    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) and (reader in ['FEI','fei']):
+#        stack = LoadFEI(filename)
+    else:
+        raise ValueError("Unknown file type")
     return(stack)
-
-def LoadIMOD(filename):
-    """
-    Function to read an MRC file to a Stack object using the Hyperspy reader
-
-    Args
-    ----------
-    filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC, .ALI, .REC)
-        
-    Returns
-    ----------
-    stack : Stack object
-    """
     
-    if filename:
-        file = filename
-    else:
-        file = getFile()
-        
-    with open(file,'rb') as h:
-
-        # Read header from file
-        header = OrderedDict()
-        header['nx'] = np.fromfile(h,'int32',1)
-        header['ny'] = np.fromfile(h,'int32',1)
-        header['nz'] = np.fromfile(h,'int32',1)
-        header['mode']= np.fromfile(h,'int32',1)
-        header['nxstart']= np.fromfile(h,'int32',1)
-        header['nystart']= np.fromfile(h,'int32',1)
-        header['nzstart']= np.fromfile(h,'int32',1)
-        header['mx']= np.fromfile(h,'int32',1)
-        header['my']= np.fromfile(h,'int32',1)
-        header['mz']= np.fromfile(h,'int32',1)
-        header['xlen']= np.fromfile(h,'float32',1)
-        header['ylen']= np.fromfile(h,'float32',1)
-        header['zlen']= np.fromfile(h,'float32',1)
-        header['alpha']= np.fromfile(h,'float32',1)
-        header['beta']= np.fromfile(h,'float32',1)
-        header['gamma']= np.fromfile(h,'float32',1)
-        header['mapc']= np.fromfile(h,'int32',1)
-        header['mapr']= np.fromfile(h,'int32',1)
-        header['maps']= np.fromfile(h,'int32',1)
-        header['amin']= np.fromfile(h,'float32',1)
-        header['amax']= np.fromfile(h,'float32',1)
-        header['amean']= np.fromfile(h,'float32',1)
-        header['ispg']= np.fromfile(h,'int32',1)
-        header['next']= np.fromfile(h,'int32',1)
-        header['createid']= np.fromfile(h,'int16',1)
-        header['extra data']= np.fromfile(h,'int8',6)
-        strbits = np.fromfile(h,'int8',4)
-        header['extType']= ''.join([chr(item) for item in strbits])
-        header['nversion']= np.fromfile(h,'int32',1)
-        header['extra data']= np.fromfile(h,'int8',16)
-        header['nint']= np.fromfile(h,'int16',1)
-        header['nreal']= np.fromfile(h,'int16',1)
-        header['extra data']= np.fromfile(h,'int8',20)
-        header['imodStamp']= np.fromfile(h,'int32',1)
-        header['imodFlags']= np.fromfile(h,'int32',1)
-        header['idtype']= np.fromfile(h,'int16',1)
-        header['lens']= np.fromfile(h,'int16',1)
-        header['nd1']= np.fromfile(h,'int16',1)
-        header['nd2']= np.fromfile(h,'int16',1)
-        header['vd1']= np.fromfile(h,'int16',1)
-        header['vd2']= np.fromfile(h,'int16',1)
-        header['tiltangles']= np.fromfile(h,'float32',6)
-        header['xorg']= np.fromfile(h,'float32',1)
-        header['yorg']= np.fromfile(h,'float32',1)
-        header['zorg']= np.fromfile(h,'float32',1)
-        strbits = np.fromfile(h,'int8',4)
-        header['cmap']= ''.join([chr(item) for item in strbits])
-        header['stamp'] = np.fromfile(h,'int8',4)
-        header['rms']= np.fromfile(h,'float32',1)
-        header['nlabl']= np.fromfile(h,'int32',1)
-        header['labels'] = np.fromfile(h,'int8',800)
-        labels = ''.join([chr(item) for item in header['labels'][0:header['nlabl'][0]*80]])
-        header['labels'] = labels
-    
-        extralength = (header['nz'][0]*(header['nint'][0]*2 + header['nreal'][0]*4))
-        extra = np.fromfile(h,'int8',extralength)
-    
-        #Determine byte length of input data from Mode key in header
-        if header['mode'] == 0:
-            fmt = 'int8'
-        elif header['mode'] ==1:
-            fmt = 'int16'
-        elif header['mode'] == 2:
-            fmt = 'float32'
-        elif header['mode'] == 6:
-            fmt = 'uint16'
-        else:
-            fmt = 'uint16'
-         
-        datasize = header['nx'][0]*header['ny'][0]*header['nz'][0]
-        stack = tomotools.base.Stack()
-        stack.data = np.fromfile(h,fmt,datasize)
-        
-    stack.data = np.reshape(stack.data,(header['nz'][0],header['ny'][0],header['nx'][0]))
-    stack.data = np.float32(stack.data)
-    stack.data += np.abs(np.min(stack.data))
-    stack.header = header
-    stack.pixelsize = stack.header['xlen'][0]/stack.header['nx'][0]/10
-    stack.pixelunits = 'nm'
-
-    tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(file)[0])[1]))
-    if os.path.isfile(tiltfile)==True:
-        print('Tilts loaded from .RAWTLT File')
-        tilts = np.loadtxt(tiltfile)
-    else:
-        negtilt = eval(input('Enter maximum negative tilt: '))
-        postilt = eval(input('Enter maximum positive tilt: '))    
-        tiltstep = eval(input('Enter tilt step: '))
-        tilts = np.arange(negtilt,postilt+tiltstep,tiltstep)
-        k = open(tiltfile,'w')              
-        tilts.tofile(k,'\n')
-        k.close()
-    stack.tilts = tilts
-    return(stack)
-
-    
-def WriteMRC(out,outfile=None):
-    """
-    Function to write data to FEI style .MRC file.  If the Stack has no header, one will
-    be created using the MakeHeader() function
-
-    Args
-    ----------
-    out : Stack object
-        Stack object containing tilt series or reconstructed volume to be saved
-    outfile : string (optional)
-        Filename of the output file. If None, user will be prompted to provide a filename.
-    """
-    if outfile == None:
-        #app = QtGui.QApplication([])
-        #file = QtGui.QFileDialog.getOpenFileName(None, 'Choose files',os.getcwd(),'Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)')
-        #outfile = QtGui.QFileDialog.getSaveFileName(None,'Save tomography data','')  
-        outfile = getFile(message = 'Save tomography data',filetypes='')
-        
-    #if (out.header == None) and (out.extheader == None) or newheader:
-    out.header,out.extheader = MakeHeader(out.data)     
-    if out.data.dtype == 'uint16':
-        out.data = np.int16(np.single(out.data) + 32768) 
-    with open(outfile,'wb') as h:
-        for key in out.header:
-            out.header[key].tofile(h)       
-        for key in out.extheader:
-                out.extheader[key].tofile(h)
-        out.data.tofile(h)
-    print(('\nData written to file: %s' % outfile))
-    return
-
-def WriteHDF5(data,outfile=None,compression=None):
-    """
-    Function to write data to a Hyperspy HDF5 file
-
-    Args
-    ----------
-    out : Stack object
-        Stack object containing tilt series or reconstructed volume to be saved
-    outfile : string (optional)
-        Filename of the output file. If None, user will be prompted to provide a filename.
-    """
-    if outfile == None:
-        outfile = QtGui.QFileDialog.getSaveFileName(None,'Save tomography data','')
-    out = hspy.signals.Signal2D(np.zeros([data.data.shape[0],data.data.shape[1],data.data.shape[2]],data.data.dtype))
-    out.data = data.data
-
-    out.axes_manager[0].name = 'Y'
-    out.axes_manager[1].name = 'X'
-    out.axes_manager[2].name = 'Z'
-
-    out.axes_manager[1].scale = data.pixelsize
-    out.axes_manager[2].scale = data.pixelsize
-    out.axes_manager[0].scale = data.pixelsize
-
-    out.axes_manager[0].units = data.pixelunits
-    out.axes_manager[1].units = data.pixelunits
-    out.axes_manager[2].units = data.pixelunits
-
-    out.axes_manager[0].axis = np.arange(0,data.data.shape[0]*data.pixelsize,data.pixelsize)
-    out.axes_manager[1].axis = np.arange(0,data.data.shape[1]*data.pixelsize,data.pixelsize)
-    out.axes_manager[2].axis = np.arange(0,data.data.shape[2]*data.pixelsize,data.pixelsize)
-
-    out.save(outfile,overwrite=True,compression=compression)
-        
-def MakeHeader(data):
-    """
-    Function to create a header for a stack that does not have one.  Relevant parameters
-    will be determined from the data itself
-
-    Args
-    ----------
-    data : numpy array
-        Array containing tilt series or reconstructed volume to be saved
-
-    Returns
-    ----------
-    header : dictionary
-        Dictionary containing the standard header info
-    extheader : dictionary
-        Dictionary with all values set to zero to serve as placeholder in MRC output file
-    """
-    header = OrderedDict()
-    header['nx'] = np.int32(np.size(data,2))
-    header['ny'] = np.int32(np.size(data,1))
-    header['nz'] = np.int32(np.size(data,0))
-    if data.dtype == 'int8':
-        header['mode'] = np.int32(0)
-    elif data.dtype == 'int16':
-        header['mode'] = np.int32(1)
-    elif data.dtype == 'float32':
-        header['mode'] = np.int32(2)
-    elif data.dtype == 'uint16':
-        header['mode'] = np.int32(6)
-    else:
-        raise AssertionError('Unrecognized data type %s' % data.dtype)   
-    header['nxstart']= np.int32(0)
-    header['nystart']= np.int32(0)
-    header['nzstart']= np.int32(0)
-    header['mx']= np.int32(np.size(data,1))
-    header['my']= np.int32(np.size(data,2))
-    header['mz']= np.int32(np.size(data,0))
-    header['xlen']= np.float32(np.size(data,1))
-    header['ylen']= np.float32(np.size(data,2))
-    header['zlen']= np.float32(np.size(data,0))
-    header['alpha']= np.float32(90)
-    header['beta']= np.float32(90)
-    header['gamma']= np.float32(90)
-    header['mapc']= np.int32(1)
-    header['mapr']= np.int32(1)
-    header['maps']= np.int32(1)
-    header['amin']= np.float32(np.min(np.min(np.min(data))))
-    header['amax']= np.float32(np.max(np.max(np.max(data))))
-    header['amean']= np.float32(np.mean(np.mean(np.mean(data))))
-    header['ispg']= np.int16(0)
-    header['nsymbt']= np.int16(0)
-    header['next']= np.int32(131072)
-    header['dvid']= np.int16(0)
-    header['extra']= np.zeros(30,'int8')
-    header['numintegers']=  np.int16(0)
-    header['numfloats']= np.int16(32)
-    header['sub']= np.int16(0)
-    header['zfac']= np.int16(0)
-    header['min2']= np.float32(0)
-    header['max2']= np.float32(0)
-    header['min3']= np.float32(0)
-    header['max3']= np.float32(0)
-    header['min4']= np.float32(0)
-    header['max4']= np.float32(0)
-    header['idtype']= np.int16(0)
-    header['lens']=np.int16(0)
-    header['nd1']=np.int16(0)
-    header['nd2']=np.int16(0)
-    header['vd1']=np.int16(0)
-    header['vd2']=np.int16(0)
-    header['tiltangles']=np.zeros(9,'float32')
-    header['zorg']=np.float32(0)
-    header['xorg']=np.float32(0)
-    header['yorg']=np.float32(0)
-    header['nlabl']=np.int32(1)
-    header['labl']=np.zeros(34,'int8')
-    header['lblextra']=np.zeros(766,'int8')
-    
-    extheader = OrderedDict()
-    for i in range(0,1024):    
-        extheader['a_tilt',i]=np.float32(0)
-        extheader['b_tilt',i]=np.float32(0)
-        extheader['x_stage',i]=np.float32(0)
-        extheader['y_stage',i]=np.float32(0)
-        extheader['z_stage',i]=np.float32(0)
-        extheader['x_shift',i]=np.float32(0)
-        extheader['y_shift',i]=np.float32(0)
-        extheader['defocus',i]=np.float32(0)
-        extheader['exp_time',i]=np.float32(0)
-        extheader['mean_int',i]=np.float32(0)
-        extheader['tilt_axis',i]=np.float32(0)
-        extheader['pixel_size',i]=np.float32(0)
-        extheader['magnification',i]=np.float32(0)
-        extheader['ht',i]=np.float32(0)
-        extheader['binning',i]=np.float32(0)
-        extheader['appliedDefocus',i]=np.float32(0)
-        extheader['remainder',i]= np.zeros(16,'float32')
-    return[header,extheader]

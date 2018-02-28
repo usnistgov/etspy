@@ -17,8 +17,8 @@ def run(stack,method,thickness,iterations=None,constrain=None,thresh=None,CUDA=T
 
     Args
     ----------
-    stack : Stack object
-        Stack containing the input tilt series
+    stack :TomoStack object
+       TomoStack containing the input tilt series
     method : string
         Reconstruction algorithm to use.  Must be either 'astraWBP' (default) or 'astraSIRT'
     thickness : integer
@@ -76,8 +76,8 @@ def astra2D_CPU(stack,thickness,method,iterations=None,constrain=None,thresh=Non
 
     Args
     ----------
-    stack : Stack object
-        Stack containing the input tilt series
+    stack :TomoStack object
+       TomoStack containing the input tilt series
     thickness : integer
         Size in pixels of the Z-dimension of the output reconstruction.
     method : string
@@ -136,8 +136,8 @@ def astra2D_CUDA(stack,thickness,method,iterations=None,constrain=None,thresh=No
 
     Args
     ----------
-    stack : Stack object
-        Stack containing the input tilt series
+    stack :TomoStack object
+       TomoStack containing the input tilt series
     thickness : integer
         Size in pixels of the Z-dimension of the output reconstruction.
     method : string
@@ -198,8 +198,8 @@ def astraSIRT3D_CUDA(stack,thickness=512,iterations=30,chunksize=128,constrain=F
 
     Args
     ----------
-    stack : Stack object
-        Stack containing the tilt series data
+    stack :TomoStack object
+       TomoStack containing the tilt series data
     thickness : integer
         Size in pixels of the Z-dimension of the output reconstruction.
     iterations : integer
@@ -364,8 +364,8 @@ def errorSIRTGPU(stack,thickness,nIters,N):
 
     Args
     ----------
-    stack : Stack object
-        Stack containing the tilt series data
+    stack :TomoStack object
+       TomoStack containing the tilt series data
     thickness : integer
         Size in pixels of the Z-dimension of the output reconstruction.
     start : integer
@@ -425,8 +425,8 @@ def run2(stack,method,thickness,iterations,constrain,thresh,CUDA=True):
 
     Args
     ----------
-    data : Stack object
-        Stack containing the input tilt series
+    data :TomoStack object
+       TomoStack containing the input tilt series
     method : string
         Reconstruction algorithm to use.  Must be either 'astraWBP' (default), 'astraSIRT', or 'astraSIRT_GPU'
     thickness : integer
@@ -442,8 +442,8 @@ def run2(stack,method,thickness,iterations,constrain,thresh,CUDA=True):
 
     Returns
     ----------
-    rec : Stack object
-        Stack containing the reconstructed volume
+    rec :TomoStack object
+       TomoStack containing the reconstructed volume
     """  
     if len(np.shape(stack.data)) == 2:
         if method == 'astraWBP':

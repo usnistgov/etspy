@@ -191,7 +191,7 @@ def rigidECC(stack,start):
 
     Returns
     ----------
-    out : Stack object
+    out : TomoStack object
         Spatially registered copy of the input stack
     """
     number_of_iterations = 1000
@@ -200,18 +200,18 @@ def rigidECC(stack,start):
     old_trans = np.array([[1.,0,0],[0,1.,0]])
     out = copy.deepcopy(stack)
     out.data = np.zeros(stack.data.shape,stack.data.dtype)
-    out.shifts = out.data.shape[0]*[None]
+    shifts = out.data.shape[0]*[None]
     if start is None:
-        start = np.argmin(np.abs(stack.tilts))
+        start = np.argmin(np.abs(stack.axes_manager[0].axis))
     out.data[start,:,:] = stack.data[start,:,:]
-    out.shifts[start] = old_trans
+    shifts[start] = old_trans
     
     for i in tqdm.tqdm(range(start+1,stack.data.shape[0])):
         warp_matrix = np.eye(2, 3, dtype=np.float32)        
         (cc,trans) = cv2.findTransformECC(stack.data[i,:,:],stack.data[i-1,:,:],warp_matrix, cv2.MOTION_TRANSLATION, criteria)
         trans[:,2] = trans[:,2] + old_trans[:,2]
         out.data[i,:,:] = cv2.warpAffine(stack.data[i,:,:],trans,stack.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
-        out.shifts[i] = trans
+        shifts[i] = trans
         old_trans = trans
     
     if start != 0:
@@ -221,8 +221,11 @@ def rigidECC(stack,start):
             (cc,trans) = cv2.findTransformECC(stack.data[i,:,:],stack.data[i+1,:,:],warp_matrix, cv2.MOTION_TRANSLATION, criteria)
             trans[:,2] = trans[:,2] + old_trans[:,2]
             out.data[i,:,:] = cv2.warpAffine(stack.data[i,:,:],trans,stack.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
-            out.shifts[i] = trans
+            shifts[i] = trans
             old_trans = trans
+    if not out.original_metadata.has_item('shifts'):
+        out.original_metadata.add_node('shifts')
+    out.original_metadata.shifts = shifts
     print('Spatial registration by ECC complete')
     return(out)
     
@@ -241,51 +244,54 @@ def rigidPC(stack,start):
 
     Returns
     ----------
-    out : Stack object
+    out : TomoStack object
         Spatially registered copy of the input stack
     """      
     old_trans = np.array([[1.,0,0],[0,1.,0]])
     out = copy.deepcopy(stack)
     out.data = np.zeros(stack.data.shape,stack.data.dtype)
-    out.shifts = out.data.shape[0]*[None]
+    shifts = out.data.shape[0]*[None]
     if start is None:
-        start = np.argmin(np.abs(stack.tilts))
+        start = np.argmin(np.abs(stack.axes_manager[0].axis))
     out.data[start,:,:] = stack.data[start,:,:]
-    out.shifts[start] = old_trans
+    shifts[start] = old_trans
     
     for i in tqdm.tqdm(range(start+1,stack.data.shape[0])):
         trans = np.array([[1.,0,0],[0,1.,0]])       
-        trans[:,2] = cv2.phaseCorrelate(stack.data[i,:,:],stack.data[i-1,:,:])[0] + old_trans[:,2]       
+        trans[:,2] = cv2.phaseCorrelate(np.float64(stack.data[i,:,:]),np.float64(stack.data[i-1,:,:]))[0] + old_trans[:,2]       
         out.data[i,:,:] = cv2.warpAffine(stack.data[i,:,:],trans,stack.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
-        out.shifts[i] = trans
+        shifts[i] = trans
         old_trans = trans
     
     if start != 0:
         old_trans = np.array([[1.,0,0],[0,1.,0]])
         for i in tqdm.tqdm(range(start-1,-1,-1)):
             trans = np.array([[1.,0,0],[0,1.,0]])       
-            trans[:,2] = cv2.phaseCorrelate(stack.data[i,:,:],stack.data[i+1,:,:])[0] + old_trans[:,2] 
+            trans[:,2] = cv2.phaseCorrelate(np.float64(stack.data[i,:,:]),np.float64(stack.data[i+1,:,:]))[0] + old_trans[:,2] 
             out.data[i,:,:] = cv2.warpAffine(stack.data[i,:,:],trans,stack.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
-            out.shifts[i] = trans
+            shifts[i] = trans
             old_trans = trans
+    if not out.original_metadata.has_item('shifts'):
+        out.original_metadata.add_node('shifts')
+    out.original_metadata.shifts = shifts
     print('Spatial registration by PC complete')
     return(out)
     
 def tiltCorrect(stack,offset = 0):
     """
-    Function to perform automated determination of the tilt axis of a Stack by tracking the 
+    Function to perform automated determination of the tilt axis of a TomoStack by tracking the 
     center of mass (CoM) and comparing it to the path expected for an ideal cylinder
     
     Args
     ----------
-    stack : Stack object
+    stack : TomoStack object
         3-D numpy array containing the tilt series data
     offset : integer
         Not currently used
         
     Returns
     ----------
-    out : Stack object
+    out : TomoStack object
         Copy of the input stack after rotation and translation to center and make the tilt
         axis vertical
     """
@@ -392,7 +398,7 @@ def tiltCorrect(stack,offset = 0):
     data = stack.deepcopy()
     y = np.int16(np.sort(getPoints(stack.data)[:,0]))
     print('\nCorrecting tilt axis....')
-    tilts = stack.tilts*np.pi/180
+    tilts = stack.axes_manager[0].axis*np.pi/180
     xshift = tiltaxis = 0
     totaltilt = totalshift = 0
     count = 1
@@ -432,14 +438,14 @@ def tiltCorrect(stack,offset = 0):
 
 def tiltAnalyze(data,limit=10,delta=0.3):
     """
-    Perform automated determination of the tilt axis of a Stack by measuring
+    Perform automated determination of the tilt axis of a TomoStack by measuring
     the rotation of the projected maximum image.  Maximum image is rotated postively
     and negatively, filterd using a Hamming window, and the rotation angle is
     determined by iterative histogram analysis
     
     Args
     ----------
-    data : Stack object
+    data : TomoStack object
         3-D numpy array containing the tilt series data
     limit : integer or float
         Maximum rotation angle to use for MaxImage calculation
@@ -448,7 +454,7 @@ def tiltAnalyze(data,limit=10,delta=0.3):
         
     Returns
     ----------
-    opt_angle : Stack object
+    opt_angle : TomoStack object
         Calculated rotation to set the tilt axis vertical
     """
 
@@ -530,29 +536,29 @@ def tiltAnalyze(data,limit=10,delta=0.3):
     
 def alignToOther(stack,other):
     """
-    Function to spatially register a Stack using a seres of shifts previously calculated
+    Function to spatially register a TomoStack using a seres of shifts previously calculated
     on a separate data stack of the same size.
 
     Args
     ----------
-    stack : Stack object
-        Stack which was previously aligned
-    other : Stack object
-        Stack to be aligned
+    stack : TomoStack object
+        TomoStack which was previously aligned
+    other : TomoStack object
+        TomoStack to be aligned
         
     Returns
     ----------
-    out : Stack object
-        Aligned copy of other Stack
+    out : TomoStack object
+        Aligned copy of other TomoStack
     """
     out = copy.deepcopy(other)
     out.data = np.zeros(np.shape(other.data),dtype=other.data.dtype)    
-    out.shifts = stack.shifts
+    out.original_metadata.shifts = stack.original_metadata.shifts
     out.tiltaxis = stack.tiltaxis
     out.xshift = stack.xshift
     if stack.shifts:   
         for i in range(0,out.data.shape[0]):
             out.data[i,:,:] = cv2.warpAffine(other.data[i,:,:],stack.shifts[i],other.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
-    out = out.transStack(xshift=other.xshift,yshift=0.0,angle=other.tiltaxis)
-    print('Stack alignment applied')
+    out = out.transStack(xshift=stack.xshift,yshift=0.0,angle=stack.tiltaxis)
+    print('TomoStack alignment applied')
     return(out)
