@@ -1,1 +1,2 @@
-from tomotools.base import load
+from tomotools.io import load
+from tomotools.base import TomoStack

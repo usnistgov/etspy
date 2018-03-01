@@ -6,17 +6,18 @@ Created on Tue Feb 23 17:38:16 2016
 """
 
 import numpy as np
-from tomotools import io , recon , align
+from tomotools import recon , align
 import copy
 import os
 import cv2
 import tqdm
 import pylab as plt
 import matplotlib.animation as animation
+from hyperspy.signals import Signal2D
 
-class Stack:
+class TomoStack(Signal2D):
     """
-    Create a Stack object for tomography data.
+    Create a TomoStack object for tomography data.
 
     Note: All attributes are initialized with values of None or 0.0 in __init__.
 
@@ -52,33 +53,23 @@ class Stack:
     xshift : float
         Lateral shift of the tilt axis from the center of the stack.
     """
-        
-    def __init__(self):
-        self.data = None
-        self.datafile = None
-        self.datapath = None
-        self.extheader = None
-        self.header = None
-        self.offset = 0.0
-        self.pixelsize = 0.0
-        self.pixelunits = 'nm'
-        self.shifts = None
-        self.tiltaxis = 0.0
-        self.tiltfile = None
-        self.tilts = None
-        self.xshift = 0.0
 
     def __repr__(self):
-        string = '<TomoToolsStack'
+        string = ('<TomoStack, ')
+        
+        if 'title' in self.metadata['General'].keys():
+            string += "title: %s" % self.metadata['General']['title']
+        else:
+            string += "title: "
         if self.data is None:
             string += ", Empty"
         elif len(self.data.shape)==2:
-            string += ", Dimensions: %s x %s" % (str(self.data.shape[0]),
-                                                  str(self.data.shape[1]))
+            string += ", dimensions: (|%s, %s" % (str(self.data.shape[1]),
+                                                  str(self.data.shape[0]))
         elif len(self.data.shape)==3:
-            string += ", Dimensions: %s x %s x %s" % (str(self.data.shape[0]),
-                                                  str(self.data.shape[1]),
-                                                  str(self.data.shape[2]))
+            string += ", dimensions: (%s|%s,  %s" % (str(self.data.shape[0]),
+                                                  str(self.data.shape[2]),
+                                                  str(self.data.shape[1]))
         string += '>'
         return string
     
@@ -89,16 +80,17 @@ class Stack:
 
         Args
         ----------
-        other : Stack object
+        other : TomoStack object
             The tilt series which is to be aligned using the previously calculated parameters.
-            The data array in the Stack must be of the same size as that in self.data
+            The data array in the TomoStack must be of the same size as that in self.data
         
         Returns
         ----------
-        out : Stack object
+        out : TomoStack object
             The result of applying the alignment to other    
         """
-        if self.shifts is None:
+        
+        if self.original_metadata.shifts is None:
             raise ValueError('Spatial registration has not been calculated for this stack')
             
         out = align.alignToOther(self,other)
@@ -131,7 +123,7 @@ class Stack:
         data = self.data[:,N,:]
         
         if tilts is None:
-            tilts = self.tilts
+            tilts = self.axes_manager[0].axis
         recon.errorSIRTCPU(data,thickness=thickness,tilts=tilts,minError=minError,maxiters=maxiters)
         return
     
@@ -197,7 +189,7 @@ class Stack:
 
         Returns
         ----------
-        out : Stack object
+        out : TomoStack object
             Spatially registered copy of the input stack
         """
         
@@ -222,7 +214,7 @@ class Stack:
         an X-shift at each location.  Perform a  linear fit of the three X-shifts to calculate
         an ideal rotation.
 
-        MaxImage: Perform automated determination of the tilt axis of a Stack by measuring
+        MaxImage: Perform automated determination of the tilt axis of a TomoStack by measuring
         the rotation of the projected maximum image.  Maximum image is rotated postively
         and negatively, filterd using a Hamming window, and the rotation angle is
         determined by iterative histogram analysis
@@ -244,7 +236,7 @@ class Stack:
             
         Returns
         ----------
-        out : Stack object
+        out : TomoStack object
             Copy of the input stack rotated by calculated angle
         """
         
@@ -262,27 +254,27 @@ class Stack:
             return
         return(out)
 
-    def rebin(self, factor):
-        """
-        Method to spatiall bin the Stack by an integer factor in the X-Y dimension.  The function calls the
-        OpenCV 'resize' function.
-
-        Args
-        ----------
-        factor : integer
-            Factor by which to downsize the input data stack
-            
-        Returns
-        ----------
-        out : Stack object
-            Copy of the input stack downsampled by factor
-        """
-        out = copy.deepcopy(self)
-        out.data = np.zeros([np.shape(self.data)[0],np.int(np.shape(self.data)[1]/factor),np.int(np.shape(self.data)[2]/factor)],dtype=self.data.dtype)
-        for i in range(0,np.size(self.data,0)):
-            out.data[i,:,:] = cv2.resize(self.data[i,:,:], tuple(np.shape(out.data)[1:3]))
-        out.pixelsize = out.pixelsize*factor
-        return(out)
+#    def rebin(self, factor):
+#        """
+#        Method to spatiall bin the TomoStack by an integer factor in the X-Y dimension.  The function calls the
+#        OpenCV 'resize' function.
+#
+#        Args
+#        ----------
+#        factor : integer
+#            Factor by which to downsize the input data stack
+#            
+#        Returns
+#        ----------
+#        out : TomoStack object
+#            Copy of the input stack downsampled by factor
+#        """
+#        out = self.deepcopy()
+#        out.data = np.zeros([np.shape(self.data)[0],np.int(np.shape(self.data)[1]/factor),np.int(np.shape(self.data)[2]/factor)],dtype=self.data.dtype)
+#        for i in range(0,np.size(self.data,0)):
+#            out.data[i,:,:] = cv2.resize(self.data[i,:,:], tuple(np.shape(out.data)[1:3]))
+#        out.pixelsize = out.pixelsize*factor
+#        return(out)
 
     def reconstruct(self,method='astraWBP',thickness=None,iterations=None,constrain=False,thresh=0,CUDA=None):
         """
@@ -306,8 +298,8 @@ class Stack:
 
         Returns
         ----------
-        out : Stack object
-            Stack containing the reconstructed volume
+        out : TomoStack object
+            TomoStack containing the reconstructed volume
         """
         if CUDA is None:    
             if 'CUDA_Path' in os.environ.keys():
@@ -318,13 +310,13 @@ class Stack:
             thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
         out = copy.deepcopy(self)
         out.data = recon.run(self,method,thickness,iterations,constrain,thresh,CUDA)
-        if len(np.shape(out.data))==3:
-            out.header['nx'] = np.int32(np.shape(out.data)[2])
-        elif len(np.shape(out.data))==2:
-            out.header['nx'] = np.int32(1)
-        out.header['ny'] = np.int32(np.shape(out.data)[1])
-        out.header['nz'] = np.int32(np.shape(out.data)[0])
-        out.header['mode'] = np.int32(2)
+        #if len(np.shape(out.data))==3:
+           # out.header['nx'] = np.int32(np.shape(out.data)[2])
+       # elif len(np.shape(out.data))==2:
+           # out.header['nx'] = np.int32(1)
+        #out.header['ny'] = np.int32(np.shape(out.data)[1])
+        #out.header['nz'] = np.int32(np.shape(out.data)[0])
+        #out.header['mode'] = np.int32(2)
         return(out)
     
     def rotate(self,angle,progressbar=True,resize=False):
@@ -334,7 +326,7 @@ class Stack:
         Args
         ----------
         angle : float
-            Angle by which to rotate the data in the Stack about the XY plane
+            Angle by which to rotate the data in the TomoStack about the XY plane
         progressbar : boolean
             If True, use the tqdm module to output a progressbar during rotation.
         resize : boolean
@@ -343,7 +335,7 @@ class Stack:
             
         Returns
         ----------
-        rot : Stack object
+        rot : TomoStack object
             Rotated copy of the input stack
         """
         if resize:
@@ -429,7 +421,7 @@ class Stack:
             
         Returns
         ----------
-        out : Stack object
+        out : TomoStack object
             Transformed copy of the input stack
         """
         out = self.deepcopy()
@@ -444,30 +436,32 @@ class Stack:
                 out.data[i,:,:] = cv2.warpAffine(out.data[i,:,:], trans_mat, out.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
         return(out)
 
-    def save(self,outfile=None,compression=None):
-        """
-        Method to save the Stack as an HDF5 file.
-
-        Args
-        ----------
-        outfile : string
-            Filename for output. If None, a UI will prompt for a filename.
-        """
-        if outfile is None:
-            outfile = io.getFile(message='Save tomography data',filetype='')
-        
-        ext = os.path.splitext(outfile)[1]
-        if ext in ['.HDF5','.hdf5','.hd5','.HD5']:
-            self.datafile = io.WriteHDF5(self,outfile)
-        elif ext in ['.mrc','.MRC','.rec','.REC','.ali','.ALI']:
-            self.datafile = io.WriteMRC(self,outfile)
-        else:
-            raise ValueError('Unknown output file format. Must be .MRC, .REC, .ALI, or .HDF5')
-        return
+#    def save(self,outfile=None,compression=None):
+#        """
+#        Method to save the TomoStack as an HDF5 file.
+#
+#        Args
+#        ----------
+#        outfile : string
+#            Filename for output. If None, a UI will prompt for a filename.
+#        """
+#        if outfile is None:
+#            outfile = io.getFile(message='Save tomography data',filetype='')
+#        
+#        ext = os.path.splitext(outfile)[1]
+#        if ext in ['.HDF5','.hdf5','.hd5','.HD5']:
+#            #self.datafile = io.WriteHDF5(self,outfile)
+#            io.WriteHDF5(self,outfile)
+#        elif ext in ['.mrc','.MRC','.rec','.REC','.ali','.ALI']:
+#            #self.datafile = io.WriteMRC(self,outfile)
+#            io.WriteMRC(self,outfile)
+#        else:
+#            raise ValueError('Unknown output file format. Must be .MRC, .REC, .ALI, or .HDF5')
+#        return
     
     def saveMovie(self,start,stop,axis='XY',fps=15,dpi=100,outfile=None,title='output.avi',clim=None,cmap='afmhot'):
         """
-        Method to save the Stack as an AVI movie file.
+        Method to save the TomoStack as an AVI movie file.
 
         Args
         ----------
@@ -541,7 +535,7 @@ class Stack:
 
     def show(self):
         """
-        Method to show the Stack for visualization with an interactive slice slider using OpenCV"""
+        Method to show the TomoStack for visualization with an interactive slice slider using OpenCV"""
         
         def nothing(*arg):
             pass
@@ -568,35 +562,7 @@ class Stack:
         SimpleTrackBar(self.data,'Press "ESC" to exit')
         return
 
-def load(filename=None,reader=None):
-    """
-    Function to create a Stack object using data from a file
 
-    Args
-    ----------
-    filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC, .RAW/.RPL pair, .DM3, .DM4)
-    reader : string
-        File reader to employ for loading the data. If None, Hyperspy's load function is used.
-
-    Returns
-    ----------
-    stack : Stack object
-    """
-    if filename is None:
-        filename = io.getFile()
-        
-    #if reader is None:
-    ext = os.path.splitext(filename)[1]
-    if (ext in ['.HDF5','.hdf5','.hd5','.HD5']) or (reader in ['HSPY','hspy']):
-        stack=io.LoadHspy(filename)
-    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) and (reader in ['IMOD','imod']):
-        stack = io.LoadIMOD(filename)
-    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) and (reader in ['FEI','fei']):
-        stack = io.LoadFEI(filename)
-    else:
-        raise ValueError("Unknown file type")
-    return(stack)
 
 
 
