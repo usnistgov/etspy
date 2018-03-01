@@ -432,8 +432,8 @@ def tiltCorrect(stack,offset = 0):
     out = copy.deepcopy(data)
     out.data = np.transpose(data.data,(0,2,1))
     print('\nTilt axis alignment complete')    
-    out.tiltaxis = totaltilt
-    out.xshift = totalshift
+    out.original_metadata.tiltaxis = totaltilt
+    out.original_metadata.xshift = totalshift
     return(out)
 
 def tiltAnalyze(data,limit=10,delta=0.3):
@@ -552,13 +552,29 @@ def alignToOther(stack,other):
         Aligned copy of other TomoStack
     """
     out = copy.deepcopy(other)
-    out.data = np.zeros(np.shape(other.data),dtype=other.data.dtype)    
+    out.data = np.zeros(np.shape(other.data),dtype=other.data.dtype)  
+    
+    shifts = None
+    tiltaxis = 0
+    xshift = 0
+    
+    if stack.original_metadata.has_item('shifts'):
+        shifts = stack.original_metadata.shifts
+        out.original_metadata.shifts = stack.original_metadata.shifts
+    if stack.original_metadata.has_item('tiltaxis'):
+        tiltaxis = stack.original_metadata.tiltaxis
+        out.original_metadata.shifts = stack.original_metadata.tiltaxis
+    if stack.original_metadata.has_item('xshift'):
+        xshift = stack.original_metadata.xshift
+        out.original_metadata.shifts = stack.original_metadata.xshift
+        
     out.original_metadata.shifts = stack.original_metadata.shifts
-    out.tiltaxis = stack.tiltaxis
-    out.xshift = stack.xshift
-    if stack.shifts:   
+    
+    if shifts:   
         for i in range(0,out.data.shape[0]):
-            out.data[i,:,:] = cv2.warpAffine(other.data[i,:,:],stack.shifts[i],other.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
-    out = out.transStack(xshift=stack.xshift,yshift=0.0,angle=stack.tiltaxis)
+            out.data[i,:,:] = cv2.warpAffine(other.data[i,:,:],shifts[i],other.data[i,:,:].T.shape,flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_CONSTANT,borderValue=0.0)
+    if (tiltaxis!=0) or (xshift!=0):
+        out = out.transStack(xshift=0,yshift=xshift,angle=tiltaxis)
+        out.data = np.transpose(out.data,(0,2,1))
     print('TomoStack alignment applied')
     return(out)

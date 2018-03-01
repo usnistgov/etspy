@@ -89,7 +89,8 @@ class TomoStack(Signal2D):
         out : TomoStack object
             The result of applying the alignment to other    
         """
-        if self.metadata.Signal.applied_shifts is None:
+        
+        if self.original_metadata.shifts is None:
             raise ValueError('Spatial registration has not been calculated for this stack')
             
         out = align.alignToOther(self,other)
@@ -309,13 +310,13 @@ class TomoStack(Signal2D):
             thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
         out = copy.deepcopy(self)
         out.data = recon.run(self,method,thickness,iterations,constrain,thresh,CUDA)
-        if len(np.shape(out.data))==3:
-            out.header['nx'] = np.int32(np.shape(out.data)[2])
-        elif len(np.shape(out.data))==2:
-            out.header['nx'] = np.int32(1)
-        out.header['ny'] = np.int32(np.shape(out.data)[1])
-        out.header['nz'] = np.int32(np.shape(out.data)[0])
-        out.header['mode'] = np.int32(2)
+        #if len(np.shape(out.data))==3:
+           # out.header['nx'] = np.int32(np.shape(out.data)[2])
+       # elif len(np.shape(out.data))==2:
+           # out.header['nx'] = np.int32(1)
+        #out.header['ny'] = np.int32(np.shape(out.data)[1])
+        #out.header['nz'] = np.int32(np.shape(out.data)[0])
+        #out.header['mode'] = np.int32(2)
         return(out)
     
     def rotate(self,angle,progressbar=True,resize=False):

@@ -65,7 +65,9 @@ def signal_to_tomo_stack(s,tilts,manual_tilts=None):
         print('Tilts not found.  Calibrate axis 0')
     
     s_new.axes_manager[0].units = 'degrees'
-
+    s_new.original_metadata.shifts = None
+    s_new.original_metadata.tiltaxis = 0.0
+    s_new.original_metadata.xshift = 0.0
     return s_new
 
 def getFile(message='Choose files',filetypes='Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)'):
@@ -102,6 +104,38 @@ def LoadHspy(filename,tilts=None):
         stack.data = np.float32(stack.data)
         stack.data += np.abs(stack.data.min())
     return(signal_to_tomo_stack(stack,tilts))
+    
+def LoadDM(filename,tilts=None):
+    if filename:
+        file = filename
+    else:
+        file = getFile()
+        
+    s = hspy.load(file)
+    s.change_dtype(np.float32)
+    maxtilt = s.original_metadata['ImageList']['TagGroup0']['ImageTags']['Tomography']['Tomography_setup']['Tilt_angles']['Maximum_tilt_angle_deg']
+    mintilt = s.original_metadata['ImageList']['TagGroup0']['ImageTags']['Tomography']['Tomography_setup']['Tilt_angles']['Minimum_tilt_angle_deg']
+    tiltstep = s.original_metadata['ImageList']['TagGroup0']['ImageTags']['Tomography']['Tomography_setup']['Tilt_angles']['Tilt_angle_step_deg']
+    tilts = np.arange(mintilt,maxtilt+tiltstep,tiltstep)
+    
+    if s.data.min() < 0:
+        s.data = np.float32(s.data)
+        s.data += np.abs(s.data.min())
+    
+    axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
+
+    metadata = s.metadata.as_dictionary()
+    original_metadata = s.original_metadata.as_dictionary()
+
+    s_new = TomoStack(s.data,axes=axes_list,metadata=metadata,original_metadata=original_metadata)
+    s_new.axes_manager[0].axis = tilts
+    print('Tilts found in metadata')
+    
+    s_new.axes_manager[0].units = 'degrees'
+    s_new.original_metadata.shifts = None
+    s_new.original_metadata.tiltaxis = 0.0
+    s_new.original_metadata.xshift = 0.0
+    return s_new    
 
 def load(filename=None,reader=None,tilts=None):
     """
@@ -125,6 +159,8 @@ def load(filename=None,reader=None,tilts=None):
     ext = os.path.splitext(filename)[1]
     if ext in ['.HDF5','.hdf5','.hd5','.HD5','.MRC','.mrc','.ALI','.ali','.REC','.rec']:
         stack = LoadHspy(filename,tilts)
+    elif ext in ['.dm3','.DM3','.dm4','.DM4']:
+        stack = LoadDM(filename)
 #    if (ext in ['.HDF5','.hdf5','.hd5','.HD5']) or (reader in ['HSPY','hspy']):
 #        stack = LoadHspy(filename)
 #    elif (ext in ['.MRC','.mrc','.ALI','.ali','.REC','.rec']) and (reader in ['IMOD','imod']):

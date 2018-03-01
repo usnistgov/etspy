@@ -94,14 +94,14 @@ def astra2D_CPU(stack,thickness,method,iterations=None,constrain=None,thresh=Non
     rec : numpy array
         Array containing the reconstruction data.
     """ 
-
+    tilts = stack.axes_manager[0].axis*np.pi/180
     if len(stack.data.shape) == 2:
         data = np.expand_dims(stack.data,1)
     else:
         data = stack.data
     rec = np.zeros([data.shape[1],thickness,data.shape[2]],data.dtype)
     vol_geom = astra.create_vol_geom(thickness,np.shape(data)[2])
-    proj_geom = astra.create_proj_geom('parallel', 1.0, np.shape(data)[2], np.pi/180*stack.tilts) 
+    proj_geom = astra.create_proj_geom('parallel', 1.0, np.shape(data)[2], tilts) 
     proj_id = astra.create_projector('strip', proj_geom, vol_geom)
     rec_id = astra.data2d.create('-vol', vol_geom)
     sinogram_id = astra.data2d.create('-sino',proj_geom,data[:,0,:])
@@ -154,14 +154,14 @@ def astra2D_CUDA(stack,thickness,method,iterations=None,constrain=None,thresh=No
     rec : numpy array
         Array containing the reconstruction data.
     """ 
-    
+    tilts = stack.axes_manager[0].axis*np.pi/180
     if len(stack.data.shape) == 2:
         data = np.expand_dims(stack.data,1)
     else:
         data = stack.data
     rec = np.zeros([data.shape[1],thickness,data.shape[2]],data.dtype)
     vol_geom = astra.create_vol_geom(thickness,np.shape(data)[2])
-    proj_geom = astra.create_proj_geom('parallel', 1.0, np.shape(data)[2], np.pi/180*stack.tilts) 
+    proj_geom = astra.create_proj_geom('parallel', 1.0, np.shape(data)[2], tilts) 
     proj_id = astra.create_projector('strip', proj_geom, vol_geom)
     rec_id = astra.data2d.create('-vol', vol_geom)
     sinogram_id = astra.data2d.create('-sino',proj_geom,data[:,0,:])
@@ -218,6 +218,7 @@ def astraSIRT3D_CUDA(stack,thickness=512,iterations=30,chunksize=128,constrain=F
     volume : numpy array
         Array containing the reconstruction data.
     """
+    tilts = stack.axes_manager[0].axis*np.pi/180
     data = np.rollaxis(stack.data,1)    
     rec = np.zeros([np.shape(data)[0],thickness,np.shape(data)[2]],data.dtype)
     nchunks = np.shape(data)[0]/128
@@ -228,7 +229,7 @@ def astraSIRT3D_CUDA(stack,thickness=512,iterations=30,chunksize=128,constrain=F
     for i in tqdm(range(0,np.int32(nchunks))):
         chunk = data[i*chunksize:(i+1)*chunksize,:,:]
         vol_geom = astra.create_vol_geom(thickness,np.shape(data)[2],chunksize)
-        proj_geom = astra.create_proj_geom('parallel3d', 1, 1, chunksize, np.shape(data)[2], np.pi/180*stack.tilts)
+        proj_geom = astra.create_proj_geom('parallel3d', 1, 1, chunksize, np.shape(data)[2], tilts)
         data_id = astra.data3d.create('-proj3d',proj_geom,chunk)
         rec_id = astra.data3d.create('-vol', vol_geom)
         
@@ -391,9 +392,10 @@ def errorSIRTGPU(stack,thickness,nIters,N):
     rec : numpy array
         Final reconstructed image
     """
+    tilts = stack.axes_manager[0].axis*np.pi/180
     data = stack.data[:,N,:]
     vol_geom = astra.create_vol_geom(thickness,np.shape(data)[1])
-    proj_geom = astra.create_proj_geom('parallel', 1.0, np.shape(data)[1], np.pi/180*stack.tilts)     
+    proj_geom = astra.create_proj_geom('parallel', 1.0, np.shape(data)[1], tilts)     
     proj_id = astra.create_projector('strip', proj_geom, vol_geom)
     rec_id = astra.data2d.create('-vol', vol_geom)
     sinogram_id = astra.data2d.create('-sino',proj_geom,data)
