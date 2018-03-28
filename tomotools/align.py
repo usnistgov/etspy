@@ -277,7 +277,7 @@ def rigidPC(stack,start):
     print('Spatial registration by PC complete')
     return(out)
     
-def tiltCorrect(stack,offset = 0):
+def tiltCorrect(stack,offset = 0,locs=None):
     """
     Function to perform automated determination of the tilt axis of a TomoStack by tracking the 
     center of mass (CoM) and comparing it to the path expected for an ideal cylinder
@@ -396,7 +396,10 @@ def tiltCorrect(stack,offset = 0):
         return coeffs
         
     data = stack.deepcopy()
-    y = np.int16(np.sort(getPoints(stack.data)[:,0]))
+    if locs is None:
+        y = np.int16(np.sort(getPoints(stack.data)[:,0]))
+    else:
+        y = np.int16(np.sort(locs))
     print('\nCorrecting tilt axis....')
     tilts = stack.axes_manager[0].axis*np.pi/180
     xshift = tiltaxis = 0

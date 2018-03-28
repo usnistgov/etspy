@@ -202,7 +202,7 @@ class TomoStack(Signal2D):
             return()
         return(out)
 
-    def tiltAlign(self,method,limit=10,delta=0.3,offset=0.0):
+    def tiltAlign(self,method,limit=10,delta=0.3,offset=0.0,locs=None):
         """
         Method to call one of two tilt axis calculation functions in the align module ('CoM' and 'MaxImage')
         and apply the calculated rotation.
@@ -241,7 +241,7 @@ class TomoStack(Signal2D):
         """
         
         if method == 'CoM':
-            out = align.tiltCorrect(self,offset)
+            out = align.tiltCorrect(self,offset,locs)
         elif method == 'MaxImage':
             angle = align.tiltAnalyze(self,limit,delta)
             if angle > 0.1:
