@@ -31,43 +31,55 @@ def signal_to_tomo_stack(s,tilts,manual_tilts=None):
     -------
     tomo_stack_signal : TomoStack object
 
-    """
-    tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(s.metadata.General.original_filename)[0])[1]))    
+    """   
 
     axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
     metadata = s.metadata.as_dictionary()
     original_metadata = s.original_metadata.as_dictionary()
 
-    s_new = TomoStack(s.data,axes=axes_list,metadata=metadata,original_metadata=original_metadata)
-    tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(s.metadata.General.original_filename)[0])[1]))
+    s_new = TomoStack(s.data,axes=axes_list,metadata=metadata,original_metadata=original_metadata)    
     
-    s_new.axes_manager[0].name = 'Tilt'
-    s_new.axes_manager[0].units = 'degrees'
-    
-    if s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
+    if s.axes_manager[0].name in ['Tilt','Tilts','Angle','Angles','Theta','tilt','tilts','angle','angles','theta']:
+        print('Tilts found in metadata')
+        return s_new
+
+    elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
         tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:s.data.shape[0]]
         print('Tilts found in metadata') 
-    
-    elif os.path.isfile(tiltfile)==True:
-        tilts = np.loadtxt(tiltfile)
-        print('Tilts loaded from .RAWTLT File')
-    
+        s_new.axes_manager[0].name = 'Tilt'
+        s_new.axes_manager[0].units = 'degrees'
+        s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+        s_new.axes_manager[0].offset = tilts[0]
+
     elif manual_tilts:
         negtilt = eval(input('Enter maximum negative tilt: '))
         postilt = eval(input('Enter maximum positive tilt: '))    
         tiltstep = eval(input('Enter tilt step: '))
         tilts = np.arange(negtilt,postilt+tiltstep,tiltstep)
         print('User provided tilts stored')
+        s_new.axes_manager[0].name = 'Tilt'
+        s_new.axes_manager[0].units = 'degrees'
+        s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+        s_new.axes_manager[0].offset = tilts[0]
+        
+    elif s.metadata.General.has_item('original_filename'):
+        tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(s.metadata.General.original_filename)[0])[1]))
+        if os.path.isfile(tiltfile)==True:
+            tilts = np.loadtxt(tiltfile)
+            print('Tilts loaded from .RAWTLT File')
+            s_new.axes_manager[0].name = 'Tilt'
+            s_new.axes_manager[0].units = 'degrees'
+            s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+            s_new.axes_manager[0].offset = tilts[0]
     
     else:
-        print('Tilts not found.  Calibrate axis 0')
-    
-    s_new.axes_manager[0].scale = tilts[1] - tilts[0]
-    s_new.axes_manager[0].offset = tilts[0]
+        print('Tilts not found.  Calibrate axis 0')  
+
     s_new.original_metadata.shifts = None
     s_new.original_metadata.tiltaxis = 0.0
     s_new.original_metadata.xshift = 0.0
+    
     return s_new
 
 def getFile(message='Choose files',filetypes='Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)'):
