@@ -310,6 +310,28 @@ class TomoStack(Signal2D):
             thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
         out = copy.deepcopy(self)
         out.data = recon.run(self,method,thickness,iterations,constrain,thresh,CUDA)
+        #out.data = np.rollaxis(out.data,2,1)
+        
+        out.axes_manager[0].name = 'y'
+        #out.axes_manager[0].index = 0
+        out.axes_manager[0].size = out.data.shape[0]
+        out.axes_manager[0].offset = self.axes_manager['y'].offset
+        out.axes_manager[0].scale = self.axes_manager['y'].scale
+        out.axes_manager[0].units = self.axes_manager['y'].units
+
+        out.axes_manager[2].name = 'z'
+        #out.axes_manager[1].index = 1
+        out.axes_manager[2].size = out.data.shape[1]
+        out.axes_manager[2].offset = self.axes_manager['x'].offset
+        out.axes_manager[2].scale = self.axes_manager['x'].scale
+        out.axes_manager[2].units = self.axes_manager['x'].units
+        
+        out.axes_manager[1].name = 'x'
+        #out.axes_manager[2].index = 2
+        out.axes_manager[1].size = out.data.shape[2]
+        out.axes_manager[1].offset = self.axes_manager['x'].offset
+        out.axes_manager[1].scale = self.axes_manager['x'].scale
+        out.axes_manager[1].units = self.axes_manager['x'].units
         #if len(np.shape(out.data))==3:
            # out.header['nx'] = np.int32(np.shape(out.data)[2])
        # elif len(np.shape(out.data))==2:
