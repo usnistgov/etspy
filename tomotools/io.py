@@ -47,12 +47,10 @@ def signal_to_tomo_stack(s,tilts,manual_tilts=None):
     
     if s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
         tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:s.data.shape[0]]
-        #s_new.axes_manager[0].axis = tilts
         print('Tilts found in metadata') 
     
     elif os.path.isfile(tiltfile)==True:
         tilts = np.loadtxt(tiltfile)
-        #s_new.axes_manager[0].axis = tilts
         print('Tilts loaded from .RAWTLT File')
     
     elif manual_tilts:
@@ -60,7 +58,6 @@ def signal_to_tomo_stack(s,tilts,manual_tilts=None):
         postilt = eval(input('Enter maximum positive tilt: '))    
         tiltstep = eval(input('Enter tilt step: '))
         tilts = np.arange(negtilt,postilt+tiltstep,tiltstep)
-        #s_new.axes_manager[0].axis = tilts
         print('User provided tilts stored')
     
     else:
@@ -68,13 +65,9 @@ def signal_to_tomo_stack(s,tilts,manual_tilts=None):
     
     s_new.axes_manager[0].scale = tilts[1] - tilts[0]
     s_new.axes_manager[0].offset = tilts[0]
-    # s_new.axes_manager[0].scale = s_new.axes_manager[0].axis[1] - s_new.axes_manager[0].axis[0]
-    #s_new.axes_manager[0].offset = s_new.axes_manager[0].axis[0]
-    #s_new.axes_manager[0].offset = 0
     s_new.original_metadata.shifts = None
     s_new.original_metadata.tiltaxis = 0.0
     s_new.original_metadata.xshift = 0.0
-    print(s_new.axes_manager[0].axis)
     return s_new
 
 def getFile(message='Choose files',filetypes='Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)'):
