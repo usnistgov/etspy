@@ -164,6 +164,7 @@ def signal_to_tomo_stack(s, manual_tilts=None):
     return s_new
 
 
+# noinspection PyUnusedLocal,PyUnusedLocal,PyUnresolvedReferences,PyUnresolvedReferences
 def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)'):
     if 'PyQt5.QtWidgets' in sys.modules:
         app = QtWidgets.QApplication([])

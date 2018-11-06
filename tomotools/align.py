@@ -69,6 +69,7 @@ def rigid_ecc(stack, start, show_progressbar):
     if start is None:
         start = np.argmin(np.abs(stack.axes_manager[0].axis))
     out.data[start, :, :] = stack.data[start, :, :]
+    # noinspection PyTypeChecker
     shifts[start] = old_trans
     
     for i in tqdm.tqdm(range(start+1, stack.data.shape[0]), disable=(not show_progressbar)):
@@ -126,6 +127,7 @@ def rigid_pc(stack, start, show_progressbar):
     if start is None:
         start = np.argmin(np.abs(stack.axes_manager[0].axis))
     out.data[start, :, :] = stack.data[start, :, :]
+    # noinspection PyTypeChecker
     shifts[start] = old_trans
     
     for i in tqdm.tqdm(range(start+1, stack.data.shape[0]), disable=(not show_progressbar)):
@@ -176,14 +178,14 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         Copy of the input stack after rotation and translation to center and make the tilt
         axis vertical
     """
-    def sinocalc(data, y):
+    def sinocalc(array, y):
         """
         Function to extract sinograms at stack positions chosen by user via getpoints() function
         and track the center of mass (com) as a function of angle for each.
 
         Args
         ----------
-        data : Numpy array
+        array : Numpy array
             3-D numpy array containing the tilt series data
         y : Numpy array
             Array containing the coordinates selected by the user in getPoints()
@@ -209,24 +211,24 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
             """
             size = np.size(row)
             value = 0.0    
-            for i in range(0, size):
-                value = value + row[i]*(i+1)
+            for j in range(0, size):
+                value = value + row[j]*(j+1)
             value = value/np.sum(row)
             return value
             
-        outvals = np.zeros([np.size(data, axis=0), 3])
-        sinotop = data[:, :, y[0]]
-        sinomid = data[:, :, y[1]]
-        sinobot = data[:, :, y[2]]
+        outvals = np.zeros([np.size(array, axis=0), 3])
+        sinotop = array[:, :, y[0]]
+        sinomid = array[:, :, y[1]]
+        sinobot = array[:, :, y[2]]
         
-        for i in range(data.shape[0]):
-            outvals[i][0] = center_of_mass(sinotop[i, :])
-            outvals[i][1] = center_of_mass(sinomid[i, :])
-            outvals[i][2] = center_of_mass(sinobot[i, :])
+        for k in range(array.shape[0]):
+            outvals[k][0] = center_of_mass(sinotop[k, :])
+            outvals[k][1] = center_of_mass(sinomid[k, :])
+            outvals[k][2] = center_of_mass(sinobot[k, :])
             
         return outvals
     
-    def fit_coms(tilts, coms):
+    def fit_coms(thetas, coms):
         """
         Function to fit the motion of calculated centers-of-mass in a sinogram to a 
         sinusoidal function: (r0-A*cos(tilt)-B*sin(tilt)) as would be expected 
@@ -235,7 +237,7 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 
         Args
         ----------
-        tilts : Numpy array
+        thetas : Numpy array
             Array containing the stage tilt at each row in the sinogram
         coms : Numpy array
             Array containing the calculated center of mass as a function of tilt
@@ -250,20 +252,21 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         def func(x, r0, a, b):
             return r0 - a*np.cos(x)-b*np.sin(x)
 
-        guess = [0.0, 0.0, 0.0]
-        coeffs, covars = optimize.curve_fit(func, tilts, np.int16(coms), guess)
+        guess = (0.0, 0.0, 0.0)
+        # noinspection PyTypeChecker
+        coeffs, covars = optimize.curve_fit(func, thetas, np.int16(coms), guess)
         return coeffs
     
-    def fit_tilt_axis(y, vals):
+    def fit_tilt_axis(coords, vals):
         """
-        Function to fit the coefficients calculated by fitCoMs() at each of the three user 
+        Function to fit the coefficients calculated by fit_coms() at each of the three user
         chosen positions to a linear function to determine the necessary rotation
         to vertically align the tilt axis
 
         Args
         ----------
-        y : Numpy array
-            Horixonal coordinates from which the sinograms were extracted
+        coords : Numpy array
+            Horizontal coordinates from which the sinograms were extracted
         vals : Numpy array
             Array containing the r0 coefficient calculated for each sinogram by fitCoMs
             
@@ -277,35 +280,38 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
             return m*x+b
 
         guess = [0.0, 0.0]
-        coeffs, covars = optimize.curve_fit(func, y, vals, guess)
+        # noinspection PyTypeChecker
+        coeffs, covars = optimize.curve_fit(f=func, xdata=coords, ydata=vals, p0=guess)
         return coeffs
         
     data = stack.deepcopy()
     if locs is None:
-        y = np.int16(np.sort(getpoints(stack.data)[:, 0]))
+        locs = np.int16(np.sort(getpoints(stack.data)[:, 0]))
     else:
-        y = np.int16(np.sort(locs))
+        locs = np.int16(np.sort(locs))
     if output:
         print('\nCorrecting tilt axis....')
     tilts = stack.axes_manager[0].axis*np.pi/180
-    xshift = tiltaxis = 0
-    totaltilt = totalshift = 0
+    xshift = 0
+    tiltaxis = 0
+    totaltilt = 0
+    totalshift = 0
     count = 1
 
     while abs(tiltaxis) >= 1 or abs(xshift) >= 1 or count == 1:
-        centers = sinocalc(data.data, y)
+        centers = sinocalc(data.data, locs)
     
-        coeffs = np.zeros([3, 3])
-        coeffs[0, :] = fit_coms(tilts, centers[:, 0])
-        coeffs[1, :] = fit_coms(tilts, centers[:, 1])
-        coeffs[2, :] = fit_coms(tilts, centers[:, 2])
+        com_results = np.zeros([3, 3])
+        com_results[0, :] = fit_coms(tilts, centers[:, 0])
+        com_results[1, :] = fit_coms(tilts, centers[:, 1])
+        com_results[2, :] = fit_coms(tilts, centers[:, 2])
         
         r = np.zeros(3)
-        r[:] = coeffs[:, 0]
+        r[:] = com_results[:, 0]
 
-        coeffsaxis = fit_tilt_axis(y, r)
-        tiltaxis = 180/np.pi*np.tanh(coeffsaxis[0])
-        xshift = (coeffsaxis[1]/coeffsaxis[0]*np.sin(np.pi/180*tiltaxis))
+        axis_fits = fit_tilt_axis(locs, r)
+        tiltaxis = 180/np.pi*np.tanh(axis_fits[0])
+        xshift = (axis_fits[1]/axis_fits[0]*np.sin(np.pi/180*tiltaxis))
         xshift = (data.data.shape[1]/2)-xshift - offset
         totaltilt += tiltaxis
         totalshift += xshift
@@ -353,35 +359,35 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False, show_progressbar=False
         Calculated rotation to set the tilt axis vertical
     """
 
-    def hamming(image):
+    def hamming(img):
         """
         Function to apply hamming window to the image to remove edge effects
 
         Args
         ----------
-        image : Numpy array
+        img : Numpy array
             Input image
         Returns
         ----------
         out : Numpy array
             Filtered image
         """
-        if image.shape[0] < image.shape[1]:
-            image = image[:, np.int32((image.shape[1]-image.shape[0])/2):-np.int32(((image.shape[1]-image.shape[0])/2))]
-            if image.shape[0] != image.shape[1]:
-                image = image[:, 0:-1]
-            h = np.hamming(image.shape[0])
+        if img.shape[0] < img.shape[1]:
+            img = img[:, np.int32((img.shape[1]-img.shape[0])/2):-np.int32(((img.shape[1]-img.shape[0])/2))]
+            if img.shape[0] != img.shape[1]:
+                img = img[:, 0:-1]
+            h = np.hamming(img.shape[0])
             ham2d = np.sqrt(np.outer(h, h))
-        elif image.shape[1] < image.shape[0]:
-            image = image[np.int32((image.shape[0]-image.shape[1])/2):-np.int32(((image.shape[0]-image.shape[1])/2)), :]
-            if image.shape[0] != image.shape[1]:
-                image = image[0:-1, :]
-            h = np.hamming(image.shape[1])
+        elif img.shape[1] < img.shape[0]:
+            img = img[np.int32((img.shape[0]-img.shape[1])/2):-np.int32(((img.shape[0]-img.shape[1])/2)), :]
+            if img.shape[0] != img.shape[1]:
+                img = img[0:-1, :]
+            h = np.hamming(img.shape[1])
             ham2d = np.sqrt(np.outer(h, h))
         else:
-            h = np.hamming(image.shape[0])
+            h = np.hamming(img.shape[0])
             ham2d = np.sqrt(np.outer(h, h))
-        out = ham2d*image
+        out = ham2d*img
         return out
 
     def find_score(im, angle):
@@ -413,9 +419,9 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False, show_progressbar=False
     angles = np.arange(-limit, limit+delta, delta)
     scores_pos = []
     scores_neg = []
-    for angle in tqdm.tqdm(angles, disable=(not show_progressbar)):
-        hist_pos, score_pos = find_score(rot_pos, angle)
-        hist_neg, score_neg = find_score(rot_neg, angle)
+    for rotation_angle in tqdm.tqdm(angles, disable=(not show_progressbar)):
+        hist_pos, score_pos = find_score(rot_pos, rotation_angle)
+        hist_neg, score_neg = find_score(rot_neg, rotation_angle)
         scores_pos.append(score_pos)
         scores_neg.append(score_neg)
 

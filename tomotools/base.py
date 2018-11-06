@@ -432,6 +432,7 @@ class TomoStack(Signal2D):
                                                    borderValue=0.0)
         return out
 
+    # noinspection PyTypeChecker
     def savemovie(self, start, stop, axis='XY', fps=15, dpi=100, outfile=None, title='output.avi', clim=None,
                   cmap='afmhot'):
         """
@@ -493,12 +494,14 @@ class TomoStack(Signal2D):
             im.set_data(tmp)
             return im
 
+        frames = np.arange(start, stop, 1)
+
         if axis == 'XY':
-            ani = animation.FuncAnimation(fig, updatexy, np.arange(start, stop, 1))
+            ani = animation.FuncAnimation(fig, updatexy, frames)
         elif axis == 'XZ':
-            ani = animation.FuncAnimation(fig, updatexz, np.arange(start, stop, 1))
+            ani = animation.FuncAnimation(fig, updatexz, frames)
         elif axis == 'YZ':
-            ani = animation.FuncAnimation(fig, updateyz, np.arange(start, stop, 1))
+            ani = animation.FuncAnimation(fig, updateyz, frames)
         else:
             raise ValueError('Axis not understood!')
 
