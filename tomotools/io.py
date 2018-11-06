@@ -12,7 +12,8 @@ import hyperspy.api as hspy
 import sys
 from tomotools.base import TomoStack
 
-def numpy_to_tomo_stack(data):
+
+def numpy_to_tomo_stack(data, manual_tilts=False):
     """Make a TomoStack object from a NumPy array.
 
     This will retain both the axes information and the metadata.
@@ -20,7 +21,10 @@ def numpy_to_tomo_stack(data):
 
     Parameters
     ----------
-    s : HyperSpy Signal2D
+    data : Numpy array
+        Array containing tilt series data.  First dimension must represent
+        the tilt axis. The second and third dimensions are the X and Y
+        image dimentsions, respectively
 
     manual_tilts : bool
         If True, prompt for input of maximum positive tilt, maximum negative
@@ -44,7 +48,26 @@ def numpy_to_tomo_stack(data):
 
     """
     s = signal_to_tomo_stack(hspy.signals.Signal2D(data))
+
+    s.axes_manager[0].name = 'Tilt'
+    s.axes_manager[0].units = 'unknown'
+    s.axes_manager[1].name = 'x'
+    s.axes_manager[1].units = 'unknown'
+    s.axes_manager[2].name = 'y'
+    s.axes_manager[2].units = 'unknown'
+
+    if manual_tilts:
+        negtilt = eval(input('Enter maximum negative tilt: '))
+        postilt = eval(input('Enter maximum positive tilt: '))
+        tiltstep = eval(input('Enter tilt step: '))
+        tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
+        print('User provided tilts stored')
+        s.axes_manager[0].scale = tilts[1] - tilts[0]
+        s.axes_manager[0].offset = tilts[0]
+        s.axes_manager[0].units = 'degrees'
+
     return s
+
 
 def signal_to_tomo_stack(s, manual_tilts=None):
     """Make a TomoStack object from a HyperSpy signal.

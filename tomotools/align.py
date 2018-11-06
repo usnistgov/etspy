@@ -49,6 +49,8 @@ def rigid_ecc(stack, start, show_progressbar):
         3-D numpy array containing the tilt series data
     start : integer
         Position in tilt series to use as starting point for the alignment. If None, the central projection is used.
+    show_progressbar : boolean
+        Enable/disable progress bar
 
     Returns
     ----------
@@ -109,6 +111,8 @@ def rigid_pc(stack, start, show_progressbar):
         3-D numpy array containing the tilt series data
     start : integer
         Position in tilt series to use as starting point for the alignment. If None, the central projection is used.
+    show_progressbar : boolean
+        Enable/disable progress bar
 
     Returns
     ----------
@@ -163,7 +167,9 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         Not currently used
     locs : list
         Locations at which to perform the CoM analysis
-        
+    output : boolean
+        Output alignment results to console after each iteration
+
     Returns
     ----------
     out : TomoStack object
@@ -336,7 +342,11 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False, show_progressbar=False
         Maximum rotation angle to use for MaxImage calculation
     delta : float
         Angular increment for MaxImage calculation
-        
+    output : boolean
+        Output alignment results to console after each iteration
+    show_progressbar : boolean
+        Enable/disable progress bar
+
     Returns
     ----------
     opt_angle : TomoStack object

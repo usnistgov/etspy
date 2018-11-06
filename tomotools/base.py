@@ -49,7 +49,7 @@ class TomoStack(Signal2D):
             string += ", Empty"
         elif len(self.data.shape) == 2:
             string += ", dimensions: (|%s, %s)" % (str(self.data.shape[1]),
-                                                  str(self.data.shape[0]))
+                                                   str(self.data.shape[0]))
         elif len(self.data.shape) == 3:
             string += ", dimensions: (%s|%s, %s)" % (str(self.data.shape[0]),
                                                      str(self.data.shape[2]),
@@ -77,65 +77,65 @@ class TomoStack(Signal2D):
         if self.original_metadata.shifts is None:
             raise ValueError('Spatial registration has not been calculated for this stack')
 
-        out = align.alignToOther(self, other)
+        out = align.align_to_other(self, other)
         return out
 
-    def checkerrorcpu(self, thickness, tilts=None, n=None, minerror=2.0, maxiters=100):
-        """
-        Method to calculate the number of SIRT iterations required to produce a minimum change
-        between successive iterations.  This method uses the CPU-based SIRT reconstruction
-        algorithm of the Astra toolbox.
+    # def checkerrorcpu(self, thickness, tilts=None, n=None, minerror=2.0, maxiters=100):
+    #     """
+    #     Method to calculate the number of SIRT iterations required to produce a minimum change
+    #     between successive iterations.  This method uses the CPU-based SIRT reconstruction
+    #     algorithm of the Astra toolbox.
+    #
+    #     Args
+    #     ----------
+    #     thickness : integer
+    #         Size in pixels of the Z-dimension of the output reconstruction.
+    #     tilts : list
+    #         List of floats indicating the specimen tilt for each image in the stack
+    #     n : integer
+    #         Location of the slice to use for error calculation
+    #     minerror : float
+    #         Percentage change between successive iterations that terminates the algorithm
+    #     maxiters : integer
+    #         Maximum number of iterations to perform if minError is not met
+    #     """
+    #
+    #     if not thickness:
+    #         thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
+    #     if not n:
+    #         n = np.int32(self.data.shape[1] / 2)
+    #     data = self.data[:, n, :]
+    #
+    #     if tilts is None:
+    #         tilts = self.axes_manager[0].axis
+    #     recon.errorsirtcpu(data, thickness=thickness, tilts=tilts, minError=minerror, maxiters=maxiters)
+    #     return
 
-        Args
-        ----------
-        thickness : integer
-            Size in pixels of the Z-dimension of the output reconstruction.
-        tilts : list
-            List of floats indicating the specimen tilt for each image in the stack
-        n : integer
-            Location of the slice to use for error calculation
-        minerror : float
-            Percentage change between successive iterations that terminates the algorithm
-        maxiters : integer
-            Maximum number of iterations to perform if minError is not met
-        """
-
-        if not thickness:
-            thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
-        if not n:
-            n = np.int32(self.data.shape[1] / 2)
-        data = self.data[:, n, :]
-
-        if tilts is None:
-            tilts = self.axes_manager[0].axis
-        recon.errorsirtcpu(data, thickness=thickness, tilts=tilts, minError=minerror, maxiters=maxiters)
-        return
-
-    def checkerrorgpu(self, thickness=None, iterations=200, n=None):
-        """
-        Method to calculate the number of SIRT iterations required to produce a minimum change
-        between successive iterations.  This method uses the GPU-based SIRT reconstruction
-        algorithm of the Astra toolbox.
-
-        Args
-        ----------
-        thickness : integer
-            Size in pixels of the Z-dimension of the output reconstruction.
-        iterations : integer
-            Number of iterations to perform
-        n : integer
-            Location of the slice to use for error calculation. If None, the middle slice is chosen.
-        """
-
-        if not thickness:
-            thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
-        if not n:
-            n = np.int16(self.data.shape[1] / 2)
-        error, diff, rec = recon.errorSIRTGPU(self, thickness, n, iterations)
-        self.error = error
-        self.diff = diff
-        self.errorRec = rec
-        return
+    # def checkerrorgpu(self, thickness=None, iterations=200, n=None):
+    #     """
+    #     Method to calculate the number of SIRT iterations required to produce a minimum change
+    #     between successive iterations.  This method uses the GPU-based SIRT reconstruction
+    #     algorithm of the Astra toolbox.
+    #
+    #     Args
+    #     ----------
+    #     thickness : integer
+    #         Size in pixels of the Z-dimension of the output reconstruction.
+    #     iterations : integer
+    #         Number of iterations to perform
+    #     n : integer
+    #         Location of the slice to use for error calculation. If None, the middle slice is chosen.
+    #     """
+    #
+    #     if not thickness:
+    #         thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
+    #     if not n:
+    #         n = np.int16(self.data.shape[1] / 2)
+    #     error, diff, rec = recon.errorSIRTGPU(self, thickness, n, iterations)
+    #     self.original_metadata.error = error
+    #     self.original_metadata.diff = diff
+    #     self.original_metadata.errorRec = rec
+    #     return
 
     def stack_register(self, method='ECC', start=None, show_progressbar=False):
         """
@@ -148,6 +148,8 @@ class TomoStack(Signal2D):
             Algorithm to use for registration calculation. Must be either 'PC' or 'ECC'
         start : integer
             Position in tilt series to use as starting point for the alignment. If None, the central projection is used.
+        show_progressbar : boolean
+            Enable/disable progress bar
 
         Returns
         ----------
@@ -162,7 +164,7 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> s.inav[0:10].stack_register('ECC',show_progressbar=False)
         Spatial registration by ECC complete
-        <TomoStack, title: , dimensions: (10|512, 512)>
+        <TomoStack, title: , dimensions: (10|256, 256)>
 
         Registration with phase correlation algorithm (PC)
         >>> import tomotools
@@ -170,7 +172,7 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> s.inav[0:10].stack_register('PC',show_progressbar=False)
         Spatial registration by PC complete
-        <TomoStack, title: , dimensions: (10|512, 512)>
+        <TomoStack, title: , dimensions: (10|256, 256)>
         """
 
         if method == 'ECC':
@@ -216,6 +218,10 @@ class TomoStack(Signal2D):
         locs : list
             Image coordinates indicating the locations at which to calculate
             the alignment
+        output : boolean
+            Output alignment results to console after each iteration
+        show_progressbar : boolean
+            Enable/disable progress bar
             
         Returns
         ----------
