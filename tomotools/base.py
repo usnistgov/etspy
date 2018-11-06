@@ -286,6 +286,34 @@ class TomoStack(Signal2D):
         ----------
         out : TomoStack object
             TomoStack containing the reconstructed volume
+
+        Examples
+        ----------
+        Filtered backprojection (FBP) reconstruction
+        >>> import tomotools
+        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        Tilts found in metadata
+        >>> slices = stack.isig[:, 120:121].deepcopy()
+        >>> rec = slices.reconstruct('FBP')
+        Reconstruction complete
+
+        Simultaneous iterative reconstruction technique (SIRT) reconstruction
+        >>> import tomotools
+        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        Tilts found in metadata
+        >>> slices = stack.isig[:, 120:121].deepcopy()
+        >>> rec = slices.reconstruct('SIRT',iterations=5)
+        Reconstruction complete
+
+        Simultaneous iterative reconstruction technique (SIRT) reconstruction
+        with positivity constraint
+        >>> import tomotools
+        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        Tilts found in metadata
+        >>> slices = stack.isig[:, 120:121].deepcopy()
+        >>> rec = slices.reconstruct('SIRT',iterations=5, constrain=True, thresh=0)
+        Reconstruction complete
+
         """
         if cuda is None:
             if 'CUDA_Path' in os.environ.keys():
@@ -415,6 +443,16 @@ class TomoStack(Signal2D):
         ----------
         out : TomoStack object
             Transformed copy of the input stack
+
+        Examples
+        ----------
+        >>> import tomotools
+        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        Tilts found in metadata
+        >>> transformed = stack.trans_stack(xshift=10.0, yshift=3.5, angle=-15.2)
+        >>> transformed
+        <TomoStack, title: , dimensions: (77|256, 256)>
+
         """
         out = self.deepcopy()
         if angle:

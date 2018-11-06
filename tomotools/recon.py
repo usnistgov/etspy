@@ -40,13 +40,11 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None, thresh=
     if method == 'FBP':
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
-            print('Reconstructing volume using CPU-based WBP in the Astra Toolbox')
             options = {'proj_type': 'linear', 'method': 'FBP'}
             rec = tomopy.recon(stack.data, theta, center=rot_center, algorithm=tomopy.astra, options=options)
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA weighted-backprojection CUDA reconstruction of single slice'''
-            print('Reconstructing volume using CUDA Accelerated WBP in the Astra Toolbox')
             options = {'proj_type': 'cuda', 'method': 'FBP_CUDA'}
             rec = tomopy.recon(stack.data, theta, center=rot_center, algorithm=tomopy.astra, options=options)
             print('Reconstruction complete')
@@ -57,7 +55,6 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None, thresh=
             iterations = 20
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA SIRT reconstruction of single slice'''
-            print('Reconstructing volume using CPU-based SIRT in the Astra Toolbox')
             if constrain:
                 if not thresh:
                     thresh = 0
@@ -70,7 +67,6 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None, thresh=
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
-            print('Reconstructing volume using CUDA Accelerated SIRT in the Astra Toolbox')
             if constrain:
                 if not thresh:
                     thresh = 0
