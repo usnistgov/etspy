@@ -1,0 +1,17 @@
+import tomotools
+import os
+
+my_path = os.path.dirname(__file__)
+
+
+class TestAlignStackRegister:
+
+    def test_register_ecc(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        stack.inav[0:20].register('ECC')
+
+    def test_register_pc(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        stack.inav[0:20].register('PC')
