@@ -10,7 +10,6 @@ from tomotools import recon, align
 import copy
 import os
 import cv2
-import tqdm
 import pylab as plt
 import matplotlib.animation as animation
 from hyperspy.signals import Signal2D
@@ -58,7 +57,7 @@ class TomoStack(Signal2D):
         string += '>'
         return string
 
-    def alignother(self, other):
+    def align_other(self, other):
         """
         Method to apply the alignment calculated for one dataset to another. This will include the spatial registration,
         tilt axis, and tilt axis shift if they have been previously calulated.
@@ -128,7 +127,7 @@ class TomoStack(Signal2D):
             return ()
         return out
 
-    def tiltalign(self, method, limit=10, delta=0.3, offset=0.0, locs=None, output=True, show_progressbar=False):
+    def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None, output=True, show_progressbar=False):
         """
         Method to call one of two tilt axis calculation functions in the align module ('CoM' and 'MaxImage')
         and apply the calculated rotation.
@@ -196,7 +195,7 @@ class TomoStack(Signal2D):
         elif method == 'MaxImage':
             angle = align.tilt_analyze(self, limit, delta, output, show_progressbar)
             if angle > 0.1:
-                out = self.rotate(angle, True, False)
+                out = self.rotate(angle, True)
             else:
                 out = self.deepcopy()
             out.tiltaxis = angle
@@ -323,7 +322,7 @@ class TomoStack(Signal2D):
         rot.axes_manager[2].size = rot.data.shape[1]
         return rot
 
-    def testalign(self, xshift=0.0, slices=None):
+    def test_align(self, xshift=0.0, angle=0.0, slices=None):
         """
         Method to produce quickly reconstruct three slices from the input data for inspection of the
         quality of the alignment.
@@ -332,6 +331,8 @@ class TomoStack(Signal2D):
         ----------
         xshift : float
             Number of pixels by which to shift the input data.
+        angle : float
+            Angle by which to rotate stack prior to reconstruction
         slices : list
             Position of slices to use for the reconstruction.  If None, positions at 1/4, 1/2, and 3/4 of the full
             size of the stack are chosen.
@@ -339,12 +340,19 @@ class TomoStack(Signal2D):
         if slices is None:
             mid = np.int32(self.data.shape[1] / 2)
             slices = np.int32([mid / 2, mid, mid + mid / 2])
+
         temp = self.deepcopy()
-        temp.data = temp.data[:, slices, :]
+        if angle != 0:
+            shifted = temp.trans_stack(xshift, 0, angle)
+        elif angle == 0 and xshift != 0:
+            shifted = self.deepcopy()
+            shifted.data = shifted.data[:, slices, :]
+            shifted = shifted.trans_stack(xshift, 0, 0)
+        else:
+            shifted = self.deepcopy()
+            shifted.data = shifted.data[:, slices, :]
 
-        shifted = temp.trans_stack(xshift, 0, 0)
-
-        rec = recon.run(shifted, method='astraWBP', cuda=False)
+        rec = recon.run(shifted, method='FBP', cuda=False)
 
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 10))
         ax1.imshow(rec[0, :, :], cmap='afmhot')
