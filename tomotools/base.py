@@ -14,6 +14,7 @@ import tqdm
 import pylab as plt
 import matplotlib.animation as animation
 from hyperspy.signals import Signal2D
+from scipy import ndimage
 
 
 class TomoStack(Signal2D):
@@ -286,16 +287,14 @@ class TomoStack(Signal2D):
         out.axes_manager[1].units = self.axes_manager['x'].units
         return out
 
-    def rotate(self, angle, show_progressbar=False, resize=False):
+    def rotate(self, angle, resize=True):
         """
-        Method to rotate the stack by a given angle using the OpenCV warpAffine function
+        Method to rotate the stack by a given angle using the SciPy ndimage.rotate function
 
         Args
         ----------
         angle : float
             Angle by which to rotate the data in the TomoStack about the XY plane
-        show_progressbar : boolean
-            If True, use the tqdm module to output a progressbar during rotation.
         resize : boolean
             If True, output stack size is increased relative to input so that no pixels are lost.
             If False, output stack is the same size as the input.
@@ -304,24 +303,24 @@ class TomoStack(Signal2D):
         ----------
         rot : TomoStack object
             Rotated copy of the input stack
+
+        Examples
+        ----------
+        >>> import tomotools
+        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        Tilts found in metadata
+        >>> stack.isig[100:156,:]
+        <TomoStack, title: , dimensions: (77|56, 256)>
+        >>> rotated = stack.isig[100:156,:].rotate(90)
+        >>> rotated
+        <TomoStack, title: , dimensions: (77|256, 56)>
         """
-        if resize:
-            (old_y, old_x) = self.data.shape[1:3]
-            m = cv2.getRotationMatrix2D(center=(old_x / 2, old_y / 2), angle=-angle, scale=1.0)
-            r = np.deg2rad(-angle)
-            new_x, new_y = (abs(np.sin(r) * old_y) + abs(np.cos(r) * old_x), abs(np.sin(r) * old_x) +
-                            abs(np.cos(r) * old_y))
-            (tx, ty) = ((new_x - old_x) / 2, (new_y - old_y) / 2)
-            m[0, 2] += tx
-            m[1, 2] += ty
-        else:
-            new_x, new_y = self.data.shape[1:3]
-            m = cv2.getRotationMatrix2D(center=(new_x / 2, new_y / 2), angle=-angle, scale=1.0)
-        rot = copy.deepcopy(self)
-        rot.data = np.zeros([np.shape(self.data)[0], int(new_x), int(new_y)], dtype=self.data.dtype)
-        for i in tqdm.tqdm(range(0, rot.data.shape[0]), disable=(not show_progressbar)):
-            rot.data[i, :, :] = cv2.warpAffine(self.data[i, :, :], m, dsize=(int(new_y), int(new_x)),
-                                               flags=cv2.INTER_LINEAR)
+
+        rot = self.deepcopy()
+        rot.data = ndimage.rotate(rot.data, angle, axes=(1, 2), reshape=resize)
+
+        rot.axes_manager[1].size = rot.data.shape[2]
+        rot.axes_manager[2].size = rot.data.shape[1]
         return rot
 
     def testalign(self, xshift=0.0, slices=None):
