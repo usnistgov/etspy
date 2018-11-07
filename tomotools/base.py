@@ -80,63 +80,6 @@ class TomoStack(Signal2D):
         out = align.align_to_other(self, other)
         return out
 
-    # def checkerrorcpu(self, thickness, tilts=None, n=None, minerror=2.0, maxiters=100):
-    #     """
-    #     Method to calculate the number of SIRT iterations required to produce a minimum change
-    #     between successive iterations.  This method uses the CPU-based SIRT reconstruction
-    #     algorithm of the Astra toolbox.
-    #
-    #     Args
-    #     ----------
-    #     thickness : integer
-    #         Size in pixels of the Z-dimension of the output reconstruction.
-    #     tilts : list
-    #         List of floats indicating the specimen tilt for each image in the stack
-    #     n : integer
-    #         Location of the slice to use for error calculation
-    #     minerror : float
-    #         Percentage change between successive iterations that terminates the algorithm
-    #     maxiters : integer
-    #         Maximum number of iterations to perform if minError is not met
-    #     """
-    #
-    #     if not thickness:
-    #         thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
-    #     if not n:
-    #         n = np.int32(self.data.shape[1] / 2)
-    #     data = self.data[:, n, :]
-    #
-    #     if tilts is None:
-    #         tilts = self.axes_manager[0].axis
-    #     recon.errorsirtcpu(data, thickness=thickness, tilts=tilts, minError=minerror, maxiters=maxiters)
-    #     return
-
-    # def checkerrorgpu(self, thickness=None, iterations=200, n=None):
-    #     """
-    #     Method to calculate the number of SIRT iterations required to produce a minimum change
-    #     between successive iterations.  This method uses the GPU-based SIRT reconstruction
-    #     algorithm of the Astra toolbox.
-    #
-    #     Args
-    #     ----------
-    #     thickness : integer
-    #         Size in pixels of the Z-dimension of the output reconstruction.
-    #     iterations : integer
-    #         Number of iterations to perform
-    #     n : integer
-    #         Location of the slice to use for error calculation. If None, the middle slice is chosen.
-    #     """
-    #
-    #     if not thickness:
-    #         thickness = eval(input('Enter the thickness for the reconstruction in pixels:'))
-    #     if not n:
-    #         n = np.int16(self.data.shape[1] / 2)
-    #     error, diff, rec = recon.errorSIRTGPU(self, thickness, n, iterations)
-    #     self.original_metadata.error = error
-    #     self.original_metadata.diff = diff
-    #     self.original_metadata.errorRec = rec
-    #     return
-
     def stack_register(self, method='ECC', start=None, show_progressbar=False):
         """
         Method which calls a function in the align module to spatially register a stack using one of two 
@@ -343,7 +286,7 @@ class TomoStack(Signal2D):
         out.axes_manager[1].units = self.axes_manager['x'].units
         return out
 
-    def rotate(self, angle, progressbar=True, resize=False):
+    def rotate(self, angle, show_progressbar=False, resize=False):
         """
         Method to rotate the stack by a given angle using the OpenCV warpAffine function
 
@@ -351,7 +294,7 @@ class TomoStack(Signal2D):
         ----------
         angle : float
             Angle by which to rotate the data in the TomoStack about the XY plane
-        progressbar : boolean
+        show_progressbar : boolean
             If True, use the tqdm module to output a progressbar during rotation.
         resize : boolean
             If True, output stack size is increased relative to input so that no pixels are lost.
@@ -376,16 +319,9 @@ class TomoStack(Signal2D):
             m = cv2.getRotationMatrix2D(center=(new_x / 2, new_y / 2), angle=-angle, scale=1.0)
         rot = copy.deepcopy(self)
         rot.data = np.zeros([np.shape(self.data)[0], int(new_x), int(new_y)], dtype=self.data.dtype)
-        if progressbar:
-            print('Rotating image stack...')
-            for i in tqdm.tqdm(range(0, rot.data.shape[0])):
-                rot.data[i, :, :] = cv2.warpAffine(self.data[i, :, :], m, dsize=(int(new_y), int(new_x)),
-                                                   flags=cv2.INTER_LINEAR)
-            print('Rotation complete')
-        else:
-            for i in range(0, rot.data.shape[0]):
-                rot.data[i, :, :] = cv2.warpAffine(self.data[i, :, :], m, dsize=(int(new_x), int(new_y)),
-                                                   flags=cv2.INTER_LINEAR)
+        for i in tqdm.tqdm(range(0, rot.data.shape[0]), disable=(not show_progressbar)):
+            rot.data[i, :, :] = cv2.warpAffine(self.data[i, :, :], m, dsize=(int(new_y), int(new_x)),
+                                               flags=cv2.INTER_LINEAR)
         return rot
 
     def testalign(self, xshift=0.0, slices=None):
