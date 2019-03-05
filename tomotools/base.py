@@ -495,7 +495,7 @@ class TomoStack(Signal2D):
         """
         Method to show the TomoStack for visualization with an interactive slice slider using OpenCV"""
 
-        def nothing():
+        def nothing(x):
             pass
 
         def simpletrackbar(image, windowname):
