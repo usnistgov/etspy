@@ -80,6 +80,25 @@ class TomoStack(Signal2D):
         out = align.align_to_other(self, other)
         return out
 
+    def invert(self):
+        maxvals = self.data.max(2).max(1)
+        maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
+        minvals = self.data.min(2).min(1)
+        minvals = minvals.reshape([self.data.shape[0], 1, 1])
+        ranges = maxvals-minvals
+
+        inverted = self.deepcopy()
+        inverted.data = inverted.data - np.reshape(inverted.data.mean(
+            2).mean(1), [self.data.shape[0],1,1])
+        inverted.data = (inverted.data - minvals) / ranges
+
+        inverted.data = inverted.data - 1
+        inverted.data = np.sqrt(inverted.data ** 2)
+
+        inverted.data = (inverted.data * ranges) + minvals
+
+        return inverted
+
     def stack_register(self, method='ECC', start=None, show_progressbar=False):
         """
         Method which calls a function in the align module to spatially register a stack using one of two 
