@@ -9,9 +9,9 @@ import tqdm
 
 def getpoints(data, numpoints=3):
     """
-    Function to display the central image in a stack and prompt the user to choose
-    three locations by mouse click.  Once three locations have been clicked, the
-    window closes and the function returns the coordinates
+    Function to display the central image in a stack and prompt the user to
+    choose three locations by mouse click.  Once three locations have been
+    clicked, the window closes and the function returns the coordinates
 
     Args
     ----------
@@ -39,16 +39,17 @@ def getpoints(data, numpoints=3):
 
 def rigid_ecc(stack, start, show_progressbar):
     """
-    Function to compute the shifts necessary to spatially register a stack of images.
-    Shifts are determined by the OpenCV findTransformECC algorithm.  Shifts are then
-    applied and the aligned stack is returned.
+    Function to compute the shifts necessary to spatially register a stack of
+    images. Shifts are determined by the OpenCV findTransformECC algorithm.
+    Shifts are then applied and the aligned stack is returned.
     
     Args
     ----------
     stack : Numpy array
         3-D numpy array containing the tilt series data
     start : integer
-        Position in tilt series to use as starting point for the alignment. If None, the central projection is used.
+        Position in tilt series to use as starting point for the alignment.
+        If None, the central projection is used.
     show_progressbar : boolean
         Enable/disable progress bar
 
@@ -61,7 +62,8 @@ def rigid_ecc(stack, start, show_progressbar):
 
     number_of_iterations = 1000
     termination_eps = 1e-3    
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations,  termination_eps)
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
+                number_of_iterations,  termination_eps)
     old_trans = np.array([[1., 0, 0], [0, 1., 0]])
     out = copy.deepcopy(stack)
     out.data = np.zeros(stack.data.shape, stack.data.dtype)
@@ -72,25 +74,41 @@ def rigid_ecc(stack, start, show_progressbar):
     # noinspection PyTypeChecker
     shifts[start] = old_trans
     
-    for i in tqdm.tqdm(range(start+1, stack.data.shape[0]), disable=(not show_progressbar)):
+    for i in tqdm.tqdm(range(start+1, stack.data.shape[0]),
+                       disable=(not show_progressbar)):
         warp_matrix = np.eye(2, 3, dtype=np.float32)        
-        (cc, trans) = cv2.findTransformECC(stack.data[i, :, :], stack.data[i-1, :, :], warp_matrix,
-                                           cv2.MOTION_TRANSLATION, criteria)
+        (cc, trans) = cv2.findTransformECC(stack.data[i, :, :],
+                                           stack.data[i-1, :, :],
+                                           warp_matrix,
+                                           cv2.MOTION_TRANSLATION,
+                                           criteria)
         trans[:, 2] = trans[:, 2] + old_trans[:, 2]
-        out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :], trans, stack.data[i, :, :].T.shape,
-                                           flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+        out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
+                                           trans,
+                                           stack.data[i, :, :].T.shape,
+                                           flags=cv2.INTER_LINEAR,
+                                           borderMode=cv2.BORDER_CONSTANT,
+                                           borderValue=0.0)
         shifts[i] = trans
         old_trans = trans
     
     if start != 0:
         old_trans = np.array([[1., 0, 0], [0, 1., 0]])
-        for i in tqdm.tqdm(range(start-1, -1, -1), disable=(not show_progressbar)):
+        for i in tqdm.tqdm(range(start-1, -1, -1),
+                           disable=(not show_progressbar)):
             warp_matrix = np.eye(2, 3, dtype=np.float32)
-            (cc, trans) = cv2.findTransformECC(stack.data[i, :, :], stack.data[i+1, :, :], warp_matrix,
-                                               cv2.MOTION_TRANSLATION, criteria)
+            (cc, trans) = cv2.findTransformECC(stack.data[i, :, :],
+                                               stack.data[i+1, :, :],
+                                               warp_matrix,
+                                               cv2.MOTION_TRANSLATION,
+                                               criteria)
             trans[:, 2] = trans[:, 2] + old_trans[:, 2]
-            out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :], trans, stack.data[i, :, :].T.shape,
-                                               flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+            out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
+                                               trans,
+                                               stack.data[i, :, :].T.shape,
+                                               flags=cv2.INTER_LINEAR,
+                                               borderMode=cv2.BORDER_CONSTANT,
+                                               borderValue=0.0)
             shifts[i] = trans
             old_trans = trans
     if not out.original_metadata.has_item('shifts'):
@@ -102,16 +120,17 @@ def rigid_ecc(stack, start, show_progressbar):
 
 def rigid_pc(stack, start, show_progressbar):
     """
-    Function to compute the shifts necessary to spatially register a stack of images.
-    Shifts are determined by the OpenCV phaseCorrelate algorithm.  Shifts are then
-    applied and the aligned stack is returned.
+    Function to compute the shifts necessary to spatially register a stack of
+    images. Shifts are determined by the OpenCV phaseCorrelate algorithm.
+    Shifts are then applied and the aligned stack is returned.
     
     Args
     ----------
     stack : Numpy array
         3-D numpy array containing the tilt series data
     start : integer
-        Position in tilt series to use as starting point for the alignment. If None, the central projection is used.
+        Position in tilt series to use as starting point for the alignment.
+        If None, the central projection is used.
     show_progressbar : boolean
         Enable/disable progress bar
 
@@ -130,23 +149,37 @@ def rigid_pc(stack, start, show_progressbar):
     # noinspection PyTypeChecker
     shifts[start] = old_trans
     
-    for i in tqdm.tqdm(range(start+1, stack.data.shape[0]), disable=(not show_progressbar)):
+    for i in tqdm.tqdm(range(start+1, stack.data.shape[0]),
+                       disable=(not show_progressbar)):
         trans = np.array([[1., 0, 0], [0, 1., 0]])
-        trans[:, 2] = cv2.phaseCorrelate(np.float64(stack.data[i, :, :]),
-                                         np.float64(stack.data[i-1, :, :]))[0] + old_trans[:, 2]
-        out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :], trans, stack.data[i, :, :].T.shape,
-                                           flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+        trans[:, 2] = cv2.phaseCorrelate(
+            np.float64(stack.data[i, :, :]),
+            np.float64(stack.data[i-1, :, :]))[0]\
+            + old_trans[:, 2]
+        out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
+                                           trans,
+                                           stack.data[i, :, :].T.shape,
+                                           flags=cv2.INTER_LINEAR,
+                                           borderMode=cv2.BORDER_CONSTANT,
+                                           borderValue=0.0)
         shifts[i] = trans
         old_trans = trans
     
     if start != 0:
         old_trans = np.array([[1., 0, 0], [0, 1., 0]])
-        for i in tqdm.tqdm(range(start-1, -1, -1), disable=(not show_progressbar)):
+        for i in tqdm.tqdm(range(start-1, -1, -1),
+                           disable=(not show_progressbar)):
             trans = np.array([[1., 0, 0], [0, 1., 0]])
-            trans[:, 2] = cv2.phaseCorrelate(np.float64(stack.data[i, :, :]),
-                                             np.float64(stack.data[i+1, :, :]))[0] + old_trans[:, 2]
-            out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :], trans, stack.data[i, :, :].T.shape,
-                                               flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+            trans[:, 2] = cv2.phaseCorrelate(
+                np.float64(stack.data[i, :, :]),
+                np.float64(stack.data[i+1, :, :]))[0] + old_trans[:, 2]
+
+            out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
+                                               trans,
+                                               stack.data[i, :, :].T.shape,
+                                               flags=cv2.INTER_LINEAR,
+                                               borderMode=cv2.BORDER_CONSTANT,
+                                               borderValue=0.0)
             shifts[i] = trans
             old_trans = trans
     if not out.original_metadata.has_item('shifts'):
@@ -158,8 +191,9 @@ def rigid_pc(stack, start, show_progressbar):
 
 def tilt_correct(stack, offset=0, locs=None, output=True):
     """
-    Function to perform automated determination of the tilt axis of a TomoStack by tracking the 
-    center of mass (CoM) and comparing it to the path expected for an ideal cylinder
+    Function to perform automated determination of the tilt axis of a
+    TomoStack by tracking the center of mass (CoM) and comparing it to the path
+    expected for an ideal cylinder
     
     Args
     ----------
@@ -175,13 +209,14 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
     Returns
     ----------
     out : TomoStack object
-        Copy of the input stack after rotation and translation to center and make the tilt
-        axis vertical
+        Copy of the input stack after rotation and translation to center and
+        make the tilt axis vertical
     """
     def sinocalc(array, y):
         """
-        Function to extract sinograms at stack positions chosen by user via getpoints() function
-        and track the center of mass (com) as a function of angle for each.
+        Function to extract sinograms at stack positions chosen by user via
+        getpoints() function and track the center of mass (com) as a function of
+        angle for each.
 
         Args
         ----------
@@ -193,7 +228,8 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         Returns
         ----------
         outvals : Numpy array
-            Array containing the center of mass as a function of tilt for the selected sinograms
+            Array containing the center of mass as a function of tilt for the
+            selected sinograms
         """
         def center_of_mass(row):
             """
@@ -230,10 +266,10 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
     
     def fit_coms(thetas, coms):
         """
-        Function to fit the motion of calculated centers-of-mass in a sinogram to a 
-        sinusoidal function: (r0-A*cos(tilt)-B*sin(tilt)) as would be expected 
-        for an ideal cylinder. Return the coefficient of the fit equation for use
-        in fitTiltAxis
+        Function to fit the motion of calculated centers-of-mass in a
+        sinogram to a sinusoidal function: (r0-A*cos(tilt)-B*sin(tilt)) as
+        would be expected for an ideal cylinder. Return the coefficient of
+        the fit equation for use in fitTiltAxis
 
         Args
         ----------
@@ -259,16 +295,17 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
     
     def fit_tilt_axis(coords, vals):
         """
-        Function to fit the coefficients calculated by fit_coms() at each of the three user
-        chosen positions to a linear function to determine the necessary rotation
-        to vertically align the tilt axis
+        Function to fit the coefficients calculated by fit_coms() at each of
+        the three user chosen positions to a linear function to determine the
+        necessary rotation to vertically align the tilt axis
 
         Args
         ----------
         coords : Numpy array
             Horizontal coordinates from which the sinograms were extracted
         vals : Numpy array
-            Array containing the r0 coefficient calculated for each sinogram by fitCoMs
+            Array containing the r0 coefficient calculated for each sinogram by
+            fitCoMs
             
         Returns
         ----------
@@ -281,7 +318,8 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 
         guess = [0.0, 0.0]
         # noinspection PyTypeChecker
-        coeffs, covars = optimize.curve_fit(f=func, xdata=coords, ydata=vals, p0=guess)
+        coeffs, covars = optimize.curve_fit(f=func, xdata=coords, ydata=vals,
+                                            p0=guess)
         return coeffs
         
     data = stack.deepcopy()
@@ -333,12 +371,13 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
     return out
 
 
-def tilt_analyze(data, limit=10, delta=0.3, output=False, show_progressbar=False):
+def tilt_analyze(data, limit=10, delta=0.3, output=False,
+                 show_progressbar=False):
     """
     Perform automated determination of the tilt axis of a TomoStack by measuring
-    the rotation of the projected maximum image.  Maximum image is rotated postively
-    and negatively, filterd using a Hamming window, and the rotation angle is
-    determined by iterative histogram analysis
+    the rotation of the projected maximum image.  Maximum image is rotated
+    postively and negatively, filterd using a Hamming window, and the
+    rotation angle is determined by iterative histogram analysis
     
     Args
     ----------
@@ -373,13 +412,15 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False, show_progressbar=False
             Filtered image
         """
         if img.shape[0] < img.shape[1]:
-            img = img[:, np.int32((img.shape[1]-img.shape[0])/2):-np.int32(((img.shape[1]-img.shape[0])/2))]
+            center_loc = np.int32((img.shape[1]-img.shape[0])/2)
+            img = img[:, center_loc:-center_loc]
             if img.shape[0] != img.shape[1]:
                 img = img[:, 0:-1]
             h = np.hamming(img.shape[0])
             ham2d = np.sqrt(np.outer(h, h))
         elif img.shape[1] < img.shape[0]:
-            img = img[np.int32((img.shape[0]-img.shape[1])/2):-np.int32(((img.shape[0]-img.shape[1])/2)), :]
+            center_loc = np.int32((img.shape[0]-img.shape[1])/2)
+            img = img[center_loc:-center_loc, :]
             if img.shape[0] != img.shape[1]:
                 img = img[0:-1, :]
             h = np.hamming(img.shape[1])
@@ -439,7 +480,8 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False, show_progressbar=False
 
 def align_to_other(stack, other):
     """
-    Function to spatially register a TomoStack using a seres of shifts previously calculated
+    Function to spatially register a TomoStack using a seres of shifts
+    previously calculated
     on a separate data stack of the same size.
 
     Args
@@ -475,8 +517,12 @@ def align_to_other(stack, other):
     
     if shifts:   
         for i in range(0, out.data.shape[0]):
-            out.data[i, :, :] = cv2.warpAffine(other.data[i, :, :], shifts[i], other.data[i, :, :].T.shape,
-                                               flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+            out.data[i, :, :] = cv2.warpAffine(other.data[i, :, :],
+                                               shifts[i],
+                                               other.data[i, :, :].T.shape,
+                                               flags=cv2.INTER_LINEAR,
+                                               borderMode=cv2.BORDER_CONSTANT,
+                                               borderValue=0.0)
     if (tiltaxis != 0) or (xshift != 0):
         out = out.trans_stack(xshift=0, yshift=xshift, angle=tiltaxis)
         out.data = np.transpose(out.data, (0, 2, 1))

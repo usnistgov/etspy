@@ -9,44 +9,53 @@ import numpy as np
 import astra
 
 
-def run(stack, method, rot_center=None, iterations=None, constrain=None, thresh=None, cuda=True):
+def run(stack, method, rot_center=None, iterations=None, constrain=None,
+        thresh=None, cuda=True):
     """
-    Function to call appropriate sub-function to perform reconstruction of input tilt series.
+    Function to call appropriate sub-function to perform reconstruction of
+    input tilt series.
 
     Args
     ----------
     stack :TomoStack object
        TomoStack containing the input tilt series
     method : string
-        Reconstruction algorithm to use.  Must be either 'FBP' (default) or 'SIRT'
+        Reconstruction algorithm to use.  Must be either 'FBP' (default) or
+        'SIRT'
     rot_center : float
         Location of the rotation center.  If None, position is assumed to be the
         center of the image.
     iterations : integer (only required for SIRT)
         Number of iterations for the SIRT reconstruction (for SIRT methods only)
     constrain : boolean
-        If True, output reconstruction is constrained above value given by 'thresh'
+        If True, output reconstruction is constrained above value given by
+        'thresh'
     thresh : integer or float
         Value above which to constrain the reconstructed data
     cuda : boolean
-        If True, use the CUDA-accelerated Astra algorithms. Otherwise, use the CPU-based algorithms
+        If True, use the CUDA-accelerated Astra algorithms. Otherwise,
+        use the CPU-based algorithms
 
     Returns
     ----------
     rec : Numpy array
         Containing the reconstructed volume
     """
+
     theta = stack.axes_manager[0].axis*np.pi/180
     if method == 'FBP':
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
             options = {'proj_type': 'linear', 'method': 'FBP'}
-            rec = tomopy.recon(stack.data, theta, center=rot_center, algorithm=tomopy.astra, options=options)
+            rec = tomopy.recon(stack.data, theta, center=rot_center,
+                               algorithm=tomopy.astra, options=options)
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
-            '''ASTRA weighted-backprojection CUDA reconstruction of single slice'''
+            '''ASTRA weighted-backprojection CUDA reconstruction of single 
+            slice'''
             options = {'proj_type': 'cuda', 'method': 'FBP_CUDA'}
-            rec = tomopy.recon(stack.data, theta, center=rot_center, algorithm=tomopy.astra, options=options)
+            rec = tomopy.recon(stack.data, theta, center=rot_center,
+                               algorithm=tomopy.astra, options=options)
             print('Reconstruction complete')
         else:
             raise Exception('Error related to ASTRA Toolbox')
@@ -59,11 +68,14 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None, thresh=
                 if not thresh:
                     thresh = 0
                 extra_options = {'MinConstraint': thresh}
-                options = {'proj_type': 'linear', 'method': 'SIRT', 'num_iter': iterations,
+                options = {'proj_type': 'linear', 'method': 'SIRT',
+                           'num_iter': iterations,
                            'extra_options': extra_options}
             else:
-                options = {'proj_type': 'linear', 'method': 'SIRT', 'num_iter': iterations}
-            rec = tomopy.recon(stack.data, theta, center=rot_center, algorithm=tomopy.astra, options=options)
+                options = {'proj_type': 'linear', 'method': 'SIRT',
+                           'num_iter': iterations}
+            rec = tomopy.recon(stack.data, theta, center=rot_center,
+                               algorithm=tomopy.astra, options=options)
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
@@ -71,11 +83,14 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None, thresh=
                 if not thresh:
                     thresh = 0
                 extra_options = {'MinConstraint': thresh}
-                options = {'proj_type': 'cuda', 'method': 'SIRT_CUDA', 'num_iter': iterations,
+                options = {'proj_type': 'cuda', 'method': 'SIRT_CUDA',
+                           'num_iter': iterations,
                            'extra_options': extra_options}
             else:
-                options = {'proj_type': 'cuda', 'method': 'SIRT_CUDA', 'num_iter': iterations}
-            rec = tomopy.recon(stack.data, theta, center=rot_center, algorithm=tomopy.astra, options=options)
+                options = {'proj_type': 'cuda', 'method': 'SIRT_CUDA',
+                           'num_iter': iterations}
+            rec = tomopy.recon(stack.data, theta, center=rot_center,
+                               algorithm=tomopy.astra, options=options)
             print('Reconstruction complete')
         else:
             raise Exception('Error related to ASTRA Toolbox')

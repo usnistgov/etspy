@@ -14,6 +14,7 @@ import pylab as plt
 import matplotlib.animation as animation
 from hyperspy.signals import Signal2D
 from scipy import ndimage
+from tempfile import TemporaryDirectory
 
 
 class TomoStack(Signal2D):
@@ -22,18 +23,21 @@ class TomoStack(Signal2D):
 
     Note: All attributes are initialized with values of None or 0.0 in __init__.
 
-    Attributes
-    ----------
+    #TODO create __init__ function
+    # Attributes
+    # ----------
     # stack : Hyperspy Signal2D
-    #     The tilt series or reconstruction data array. It can be either 2 or 3 dimensional.
-    #     For a tilt series, the first dimension must be the tilt increment axis (e.g. [theta,X] or [theta,X,Y]).
-    #     Prior to reconstruction, the third dimension must describe the tilt axis orientation.
-    #     For a reconstruction, the dimensions will be [Y,X,Z].
+    #     The tilt series or reconstruction data array. It can be either 2 or 3
+    #     dimensional. For a tilt series, the first dimension must be the tilt
+    #     increment axis (e.g. [theta,X] or [theta,X,Y]). Prior to
+    #     reconstruction, the third dimension must describe the tilt axis
+    #     orientation. For a reconstruction, the dimensions will be [Y,X,Z].
     # shifts : numpy array
     #     X,Y shifts calculated for each image for stack registration
     # tiltaxis : float
-    #     Angular orientation (in degrees) by which data is rotated to orient the stack so that
-    #     the tilt axis is vertical
+    #      Angular orientation (in degrees) by which data is rotated to
+           orient the
+    #      stack so that the tilt axis is vertical
     # xshift : float
     #     Lateral shift of the tilt axis from the center of the stack.
     """
@@ -59,14 +63,16 @@ class TomoStack(Signal2D):
 
     def align_other(self, other):
         """
-        Method to apply the alignment calculated for one dataset to another. This will include the spatial registration,
-        tilt axis, and tilt axis shift if they have been previously calulated.
+        Method to apply the alignment calculated for one dataset to another.
+        This will include the spatial registration, tilt axis, and tilt axis
+        shift if they have been previously calculated.
 
         Args
         ----------
         other : TomoStack object
-            The tilt series which is to be aligned using the previously calculated parameters.
-            The data array in the TomoStack must be of the same size as that in self.data
+            The tilt series which is to be aligned using the previously
+            calculated parameters. The data array in the TomoStack must be of
+            the same size as that in self.data
         
         Returns
         ----------
@@ -75,7 +81,8 @@ class TomoStack(Signal2D):
         """
 
         if self.original_metadata.shifts is None:
-            raise ValueError('Spatial registration has not been calculated for this stack')
+            raise ValueError('Spatial registration has not been calculated '
+                             'for this stack')
 
         out = align.align_to_other(self, other)
         return out
@@ -107,7 +114,7 @@ class TomoStack(Signal2D):
 
         inverted = self.deepcopy()
         inverted.data = inverted.data - np.reshape(inverted.data.mean(
-            2).mean(1), [self.data.shape[0],1,1])
+            2).mean(1), [self.data.shape[0], 1, 1])
         inverted.data = (inverted.data - minvals) / ranges
 
         inverted.data = inverted.data - 1
@@ -119,15 +126,18 @@ class TomoStack(Signal2D):
 
     def stack_register(self, method='ECC', start=None, show_progressbar=False):
         """
-        Method which calls a function in the align module to spatially register a stack using one of two 
-        OpenCV based algorithms: Phase Correlation (PC) or Enhanced Correlation Coefficient (ECC) maximization.
+        Method which calls a function in the align module to spatially
+        register a stack using one of two OpenCV based algorithms: Phase
+        Correlation (PC) or Enhanced Correlation Coefficient (ECC) maximization.
 
         Args
         ----------
         method : string
-            Algorithm to use for registration calculation. Must be either 'PC' or 'ECC'
+            Algorithm to use for registration calculation. Must be either
+            'PC' or 'ECC'
         start : integer
-            Position in tilt series to use as starting point for the alignment. If None, the central projection is used.
+            Position in tilt series to use as starting point for the
+            alignment. If None, the central projection is used.
         show_progressbar : boolean
             Enable/disable progress bar
 
@@ -164,29 +174,35 @@ class TomoStack(Signal2D):
             return ()
         return out
 
-    def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None, output=True, show_progressbar=False):
+    def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None,
+                   output=True, show_progressbar=False):
         """
-        Method to call one of two tilt axis calculation functions in the align module ('CoM' and 'MaxImage')
+        Method to call one of two tilt axis calculation functions in the
+        align module ('CoM' and 'MaxImage')
         and apply the calculated rotation.
 
         Available options are 'CoM' and 'Error'
 
-        CoM: track the center of mass (CoM) of the projections at three locations.  Fit the
-        motion of the CoM as a function of tilt to that expected for an ideal cylinder to calculate
-        an X-shift at each location.  Perform a  linear fit of the three X-shifts to calculate
-        an ideal rotation.
+        CoM: track the center of mass (CoM) of the projections at three
+        locations.  Fit the motion of the CoM as a function of tilt to that
+        expected for an ideal cylinder to calculate an X-shift at each
+        location. Perform a  linear fit of the three X-shifts to calculate an
+        ideal rotation.
 
-        MaxImage: Perform automated determination of the tilt axis of a TomoStack by measuring
-        the rotation of the projected maximum image.  Maximum image is rotated postively
-        and negatively, filterd using a Hamming window, and the rotation angle is
-        determined by iterative histogram analysis
+        MaxImage: Perform automated determination of the tilt axis of a
+        TomoStack by measuring the rotation of the projected maximum image.
+        Maximum image is rotated positively and negatively, filtered using a
+        Hamming window, and the rotation angle is determined by iterative
+        histogram analysis
 
         Args
         ----------
         method : string
-            Algorithm to use for registration alignment. Must be either 'CoM' or 'MaxImage'
+            Algorithm to use for registration alignment. Must be either 'CoM' or
+            'MaxImage'
         limit : integer
-            Position in tilt series to use as starting point for the alignment. If None, the central projection is used.
+            Position in tilt series to use as starting point for the
+            alignment. If None, the central projection is used.
         delta : integer
             Position i
         offset : integer
@@ -224,13 +240,15 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> reg = s.stack_register('ECC',show_progressbar=False)
         Spatial registration by ECC complete
-        >>> ali = reg.tiltalign(method='MaxImage', output=False, show_progressbar=False)
-        """
+        >>> ali = reg.tiltalign(method='MaxImage', output=False,\
+        show_progressbar=False)
 
+        """
         if method == 'CoM':
             out = align.tilt_correct(self, offset, locs, output)
         elif method == 'MaxImage':
-            angle = align.tilt_analyze(self, limit, delta, output, show_progressbar)
+            angle = align.tilt_analyze(self, limit, delta, output,
+                                       show_progressbar)
             if angle > 0.1:
                 out = self.rotate(angle, True)
             else:
@@ -241,7 +259,8 @@ class TomoStack(Signal2D):
             return
         return out
 
-    def reconstruct(self, method='FBP', rot_center=None, iterations=None, constrain=False, thresh=0, cuda=None):
+    def reconstruct(self, method='FBP', rot_center=None, iterations=None,
+                    constrain=False, thresh=0, cuda=None):
         """
         Function to reconstruct a stack using one of the available methods:
         astraWBP, astraSIRT, astraSIRT_GPU
@@ -249,14 +268,17 @@ class TomoStack(Signal2D):
         Args
         ----------
         method : string
-            Reconstruction algorithm to use.  Must be either 'FBP' (default) or 'SIRT'
+            Reconstruction algorithm to use.  Must be either 'FBP' (default)
+            or 'SIRT'
         rot_center : float
-            Location of the rotation center.  If None, position is assumed to be the
-            center of the image.
+            Location of the rotation center.  If None, position is assumed to be
+            the center of the image.
         iterations : integer
-            Number of iterations for the SIRT reconstruction (for astraSIRT and astraSIRT_GPU ,methods only)
+            Number of iterations for the SIRT reconstruction (for astraSIRT
+            and astraSIRT_GPU, methods only)
         constrain : boolean
-            If True, output reconstruction is constrained above value given by 'thresh'
+            If True, output reconstruction is constrained above value given
+            by 'thresh'
         thresh : integer or float
             Value above which to constrain the reconstructed data
         cuda : boolean
@@ -271,7 +293,8 @@ class TomoStack(Signal2D):
         ----------
         Filtered backprojection (FBP) reconstruction
         >>> import tomotools
-        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
+        >>> stack = tomotools.load(file)
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP')
@@ -279,7 +302,8 @@ class TomoStack(Signal2D):
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         >>> import tomotools
-        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
+        >>> stack = tomotools.load(file)
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5)
@@ -288,10 +312,12 @@ class TomoStack(Signal2D):
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
         >>> import tomotools
-        >>> stack = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
+        >>> stack = tomotools.load(file)
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> rec = slices.reconstruct('SIRT',iterations=5, constrain=True, thresh=0)
+        >>> rec = slices.reconstruct('SIRT',iterations=5, constrain=True, \
+        thresh=0)
         Reconstruction complete
 
         """
@@ -302,7 +328,8 @@ class TomoStack(Signal2D):
                 cuda = False
 
         out = copy.deepcopy(self)
-        out.data = recon.run(self, method, rot_center, iterations, constrain, thresh, cuda)
+        out.data = recon.run(self, method, rot_center, iterations, constrain,
+                             thresh, cuda)
 
         out.axes_manager[0].name = 'y'
         out.axes_manager[0].size = out.data.shape[0]
@@ -325,14 +352,17 @@ class TomoStack(Signal2D):
 
     def rotate(self, angle, resize=True):
         """
-        Method to rotate the stack by a given angle using the SciPy ndimage.rotate function
+        Method to rotate the stack by a given angle using the SciPy
+        ndimage.rotate function
 
         Args
         ----------
         angle : float
-            Angle by which to rotate the data in the TomoStack about the XY plane
+            Angle by which to rotate the data in the TomoStack about the XY
+            plane
         resize : boolean
-            If True, output stack size is increased relative to input so that no pixels are lost.
+            If True, output stack size is increased relative to input so that no
+            pixels are lost.
             If False, output stack is the same size as the input.
             
         Returns
@@ -361,8 +391,8 @@ class TomoStack(Signal2D):
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None):
         """
-        Method to produce quickly reconstruct three slices from the input data for inspection of the
-        quality of the alignment.
+        Method to produce quickly reconstruct three slices from the input
+        data for inspection of the quality of the alignment.
 
         Args
         ----------
@@ -371,8 +401,9 @@ class TomoStack(Signal2D):
         angle : float
             Angle by which to rotate stack prior to reconstruction
         slices : list
-            Position of slices to use for the reconstruction.  If None, positions at 1/4, 1/2, and 3/4 of the full
-            size of the stack are chosen.
+            Position of slices to use for the reconstruction.  If None,
+            positions at 1/4, 1/2, and 3/4 of the full size of the stack are
+            chosen.
         """
         if slices is None:
             mid = np.int32(self.data.shape[1] / 2)
@@ -429,7 +460,8 @@ class TomoStack(Signal2D):
         >>> import tomotools
         >>> stack = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         Tilts found in metadata
-        >>> transformed = stack.trans_stack(xshift=10.0, yshift=3.5, angle=-15.2)
+        >>> transformed = stack.trans_stack(xshift=10.0, yshift=3.5, \
+        angle=-15.2)
         >>> transformed
         <TomoStack, title: , dimensions: (77|256, 256)>
 
@@ -439,20 +471,28 @@ class TomoStack(Signal2D):
             image_center = tuple(np.array(out.data[0, :, :].shape) / 2)
             rot_mat = cv2.getRotationMatrix2D(image_center, angle, scale=1.0)
             for i in range(0, out.data.shape[0]):
-                out.data[i, :, :] = cv2.warpAffine(out.data[i, :, :], rot_mat, out.data[i, :, :].T.shape,
-                                                   flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT,
-                                                   borderValue=0.0)
+                out.data[i, :, :] = \
+                    cv2.warpAffine(out.data[i, :, :],
+                                   rot_mat,
+                                   out.data[i, :, :].T.shape,
+                                   flags=cv2.INTER_LINEAR,
+                                   borderMode=cv2.BORDER_CONSTANT,
+                                   borderValue=0.0)
         if xshift != 0.0 or yshift != 0.0:
             trans_mat = np.array([[1., 0, xshift], [0, 1., yshift]])
             for i in range(0, out.data.shape[0]):
-                out.data[i, :, :] = cv2.warpAffine(out.data[i, :, :], trans_mat, out.data[i, :, :].T.shape,
-                                                   flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT,
-                                                   borderValue=0.0)
+                out.data[i, :, :] = \
+                    cv2.warpAffine(out.data[i, :, :],
+                                   trans_mat,
+                                   out.data[i, :, :].T.shape,
+                                   flags=cv2.INTER_LINEAR,
+                                   borderMode=cv2.BORDER_CONSTANT,
+                                   borderValue=0.0)
         return out
 
     # noinspection PyTypeChecker
-    def savemovie(self, start, stop, axis='XY', fps=15, dpi=100, outfile=None, title='output.avi', clim=None,
-                  cmap='afmhot'):
+    def savemovie(self, start, stop, axis='XY', fps=15, dpi=100,
+                  outfile=None, title='output.avi', clim=None, cmap='afmhot'):
         """
         Method to save the TomoStack as an AVI movie file.
 
@@ -463,7 +503,8 @@ class TomoStack(Signal2D):
         stop : integer
          Filename for output. If None, a UI will prompt for a filename.
         axis : string
-         Projection axis for the output movie. Must be 'XY' (default), 'YZ' , or 'XZ'
+         Projection axis for the output movie.
+         Must be 'XY' (default), 'YZ' , or 'XZ'
         fps : integer
          Number of frames per second at which to create the movie.
         dpi : integer
@@ -488,11 +529,14 @@ class TomoStack(Signal2D):
             ax.set_title(title)
 
         if axis == 'XY':
-            im = ax.imshow(self.data[:, start, :], interpolation='none', cmap=cmap, clim=clim)
+            im = ax.imshow(self.data[:, start, :], interpolation='none',
+                           cmap=cmap, clim=clim)
         elif axis == 'XZ':
-            im = ax.imshow(self.data[start, :, :], interpolation='none', cmap=cmap, clim=clim)
+            im = ax.imshow(self.data[start, :, :], interpolation='none',
+                           cmap=cmap, clim=clim)
         elif axis == 'YZ':
-            im = ax.imshow(self.data[:, :, start], interpolation='none', cmap=cmap, clim=clim)
+            im = ax.imshow(self.data[:, :, start], interpolation='none',
+                           cmap=cmap, clim=clim)
         else:
             raise ValueError('Unknown axis!')
         fig.tight_layout()
@@ -530,7 +574,9 @@ class TomoStack(Signal2D):
 
     def show(self):
         """
-        Method to show the TomoStack for visualization with an interactive slice slider using OpenCV"""
+        Method to show the TomoStack for visualization with an interactive slice
+        slider using OpenCV
+        """
 
         def nothing(x):
             pass
@@ -544,11 +590,14 @@ class TomoStack(Signal2D):
                 image = new
             cv2.startWindowThread()
             cv2.namedWindow(windowname)
-            cv2.createTrackbar(trackbarname, windowname, 0, np.size(image, 0) - 1, nothing)
+            cv2.createTrackbar(trackbarname, windowname, 0,
+                               np.size(image, 0) - 1, nothing)
 
             while True:
                 trackbarpos = cv2.getTrackbarPos(trackbarname, windowname)
-                cv2.imshow(windowname, image[trackbarpos, :, :] / np.max(image[trackbarpos, :, :]))
+                cv2.imshow(windowname,
+                           image[trackbarpos, :, :]
+                           / np.max(image[trackbarpos, :, :]))
                 ch = cv2.waitKey(5)
                 if ch == 27:
                     break
@@ -556,3 +605,50 @@ class TomoStack(Signal2D):
 
         simpletrackbar(self.data, 'Press "ESC" to exit')
         return
+
+    def align_imod(self, diameter=7, markers=10):
+        # TODO Automatic dection of IMOD presence and path
+        # if 'IMOD' in os.environ["PATH"]:
+        #     imod_path = [s for s in os.environ["PATH"].split(';') if "IMOD"
+        #                  in s][0]
+        #     imod_path = imod_path.replace("\\", "/")
+        #     print('IMOD found in %s' % imod_path)
+        # else:
+        #     print('IMOD does not appear to be installed. Cannot run RAPTOR')
+        #     return
+
+        imod_path = 'c:/progra~1/imod/bin/'
+
+        ali = self.deepcopy()
+        shape = self.data.shape
+        orig_path = os.getcwd()
+        tmp_dir = TemporaryDirectory()
+        os.chdir(tmp_dir.name)
+
+        with open('stack.raw', 'wb') as h:
+            self.data.tofile(h)
+
+        mrc_cmd = 'raw2mrc -x %s -y %s -z %s -t float ' % \
+                  (str(shape[2]), str(shape[1]), str(shape[0])) + \
+                  'stack.raw stack.mrc'
+
+        os.system(mrc_cmd)
+        angles = self.axes_manager[0].axis
+        with open('stack.rawtlt', 'w') as h:
+            np.savetxt(h, angles, fmt='%.1f')
+
+        raptor_cmd = 'raptor -exec %s ' % imod_path + \
+                     '-path . -inp stack.mrc -out raptor ' \
+                     '-diam %s -mark %s stack.mrc' % \
+                     (str(diameter), str(markers))
+        os.system(raptor_cmd)
+
+        file = 'raptor/align/stack.ali'
+        with open(file, 'rb') as h:
+            _ = np.fromfile(h, np.uint8, 1024)
+            temp = np.fromfile(h, np.float32)
+
+        ali.data = temp.reshape([shape[0], shape[1], shape[2]])
+
+        os.chdir(orig_path)
+        return ali

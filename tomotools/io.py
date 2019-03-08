@@ -110,9 +110,11 @@ def signal_to_tomo_stack(s, manual_tilts=None):
     metadata = s.metadata.as_dictionary()
     original_metadata = s.original_metadata.as_dictionary()
 
-    s_new = TomoStack(s.data, axes=axes_list, metadata=metadata, original_metadata=original_metadata)
+    s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
+                      original_metadata=original_metadata)
 
-    if s.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles', 'Theta', 'tilt', 'tilts', 'angle', 'angles',
+    if s.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
+                                  'Theta', 'tilt', 'tilts', 'angle', 'angles',
                                   'theta']:
         print('Tilts found in metadata')
         return s_new
@@ -137,7 +139,8 @@ def signal_to_tomo_stack(s, manual_tilts=None):
         s_new.axes_manager[0].offset = tilts[0]
 
     elif s.metadata.General.has_item('original_filename'):
-        tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(s.metadata.General.original_filename)[0])[1]))
+        tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(
+            s.metadata.General.original_filename)[0])[1]))
         if os.path.isfile(tiltfile):
             tilts = np.loadtxt(tiltfile)
             print('Tilts loaded from .RAWTLT File')
@@ -164,14 +167,22 @@ def signal_to_tomo_stack(s, manual_tilts=None):
     return s_new
 
 
-# noinspection PyUnusedLocal,PyUnusedLocal,PyUnresolvedReferences,PyUnresolvedReferences
-def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali *.rec *.dm3 *.dm4)'):
+# noinspection PyUnusedLocal,PyUnusedLocal,PyUnresolvedReferences,
+# PyUnresolvedReferences
+def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali '
+                                              '*.rec *.dm3 *.dm4)'):
     if 'PyQt5.QtWidgets' in sys.modules:
         app = QtWidgets.QApplication([])
-        filename = QtWidgets.QFileDialog.getOpenFileName(None, message, os.getcwd(), filetypes)[0]
+        filename = QtWidgets.QFileDialog.getOpenFileName(None,
+                                                         message,
+                                                         os.getcwd(),
+                                                         filetypes)[0]
     elif 'PyQt4.QtGui' in sys.modules:
         app = QtGui.QApplication([])
-        filename = QtGui.QFileDialog.getOpenFileName(None, message, os.getcwd(), filetypes)
+        filename = QtGui.QFileDialog.getOpenFileName(None,
+                                                     message,
+                                                     os.getcwd(),
+                                                     filetypes)
     else:
         raise NameError('GUI applications require either PyQt4 or PyQt5')
     return filename
@@ -184,7 +195,8 @@ def loadhspy(filename, tilts=None):
     Parameters
     ----------
     filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC, .RAW/.RPL pair, .DM3, .DM4)
+        Name of file that contains data to be read.  Accepted formats (.MRC,
+        .RAW/.RPL pair, .DM3, .DM4)
 
     tilts : list or NumPy array
         List of floats indicating the specimen tilt at each projection
@@ -249,7 +261,8 @@ def loaddm(filename):
     metadata = s.metadata.as_dictionary()
     original_metadata = s.original_metadata.as_dictionary()
 
-    s_new = TomoStack(s.data, axes=axes_list, metadata=metadata, original_metadata=original_metadata)
+    s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
+                      original_metadata=original_metadata)
     s_new.axes_manager[0].axis = tilts
     print('Tilts found in metadata')
 
@@ -268,7 +281,8 @@ def load(filename=None, tilts=None):
     Parameters
     ----------
     filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC, .RAW/.RPL pair, .DM3, .DM4)
+        Name of file that contains data to be read.  Accepted formats (.MRC,
+        .RAW/.RPL pair, .DM3, .DM4)
 
     tilts : list or NumPy array
         List of floats indicating the specimen tilt at each projection
@@ -282,7 +296,8 @@ def load(filename=None, tilts=None):
         filename = getfile()
 
     ext = os.path.splitext(filename)[1]
-    if ext in ['.HDF5', '.hdf5', '.hd5', '.HD5', '.MRC', '.mrc', '.ALI', '.ali', '.REC', '.rec']:
+    if ext in ['.HDF5', '.hdf5', '.hd5', '.HD5', '.MRC', '.mrc', '.ALI',
+               '.ali', '.REC', '.rec']:
         stack = loadhspy(filename, tilts)
     elif ext in ['.dm3', '.DM3', '.dm4', '.DM4']:
         stack = loaddm(filename)
