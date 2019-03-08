@@ -81,6 +81,24 @@ class TomoStack(Signal2D):
         return out
 
     def invert(self):
+        """
+        Method to invert the contrast levels of an entire TomoStack
+
+        Args
+        ----------
+
+        Returns
+        ----------
+        inverted : TomoStack object
+            Copy of the input stack with contrast inverted
+
+        Examples
+        --------
+        >>> import tomotools
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        Tilts found in metadata
+        >>> s_inverted = s.invert()
+        """
         maxvals = self.data.max(2).max(1)
         maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
         minvals = self.data.min(2).min(1)
