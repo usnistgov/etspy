@@ -190,7 +190,8 @@ def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali '
 
 def loadhspy(filename, tilts=None):
     """
-    Function to read an MRC file to a TomoStack object using the Hyperspy reader
+    Function to read an MRC file to a TomoStack object using the Hyperspy
+    reader
 
     Parameters
     ----------

@@ -23,10 +23,11 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
         Reconstruction algorithm to use.  Must be either 'FBP' (default) or
         'SIRT'
     rot_center : float
-        Location of the rotation center.  If None, position is assumed to be the
-        center of the image.
+        Location of the rotation center.  If None, position is assumed to be
+        the center of the image.
     iterations : integer (only required for SIRT)
-        Number of iterations for the SIRT reconstruction (for SIRT methods only)
+        Number of iterations for the SIRT reconstruction (for SIRT methods
+        only)
     constrain : boolean
         If True, output reconstruction is constrained above value given by
         'thresh'
@@ -51,7 +52,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
                                algorithm=tomopy.astra, options=options)
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
-            '''ASTRA weighted-backprojection CUDA reconstruction of single 
+            '''ASTRA weighted-backprojection CUDA reconstruction of single
             slice'''
             options = {'proj_type': 'cuda', 'method': 'FBP_CUDA'}
             rec = tomopy.recon(stack.data, theta, center=rot_center,
