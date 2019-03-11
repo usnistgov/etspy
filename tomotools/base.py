@@ -21,8 +21,7 @@ class TomoStack(Signal2D):
     """
     Create a TomoStack object for tomography data.
 
-    Note: All attributes are initialized with values of None or 0.0 in
-    __init__.
+    Note: All attributes are initialized with values of None or 0.0 in __init__.
 
     #TODO create __init__ function
     # Attributes
@@ -74,11 +73,11 @@ class TomoStack(Signal2D):
             The tilt series which is to be aligned using the previously
             calculated parameters. The data array in the TomoStack must be of
             the same size as that in self.data
-
+        
         Returns
         ----------
         out : TomoStack object
-            The result of applying the alignment to other
+            The result of applying the alignment to other    
         """
 
         if self.original_metadata.shifts is None:
@@ -129,8 +128,7 @@ class TomoStack(Signal2D):
         """
         Method which calls a function in the align module to spatially
         register a stack using one of two OpenCV based algorithms: Phase
-        Correlation (PC) or Enhanced Correlation Coefficient (ECC)
-        maximization.
+        Correlation (PC) or Enhanced Correlation Coefficient (ECC) maximization.
 
         Args
         ----------
@@ -200,8 +198,8 @@ class TomoStack(Signal2D):
         Args
         ----------
         method : string
-            Algorithm to use for registration alignment. Must be either 'CoM'
-            or 'MaxImage'
+            Algorithm to use for registration alignment. Must be either 'CoM' or
+            'MaxImage'
         limit : integer
             Position in tilt series to use as starting point for the
             alignment. If None, the central projection is used.
@@ -220,7 +218,7 @@ class TomoStack(Signal2D):
             Output alignment results to console after each iteration
         show_progressbar : boolean
             Enable/disable progress bar
-
+            
         Returns
         ----------
         out : TomoStack object
@@ -234,7 +232,7 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> reg = s.stack_register('ECC',show_progressbar=False)
         Spatial registration by ECC complete
-        >>> ali = reg.tilt_align(method='CoM', locs=[50,100,160], output=False)
+        >>> ali = reg.tiltalign(method='CoM', locs=[50,100,160], output=False)
 
         Align tilt axis using the maximum image method
         >>> import tomotools
@@ -242,7 +240,7 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> reg = s.stack_register('ECC',show_progressbar=False)
         Spatial registration by ECC complete
-        >>> ali = reg.tilt_align(method='MaxImage', output=False,\
+        >>> ali = reg.tiltalign(method='MaxImage', output=False,\
         show_progressbar=False)
 
         """
@@ -273,8 +271,8 @@ class TomoStack(Signal2D):
             Reconstruction algorithm to use.  Must be either 'FBP' (default)
             or 'SIRT'
         rot_center : float
-            Location of the rotation center.  If None, position is assumed to
-            be the center of the image.
+            Location of the rotation center.  If None, position is assumed to be
+            the center of the image.
         iterations : integer
             Number of iterations for the SIRT reconstruction (for astraSIRT
             and astraSIRT_GPU, methods only)
@@ -363,10 +361,10 @@ class TomoStack(Signal2D):
             Angle by which to rotate the data in the TomoStack about the XY
             plane
         resize : boolean
-            If True, output stack size is increased relative to input so that
-            no pixels are lost.
+            If True, output stack size is increased relative to input so that no
+            pixels are lost.
             If False, output stack is the same size as the input.
-
+            
         Returns
         ----------
         rot : TomoStack object
@@ -451,7 +449,7 @@ class TomoStack(Signal2D):
             Number of pixels by which to shift the stack in the Y dimension
         angle : float
             Number of degrees by which to rotate the stack about the X-Y plane
-
+            
         Returns
         ----------
         out : TomoStack object
@@ -576,8 +574,8 @@ class TomoStack(Signal2D):
 
     def show(self):
         """
-        Method to show the TomoStack for visualization with an interactive
-        slice slider using OpenCV
+        Method to show the TomoStack for visualization with an interactive slice
+        slider using OpenCV
         """
 
         def nothing(x):

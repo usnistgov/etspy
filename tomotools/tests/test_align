@@ -1,0 +1,25 @@
+import tomotools
+import os
+
+my_path = os.path.dirname(__file__)
+
+
+class TestAlignStackRegister:
+
+    def test_register_ecc(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        reg = stack.inav[0:20].register('ECC')
+        assert type(reg) is tomotools.base.TomoStack
+        assert reg.axes_manager.signal_shape == stack.axes_manager.signal_shape
+        assert reg.axes_manager.navigation_shape == \
+            stack.axes_manager.navigation_shape
+
+    def test_register_pc(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        reg = stack.inav[0:20].register('PC')
+        assert type(reg) is tomotools.base.TomoStack
+        assert reg.axes_manager.signal_shape == stack.axes_manager.signal_shape
+        assert reg.axes_manager.navigation_shape == \
+            stack.axes_manager.navigation_shape
