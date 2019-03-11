@@ -14,7 +14,7 @@ flake8_checks:
     script:
     - apt-get update -q
     - apt-get install -qy python3-flake8
-    - python3 -m flake8 --config tomotools/.flake8 tomotools/
+    - python3 -m flake8 --config=tomotools/.flake8 tomotools/
 
 pydocstyle_checks:
     image: debian:stable
