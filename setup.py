@@ -11,9 +11,6 @@ setup(
     packages=[
         'tomotools',
         ],
-    dependency_links=[
-        'http://github.com/tomopy/tomopy/tarball/master/'
-    ],
     install_requires=[
         'hyperspy',
         'numpy',
@@ -22,6 +19,6 @@ setup(
         'scipy',
         'tqdm',
         'matplotlib',
-        'tomopy',
+        'tomopy @ git+https://github.com/tomopy/tomopy.git',
     ],
 )
