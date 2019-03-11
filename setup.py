@@ -12,10 +12,11 @@ setup(
     install_requires=[
         'hyperspy',
         'numpy',
-        # 'astra-toolbox',
+        'astra-toolbox',
+        'opencv-python',
         'scipy',
         'tqdm',
         'matplotlib',
-        # 'tomopy @ https://github.com/tomopy/tomopy/archive/1.4.0.zip',
+        'tomopy @ https://github.com/tomopy/tomopy/archive/1.4.0.zip',
     ],
 )
