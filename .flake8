@@ -1,4 +1,4 @@
 [flake8]
 exclude =
-    tomotools/api.py,
-    tomotools/__init__.py
+    api.py,
+    __init__.py
