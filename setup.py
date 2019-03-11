@@ -19,6 +19,6 @@ setup(
         'scipy',
         'tqdm',
         'matplotlib',
-        'tomopy @ https://github.com/tomopy/tomopy/archive/1.4.0.zip',
+        'tomopy @ http://github.com/tomopy/tomopy/tarball/master',
     ],
 )
