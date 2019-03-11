@@ -30,7 +30,7 @@ Installation
     conda install -c conda-forge opencv
     conda install -c astra-toolbox astra-toolbox
 
-    pip install git+https://github.com/andrewherzing/tomotools.git
+    pip install git+https://gitlab.com/aaherzing/tomotools.git
     ```
 
   pip:
@@ -42,7 +42,7 @@ Installation
     ```bash
     pip install hyperspy
     pip install opencv-python
-    pip install git+https://github.com/andrewherzing/tomotools.git
+    pip install git+https://gitlab.com/aaherzing/tomotools.git
     ```
 
 Removal

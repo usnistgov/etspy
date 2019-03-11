@@ -15,6 +15,6 @@ setup(
         'scipy',
         'tqdm',
         'matplotlib',
-        'tomopy',
+        'tomopy @ https://github.com/tomopy/tomopy/archive/1.4.0.zip',
     ],
 )
