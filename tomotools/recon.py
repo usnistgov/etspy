@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Feb 23 16:13:35 2016
+#
+# This file is part of TomoTools
 
-@author: aherzing
+"""
+Reconstruction module for TomoTools package.
+
+@author: Andrew Herzing
 """
 import tomopy
 import numpy as np
@@ -12,8 +15,7 @@ import astra
 def run(stack, method, rot_center=None, iterations=None, constrain=None,
         thresh=None, cuda=True):
     """
-    Function to call appropriate sub-function to perform reconstruction of
-    input tilt series.
+    Perform reconstruction of input tilt series.
 
     Args
     ----------
@@ -41,8 +43,8 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
     ----------
     rec : Numpy array
         Containing the reconstructed volume
-    """
 
+    """
     theta = stack.axes_manager[0].axis*np.pi/180
     if method == 'FBP':
         if not astra.astra.use_cuda() or not cuda:

@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of TomoTools
+
+"""
+Alignment module for TomoTools package.
+
+@author: Andrew Herzing
+"""
+
 import numpy as np
 import cv2
 import copy
@@ -9,7 +19,9 @@ import tqdm
 
 def getpoints(data, numpoints=3):
     """
-    Function to display the central image in a stack and prompt the user to
+    Prompt user for locations at which to fit the CoM.
+
+    Displays the central image in a stack and prompt the user to
     choose three locations by mouse click.  Once three locations have been
     clicked, the window closes and the function returns the coordinates
 
@@ -24,6 +36,7 @@ def getpoints(data, numpoints=3):
     ----------
     coords : Numpy array
         array containing the XY coordinates selected interactively by the user
+
     """
     warnings.filterwarnings('ignore')
     plt.figure(num='Align Tilt', frameon=False)
@@ -39,9 +52,10 @@ def getpoints(data, numpoints=3):
 
 def rigid_ecc(stack, start, show_progressbar):
     """
-    Function to compute the shifts necessary to spatially register a stack of
-    images. Shifts are determined by the OpenCV findTransformECC algorithm.
-    Shifts are then applied and the aligned stack is returned.
+    Compute the shifts for spatial registration by ECC.
+
+    Uses the OpenCV findTransformECC algorithm. Shifts are then applied and
+    the aligned stack is returned.
 
     Args
     ----------
@@ -59,7 +73,6 @@ def rigid_ecc(stack, start, show_progressbar):
         Spatially registered copy of the input stack
 
     """
-
     number_of_iterations = 1000
     termination_eps = 1e-3
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
@@ -120,8 +133,9 @@ def rigid_ecc(stack, start, show_progressbar):
 
 def rigid_pc(stack, start, show_progressbar):
     """
-    Function to compute the shifts necessary to spatially register a stack of
-    images. Shifts are determined by the OpenCV phaseCorrelate algorithm.
+    Compute the shifts for spatial registration by PC.
+
+    Shifts are determined by the OpenCV phaseCorrelate algorithm.
     Shifts are then applied and the aligned stack is returned.
 
     Args
@@ -138,8 +152,8 @@ def rigid_pc(stack, start, show_progressbar):
     ----------
     out : TomoStack object
         Spatially registered copy of the input stack
-    """
 
+    """
     old_trans = np.array([[1., 0, 0], [0, 1., 0]])
     out = copy.deepcopy(stack)
     out.data = np.zeros(stack.data.shape, stack.data.dtype)
@@ -192,9 +206,9 @@ def rigid_pc(stack, start, show_progressbar):
 
 def tilt_correct(stack, offset=0, locs=None, output=True):
     """
-    Function to perform automated determination of the tilt axis of a
-    TomoStack by tracking the center of mass (CoM) and comparing it to the path
-    expected for an ideal cylinder
+    Perform tilt axis alignment using center of mass (CoM) tracking.
+
+    Compares path of specimen to the path expected for an ideal cylinder
 
     Args
     ----------
@@ -212,12 +226,11 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
     out : TomoStack object
         Copy of the input stack after rotation and translation to center and
         make the tilt axis vertical
+
     """
     def sinocalc(array, y):
         """
-        Function to extract sinograms at stack positions chosen by user via
-        getpoints() function and track the center of mass (com) as a function
-        of angle for each.
+        Extract sinograms at three stack positions chosen by user.
 
         Args
         ----------
@@ -232,10 +245,11 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         outvals : Numpy array
             Array containing the center of mass as a function of tilt for the
             selected sinograms
+
         """
         def center_of_mass(row):
             """
-            Compute the center of mass for a row of pixels
+            Compute the center of mass for a row of pixels.
 
             Args
             ----------
@@ -246,6 +260,7 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
             ----------
             value : float
                 Center of mass of the input row
+
             """
             size = np.size(row)
             value = 0.0
@@ -268,8 +283,9 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 
     def fit_coms(thetas, coms):
         """
-        Function to fit the motion of calculated centers-of-mass in a
-        sinogram to a sinusoidal function: (r0-A*cos(tilt)-B*sin(tilt)) as
+        Fit the motion of calculated centers-of-mass in a sinogram.
+
+        Fit is to a sinusoidal function: (r0-A*cos(tilt)-B*sin(tilt)) as
         would be expected for an ideal cylinder. Return the coefficient of
         the fit equation for use in fitTiltAxis
 
@@ -285,8 +301,8 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         ----------
         coeffs : Numpy array
             Coefficients (r0 , A , and B) resulting from the fit
-        """
 
+        """
         def func(x, r0, a, b):
             return r0 - a*np.cos(x)-b*np.sin(x)
 
@@ -300,9 +316,10 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 
     def fit_tilt_axis(coords, vals):
         """
-        Function to fit the coefficients calculated by fit_coms() at each of
-        the three user chosen positions to a linear function to determine the
-        necessary rotation to vertically align the tilt axis
+        Fit the coefficients calculated by fit_coms() to a linear function.
+
+        Fit is performed at each of the three user chosen positions to
+        determine the necessary rotation to vertically align the tilt axis
 
         Args
         ----------
@@ -316,8 +333,8 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         ----------
         coeffs : Numpy array
             Coefficients (m and b) resulting from the fit
-        """
 
+        """
         def func(x, m, b):
             return m*x+b
 
@@ -379,10 +396,11 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 def tilt_analyze(data, limit=10, delta=0.3, output=False,
                  show_progressbar=False):
     """
-    Perform automated determination of the tilt axis of a TomoStack by
-    measuring the rotation of the projected maximum image.  Maximum image is
-    rotated postively and negatively, filterd using a Hamming window, and the
-    rotation angle is determined by iterative histogram analysis
+    Perform automated determination of the tilt axis of a TomoStack.
+
+    The projected maximum image by is rotated positively and negatively,
+    filtered using a Hamming window, and the rotation angle is determined by
+    iterative histogram analysis
 
     Args
     ----------
@@ -401,11 +419,11 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
     ----------
     opt_angle : TomoStack object
         Calculated rotation to set the tilt axis vertical
-    """
 
+    """
     def hamming(img):
         """
-        Function to apply hamming window to the image to remove edge effects
+        Apply hamming window to the image to remove edge effects.
 
         Args
         ----------
@@ -415,6 +433,7 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
         ----------
         out : Numpy array
             Filtered image
+
         """
         if img.shape[0] < img.shape[1]:
             center_loc = np.int32((img.shape[1]-img.shape[0])/2)
@@ -438,7 +457,7 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
 
     def find_score(im, angle):
         """
-        Function to perform histogram analysis to measure the rotation angle
+        Perform histogram analysis to measure the rotation angle.
 
         Args
         ----------
@@ -453,6 +472,7 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
             Result of integrating image along the vertical axis
         score : numpy array
             Score calculated from hist
+
         """
         im = ndimage.rotate(im, angle, reshape=False, order=3)
         hist = np.sum(im, axis=1)
@@ -485,21 +505,20 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
 
 def align_to_other(stack, other):
     """
-    Function to spatially register a TomoStack using a seres of shifts
-    previously calculated
-    on a separate data stack of the same size.
+    Spatially register a TomoStack using previously calculated shifts.
 
     Args
     ----------
     stack : TomoStack object
         TomoStack which was previously aligned
     other : TomoStack object
-        TomoStack to be aligned
+        TomoStack to be aligned. Must be the same size as the primary stack
 
     Returns
     ----------
     out : TomoStack object
         Aligned copy of other TomoStack
+
     """
     out = copy.deepcopy(other)
     out.data = np.zeros(np.shape(other.data), dtype=other.data.dtype)

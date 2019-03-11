@@ -1,3 +1,5 @@
+"""Setup file for TomoTools package."""
+
 from setuptools import setup
 
 setup(
