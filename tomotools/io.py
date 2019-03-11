@@ -120,7 +120,8 @@ def signal_to_tomo_stack(s, manual_tilts=None):
         return s_new
 
     elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
-        tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:s.data.shape[0]]
+        n = s.data.shape[0]
+        tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
         print('Tilts found in metadata')
         s_new.axes_manager[0].name = 'Tilt'
         s_new.axes_manager[0].units = 'degrees'
@@ -172,13 +173,13 @@ def signal_to_tomo_stack(s, manual_tilts=None):
 def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali '
                                               '*.rec *.dm3 *.dm4)'):
     if 'PyQt5.QtWidgets' in sys.modules:
-        app = QtWidgets.QApplication([])
+        QtWidgets.QApplication([])
         filename = QtWidgets.QFileDialog.getOpenFileName(None,
                                                          message,
                                                          os.getcwd(),
                                                          filetypes)[0]
     elif 'PyQt4.QtGui' in sys.modules:
-        app = QtGui.QApplication([])
+        QtGui.QApplication([])
         filename = QtGui.QFileDialog.getOpenFileName(None,
                                                      message,
                                                      os.getcwd(),
@@ -190,7 +191,8 @@ def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali '
 
 def loadhspy(filename, tilts=None):
     """
-    Function to read an MRC file to a TomoStack object using the Hyperspy reader
+    Function to read an MRC file to a TomoStack object using the Hyperspy
+    reader
 
     Parameters
     ----------
