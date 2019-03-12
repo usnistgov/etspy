@@ -241,7 +241,7 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> reg = s.stack_register('ECC',show_progressbar=False)
         Spatial registration by ECC complete
-        >>> ali = reg.tiltalign(method='CoM', locs=[50,100,160], output=False)
+        >>> ali = reg.tilt_align(method='CoM', locs=[50,100,160], output=False)
 
         Align tilt axis using the maximum image method
         >>> import tomotools.api as tomotools
@@ -249,8 +249,8 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> reg = s.stack_register('ECC',show_progressbar=False)
         Spatial registration by ECC complete
-        >>> ali = reg.tiltalign(method='MaxImage', output=False,\
-        show_progressbar=False)
+        >>> method = 'MaxImage'
+        >>> ali = reg.tilt_align(method, output=False, show_progressbar=False)
 
         """
         if method == 'CoM':
@@ -471,8 +471,10 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> stack = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         Tilts found in metadata
-        >>> transformed = stack.trans_stack(xshift=10.0, yshift=3.5, \
-        angle=-15.2)
+        >>> xshift = 10.0
+        >>> yshift = 3.5
+        >>> angle = -15.2
+        >>> transformed = stack.trans_stack(xshift, yshift, angle)
         >>> transformed
         <TomoStack, title: , dimensions: (77|256, 256)>
 
