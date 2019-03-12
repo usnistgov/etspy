@@ -1,0 +1,4 @@
+[flake8]
+exclude =
+    api.py,
+    __init__.py
