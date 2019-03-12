@@ -1,3 +1,5 @@
+"""Setup file for TomoTools package."""
+
 from setuptools import setup
 
 setup(
@@ -13,9 +15,10 @@ setup(
         'hyperspy',
         'numpy',
         'astra-toolbox',
+        'opencv-python',
         'scipy',
         'tqdm',
         'matplotlib',
-        'tomopy @ https://github.com/tomopy/tomopy/archive/1.4.0.zip',
-    ],
+        # 'tomopy @ git+http://github.com/tomopy/tomopy.git',
+    ]
 )

@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Mar 11 09:39:29 2015
+#
+# This file is part of TomoTools
 
-@author: aherzing
 """
+Data input/output module for TomoTools package.
+
+@author: Andrew Herzing
+"""
+
 import numpy as np
 import os
 
@@ -14,10 +18,10 @@ from tomotools.base import TomoStack
 
 
 def numpy_to_tomo_stack(data, manual_tilts=False):
-    """Make a TomoStack object from a NumPy array.
+    """
+    Create a TomoStack object from a NumPy array.
 
     This will retain both the axes information and the metadata.
-    If the signal is lazy, the function will return LazyPixelatedSTEM.
 
     Parameters
     ----------
@@ -70,10 +74,10 @@ def numpy_to_tomo_stack(data, manual_tilts=False):
 
 
 def signal_to_tomo_stack(s, manual_tilts=None):
-    """Make a TomoStack object from a HyperSpy signal.
+    """
+    Create a TomoStack object from a HyperSpy signal.
 
     This will retain both the axes information and the metadata.
-    If the signal is lazy, the function will return LazyPixelatedSTEM.
 
     Parameters
     ----------
@@ -104,7 +108,6 @@ def signal_to_tomo_stack(s, manual_tilts=None):
     <TomoStack, title: test dataset, dimensions: (50|500, 500)>
 
     """
-
     axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
     metadata = s.metadata.as_dictionary()
@@ -120,7 +123,8 @@ def signal_to_tomo_stack(s, manual_tilts=None):
         return s_new
 
     elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
-        tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:s.data.shape[0]]
+        n = s.data.shape[0]
+        tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
         print('Tilts found in metadata')
         s_new.axes_manager[0].name = 'Tilt'
         s_new.axes_manager[0].units = 'degrees'
@@ -171,14 +175,15 @@ def signal_to_tomo_stack(s, manual_tilts=None):
 # PyUnresolvedReferences
 def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali '
                                               '*.rec *.dm3 *.dm4)'):
+    """Prompt user to select file using a dialog."""
     if 'PyQt5.QtWidgets' in sys.modules:
-        app = QtWidgets.QApplication([])
+        QtWidgets.QApplication([])
         filename = QtWidgets.QFileDialog.getOpenFileName(None,
                                                          message,
                                                          os.getcwd(),
                                                          filetypes)[0]
     elif 'PyQt4.QtGui' in sys.modules:
-        app = QtGui.QApplication([])
+        QtGui.QApplication([])
         filename = QtGui.QFileDialog.getOpenFileName(None,
                                                      message,
                                                      os.getcwd(),
@@ -190,7 +195,7 @@ def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali '
 
 def loadhspy(filename, tilts=None):
     """
-    Function to read an MRC file to a TomoStack object using the Hyperspy reader
+    Read an MRC file to a TomoStack object using the Hyperspy reader.
 
     Parameters
     ----------
@@ -204,8 +209,8 @@ def loadhspy(filename, tilts=None):
     Returns
     ----------
     stack : TomoStack object
-    """
 
+    """
     if filename:
         file = filename
     else:
@@ -219,6 +224,20 @@ def loadhspy(filename, tilts=None):
 
 
 def loaddm(filename):
+    """
+    Read series of DM3 files to a TomoStack object using the Hyperspy reader.
+
+    Parameters
+    ----------
+    filename : string
+        Name of file that contains data to be read.  Accepted formats (.MRC,
+        .RAW/.RPL pair, .DM3, .DM4)
+
+    Returns
+    ----------
+    stack : TomoStack object
+
+    """
     if filename:
         file = filename
     else:
@@ -276,7 +295,7 @@ def loaddm(filename):
 
 def load(filename=None, tilts=None):
     """
-    Function to create a TomoStack object using data from a file
+    Create a TomoStack object using data from a file.
 
     Parameters
     ----------
