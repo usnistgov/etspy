@@ -418,6 +418,7 @@ class TomoStack(Signal2D):
             Position of slices to use for the reconstruction.  If None,
             positions at 1/4, 1/2, and 3/4 of the full size of the stack are
             chosen.
+
         """
         if slices is None:
             mid = np.int32(self.data.shape[1] / 2)
@@ -434,6 +435,7 @@ class TomoStack(Signal2D):
             shifted = self.deepcopy()
             shifted.data = shifted.data[:, slices, :]
 
+        shifted.axes_manager[0].axis = self.axes_manager[0].axis
         rec = recon.run(shifted, method='FBP', cuda=False)
 
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 10))
@@ -619,7 +621,7 @@ class TomoStack(Signal2D):
         simpletrackbar(self.data, 'Press "ESC" to exit')
         return
 
-    def align_imod(self, diameter=7, markers=10):
+    def align_imod(self, diameter=7, markers=10, white=False):
         """
         Align the stack using IMODs RAPTOR algorithm.
 
@@ -630,6 +632,10 @@ class TomoStack(Signal2D):
 
         markers : integer
             Number of markers to include in the model
+
+        white : boolean
+            If True, the markers are bright compared to the background (i.e.
+            dark-field).
 
         Returns
         ----------
@@ -664,13 +670,20 @@ class TomoStack(Signal2D):
 
         os.system(mrc_cmd)
         angles = self.axes_manager[0].axis
+
         with open('stack.rawtlt', 'w') as h:
             np.savetxt(h, angles, fmt='%.1f')
 
-        raptor_cmd = 'raptor -exec %s ' % imod_path + \
-                     '-path . -inp stack.mrc -out raptor ' \
-                     '-diam %s -mark %s stack.mrc' % \
-                     (str(diameter), str(markers))
+        if white:
+            raptor_cmd = 'raptor -exec %s ' % imod_path + \
+                         '-path . -inp stack.mrc -out raptor ' \
+                         '-diam %s -mark %s -white stack.mrc' % \
+                         (str(diameter), str(markers))
+        else:
+            raptor_cmd = 'raptor -exec %s ' % imod_path + \
+                         '-path . -inp stack.mrc -out raptor ' \
+                         '-diam %s -mark %s stack.mrc' % \
+                         (str(diameter), str(markers))
         os.system(raptor_cmd)
 
         file = 'raptor/align/stack.ali'
@@ -682,3 +695,26 @@ class TomoStack(Signal2D):
 
         os.chdir(orig_path)
         return ali
+
+    def set_tilts(self, start, increment):
+        """
+        Calibrate the tilt axis of the image stack.
+
+        Args
+        ----------
+        start : float or integer
+            Tilt angle of first image in stack
+
+        increment : float or integer
+            Tilt increment between images
+
+        """
+        nimages = self.data.shape[0]
+        self.axes_manager[0].name = 'Tilt'
+        self.axes_manager[0].units = 'degrees'
+        self.axes_manager[0].scale = increment
+        self.axes_manager[0].offset = start
+        self.axes_manager[0].axis = np.arange(start,
+                                              nimages*increment + start,
+                                              increment)
+        return
