@@ -185,7 +185,7 @@ class TomoStack(Signal2D):
         return out
 
     def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None,
-                   output=True, show_progressbar=False):
+                   axis=0, output=True, show_progressbar=False):
         r"""
         Align the tilt axis of a TomoStack.
 
@@ -224,6 +224,9 @@ class TomoStack(Signal2D):
         locs : list
             Image coordinates indicating the locations at which to calculate
             the alignment
+        axis : integer
+            Axis along which to extract sinograms. Value of 0 means tilt axis
+            is horizontally oriented.  1 means vertically oriented.
         output : boolean
             Output alignment results to console after each iteration
         show_progressbar : boolean
@@ -254,6 +257,8 @@ class TomoStack(Signal2D):
         >>> ali = reg.tilt_align(method, output=False, show_progressbar=False)
 
         """
+        if axis == 1:
+            self = self.rotate(-90)
         if method == 'CoM':
             out = align.tilt_correct(self, offset, locs, output)
         elif method == 'MaxImage':
@@ -267,6 +272,9 @@ class TomoStack(Signal2D):
         else:
             print('Invalid alignment method: Enter either "CoM" or "MaxImage"')
             return
+
+        if axis == 1:
+            self = self.rotate(90)
         return out
 
     def reconstruct(self, method='FBP', rot_center=None, iterations=None,
