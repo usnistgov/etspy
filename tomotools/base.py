@@ -418,8 +418,8 @@ class TomoStack(Signal2D):
             Position of slices to use for the reconstruction.  If None,
             positions at 1/4, 1/2, and 3/4 of the full size of the stack are
             chosen.
+            
         """
-
         if slices is None:
             mid = np.int32(self.data.shape[1] / 2)
             slices = np.int32([mid / 2, mid, mid + mid / 2])
