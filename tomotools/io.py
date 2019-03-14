@@ -122,15 +122,6 @@ def signal_to_tomo_stack(s, manual_tilts=None):
         print('Tilts found in metadata')
         return s_new
 
-    elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
-        n = s.data.shape[0]
-        tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
-        print('Tilts found in metadata')
-        s_new.axes_manager[0].name = 'Tilt'
-        s_new.axes_manager[0].units = 'degrees'
-        s_new.axes_manager[0].scale = tilts[1] - tilts[0]
-        s_new.axes_manager[0].offset = tilts[0]
-
     elif manual_tilts:
         negtilt = eval(input('Enter maximum negative tilt: '))
         postilt = eval(input('Enter maximum positive tilt: '))
@@ -152,6 +143,27 @@ def signal_to_tomo_stack(s, manual_tilts=None):
             s_new.axes_manager[0].units = 'degrees'
             s_new.axes_manager[0].scale = tilts[1] - tilts[0]
             s_new.axes_manager[0].offset = tilts[0]
+
+    elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
+        tilt_alpha = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha
+        if type(tilt_alpha) is list:
+            n = s.data.shape[0]
+            tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
+            print('Tilts found in metadata')
+            s_new.axes_manager[0].name = 'Tilt'
+            s_new.axes_manager[0].units = 'degrees'
+            s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+            s_new.axes_manager[0].offset = tilts[0]
+        else:
+            s_new.axes_manager[0].name = 'Tilt'
+            s_new.axes_manager[0].units = 'unknown'
+            if s_new.axes_manager[1].name != 'x':
+                s_new.axes_manager[1].name = 'x'
+                s_new.axes_manager[1].units = 'unknown'
+            if s_new.axes_manager[2].name != 'y':
+                s_new.axes_manager[2].name = 'y'
+                s_new.axes_manager[2].units = 'unknown'
+            print('Tilts not found.  Calibrate axis 0')
 
     else:
         s_new.axes_manager[0].name = 'Tilt'

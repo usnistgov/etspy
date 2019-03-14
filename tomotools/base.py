@@ -695,3 +695,27 @@ class TomoStack(Signal2D):
 
         os.chdir(orig_path)
         return ali
+
+    def set_tilts(self, start, increment):
+        """
+        Calibrate the tilt axis of the image stack.
+
+        Args
+        ----------
+        start : float or integer
+            Tilt angle of first image in stack
+
+        increment : float or integer
+            Tilt increment between images
+
+        """
+        nimages = self.data.shape[0]
+        self.axes_manager[0].name = 'Tilt'
+        self.axes_manager[0].units = 'degrees'
+        self.axes_manager[0].scale = increment
+        self.axes_manager[0].offset = start
+        self.axes_manager[0].axis = np.arange(start, nimages*increment + start, increment)
+        return
+
+
+
