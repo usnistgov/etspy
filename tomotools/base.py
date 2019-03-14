@@ -132,7 +132,8 @@ class TomoStack(Signal2D):
 
         return inverted
 
-    def stack_register(self, method='ECC', start=None, show_progressbar=False):
+    def stack_register(self, method='ECC', start=None, crop=False,
+                       show_progressbar=False):
         """
         Register stack spatially using one of two OpenCV based algorithms.
 
@@ -147,6 +148,9 @@ class TomoStack(Signal2D):
         start : integer
             Position in tilt series to use as starting point for the
             alignment. If None, the central projection is used.
+        crop : boolean
+            If True, crop aligned stack to eliminate border pixels. Default is
+            False.
         show_progressbar : boolean
             Enable/disable progress bar
 
@@ -182,6 +186,19 @@ class TomoStack(Signal2D):
         else:
             print("Unknown registration method.  Must use 'ECC' or 'PC'")
             return ()
+
+        if crop:
+            shifts = out.original_metadata.shifts
+            x_shifts = np.zeros(len(shifts))
+            y_shifts = np.zeros(len(shifts))
+            for i in range(0, len(shifts)):
+                x_shifts[i] = shifts[i][0, 2]
+                y_shifts[i] = shifts[i][1, 2]
+            x_max = np.int32(np.floor(x_shifts.min()))
+            x_min = np.int32(np.ceil(x_shifts.max()))
+            y_max = np.int32(np.floor(y_shifts.min()))
+            y_min = np.int32(np.ceil(y_shifts.max()))
+            out = out.isig[x_min:x_max, y_min:y_max]
         return out
 
     def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None,
