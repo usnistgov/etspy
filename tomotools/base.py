@@ -418,7 +418,7 @@ class TomoStack(Signal2D):
             Position of slices to use for the reconstruction.  If None,
             positions at 1/4, 1/2, and 3/4 of the full size of the stack are
             chosen.
-            
+
         """
         if slices is None:
             mid = np.int32(self.data.shape[1] / 2)
@@ -714,8 +714,7 @@ class TomoStack(Signal2D):
         self.axes_manager[0].units = 'degrees'
         self.axes_manager[0].scale = increment
         self.axes_manager[0].offset = start
-        self.axes_manager[0].axis = np.arange(start, nimages*increment + start, increment)
+        self.axes_manager[0].axis = np.arange(start,
+            nimages*increment + start, 
+            increment)
         return
-
-
-
