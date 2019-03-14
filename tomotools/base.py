@@ -715,6 +715,6 @@ class TomoStack(Signal2D):
         self.axes_manager[0].scale = increment
         self.axes_manager[0].offset = start
         self.axes_manager[0].axis = np.arange(start,
-                                              nimages*increment + start,
+                                              nimages*increment + start, 
                                               increment)
         return
