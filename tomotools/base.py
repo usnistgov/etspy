@@ -295,7 +295,7 @@ class TomoStack(Signal2D):
         return out
 
     def reconstruct(self, method='FBP', rot_center=None, iterations=None,
-                    constrain=False, thresh=0, cuda=None):
+                    constrain=False, thresh=0, cuda=None, thickness=None):
         r"""
         Reconstruct a TomoStack series using one of the available methods.
 
@@ -319,6 +319,8 @@ class TomoStack(Signal2D):
             Value above which to constrain the reconstructed data
         cuda : boolean
             If True, use the CUDA-accelerated reconstruction algorithm
+        thickness : integer
+            Size of the output volume (in pixels) in the projection direction.
 
         Returns
         ----------
@@ -386,6 +388,14 @@ class TomoStack(Signal2D):
         out.axes_manager[1].offset = self.axes_manager['x'].offset
         out.axes_manager[1].scale = self.axes_manager['x'].scale
         out.axes_manager[1].units = self.axes_manager['x'].units
+
+        if thickness:
+            offset = np.int32(np.floor((out.data.shape[1] - thickness)/2))
+            if offset < 0:
+                pass
+            else:
+                out = out.isig[:, offset:-offset]
+
         return out
 
     def rotate(self, angle, resize=True):
@@ -429,7 +439,7 @@ class TomoStack(Signal2D):
         rot.axes_manager[2].size = rot.data.shape[1]
         return rot
 
-    def test_align(self, xshift=0.0, angle=0.0, slices=None):
+    def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -443,6 +453,8 @@ class TomoStack(Signal2D):
             Position of slices to use for the reconstruction.  If None,
             positions at 1/4, 1/2, and 3/4 of the full size of the stack are
             chosen.
+        thickness : integer
+            Size of the output volume (in pixels) in the projection direction.
 
         """
         if slices is None:
@@ -462,6 +474,13 @@ class TomoStack(Signal2D):
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
         rec = recon.run(shifted, method='FBP', cuda=False)
+
+        if thickness:
+            offset = np.int32(np.floor((rec.shape[1] - thickness)/2))
+            if offset < 0:
+                pass
+            else:
+                rec = rec[:, offset:-offset, :]
 
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 10))
         ax1.imshow(rec[0, :, :], cmap='afmhot')
