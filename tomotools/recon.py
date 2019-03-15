@@ -51,14 +51,16 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
             '''ASTRA weighted-backprojection reconstruction of single slice'''
             options = {'proj_type': 'linear', 'method': 'FBP'}
             rec = tomopy.recon(stack.data, theta, center=rot_center,
-                               algorithm=tomopy.astra, options=options)
+                               algorithm=tomopy.astra, filter_name='ramlak',
+                               options=options)
             print('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA weighted-backprojection CUDA reconstruction of single
             slice'''
             options = {'proj_type': 'cuda', 'method': 'FBP_CUDA'}
             rec = tomopy.recon(stack.data, theta, center=rot_center,
-                               algorithm=tomopy.astra, options=options)
+                               algorithm=tomopy.astra, filter_name='ramlak',
+                               options=options)
             print('Reconstruction complete')
         else:
             raise Exception('Error related to ASTRA Toolbox')
