@@ -735,6 +735,10 @@ class TomoStack(Signal2D):
             np.fromfile(h, np.uint8, 1024)
             temp = np.fromfile(h, np.float32)
 
+        if np.mod(len(temp), shape[0]) != 0:
+            print('RAPTOR alignment was unable to fit all images. '
+                  'Improve rough alignment or image quality.')
+            return ali
         ali.data = temp.reshape([shape[0], shape[1], shape[2]])
 
         os.chdir(orig_path)
