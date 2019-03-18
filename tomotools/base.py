@@ -654,9 +654,19 @@ class TomoStack(Signal2D):
 
             while True:
                 trackbarpos = cv2.getTrackbarPos(trackbarname, windowname)
-                cv2.imshow(windowname,
-                           image[trackbarpos, :, :]
-                           / np.max(image[trackbarpos, :, :]))
+
+                if image.max() == 1.0:
+                    cv2.imshow(windowname,
+                               image[trackbarpos, :, :])
+
+                elif image.dtype == '<f4' or 'float32':
+                    cv2.imshow(windowname,
+                               np.uint8(image[trackbarpos, :, :]))
+
+                else:
+                    cv2.imshow(windowname,
+                               image[trackbarpos, :, :]
+                               / np.max(image[trackbarpos, :, :]))
                 ch = cv2.waitKey(5)
                 if ch == 27:
                     break
