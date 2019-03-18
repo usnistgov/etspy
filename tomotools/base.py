@@ -661,7 +661,8 @@ class TomoStack(Signal2D):
 
                 elif image.dtype == '<f4' or 'float32':
                     cv2.imshow(windowname,
-                               np.uint8(image[trackbarpos, :, :]))
+                               np.uint8(255*image[trackbarpos, :, :] /
+                                        image[trackbarpos, :, :].max()))
 
                 else:
                     cv2.imshow(windowname,
