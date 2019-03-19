@@ -780,8 +780,7 @@ class TomoStack(Signal2D):
 
     def manual_align(self, nslice, xshift=0, yshift=0):
         """
-        Provide a way to manually shift one portion of a stack with respect to
-        the other.
+        Manually shift one portion of a stack with respect to the other.
 
         Args
         ----------
@@ -824,20 +823,28 @@ class TomoStack(Signal2D):
         else:
             if (xshift > 0) and (yshift > 0):
                 output.data = output.data[:, :-xshift, :-yshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, xshift:, yshift:]
-                output.data[nslice:, :, :] = self.data[nslice:, :-xshift, :-yshift]
+                output.data[0:nslice, :, :] = \
+                    self.data[0:nslice, xshift:, yshift:]
+                output.data[nslice:, :, :] = \
+                    self.data[nslice:, :-xshift, :-yshift]
             elif (xshift > 0) and (yshift < 0):
                 output.data = output.data[:, :-xshift, :yshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, xshift:, :yshift]
-                output.data[nslice:, :, :] = self.data[nslice:, :-xshift, -yshift:]
+                output.data[0:nslice, :, :] = \
+                    self.data[0:nslice, xshift:, :yshift]
+                output.data[nslice:, :, :] = \
+                    self.data[nslice:, :-xshift, -yshift:]
             elif (xshift < 0) and (yshift > 0):
                 output.data = output.data[:, :xshift, :-yshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :xshift, yshift:]
-                output.data[nslice:, :, :] = self.data[nslice:, -xshift:, :-yshift]
+                output.data[0:nslice, :, :] = \
+                    self.data[0:nslice, :xshift, yshift:]
+                output.data[nslice:, :, :] = \
+                    self.data[nslice:, -xshift:, :-yshift]
             elif (xshift < 0) and (yshift < 0):
                 output.data = output.data[:, :xshift, :yshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :xshift, :yshift]
-                output.data[nslice:, :, :] = self.data[nslice:, -xshift:, -yshift:]
+                output.data[0:nslice, :, :] = \
+                    self.data[0:nslice, :xshift, :yshift]
+                output.data[nslice:, :, :] = \
+                    self.data[nslice:, -xshift:, -yshift:]
             else:
                 pass
         return output
