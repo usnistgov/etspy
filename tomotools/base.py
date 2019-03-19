@@ -777,3 +777,67 @@ class TomoStack(Signal2D):
                                               nimages*increment + start,
                                               increment)
         return
+
+    def manual_align(self, nslice, xshift=0, yshift=0):
+        """
+        Provide a way to manually shift one portion of a stack with respect to
+        the other.
+
+        Args
+        ----------
+        nslice : integer
+            Slice position at which to implement shift
+
+        xshift : integer
+            Number of pixels with which to shift the second portion of the
+            stack relative to the first in the X dimension.
+
+        yshift : integer
+            Number of pixels with which to shift the second portion of the
+            stack relative to the first in the Y dimension.
+
+        """
+        output = self.deepcopy()
+        if yshift == 0:
+            if xshift > 0:
+                output.data = output.data[:, :-xshift, :]
+                output.data[0:nslice, :, :] = self.data[0:nslice, xshift:, :]
+                output.data[nslice:, :, :] = self.data[nslice:, :-xshift, :]
+            elif xshift < 0:
+                output.data = output.data[:, :xshift, :]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :xshift, :]
+                output.data[nslice:, :, :] = self.data[nslice:, -xshift:, :]
+            else:
+                pass
+
+        elif xshift == 0:
+            if yshift < 0:
+                output.data = output.data[:, :, :-yshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :, yshift:]
+                output.data[nslice:, :, :] = self.data[nslice:, :, :-yshift]
+            elif yshift < 0:
+                output.data = output.data[:, :, :yshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :, :yshift]
+                output.data[nslice:, :, :] = self.data[nslice:, :, -yshift:]
+            else:
+                pass
+        else:
+            if (xshift > 0) and (yshift > 0):
+                output.data = output.data[:, :-xshift, :-yshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, xshift:, yshift:]
+                output.data[nslice:, :, :] = self.data[nslice:, :-xshift, :-yshift]
+            elif (xshift > 0) and (yshift < 0):
+                output.data = output.data[:, :-xshift, :yshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, xshift:, :yshift]
+                output.data[nslice:, :, :] = self.data[nslice:, :-xshift, -yshift:]
+            elif (xshift < 0) and (yshift > 0):
+                output.data = output.data[:, :xshift, :-yshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :xshift, yshift:]
+                output.data[nslice:, :, :] = self.data[nslice:, -xshift:, :-yshift]
+            elif (xshift < 0) and (yshift < 0):
+                output.data = output.data[:, :xshift, :yshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :xshift, :yshift]
+                output.data[nslice:, :, :] = self.data[nslice:, -xshift:, -yshift:]
+            else:
+                pass
+        return output
