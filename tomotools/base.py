@@ -848,3 +848,28 @@ class TomoStack(Signal2D):
             else:
                 pass
         return output
+
+    def save_raw(self, filename=None):
+        """
+        Save TomoStack data as a .raw/.rpl file pair.
+
+        Args
+        ----------
+        filname : string (optional)
+            Name of file to receive data. If not specified, the metadata will
+            be used. Data dimensions and data type will be appended.
+
+        """
+        datashape = self.data.shape
+
+        if filename is None:
+            filename = self.metadata.General.title
+        else:
+            filename, ext = os.path.splitext(filename)
+
+        filename = filename + '_%sx%sx%s_%s.rpl' % (str(datashape[0]),
+                                                    str(datashape[1]),
+                                                    str(datashape[2]),
+                                                    self.data.dtype.name)
+        self.save(filename)
+        return
