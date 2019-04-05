@@ -1,8 +1,0 @@
-[
-  "tomotools/tests/test_align.py::TestAlignStackRegister::test_register_ecc",
-  "tomotools/tests/test_align.py::TestAlignStackRegister::test_register_pc",
-  "tomotools/tests/test_io.py::TestMRC::test_load_hspy",
-  "tomotools/tests/test_io.py::TestMRC::test_numpy_to_stack",
-  "tomotools/tests/test_recon.py::TestAlignStackRegister::test_recon_fbp",
-  "tomotools/tests/test_recon.py::TestAlignStackRegister::test_recon_sirt"
-]
