@@ -179,10 +179,8 @@ class TomoStack(Signal2D):
         <TomoStack, title: , dimensions: (10|256, 256)>
 
         """
-        if method == 'ECC':
-            out = align.rigid_ecc(self, start, show_progressbar)
-        elif method == 'PC':
-            out = align.rigid_pc(self, start, show_progressbar)
+        if method == 'ECC' or method == 'PC':
+            out = align.align_stack(self, method, start, show_progressbar)
         else:
             print("Unknown registration method.  Must use 'ECC' or 'PC'")
             return ()

@@ -2,3 +2,4 @@
 exclude =
     api.py,
     __init__.py
+    scratch/scratch.py

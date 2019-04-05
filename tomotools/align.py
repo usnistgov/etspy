@@ -68,7 +68,7 @@ def align_stack(stack, method, start, show_progressbar):
         for i in range(start+1, composed.shape[0]):
             composed[i, :] = composed[i-1, :] - shifts[i-1, :]
         for i in range(start-1, -1, -1):
-            composed[i, :] = composed[i+1, :] - shifts[i]
+            composed[i, :] = composed[i+1, :] + shifts[i]
         return composed
 
     def calculate_shifts(stack, method, start, show_progressbar):
