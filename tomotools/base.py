@@ -67,6 +67,36 @@ class TomoStack(Signal2D):
         string += '>'
         return string
 
+    def test_correlation(self, images=None):
+        if not images:
+            images = [0, 1]
+        im1 = self.data[images[0], :, :]
+        im2 = self.data[images[1], :, :]
+        image = np.hypot(ndimage.sobel(im1, axis=0),
+                         ndimage.sobel(im1, axis=1))
+        offset_image = np.hypot(ndimage.sobel(im2, axis=0),
+                                ndimage.sobel(im2, axis=1))
+        image_product = np.fft.fft2(image) * np.fft.fft2(offset_image).conj()
+        cc_image = np.fft.fftshift(np.fft.ifft2(image_product))
+
+        fig = plt.figure(figsize=(8, 3))
+        ax1 = plt.subplot(1, 3, 1)
+        ax2 = plt.subplot(1, 3, 2, sharex=ax1, sharey=ax1)
+        ax3 = plt.subplot(1, 3, 3)
+
+        ax1.imshow(image, cmap='gray')
+        ax1.set_axis_off()
+        ax1.set_title('Reference image')
+
+        ax2.imshow(offset_image.real, cmap='gray')
+        ax2.set_axis_off()
+        ax2.set_title('Offset image')
+
+        ax3.imshow(cc_image.real, cmap='inferno')
+        ax3.set_axis_off()
+        ax3.set_title("Cross-correlation")
+        return fig
+
     def align_other(self, other):
         """
         Apply the alignment calculated for one dataset to another.
