@@ -92,6 +92,22 @@ class TomoStack(Signal2D):
                              'for this stack')
 
         out = align.align_to_other(self, other)
+        if self.original_metadata.has_item('cropped'):
+            if self.original_metadata.cropped:
+                shifts = out.original_metadata.shifts
+                x_shifts = np.zeros(len(shifts))
+                y_shifts = np.zeros(len(shifts))
+                for i in range(0, len(shifts)):
+                    x_shifts[i] = shifts[i][0]
+                    y_shifts[i] = shifts[i][1]
+                x_max = np.int32(np.floor(x_shifts.min()))
+                x_min = np.int32(np.ceil(x_shifts.max()))
+                y_max = np.int32(np.floor(y_shifts.min()))
+                y_min = np.int32(np.ceil(y_shifts.max()))
+                out = out.isig[x_min:x_max, y_min:y_max]
+                if not out.original_metadata.has_item('cropped'):
+                    out.original_metadata.add_node('cropped')
+            out.original_metadata.cropped = True
         return out
 
     def filter(self, method='median', size=5):
@@ -101,8 +117,7 @@ class TomoStack(Signal2D):
         Args
         ----------
         method : string
-            Type of filter to apply. Currently only 'median' is
-            implemented.
+            Type of filter to apply. Must be 'median' or 'sobel'.
         size : integer
             Size of filtering neighborhood.
 
@@ -119,9 +134,19 @@ class TomoStack(Signal2D):
         >>> s_filtered = s.filter(method='median')
 
         """
-        filtered = self.deepcopy()
-        filtered.data = ndimage.median_filter(filtered.data,
-                                              size=(1, size, size))
+        if method == 'median':
+            filtered = self.deepcopy()
+            filtered.data = ndimage.median_filter(filtered.data,
+                                                  size=(1, size, size))
+        elif method == 'sobel':
+            filtered = self.deepcopy()
+            for i in range(0, filtered.data.shape[0]):
+                dx = ndimage.sobel(filtered.data[i, :, :], 0)
+                dy = ndimage.sobel(filtered.data[i, :, :], 1)
+                filtered.data[i, :, :] = np.hypot(dx, dy)
+        else:
+            raise(ValueError,
+                  "Unknown filter method. Must be 'median' or 'sobel'")
         return filtered
 
     def normalize(self, width=3):
@@ -272,6 +297,9 @@ class TomoStack(Signal2D):
             y_max = np.int32(np.floor(y_shifts.min()))
             y_min = np.int32(np.ceil(y_shifts.max()))
             out = out.isig[x_min:x_max, y_min:y_max]
+            if not out.original_metadata.has_item('cropped'):
+                out.original_metadata.add_node('cropped')
+            out.original_metadata.cropped = True
         return out
 
     def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None,
