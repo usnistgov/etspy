@@ -491,10 +491,12 @@ def align_to_other(stack, other):
 
     out.original_metadata.shifts = stack.original_metadata.shifts
 
-    if shifts:
+    if stack.original_metadata.has_item('shifts'):
+        trans = np.eye(2, 3, dtype=np.float32)
         for i in range(0, out.data.shape[0]):
+            trans[:, 2] = shifts[i]
             out.data[i, :, :] = cv2.warpAffine(other.data[i, :, :],
-                                               shifts[i],
+                                               trans,
                                                other.data[i, :, :].T.shape,
                                                flags=cv2.INTER_LINEAR,
                                                borderMode=cv2.BORDER_CONSTANT,
