@@ -196,6 +196,17 @@ class TomoStack(Signal2D):
 
         return inverted
 
+    def stats(self):
+        """
+        Print basic stats about TomoStack data to terminal.
+
+        """
+        print('Mean: %.1f' % self.data.mean())
+        print('Std: %.2f' % self.data.std())
+        print('Max: %.1f' % self.data.max())
+        print('Min: %.1f\n' % self.data.min())
+        return
+
     def stack_register(self, method='ECC', start=None, crop=False,
                        show_progressbar=False):
         """
