@@ -94,6 +94,70 @@ class TomoStack(Signal2D):
         out = align.align_to_other(self, other)
         return out
 
+    def filter(self, method='median', size=5):
+        """
+        Invert the contrast levels of an entire TomoStack.
+
+        Args
+        ----------
+        method : string
+            Type of filter to apply. Currently only 'median' is
+            implemented.
+        size : integer
+            Size of filtering neighborhood.
+
+        Returns
+        ----------
+        filtered : TomoStack object
+            Filtered copy of the input stack
+
+        Examples
+        --------
+        >>> import tomotools.api as tomotools
+        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
+        Tilts found in metadata
+        >>> s_filtered = s.filter(method='median')
+
+        """
+        filtered = self.deepcopy()
+        filtered.data = ndimage.median_filter(filtered.data,
+                                              size=(1, size, size))
+        return filtered
+
+    def normalize(self, width=3):
+        """
+        Normalize the contrast levels of an entire TomoStack.
+
+        Args
+        ----------
+        width : integer
+            Number of standard deviations from the mean to set
+            as maximum intensity level.
+
+        Returns
+        ----------
+        normalized : TomoStack object
+            Copy of the input stack with intensities normalized
+
+        Examples
+        --------
+        >>> import tomotools.api as tomotools
+        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
+        Tilts found in metadata
+        >>> s_normalized = s.normalize()
+
+        """
+        normalized = self.deepcopy()
+        minvals = np.reshape((normalized.data.min(2).min(1)),
+                             [self.data.shape[0], 1, 1])
+        normalized.data = normalized.data - minvals
+        meanvals = np.reshape((normalized.data.mean(2).mean(1)),
+                              [self.data.shape[0], 1, 1])
+        stdvals = np.reshape((normalized.data.std(2).std(1)),
+                             [self.data.shape[0], 1, 1])
+        normalized.data = normalized.data/(meanvals+width*stdvals)
+        return normalized
+
     def invert(self):
         """
         Invert the contrast levels of an entire TomoStack.
@@ -190,8 +254,8 @@ class TomoStack(Signal2D):
             x_shifts = np.zeros(len(shifts))
             y_shifts = np.zeros(len(shifts))
             for i in range(0, len(shifts)):
-                x_shifts[i] = shifts[i][0, 2]
-                y_shifts[i] = shifts[i][1, 2]
+                x_shifts[i] = shifts[i][0]
+                y_shifts[i] = shifts[i][1]
             x_max = np.int32(np.floor(x_shifts.min()))
             x_min = np.int32(np.ceil(x_shifts.max()))
             y_max = np.int32(np.floor(y_shifts.min()))
