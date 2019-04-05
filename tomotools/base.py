@@ -720,8 +720,8 @@ class TomoStack(Signal2D):
             self.data.tofile(h)
 
         mrc_cmd = 'raw2mrc -x %s -y %s -z %s -t float ' % \
-                  (str(shape[2]), str(shape[1]), str(shape[0])) + \
-                  'stack.raw stack.mrc'
+            (str(shape[2]), str(shape[1]), str(shape[0])) + \
+            'stack.raw stack.mrc'
 
         os.system(mrc_cmd)
         angles = self.axes_manager[0].axis
@@ -731,14 +731,14 @@ class TomoStack(Signal2D):
 
         if white:
             raptor_cmd = 'raptor -exec %s ' % imod_path + \
-                         '-path . -inp stack.mrc -out raptor ' \
-                         '-diam %s -mark %s -white stack.mrc' % \
-                         (str(diameter), str(markers))
+                        '-path . -inp stack.mrc -out raptor ' \
+                        '-diam %s -mark %s -white stack.mrc' % \
+                        (str(diameter), str(markers))
         else:
             raptor_cmd = 'raptor -exec %s ' % imod_path + \
-                         '-path . -inp stack.mrc -out raptor ' \
-                         '-diam %s -mark %s stack.mrc' % \
-                         (str(diameter), str(markers))
+                        '-path . -inp stack.mrc -out raptor ' \
+                        '-diam %s -mark %s stack.mrc' % \
+                        (str(diameter), str(markers))
         os.system(raptor_cmd)
 
         file = 'raptor/align/stack.ali'
@@ -747,10 +747,10 @@ class TomoStack(Signal2D):
             temp = np.fromfile(h, np.float32)
 
         if np.mod(len(temp), shape[0]) != 0:
-            print('RAPTOR alignment was unable to fit all images. '
-                  'Improve rough alignment or image quality.')
-            return ali
-        ali.data = temp.reshape([shape[0], shape[1], shape[2]])
+            print('RAPTOR alignment was unable to fit all images.')
+            print('Improve rough alignment or image quality.')
+        else:
+            ali.data = temp.reshape([shape[0], shape[1], shape[2]])
 
         os.chdir(orig_path)
         return ali
@@ -848,3 +848,28 @@ class TomoStack(Signal2D):
             else:
                 pass
         return output
+
+    def save_raw(self, filename=None):
+        """
+        Save TomoStack data as a .raw/.rpl file pair.
+
+        Args
+        ----------
+        filname : string (optional)
+            Name of file to receive data. If not specified, the metadata will
+            be used. Data dimensions and data type will be appended.
+
+        """
+        datashape = self.data.shape
+
+        if filename is None:
+            filename = self.metadata.General.title
+        else:
+            filename, ext = os.path.splitext(filename)
+
+        filename = filename + '_%sx%sx%s_%s.rpl' % (str(datashape[0]),
+                                                    str(datashape[1]),
+                                                    str(datashape[2]),
+                                                    self.data.dtype.name)
+        self.save(filename)
+        return
