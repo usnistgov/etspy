@@ -17,123 +17,9 @@ import warnings
 import tqdm
 
 
-def getpoints(data, numpoints=3):
+def align_stack(stack, method, start, show_progressbar):
     """
-    Prompt user for locations at which to fit the CoM.
-
-    Displays the central image in a stack and prompt the user to
-    choose three locations by mouse click.  Once three locations have been
-    clicked, the window closes and the function returns the coordinates
-
-    Args
-    ----------
-    data : Numpy array
-        Tilt series datastack
-    numpoints : integer
-        Number of points to use in fitting the tilt axis
-
-    Returns
-    ----------
-    coords : Numpy array
-        array containing the XY coordinates selected interactively by the user
-
-    """
-    warnings.filterwarnings('ignore')
-    plt.figure(num='Align Tilt', frameon=False)
-    if len(data.shape) == 3:
-        plt.imshow(data[np.int(data.shape[0]/2), :, :], cmap='gray')
-    else:
-        plt.imshow(data, cmap='gray')
-    plt.title('Choose %s points for tilt axis alignment....' % str(numpoints))
-    coords = np.array(plt.ginput(numpoints, timeout=0, show_clicks=True))
-    plt.close()
-    return coords
-
-
-def rigid_ecc(stack, start, show_progressbar):
-    """
-    Compute the shifts for spatial registration by ECC.
-
-    Uses the OpenCV findTransformECC algorithm. Shifts are then applied and
-    the aligned stack is returned.
-
-    Args
-    ----------
-    stack : Numpy array
-        3-D numpy array containing the tilt series data
-    start : integer
-        Position in tilt series to use as starting point for the alignment.
-        If None, the central projection is used.
-    show_progressbar : boolean
-        Enable/disable progress bar
-
-    Returns
-    ----------
-    out : TomoStack object
-        Spatially registered copy of the input stack
-
-    """
-    number_of_iterations = 1000
-    termination_eps = 1e-3
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
-                number_of_iterations,  termination_eps)
-    old_trans = np.array([[1., 0, 0], [0, 1., 0]])
-    out = copy.deepcopy(stack)
-    out.data = np.zeros(stack.data.shape, stack.data.dtype)
-    shifts = out.data.shape[0]*[None]
-    if start is None:
-        start = np.argmin(np.abs(stack.axes_manager[0].axis))
-    out.data[start, :, :] = stack.data[start, :, :]
-    # noinspection PyTypeChecker
-    shifts[start] = old_trans
-
-    for i in tqdm.tqdm(range(start+1, stack.data.shape[0]),
-                       disable=(not show_progressbar)):
-        warp_matrix = np.eye(2, 3, dtype=np.float32)
-        (cc, trans) = cv2.findTransformECC(stack.data[i, :, :],
-                                           stack.data[i-1, :, :],
-                                           warp_matrix,
-                                           cv2.MOTION_TRANSLATION,
-                                           criteria)
-        trans[:, 2] = trans[:, 2] + old_trans[:, 2]
-        out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
-                                           trans,
-                                           stack.data[i, :, :].T.shape,
-                                           flags=cv2.INTER_LINEAR,
-                                           borderMode=cv2.BORDER_CONSTANT,
-                                           borderValue=0.0)
-        shifts[i] = trans
-        old_trans = trans
-
-    if start != 0:
-        old_trans = np.array([[1., 0, 0], [0, 1., 0]])
-        for i in tqdm.tqdm(range(start-1, -1, -1),
-                           disable=(not show_progressbar)):
-            warp_matrix = np.eye(2, 3, dtype=np.float32)
-            (cc, trans) = cv2.findTransformECC(stack.data[i, :, :],
-                                               stack.data[i+1, :, :],
-                                               warp_matrix,
-                                               cv2.MOTION_TRANSLATION,
-                                               criteria)
-            trans[:, 2] = trans[:, 2] + old_trans[:, 2]
-            out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
-                                               trans,
-                                               stack.data[i, :, :].T.shape,
-                                               flags=cv2.INTER_LINEAR,
-                                               borderMode=cv2.BORDER_CONSTANT,
-                                               borderValue=0.0)
-            shifts[i] = trans
-            old_trans = trans
-    if not out.original_metadata.has_item('shifts'):
-        out.original_metadata.add_node('shifts')
-    out.original_metadata.shifts = shifts
-    print('Spatial registration by ECC complete')
-    return out
-
-
-def rigid_pc(stack, start, show_progressbar):
-    """
-    Compute the shifts for spatial registration by PC.
+    Compute the shifts for spatial registration.
 
     Shifts are determined by the OpenCV phaseCorrelate algorithm.
     Shifts are then applied and the aligned stack is returned.
@@ -142,6 +28,9 @@ def rigid_pc(stack, start, show_progressbar):
     ----------
     stack : Numpy array
         3-D numpy array containing the tilt series data
+    method : string
+        Method by which to calculate the alignments. Valid options
+        are 'PC', 'ECC', or 'CC'.
     start : integer
         Position in tilt series to use as starting point for the alignment.
         If None, the central projection is used.
@@ -154,54 +43,83 @@ def rigid_pc(stack, start, show_progressbar):
         Spatially registered copy of the input stack
 
     """
-    old_trans = np.array([[1., 0, 0], [0, 1., 0]])
-    out = copy.deepcopy(stack)
-    out.data = np.zeros(stack.data.shape, stack.data.dtype)
-    shifts = out.data.shape[0]*[None]
-    if start is None:
-        start = np.argmin(np.abs(stack.axes_manager[0].axis))
-    out.data[start, :, :] = stack.data[start, :, :]
-    # noinspection PyTypeChecker
-    shifts[start] = old_trans
+    def apply_shifts(stack, shifts):
+        shifted = stack.deepcopy()
+        trans = np.eye(2, 3, dtype=np.float32)
+        for i in range(0, stack.data.shape[0]):
+            trans[:, 2] = shifts[i, :]
+            shifted.data[i, :, :] = \
+                cv2.warpAffine(stack.data[i, :, :],
+                               trans,
+                               stack.data[i, :, :].T.shape,
+                               flags=cv2.INTER_LINEAR,
+                               borderMode=cv2.BORDER_CONSTANT,
+                               borderValue=0.0)
+        if not shifted.original_metadata.has_item('shifts'):
+            shifted.original_metadata.add_node('shifts')
+        shifted.original_metadata.shifts = shifts
+        return shifted
 
-    for i in tqdm.tqdm(range(start+1, stack.data.shape[0]),
-                       disable=(not show_progressbar)):
-        trans = np.array([[1., 0, 0], [0, 1., 0]])
-        trans[:, 2] = cv2.phaseCorrelate(
-            np.float64(stack.data[i, :, :]),
-            np.float64(stack.data[i-1, :, :]))[0]\
-            + old_trans[:, 2]
-        out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
-                                           trans,
-                                           stack.data[i, :, :].T.shape,
-                                           flags=cv2.INTER_LINEAR,
-                                           borderMode=cv2.BORDER_CONSTANT,
-                                           borderValue=0.0)
-        shifts[i] = trans
-        old_trans = trans
+    def compose_shifts(shifts, start):
+        if start is None:
+            start = np.int32(np.floor((shifts.shape[0]+1)/2))
+        composed = np.zeros([shifts.shape[0]+1, 2])
+        composed[start, :] = [0., 0.]
+        for i in range(start+1, composed.shape[0]):
+            composed[i, :] = composed[i-1, :] - shifts[i-1, :]
+        for i in range(start-1, -1, -1):
+            composed[i, :] = composed[i+1, :] - shifts[i]
+        return composed
 
-    if start != 0:
-        old_trans = np.array([[1., 0, 0], [0, 1., 0]])
-        for i in tqdm.tqdm(range(start-1, -1, -1),
+    def calculate_shifts(stack, method, start, show_progressbar):
+        shifts = np.zeros([stack.data.shape[0]-1, 2])
+        if start is None:
+            start = np.int32(np.floor(stack.data.shape[0]/2))
+
+        if method == 'ECC':
+            number_of_iterations = 1000
+            termination_eps = 1e-3
+            criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
+                        number_of_iterations,  termination_eps)
+
+        for i in tqdm.tqdm(range(start, stack.data.shape[0]-1),
                            disable=(not show_progressbar)):
-            trans = np.array([[1., 0, 0], [0, 1., 0]])
-            trans[:, 2] = cv2.phaseCorrelate(
-                np.float64(stack.data[i, :, :]),
-                np.float64(stack.data[i+1, :, :]))[0] + old_trans[:, 2]
+            if method == 'PC':
+                shifts[i, :] = cv2.phaseCorrelate(
+                    np.float64(stack.data[i, :, :]),
+                    np.float64(stack.data[i+1, :, :]))[0]
+            if method == 'ECC':
+                warp_matrix = np.eye(2, 3, dtype=np.float32)
+                (cc, trans) = cv2.findTransformECC(
+                    np.float32(stack.data[i, :, :]),
+                    np.float32(stack.data[i+1, :, :]),
+                    warp_matrix,
+                    cv2.MOTION_TRANSLATION,
+                    criteria)
+                shifts[i, :] = trans[:, 2]
 
-            out.data[i, :, :] = cv2.warpAffine(stack.data[i, :, :],
-                                               trans,
-                                               stack.data[i, :, :].T.shape,
-                                               flags=cv2.INTER_LINEAR,
-                                               borderMode=cv2.BORDER_CONSTANT,
-                                               borderValue=0.0)
-            shifts[i] = trans
-            old_trans = trans
-    if not out.original_metadata.has_item('shifts'):
-        out.original_metadata.add_node('shifts')
-    out.original_metadata.shifts = shifts
-    print('Spatial registration by PC complete')
-    return out
+        if start != 0:
+            for i in tqdm.tqdm(range(start-1, -1, -1),
+                               disable=(not show_progressbar)):
+                if method == 'PC':
+                    shifts[i, :] = cv2.phaseCorrelate(
+                        np.float64(stack.data[i, :, :]),
+                        np.float64(stack.data[i+1, :, :]))[0]
+                if method == 'ECC':
+                    warp_matrix = np.eye(2, 3, dtype=np.float32)
+                    (cc, trans) = cv2.findTransformECC(
+                        np.float32(stack.data[i, :, :]),
+                        np.float32(stack.data[i+1, :, :]),
+                        warp_matrix,
+                        cv2.MOTION_TRANSLATION,
+                        criteria)
+                    shifts[i, :] = trans[:, 2]
+        return shifts
+
+    shifts = calculate_shifts(stack, method, start, show_progressbar)
+    composed = compose_shifts(shifts, start)
+    aligned = apply_shifts(stack, composed)
+    return aligned
 
 
 def tilt_correct(stack, offset=0, locs=None, output=True):
@@ -228,6 +146,40 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         make the tilt axis vertical
 
     """
+    def getpoints(data, numpoints=3):
+        """
+        Prompt user for locations at which to fit the CoM.
+
+        Displays the central image in a stack and prompt the user to
+        choose three locations by mouse click.  Once three locations have been
+        clicked, the window closes and the function returns the coordinates
+
+        Args
+        ----------
+        data : Numpy array
+            Tilt series datastack
+        numpoints : integer
+            Number of points to use in fitting the tilt axis
+
+        Returns
+        ----------
+        coords : Numpy array
+            array containing the XY coordinates selected interactively by the
+            user
+
+        """
+        warnings.filterwarnings('ignore')
+        plt.figure(num='Align Tilt', frameon=False)
+        if len(data.shape) == 3:
+            plt.imshow(data[np.int(data.shape[0]/2), :, :], cmap='gray')
+        else:
+            plt.imshow(data, cmap='gray')
+        plt.title('Choose %s points for tilt axis alignment....' %
+                  str(numpoints))
+        coords = np.array(plt.ginput(numpoints, timeout=0, show_clicks=True))
+        plt.close()
+        return coords
+
     def sinocalc(array, y):
         """
         Extract sinograms at three stack positions chosen by user.
