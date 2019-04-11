@@ -68,14 +68,25 @@ class TomoStack(Signal2D):
         return string
 
     def test_correlation(self, images=None):
+        """
+        Test output of cross-correlation prior to alignment.
+
+        Args
+        ----------
+        images : list
+            List of two numbers indicating which projections to cross-correlate
+
+        Returns
+        ----------
+        fig : Matplotlib Figure
+            Figure showing the results
+
+        """
         if not images:
             images = [0, 1]
         im1 = self.data[images[0], :, :]
         im2 = self.data[images[1], :, :]
-        # image = np.hypot(ndimage.sobel(im1, axis=0),
-        #                  ndimage.sobel(im1, axis=1))
-        # offset_image = np.hypot(ndimage.sobel(im2, axis=0),
-        #                         ndimage.sobel(im2, axis=1))
+
         image_product = np.fft.fft2(im1) * np.fft.fft2(im2).conj()
         cc_image = np.fft.fftshift(np.fft.ifft2(image_product))
 
@@ -202,22 +213,22 @@ class TomoStack(Signal2D):
             F_filtered = F * bpf
 
             filtered.data = np.fft.ifft2(np.fft.ifftshift(F_filtered)).real
+
+            h = np.hamming(rows)
+            ham2d = np.sqrt(np.outer(h, h))
+            filtered.data = filtered.data * ham2d
         elif method is None:
             pass
         else:
             raise ValueError("Unknown filter method. Must be 'median', "
                              "'sobel', 'both', 'bpf', or None")
         if taper:
-            mean = filtered.data.mean()
             taper_size = np.int32(np.array(taper)*self.data.shape[1:])
             filtered.data = np.pad(filtered.data,
                                    [(0, 0),
                                     (taper_size[0], taper_size[0]),
                                     (taper_size[1], taper_size[1])],
-                                   mode='linear_ramp',
-                                   end_values=[(mean, mean),
-                                               (mean, mean),
-                                               (mean, mean)])
+                                   mode='constant')
         return filtered
 
     def normalize(self, width=3):
@@ -293,10 +304,7 @@ class TomoStack(Signal2D):
         return inverted
 
     def stats(self):
-        """
-        Print basic stats about TomoStack data to terminal.
-
-        """
+        """Print basic stats about TomoStack data to terminal."""
         print('Mean: %.1f' % self.data.mean())
         print('Std: %.2f' % self.data.std())
         print('Max: %.1f' % self.data.max())
