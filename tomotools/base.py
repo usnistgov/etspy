@@ -72,11 +72,11 @@ class TomoStack(Signal2D):
             images = [0, 1]
         im1 = self.data[images[0], :, :]
         im2 = self.data[images[1], :, :]
-        image = np.hypot(ndimage.sobel(im1, axis=0),
-                         ndimage.sobel(im1, axis=1))
-        offset_image = np.hypot(ndimage.sobel(im2, axis=0),
-                                ndimage.sobel(im2, axis=1))
-        image_product = np.fft.fft2(image) * np.fft.fft2(offset_image).conj()
+        # image = np.hypot(ndimage.sobel(im1, axis=0),
+        #                  ndimage.sobel(im1, axis=1))
+        # offset_image = np.hypot(ndimage.sobel(im2, axis=0),
+        #                         ndimage.sobel(im2, axis=1))
+        image_product = np.fft.fft2(im1) * np.fft.fft2(im2).conj()
         cc_image = np.fft.fftshift(np.fft.ifft2(image_product))
 
         fig = plt.figure(figsize=(8, 3))
@@ -84,11 +84,11 @@ class TomoStack(Signal2D):
         ax2 = plt.subplot(1, 3, 2, sharex=ax1, sharey=ax1)
         ax3 = plt.subplot(1, 3, 3)
 
-        ax1.imshow(image, cmap='gray')
+        ax1.imshow(im1, cmap='gray')
         ax1.set_axis_off()
         ax1.set_title('Reference image')
 
-        ax2.imshow(offset_image.real, cmap='gray')
+        ax2.imshow(im2, cmap='gray')
         ax2.set_axis_off()
         ax2.set_title('Offset image')
 
@@ -140,7 +140,7 @@ class TomoStack(Signal2D):
             out.original_metadata.cropped = True
         return out
 
-    def filter(self, method='median', size=5):
+    def filter(self, method='median', size=5, taper=0.1):
         """
         Invert the contrast levels of an entire TomoStack.
 
@@ -150,6 +150,8 @@ class TomoStack(Signal2D):
             Type of filter to apply. Must be 'median' or 'sobel'.
         size : integer
             Size of filtering neighborhood.
+        taper : float
+            Fraction of image size to pad to the mean.
 
         Returns
         ----------
@@ -164,19 +166,58 @@ class TomoStack(Signal2D):
         >>> s_filtered = s.filter(method='median')
 
         """
+        filtered = self.deepcopy()
         if method == 'median':
-            filtered = self.deepcopy()
             filtered.data = ndimage.median_filter(filtered.data,
                                                   size=(1, size, size))
         elif method == 'sobel':
-            filtered = self.deepcopy()
             for i in range(0, filtered.data.shape[0]):
                 dx = ndimage.sobel(filtered.data[i, :, :], 0)
                 dy = ndimage.sobel(filtered.data[i, :, :], 1)
                 filtered.data[i, :, :] = np.hypot(dx, dy)
+        elif method == 'both':
+            filtered.data = ndimage.median_filter(filtered.data,
+                                                  size=(1, size, size))
+            for i in range(0, filtered.data.shape[0]):
+                dx = ndimage.sobel(filtered.data[i, :, :], 0)
+                dy = ndimage.sobel(filtered.data[i, :, :], 1)
+                filtered.data[i, :, :] = np.hypot(dx, dy)
+        elif method == 'bpf':
+            lp_freq = 0.1
+            hp_freq = 0.05
+            lp_sigma = 1.5
+            hp_sigma = 1.5
+            [nprojs, rows, cols] = self.data.shape
+
+            F = np.fft.fftshift(np.fft.fft2(self.data))
+
+            x = (np.arange(0, cols) - np.fix(cols/2))/cols
+            y = (np.arange(0, rows) - np.fix(rows/2))/rows
+            xx, yy = np.meshgrid(x, y)
+            r = np.sqrt(xx**2 + yy**2)
+            lpf = 1/(1.0 + (r/lp_freq)**(2*lp_sigma))
+
+            hpf = 1 - (1/(1.0 + (r/hp_freq)**(2*hp_sigma)))
+            bpf = lpf*hpf
+            F_filtered = F * bpf
+
+            filtered.data = np.fft.ifft2(np.fft.ifftshift(F_filtered)).real
+        elif method is None:
+            pass
         else:
-            raise(ValueError,
-                  "Unknown filter method. Must be 'median' or 'sobel'")
+            raise ValueError("Unknown filter method. Must be 'median', "
+                             "'sobel', 'both', 'bpf', or None")
+        if taper:
+            mean = filtered.data.mean()
+            taper_size = np.int32(np.array(taper)*self.data.shape[1:])
+            filtered.data = np.pad(filtered.data,
+                                   [(0, 0),
+                                    (taper_size[0], taper_size[0]),
+                                    (taper_size[1], taper_size[1])],
+                                   mode='linear_ramp',
+                                   end_values=[(mean, mean),
+                                               (mean, mean),
+                                               (mean, mean)])
         return filtered
 
     def normalize(self, width=3):
@@ -909,7 +950,7 @@ class TomoStack(Signal2D):
                                               increment)
         return
 
-    def manual_align(self, nslice, xshift=0, yshift=0):
+    def manual_align(self, nslice, xshift=0, yshift=0, display=False):
         """
         Manually shift one portion of a stack with respect to the other.
 
@@ -930,54 +971,77 @@ class TomoStack(Signal2D):
         output = self.deepcopy()
         if yshift == 0:
             if xshift > 0:
-                output.data = output.data[:, :-xshift, :]
-                output.data[0:nslice, :, :] = self.data[0:nslice, xshift:, :]
-                output.data[nslice:, :, :] = self.data[nslice:, :-xshift, :]
+                output.data = output.data[:, :, :-xshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :, xshift:]
+                output.data[nslice:, :, :] = self.data[nslice:, :, :-xshift]
             elif xshift < 0:
-                output.data = output.data[:, :xshift, :]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :xshift, :]
-                output.data[nslice:, :, :] = self.data[nslice:, -xshift:, :]
+                output.data = output.data[:, :, :xshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :, :xshift]
+                output.data[nslice:, :, :] = self.data[nslice:, :, -xshift:]
             else:
                 pass
 
         elif xshift == 0:
-            if yshift < 0:
-                output.data = output.data[:, :, :-yshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :, yshift:]
-                output.data[nslice:, :, :] = self.data[nslice:, :, :-yshift]
+            if yshift > 0:
+                output.data = output.data[:, :-yshift, :]
+                output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :]
+                output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :]
             elif yshift < 0:
-                output.data = output.data[:, :, :yshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :, :yshift]
-                output.data[nslice:, :, :] = self.data[nslice:, :, -yshift:]
+                output.data = output.data[:, :yshift, :]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :]
+                output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :]
             else:
                 pass
         else:
             if (xshift > 0) and (yshift > 0):
-                output.data = output.data[:, :-xshift, :-yshift]
+                output.data = output.data[:, :-yshift, :-xshift]
                 output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, xshift:, yshift:]
+                    self.data[0:nslice, yshift:, xshift:]
                 output.data[nslice:, :, :] = \
-                    self.data[nslice:, :-xshift, :-yshift]
+                    self.data[nslice:, :-yshift, :-xshift]
             elif (xshift > 0) and (yshift < 0):
-                output.data = output.data[:, :-xshift, :yshift]
+                output.data = output.data[:, :yshift, :-xshift]
                 output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, xshift:, :yshift]
+                    self.data[0:nslice, :yshift, xshift:]
                 output.data[nslice:, :, :] = \
-                    self.data[nslice:, :-xshift, -yshift:]
+                    self.data[nslice:, -yshift:, :-xshift]
             elif (xshift < 0) and (yshift > 0):
-                output.data = output.data[:, :xshift, :-yshift]
+                output.data = output.data[:, :-yshift, :xshift]
                 output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, :xshift, yshift:]
+                    self.data[0:nslice, yshift:, :xshift]
                 output.data[nslice:, :, :] = \
-                    self.data[nslice:, -xshift:, :-yshift]
+                    self.data[nslice:, :-yshift, -xshift:]
             elif (xshift < 0) and (yshift < 0):
-                output.data = output.data[:, :xshift, :yshift]
+                output.data = output.data[:, :yshift, :xshift]
                 output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, :xshift, :yshift]
+                    self.data[0:nslice, :yshift, :xshift]
                 output.data[nslice:, :, :] = \
-                    self.data[nslice:, -xshift:, -yshift:]
+                    self.data[nslice:, -yshift:, -xshift:]
             else:
                 pass
+        if display:
+            old_im1 = self.data[nslice-1, :, :]
+            old_im2 = self.data[nslice, :, :]
+            new_im1 = output.data[nslice-1, :, :]
+            new_im2 = output.data[nslice, :, :]
+            old_im1 = old_im1 - old_im1.min()
+            old_im1 = old_im1/old_im1.max()
+            old_im2 = old_im2 - old_im2.min()
+            old_im2 = old_im2/old_im2.max()
+            new_im1 = new_im1 - new_im1.min()
+            new_im1 = new_im1/new_im1.max()
+            new_im2 = new_im2 - new_im2.min()
+            new_im2 = new_im2/new_im2.max()
+
+            fig, ax = plt.subplots(2, 3)
+            ax[0, 0].imshow(old_im1)
+            ax[0, 1].imshow(old_im2)
+            ax[0, 2].imshow(old_im1 - old_im2, clim=[-0.5, 0.5])
+
+            ax[1, 0].imshow(new_im1)
+            ax[1, 1].imshow(new_im2)
+            ax[1, 2].imshow(new_im1 - new_im2, clim=[-0.5, 0.5])
+
         return output
 
     def save_raw(self, filename=None):
