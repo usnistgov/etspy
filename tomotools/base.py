@@ -878,7 +878,7 @@ class TomoStack(Signal2D):
             Aligned copy of the input stack
 
         """
-        # TODO Automatic dection of IMOD presence and path
+        # TODO Automatic detection of IMOD presence and path
         # if 'IMOD' in os.environ["PATH"]:
         #     imod_path = [s for s in os.environ["PATH"].split(';') if "IMOD"
         #                  in s][0]
@@ -889,6 +889,8 @@ class TomoStack(Signal2D):
         #     return
 
         imod_path = 'c:/progra~1/imod/bin/'
+        if self.data.dtype == '<f8':
+            self.data = np.float32(self.data)
 
         ali = self.deepcopy()
         shape = self.data.shape
