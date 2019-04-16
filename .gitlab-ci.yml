@@ -14,7 +14,11 @@
 #   - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-glob="*.rst" doc/
 
 image: continuumio/miniconda3:latest
-before_script:
+# before_script:    
+
+tests:
+    stage: test
+    script:
     - conda create --name test_env
     - source activate test_env
     - conda install -c conda-forge hyperspy
@@ -22,11 +26,7 @@ before_script:
     - conda install -c conda-forge tomopy
     - conda install -c astra-toolbox astra-toolbox
     - python setup.py install
-
-tests:
-    stage: test
-    script:
-        - cd tests && pytest .
+    - cd tests && pytest .
 
 flake8_checks:
     image: continuumio/miniconda3:latest
