@@ -12,13 +12,8 @@ setup(
         'tomotools',
         ],
     install_requires=[
-        'hyperspy',
-        'numpy',
         'astra-toolbox',
         'opencv-python',
-        'scipy',
-        'tqdm',
-        'matplotlib',
         # 'tomopy @ git+http://github.com/tomopy/tomopy.git',
     ]
 )

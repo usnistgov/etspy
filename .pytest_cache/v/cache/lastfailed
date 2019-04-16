@@ -1,0 +1,5 @@
+{
+  "tomotools/tests/test_align.py": true,
+  "tomotools/tests/test_io.py": true,
+  "tomotools/tests/test_recon.py": true
+}
