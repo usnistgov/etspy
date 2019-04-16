@@ -9,6 +9,8 @@ all_tests_debian:
    - pip3 install .
    - pip3 install opencv-python
    - pip3 install hyperspy
+   - pip3 install tomopy
+   - pip3 install astra-toolbox
    - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-modules --cov=tomotools tomotools/
    - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-glob="*.rst" doc/
 
