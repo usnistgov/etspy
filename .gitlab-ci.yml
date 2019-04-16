@@ -14,7 +14,6 @@
 #   - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-glob="*.rst" doc/
 
 before_script:
-    image: continuumio/miniconda3:latest
     - conda create --name test_env
     - source activate test_env
 
