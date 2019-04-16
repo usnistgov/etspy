@@ -31,12 +31,13 @@ flake8_checks:
     image: continuumio/miniconda3:latest
     stage: test
     script:
-    - conda list
+    - conda install flake8
     - flake8 --exclude=api.py tomotools/
 
 pydocstyle_checks:
     image: continuumio/miniconda3:latest
     stage: test
     script:
+    - conda install pydocstyle
     - pydocstyle tomotools/
     allow_failure: true
