@@ -13,6 +13,21 @@
 #   - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-modules --cov=tomotools tomotools/
 #   - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-glob="*.rst" doc/
 
+image: continuumio/miniconda3:latest
+before_script:
+    - conda create --name test_env
+    - source activate test_env
+    - conda install -c conda-forge hyperspy
+    - conda install -c conda-forge opencv
+    - conda install -c donda-forge tomopy
+    - conda install -c astra-toolbox astra-toolbox
+    - python setup.py install
+
+tests:
+    stage: test
+    script:
+        - cd tests && pytest .
+
 flake8_checks:
     image: debian:stable
     script:
