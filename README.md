@@ -19,7 +19,9 @@ Installation
   * Install major dependencies Hyperspy, OpenCV, and Astra Toolbox through conda
   using:
     ```bash
-    conda install -c conda-forge hyperspy opencv tomopy
+    conda install -c conda-forge hyperspy 
+    conda install -c conda-forge opencv 
+    conda install -c conda-forge tomopy
     conda install -c astra-toolbox astra-toolbox
     ```
 
