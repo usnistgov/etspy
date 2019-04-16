@@ -12,8 +12,6 @@ setup(
         'tomotools',
         ],
     install_requires=[
-        'astra-toolbox',
-        'opencv-python',
         # 'tomopy @ git+http://github.com/tomopy/tomopy.git',
     ]
 )
