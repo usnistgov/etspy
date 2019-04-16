@@ -19,7 +19,7 @@ before_script:
     - source activate test_env
     - conda install -c conda-forge hyperspy
     - conda install -c conda-forge opencv
-    - conda install -c donda-forge tomopy
+    - conda install -c conda-forge tomopy
     - conda install -c astra-toolbox astra-toolbox
     - python setup.py install
 
@@ -29,17 +29,14 @@ tests:
         - cd tests && pytest .
 
 flake8_checks:
-    image: debian:stable
+    image: continuumio/miniconda3:latest
+    stage: test
     script:
-    - apt-get update -q
-    - apt-get install -qy python3-flake8
-    - python3 -m flake8 --exclude=api.py tomotools/
+    - flake8 --exclude=api.py tomotools/
 
 pydocstyle_checks:
-    image: debian:stable
+    image: continuumio/miniconda3:latest
+    stage: test
     script:
-    - apt-get update -q
-    - apt-get install -qy python3-pip
-    - pip3 install pydocstyle
-    - python3 -m pydocstyle tomotools/
+    - pydocstyle tomotools/
     allow_failure: true
