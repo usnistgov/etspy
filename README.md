@@ -1,4 +1,3 @@
-
 TomoTools package
 ===========
 
@@ -16,32 +15,16 @@ Installation
 
   Anaconda (Preferred):
   ---------------------
-  * Install with YML file
-
-    Download the tomo.yml file located in the 'resources' directory and install via conda using:
-
+  * The required packages can be installed into an existing Anaconda environmnent.
+  * Install major dependencies Hyperspy, OpenCV, and Astra Toolbox through conda
+  using:
     ```bash
-    conda env create -f tomo.yml
-    ```
-  * The package can also be installed into an existing environmnent without the YML file 
-    Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
-    ```bash
-    conda install -c conda-forge hyperspy
-    conda install -c conda-forge opencv
+    conda install -c conda-forge hyperspy opencv tomopy
     conda install -c astra-toolbox astra-toolbox
-
-    pip install git+https://gitlab.com/aaherzing/tomotools.git
     ```
 
-  pip:
-  ----
-  * Install major dependencies Hyperspy, OpenCV, and astra-toolbox either through conda using:
-
-  * See installation instructions for astra-toolbox at link below.  Then install remaining packages:
-
+  * Instal the TomoTools package from GitLab:
     ```bash
-    pip install hyperspy
-    pip install opencv-python
     pip install git+https://gitlab.com/aaherzing/tomotools.git
     ```
 
@@ -59,7 +42,7 @@ Usage
 In python or ipython:
 
 ```python
-import tomotools
+import tomotools.api as tomotools
 stack = tomotools.load('TiltSeries.mrc')
 ```
 
@@ -68,7 +51,7 @@ Documentation is very limited at this point
 
 Documentation
 -------------
-Release: https://github.com/andrewherzing/tomotools
+Release: https://gitlab.com/aaherzing/tomotools
 
 Further documentation, notebooks and examples will be made available over time.
 
@@ -80,3 +63,5 @@ http://hyperspy.org/
 https://opencv.org/
 
 https://www.astra-toolbox.com/
+
+https://tomopy.readthedocs.io/en/latest/
