@@ -14,24 +14,24 @@
 #   - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-glob="*.rst" doc/
 
 image: continuumio/miniconda3:latest
-# before_script:    
 
-tests:
-    stage: test
-    script:
-    - conda create --name test_env
-    - source activate test_env
-    - conda install -c conda-forge hyperspy
-    - conda install -c conda-forge opencv
-    - conda install -c conda-forge tomopy
-    - conda install -c astra-toolbox astra-toolbox
-    - python setup.py install
-    - cd tests && pytest .
+# tests:
+#     stage: test
+#     script:
+#     - conda create --name test_env
+#     - source activate test_env
+#     - conda install -c conda-forge hyperspy
+#     - conda install -c conda-forge opencv
+#     - conda install -c conda-forge tomopy
+#     - conda install -c astra-toolbox astra-toolbox
+#     - python setup.py install
+#     - cd tests && pytest .
 
 flake8_checks:
     image: continuumio/miniconda3:latest
     stage: test
     script:
+    - conda list
     - flake8 --exclude=api.py tomotools/
 
 pydocstyle_checks:
