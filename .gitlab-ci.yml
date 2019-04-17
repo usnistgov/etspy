@@ -36,7 +36,7 @@ pytests:
     # - conda install pytest
     - conda install hyperspy opencv tomopy astra-toolbox pytest
     - python setup.py install
-    - cd tests
+    # - cd tests
     - pytest .
 
 flake8_checks:
