@@ -10,10 +10,7 @@ Data input/output module for TomoTools package.
 
 import numpy as np
 import os
-
-from PyQt5 import QtWidgets, QtGui
 import hyperspy.api as hspy
-import sys
 from tomotools.base import TomoStack
 
 
@@ -183,28 +180,6 @@ def signal_to_tomo_stack(s, manual_tilts=None):
     return s_new
 
 
-# noinspection PyUnusedLocal,PyUnusedLocal,PyUnresolvedReferences,
-# PyUnresolvedReferences
-def getfile(message='Choose files', filetypes='Tilt Series Type (*.mrc *.ali '
-                                              '*.rec *.dm3 *.dm4)'):
-    """Prompt user to select file using a dialog."""
-    if 'PyQt5.QtWidgets' in sys.modules:
-        QtWidgets.QApplication([])
-        filename = QtWidgets.QFileDialog.getOpenFileName(None,
-                                                         message,
-                                                         os.getcwd(),
-                                                         filetypes)[0]
-    elif 'PyQt4.QtGui' in sys.modules:
-        QtGui.QApplication([])
-        filename = QtGui.QFileDialog.getOpenFileName(None,
-                                                     message,
-                                                     os.getcwd(),
-                                                     filetypes)
-    else:
-        raise NameError('GUI applications require either PyQt4 or PyQt5')
-    return filename
-
-
 def loadhspy(filename, tilts=None):
     """
     Read an MRC file to a TomoStack object using the Hyperspy reader.
@@ -223,12 +198,7 @@ def loadhspy(filename, tilts=None):
     stack : TomoStack object
 
     """
-    if filename:
-        file = filename
-    else:
-        file = getfile()
-
-    stack = hspy.load(file)
+    stack = hspy.load(filename)
     if stack.data.min() < 0:
         stack.data = np.float32(stack.data)
         stack.data += np.abs(stack.data.min())
@@ -250,12 +220,7 @@ def loaddm(filename):
     stack : TomoStack object
 
     """
-    if filename:
-        file = filename
-    else:
-        file = getfile()
-
-    s = hspy.load(file)
+    s = hspy.load(filename)
     s.change_dtype(np.float32)
     maxtilt = (s.original_metadata['ImageList']
                ['TagGroup0']
@@ -305,7 +270,7 @@ def loaddm(filename):
     return s_new
 
 
-def load(filename=None, tilts=None):
+def load(filename, tilts=None):
     """
     Create a TomoStack object using data from a file.
 
@@ -323,9 +288,6 @@ def load(filename=None, tilts=None):
     stack : TomoStack object
 
     """
-    if filename is None:
-        filename = getfile()
-
     ext = os.path.splitext(filename)[1]
     if ext in ['.HDF5', '.hdf5', '.hd5', '.HD5', '.MRC', '.mrc', '.ALI',
                '.ali', '.REC', '.rec']:
