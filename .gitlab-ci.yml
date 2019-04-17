@@ -7,12 +7,13 @@ stages:
     - test
 
 pytests:
-    image: continuumio/miniconda3:latest
+    image: continuumio/anaconda3:latest
     stage: test
     script:
     - conda config --add channels conda-forge
     - conda config --add channels astra-toolbox
-    - apt-get install libgl1-mesa-glx
+    - apt-get update
+    - apt-get install libgl1-mesa-dev -y
     - conda install hyperspy opencv tomopy astra-toolbox pytest
     - python setup.py install
     - pytest .
