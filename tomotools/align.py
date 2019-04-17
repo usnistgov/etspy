@@ -113,7 +113,8 @@ def align_stack(stack, method, start, show_progressbar):
                         np.float32(stack.data[i+1, :, :]),
                         warp_matrix,
                         cv2.MOTION_TRANSLATION,
-                        criteria)
+                        criteria,
+                        None)
                     shifts[i, :] = trans[:, 2]
         return shifts
 
