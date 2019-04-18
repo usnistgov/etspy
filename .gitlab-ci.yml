@@ -1,25 +1,26 @@
+image: aaherzing/tomotools:latest
+
 stages:
     - build
     - test
 
 pytests:
-    image: aaherzing/tomotools:latest
     stage: test
     script:
     - python setup.py install
     - pytest .
 
 flake8_checks:
-    image: continuumio/miniconda3:latest
+    # image: continuumio/miniconda3:latest
     stage: build
     script:
-    - conda install flake8
+    # - conda install flake8
     - flake8 --exclude=api.py tomotools/
 
 pydocstyle_checks:
-    image: continuumio/miniconda3:latest
+    # image: continuumio/miniconda3:latest
     stage: build
     script:
-    - conda install pydocstyle
+    # - conda install pydocstyle
     - pydocstyle tomotools/
     allow_failure: true
