@@ -1,7 +1,7 @@
 image: aaherzing/tomotools:latest
 
 stages:
-    - build
+    # - build
     - test
 
 pytests:
@@ -12,14 +12,14 @@ pytests:
 
 flake8_checks:
     # image: continuumio/miniconda3:latest
-    stage: build
+    stage: test
     script:
     # - conda install flake8
     - flake8 --exclude=api.py tomotools/
 
 pydocstyle_checks:
     # image: continuumio/miniconda3:latest
-    stage: build
+    stage: test
     script:
     # - conda install pydocstyle
     - pydocstyle tomotools/
