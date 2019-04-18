@@ -96,6 +96,7 @@ def align_stack(stack, method, start, show_progressbar):
                     warp_matrix,
                     cv2.MOTION_TRANSLATION,
                     criteria,
+                    None,
                     None)
                 shifts[i, :] = trans[:, 2]
 
@@ -114,6 +115,7 @@ def align_stack(stack, method, start, show_progressbar):
                         warp_matrix,
                         cv2.MOTION_TRANSLATION,
                         criteria,
+                        None,
                         None)
                     shifts[i, :] = trans[:, 2]
         return shifts
