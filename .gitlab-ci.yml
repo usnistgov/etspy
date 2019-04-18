@@ -1,20 +1,11 @@
-before_script:
-    - conda create --name test_env
-    - source activate test_env
-
 stages:
     - build
     - test
 
 pytests:
-    image: continuumio/anaconda3:latest
+    image: aaherzing/tomotools:latest
     stage: test
     script:
-    - conda config --add channels conda-forge
-    - conda config --add channels astra-toolbox
-    - apt-get update
-    - apt-get install libgl1-mesa-dev -y
-    - conda install hyperspy opencv tomopy astra-toolbox pytest
     - python setup.py install
     - pytest .
 
