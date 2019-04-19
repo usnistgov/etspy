@@ -1,26 +1,22 @@
 image: aaherzing/tomotools:latest
 
 stages:
-    # - build
     - test
 
 pytests:
     stage: test
     script:
     - python setup.py install
-    - pytest .
+    # - pytest .
+    - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-modules tomotols/
 
 flake8_checks:
-    # image: continuumio/miniconda3:latest
     stage: test
     script:
-    # - conda install flake8
     - flake8 --exclude=api.py tomotools/
 
 pydocstyle_checks:
-    # image: continuumio/miniconda3:latest
     stage: test
     script:
-    # - conda install pydocstyle
     - pydocstyle tomotools/
     allow_failure: true
