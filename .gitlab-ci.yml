@@ -7,7 +7,6 @@ pytests:
     stage: test
     script:
     - python setup.py install
-    - python -c "import cv2; print(cv2.__version__)"
     - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-modules tomotools/
 
 flake8_checks:
