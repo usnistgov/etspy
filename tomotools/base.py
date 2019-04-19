@@ -431,14 +431,13 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> reg = s.stack_register('ECC',show_progressbar=False)
-        Spatial registration by ECC complete
-        >>> ali = reg.tilt_align(method='CoM', locs=[50,100,160], output=False)
+        >>> method = 'CoM'
+        >>> ali = reg.tilt_align(method, locs=[50,100,160], output=False)
 
         Align tilt axis using the maximum image method
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> reg = s.stack_register('ECC',show_progressbar=False)
-        Spatial registration by ECC complete
         >>> method = 'MaxImage'
         >>> ali = reg.tilt_align(method, output=False, show_progressbar=False)
 
