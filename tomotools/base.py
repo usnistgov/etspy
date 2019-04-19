@@ -341,16 +341,12 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
         >>> s = tomotools.load(filename)
-        >>> s.inav[0:10].stack_register('ECC',show_progressbar=False)
-        Spatial registration by ECC complete
-        <TomoStack, title: , dimensions: (10|256, 256)>
+        >>> regECC = s.inav[0:10].stack_register('ECC',show_progressbar=False)
 
         Registration with phase correlation algorithm (PC)
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> s.inav[0:10].stack_register('PC',show_progressbar=False)
-        Spatial registration by PC complete
-        <TomoStack, title: , dimensions: (10|256, 256)>
+        >>> regPC = s.inav[0:10].stack_register('PC',show_progressbar=False)
 
         """
         if method == 'ECC' or method == 'PC':
