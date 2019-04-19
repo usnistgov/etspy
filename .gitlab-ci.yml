@@ -8,7 +8,7 @@ pytests:
     script:
     - python setup.py install
     # - pytest .
-    - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-modules tomotols/
+    - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-modules tomotools/
 
 flake8_checks:
     stage: test
