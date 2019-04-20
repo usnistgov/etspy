@@ -89,25 +89,7 @@ def align_stack(stack, method, start, show_progressbar):
                     np.float64(stack.data[i, :, :]),
                     np.float64(stack.data[i+1, :, :]))[0]
             if method == 'ECC':
-                warp_matrix = np.eye(2, 3, dtype=np.float32)
-                (cc, trans) = cv2.findTransformECC(
-                    np.float32(stack.data[i, :, :]),
-                    np.float32(stack.data[i+1, :, :]),
-                    warp_matrix,
-                    cv2.MOTION_TRANSLATION,
-                    criteria,
-                    inputMask=None,
-                    gaussFiltSize=5)
-                shifts[i, :] = trans[:, 2]
-
-        if start != 0:
-            for i in tqdm.tqdm(range(start-1, -1, -1),
-                               disable=(not show_progressbar)):
-                if method == 'PC':
-                    shifts[i, :] = cv2.phaseCorrelate(
-                        np.float64(stack.data[i, :, :]),
-                        np.float64(stack.data[i+1, :, :]))[0]
-                if method == 'ECC':
+                if np.int32(cv2.__version__.split('.')[0]) == 4:
                     warp_matrix = np.eye(2, 3, dtype=np.float32)
                     (cc, trans) = cv2.findTransformECC(
                         np.float32(stack.data[i, :, :]),
@@ -118,6 +100,44 @@ def align_stack(stack, method, start, show_progressbar):
                         inputMask=None,
                         gaussFiltSize=5)
                     shifts[i, :] = trans[:, 2]
+                else:
+                    warp_matrix = np.eye(2, 3, dtype=np.float32)
+                    (cc, trans) = cv2.findTransformECC(
+                        np.float32(stack.data[i, :, :]),
+                        np.float32(stack.data[i+1, :, :]),
+                        warp_matrix,
+                        cv2.MOTION_TRANSLATION,
+                        criteria)
+                    shifts[i, :] = trans[:, 2]
+
+        if start != 0:
+            for i in tqdm.tqdm(range(start-1, -1, -1),
+                               disable=(not show_progressbar)):
+                if method == 'PC':
+                    shifts[i, :] = cv2.phaseCorrelate(
+                        np.float64(stack.data[i, :, :]),
+                        np.float64(stack.data[i+1, :, :]))[0]
+                if method == 'ECC':
+                    if np.int32(cv2.__version__.split('.')[0]) == 4:
+                        warp_matrix = np.eye(2, 3, dtype=np.float32)
+                        (cc, trans) = cv2.findTransformECC(
+                            np.float32(stack.data[i, :, :]),
+                            np.float32(stack.data[i+1, :, :]),
+                            warp_matrix,
+                            cv2.MOTION_TRANSLATION,
+                            criteria,
+                            inputMask=None,
+                            gaussFiltSize=5)
+                        shifts[i, :] = trans[:, 2]
+                    else:
+                        warp_matrix = np.eye(2, 3, dtype=np.float32)
+                        (cc, trans) = cv2.findTransformECC(
+                            np.float32(stack.data[i, :, :]),
+                            np.float32(stack.data[i+1, :, :]),
+                            warp_matrix,
+                            cv2.MOTION_TRANSLATION,
+                            criteria)
+                        shifts[i, :] = trans[:, 2]
         return shifts
 
     shifts = calculate_shifts(stack, method, start, show_progressbar)

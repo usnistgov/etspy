@@ -1,34 +1,21 @@
-before_script:
-    - conda create --name test_env
-    - source activate test_env
+image: aaherzing/tomotools:latest
 
 stages:
-    - build
     - test
 
 pytests:
-    image: continuumio/anaconda3:latest
     stage: test
     script:
-    - conda config --add channels conda-forge
-    - conda config --add channels astra-toolbox
-    - apt-get update
-    - apt-get install libgl1-mesa-dev -y
-    - conda install hyperspy opencv tomopy astra-toolbox pytest
     - python setup.py install
-    - pytest .
+    - xvfb-run -a --server-args="-screen 0, 1024x768x24" python3 -m pytest --doctest-modules tomotools/
 
 flake8_checks:
-    image: continuumio/miniconda3:latest
-    stage: build
+    stage: test
     script:
-    - conda install flake8
     - flake8 --exclude=api.py tomotools/
 
 pydocstyle_checks:
-    image: continuumio/miniconda3:latest
-    stage: build
+    stage: test
     script:
-    - conda install pydocstyle
     - pydocstyle tomotools/
     allow_failure: true

@@ -172,8 +172,7 @@ class TomoStack(Signal2D):
         Examples
         --------
         >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
-        Tilts found in metadata
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> s_filtered = s.filter(method='median')
 
         """
@@ -249,8 +248,7 @@ class TomoStack(Signal2D):
         Examples
         --------
         >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
-        Tilts found in metadata
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> s_normalized = s.normalize()
 
         """
@@ -280,8 +278,7 @@ class TomoStack(Signal2D):
         Examples
         --------
         >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
-        Tilts found in metadata
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> s_inverted = s.invert()
 
         """
@@ -342,20 +339,14 @@ class TomoStack(Signal2D):
         --------
         Registration with enhanced correlation coefficient algorithm (ECC)
         >>> import tomotools.api as tomotools
-        >>> filename = 'tomotools/tomotools/tests/test_data/HAADF.mrc'
+        >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
         >>> s = tomotools.load(filename)
-        Tilts found in metadata
-        >>> s.inav[0:10].stack_register('ECC',show_progressbar=False)
-        Spatial registration by ECC complete
-        <TomoStack, title: , dimensions: (10|256, 256)>
+        >>> regECC = s.inav[0:10].stack_register('ECC',show_progressbar=False)
 
         Registration with phase correlation algorithm (PC)
         >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
-        Tilts found in metadata
-        >>> s.inav[0:10].stack_register('PC',show_progressbar=False)
-        Spatial registration by PC complete
-        <TomoStack, title: , dimensions: (10|256, 256)>
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        >>> regPC = s.inav[0:10].stack_register('PC',show_progressbar=False)
 
         """
         if method == 'ECC' or method == 'PC':
@@ -438,18 +429,15 @@ class TomoStack(Signal2D):
         ----------
         Align tilt axis using the center of mass (CoM) method
         >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
-        Tilts found in metadata
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> reg = s.stack_register('ECC',show_progressbar=False)
-        Spatial registration by ECC complete
-        >>> ali = reg.tilt_align(method='CoM', locs=[50,100,160], output=False)
+        >>> method = 'CoM'
+        >>> ali = reg.tilt_align(method, locs=[50,100,160], output=False)
 
         Align tilt axis using the maximum image method
         >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tomotools/tests/test_data/HAADF.mrc')
-        Tilts found in metadata
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> reg = s.stack_register('ECC',show_progressbar=False)
-        Spatial registration by ECC complete
         >>> method = 'MaxImage'
         >>> ali = reg.tilt_align(method, output=False, show_progressbar=False)
 
@@ -511,7 +499,7 @@ class TomoStack(Signal2D):
         ----------
         Filtered backprojection (FBP) reconstruction
         >>> import tomotools.api as tomotools
-        >>> file = 'tomotools/tomotools/tests/test_data/HAADF_Aligned.hdf5'
+        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
@@ -520,7 +508,7 @@ class TomoStack(Signal2D):
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         >>> import tomotools.api as tomotools
-        >>> file = 'tomotools/tomotools/tests/test_data/HAADF_Aligned.hdf5'
+        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
@@ -530,7 +518,7 @@ class TomoStack(Signal2D):
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
         >>> import tomotools.api as tomotools
-        >>> file = 'tomotools/tomotools/tests/test_data/HAADF_Aligned.hdf5'
+        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
@@ -602,9 +590,8 @@ class TomoStack(Signal2D):
         Examples
         ----------
         >>> import tomotools.api as tomotools
-        >>> filename = 'tomotools/tomotools/tests/test_data/HAADF.mrc'
+        >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
         >>> stack = tomotools.load(filename)
-        Tilts found in metadata
         >>> stack.isig[100:156,:]
         <TomoStack, title: , dimensions: (77|56, 256)>
         >>> rotated = stack.isig[100:156,:].rotate(90)
@@ -698,9 +685,8 @@ class TomoStack(Signal2D):
         Examples
         ----------
         >>> import tomotools.api as tomotools
-        >>> filename = 'tomotools/tomotools/tests/test_data/HAADF.mrc'
+        >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
         >>> stack = tomotools.load(filename)
-        Tilts found in metadata
         >>> xshift = 10.0
         >>> yshift = 3.5
         >>> angle = -15.2
