@@ -894,8 +894,7 @@ class TomoStack(Signal2D):
         os.system(mrc_cmd)
         angles = self.axes_manager[0].axis
 
-        with open('stack.rawtlt', 'w') as h:
-            np.savetxt(h, angles, fmt='%.1f')
+        np.savetxt('stack.rawtlt', angles, fmt='%.1f')
 
         if white:
             raptor_cmd = 'raptor -exec %s ' % imod_path + \
@@ -909,16 +908,34 @@ class TomoStack(Signal2D):
                         (str(diameter), str(markers))
         os.system(raptor_cmd)
 
-        file = 'raptor/align/stack.ali'
-        with open(file, 'rb') as h:
-            np.fromfile(h, np.uint8, 1024)
-            temp = np.fromfile(h, np.float32)
+        alifile = 'raptor/align/stack.ali'
+        logfile = 'raptor/align/stack_RAPTOR.log'
+        if os.path.isfile(alifile):
+            with open(alifile, 'rb') as h:
+                np.fromfile(h, np.uint8, 1024)
+                temp = np.fromfile(h, np.float32)
 
-        if np.mod(len(temp), shape[0]) != 0:
-            print('RAPTOR alignment was unable to fit all images.')
-            print('Improve rough alignment or image quality.')
+            if np.mod(len(temp), shape[0]) != 0:
+                print('**************************************************')
+                print('RAPTOR alignment was unable to fit all images.')
+                print('Improve rough alignment or image quality.\n')
+                print('**************************************************\n\n')
+                print('RAPTOR log file contents:')
+                print('**************************************************')
+                with open(logfile, 'r') as h:
+                    print(h.read())
+
+            else:
+                ali.data = temp.reshape([shape[0], shape[1], shape[2]])
         else:
-            ali.data = temp.reshape([shape[0], shape[1], shape[2]])
+            print('**************************************************')
+            print('RAPTOR alignment failed.')
+            print('Improve rough alignment or image quality.')
+            print('**************************************************\n\n')
+            print('RAPTOR log file contents:')
+            print('**************************************************')
+            with open(logfile, 'r') as h:
+                print(h.read())
 
         os.chdir(orig_path)
         return ali
