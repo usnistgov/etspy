@@ -78,7 +78,7 @@ def signal_to_tomo_stack(s, manual_tilts=None):
 
     Parameters
     ----------
-    s : HyperSpy Signal2D
+    s : HyperSpy Signal2D or BaseSignal
 
     manual_tilts : bool
         If True, prompt for input of maximum positive tilt, maximum negative
@@ -105,6 +105,9 @@ def signal_to_tomo_stack(s, manual_tilts=None):
     <TomoStack, title: test dataset, dimensions: (50|500, 500)>
 
     """
+    if isinstance(type(s), hspy.signals.BaseSignal):
+        s = s.as_signal2D((0, 1))
+
     axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
     metadata = s.metadata.as_dictionary()
@@ -113,9 +116,9 @@ def signal_to_tomo_stack(s, manual_tilts=None):
     s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
                       original_metadata=original_metadata)
 
-    if s.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
-                                  'Theta', 'tilt', 'tilts', 'angle', 'angles',
-                                  'theta']:
+    if s_new.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
+                                      'Theta', 'tilt', 'tilts', 'angle',
+                                      'angles', 'theta']:
         print('Tilts found in metadata')
         return s_new
 
