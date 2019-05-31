@@ -25,9 +25,9 @@ Installation
     conda install -c astra-toolbox astra-toolbox
     ```
 
-  * Instal the TomoTools package from GitLab:
+  * Install the TomoTools package from GitLab:
     ```bash
-    pip install git+https://gitlab.com/aaherzing/tomotools.git
+    pip install git+https://github.com/andrewherzing/tomotools.git
     ```
 
 Removal
