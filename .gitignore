@@ -114,5 +114,3 @@ hyperspy_log.py
 .pytest_cache/v/cache/lastfailed
 
 # VS Code
-.vscode/
-.vscode/settings.json
