@@ -16,16 +16,15 @@ Installation
   Anaconda (Preferred):
   ---------------------
   * The required packages can be installed into an existing Anaconda environmnent.
-  * Install major dependencies Hyperspy, OpenCV, and Astra Toolbox through conda
-  using:
+    Install major dependencies Astra Toolbox, Hyperspy, OpenCV, and TomoPy 
+    through conda. NOTE: `astra-toolbox` must be installed first.
     ```bash
-    conda install -c conda-forge hyperspy 
-    conda install -c conda-forge opencv 
-    conda install -c conda-forge tomopy
     conda install -c astra-toolbox astra-toolbox
+    conda install -c conda-forge hyperspy opencv tomopy
+
     ```
 
-  * Install the TomoTools package from GitLab:
+  * Install the TomoTools package from GiHub:
     ```bash
     pip install git+https://github.com/andrewherzing/tomotools.git
     ```
