@@ -47,7 +47,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
         Containing the reconstructed volume
 
     """
-    theta = stack.axes_manager[0].axis*np.pi/180
+    theta = stack.axes_manager[0].axis * np.pi / 180
     if method == 'FBP':
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''

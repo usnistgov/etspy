@@ -62,38 +62,38 @@ def align_stack(stack, method, start, show_progressbar):
 
     def compose_shifts(shifts, start):
         if start is None:
-            start = np.int32(np.floor((shifts.shape[0]+1)/2))
-        composed = np.zeros([shifts.shape[0]+1, 2])
+            start = np.int32(np.floor((shifts.shape[0] + 1) / 2))
+        composed = np.zeros([shifts.shape[0] + 1, 2])
         composed[start, :] = [0., 0.]
-        for i in range(start+1, composed.shape[0]):
-            composed[i, :] = composed[i-1, :] - shifts[i-1, :]
-        for i in range(start-1, -1, -1):
-            composed[i, :] = composed[i+1, :] + shifts[i]
+        for i in range(start + 1, composed.shape[0]):
+            composed[i, :] = composed[i - 1, :] - shifts[i - 1, :]
+        for i in range(start - 1, -1, -1):
+            composed[i, :] = composed[i + 1, :] + shifts[i]
         return composed
 
     def calculate_shifts(stack, method, start, show_progressbar):
-        shifts = np.zeros([stack.data.shape[0]-1, 2])
+        shifts = np.zeros([stack.data.shape[0] - 1, 2])
         if start is None:
-            start = np.int32(np.floor(stack.data.shape[0]/2))
+            start = np.int32(np.floor(stack.data.shape[0] / 2))
 
         if method == 'ECC':
             number_of_iterations = 1000
             termination_eps = 1e-3
             criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
-                        number_of_iterations,  termination_eps)
+                        number_of_iterations, termination_eps)
 
-        for i in tqdm.tqdm(range(start, stack.data.shape[0]-1),
+        for i in tqdm.tqdm(range(start, stack.data.shape[0] - 1),
                            disable=(not show_progressbar)):
             if method == 'PC':
                 shifts[i, :] = cv2.phaseCorrelate(
                     np.float64(stack.data[i, :, :]),
-                    np.float64(stack.data[i+1, :, :]))[0]
+                    np.float64(stack.data[i + 1, :, :]))[0]
             if method == 'ECC':
                 if np.int32(cv2.__version__.split('.')[0]) == 4:
                     warp_matrix = np.eye(2, 3, dtype=np.float32)
                     (cc, trans) = cv2.findTransformECC(
                         np.float32(stack.data[i, :, :]),
-                        np.float32(stack.data[i+1, :, :]),
+                        np.float32(stack.data[i + 1, :, :]),
                         warp_matrix,
                         cv2.MOTION_TRANSLATION,
                         criteria,
@@ -104,25 +104,25 @@ def align_stack(stack, method, start, show_progressbar):
                     warp_matrix = np.eye(2, 3, dtype=np.float32)
                     (cc, trans) = cv2.findTransformECC(
                         np.float32(stack.data[i, :, :]),
-                        np.float32(stack.data[i+1, :, :]),
+                        np.float32(stack.data[i + 1, :, :]),
                         warp_matrix,
                         cv2.MOTION_TRANSLATION,
                         criteria)
                     shifts[i, :] = trans[:, 2]
 
         if start != 0:
-            for i in tqdm.tqdm(range(start-1, -1, -1),
+            for i in tqdm.tqdm(range(start - 1, -1, -1),
                                disable=(not show_progressbar)):
                 if method == 'PC':
                     shifts[i, :] = cv2.phaseCorrelate(
                         np.float64(stack.data[i, :, :]),
-                        np.float64(stack.data[i+1, :, :]))[0]
+                        np.float64(stack.data[i + 1, :, :]))[0]
                 if method == 'ECC':
                     if np.int32(cv2.__version__.split('.')[0]) == 4:
                         warp_matrix = np.eye(2, 3, dtype=np.float32)
                         (cc, trans) = cv2.findTransformECC(
                             np.float32(stack.data[i, :, :]),
-                            np.float32(stack.data[i+1, :, :]),
+                            np.float32(stack.data[i + 1, :, :]),
                             warp_matrix,
                             cv2.MOTION_TRANSLATION,
                             criteria,
@@ -133,7 +133,7 @@ def align_stack(stack, method, start, show_progressbar):
                         warp_matrix = np.eye(2, 3, dtype=np.float32)
                         (cc, trans) = cv2.findTransformECC(
                             np.float32(stack.data[i, :, :]),
-                            np.float32(stack.data[i+1, :, :]),
+                            np.float32(stack.data[i + 1, :, :]),
                             warp_matrix,
                             cv2.MOTION_TRANSLATION,
                             criteria)
@@ -195,7 +195,7 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         warnings.filterwarnings('ignore')
         plt.figure(num='Align Tilt', frameon=False)
         if len(data.shape) == 3:
-            plt.imshow(data[np.int(data.shape[0]/2), :, :], cmap='gray')
+            plt.imshow(data[np.int(data.shape[0] / 2), :, :], cmap='gray')
         else:
             plt.imshow(data, cmap='gray')
         plt.title('Choose %s points for tilt axis alignment....' %
@@ -241,8 +241,8 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
             size = np.size(row)
             value = 0.0
             for j in range(0, size):
-                value = value + row[j]*(j+1)
-            value = value/np.sum(row)
+                value = value + row[j] * (j + 1)
+            value = value / np.sum(row)
             return value
 
         outvals = np.zeros([np.size(array, axis=0), 3])
@@ -280,7 +280,7 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 
         """
         def func(x, r0, a, b):
-            return r0 - a*np.cos(x)-b*np.sin(x)
+            return r0 - a * np.cos(x) - b * np.sin(x)
 
         guess = (0.0, 0.0, 0.0)
         # noinspection PyTypeChecker
@@ -312,7 +312,7 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 
         """
         def func(x, m, b):
-            return m*x+b
+            return m * x + b
 
         guess = [0.0, 0.0]
         # noinspection PyTypeChecker
@@ -327,7 +327,7 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         locs = np.int16(np.sort(locs))
     if output:
         print('\nCorrecting tilt axis....')
-    tilts = stack.axes_manager[0].axis*np.pi/180
+    tilts = stack.axes_manager[0].axis * np.pi / 180
     xshift = 0
     tiltaxis = 0
     totaltilt = 0
@@ -346,9 +346,9 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         r[:] = com_results[:, 0]
 
         axis_fits = fit_tilt_axis(locs, r)
-        tiltaxis = 180/np.pi*np.tanh(axis_fits[0])
-        xshift = (axis_fits[1]/axis_fits[0]*np.sin(np.pi/180*tiltaxis))
-        xshift = (data.data.shape[1]/2)-xshift - offset
+        tiltaxis = 180 / np.pi * np.tanh(axis_fits[0])
+        xshift = (axis_fits[1] / axis_fits[0] * np.sin(np.pi / 180 * tiltaxis))
+        xshift = (data.data.shape[1] / 2) - xshift - offset
         totaltilt += tiltaxis
         totalshift += xshift
 
@@ -412,14 +412,14 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
 
         """
         if img.shape[0] < img.shape[1]:
-            center_loc = np.int32((img.shape[1]-img.shape[0])/2)
+            center_loc = np.int32((img.shape[1] - img.shape[0]) / 2)
             img = img[:, center_loc:-center_loc]
             if img.shape[0] != img.shape[1]:
                 img = img[:, 0:-1]
             h = np.hamming(img.shape[0])
             ham2d = np.sqrt(np.outer(h, h))
         elif img.shape[1] < img.shape[0]:
-            center_loc = np.int32((img.shape[0]-img.shape[1])/2)
+            center_loc = np.int32((img.shape[0] - img.shape[1]) / 2)
             img = img[center_loc:-center_loc, :]
             if img.shape[0] != img.shape[1]:
                 img = img[0:-1, :]
@@ -428,7 +428,7 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
         else:
             h = np.hamming(img.shape[0])
             ham2d = np.sqrt(np.outer(h, h))
-        out = ham2d*img
+        out = ham2d * img
         return out
 
     def find_score(im, angle):
@@ -456,9 +456,9 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
         return hist, score
 
     image = np.max(data.data, 0)
-    rot_pos = ndimage.rotate(hamming(image), limit/2, reshape=False, order=3)
-    rot_neg = ndimage.rotate(hamming(image), -limit/2, reshape=False, order=3)
-    angles = np.arange(-limit, limit+delta, delta)
+    rot_pos = ndimage.rotate(hamming(image), limit / 2, reshape=False, order=3)
+    rot_neg = ndimage.rotate(hamming(image), -limit / 2, reshape=False, order=3)
+    angles = np.arange(-limit, limit + delta, delta)
     scores_pos = []
     scores_neg = []
     for rotation_angle in tqdm.tqdm(angles, disable=(not show_progressbar)):
@@ -471,7 +471,7 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
     best_score_neg = max(scores_neg)
     pos_angle = -angles[scores_pos.index(best_score_pos)]
     neg_angle = -angles[scores_neg.index(best_score_neg)]
-    opt_angle = (pos_angle+neg_angle)/2
+    opt_angle = (pos_angle + neg_angle) / 2
     if output:
         print('Optimum positive rotation angle: {}'.format(pos_angle))
         print('Optimum negative rotation angle: {}'.format(neg_angle))

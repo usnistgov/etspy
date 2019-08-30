@@ -8,9 +8,7 @@ setup(
     author='Andrew A. Herzing',
     description='Suite of data processing algorithms for processing electron '
             'tomography data',
-    packages=[
-        'tomotools',
-        ],
+    packages=['tomotools'],
     install_requires=[
         # 'tomopy @ git+http://github.com/tomopy/tomopy.git',
     ]
