@@ -463,7 +463,8 @@ class TomoStack(Signal2D):
         return out
 
     def reconstruct(self, method='FBP', rot_center=None, iterations=None,
-                    constrain=False, thresh=0, cuda=None, thickness=None):
+                    constrain=False, thresh=0, cuda=None, thickness=None,
+                    **kwargs):
         r"""
         Reconstruct a TomoStack series using one of the available methods.
 
@@ -489,6 +490,8 @@ class TomoStack(Signal2D):
             If True, use the CUDA-accelerated reconstruction algorithm
         thickness : integer
             Size of the output volume (in pixels) in the projection direction.
+        **kwargs : dict
+            Other keyword arguments are passed through to ``tomopy.recon``
 
         Returns
         ----------
@@ -537,7 +540,7 @@ class TomoStack(Signal2D):
 
         out = copy.deepcopy(self)
         out.data = recon.run(self, method, rot_center, iterations, constrain,
-                             thresh, cuda)
+                             thresh, cuda, **kwargs)
 
         out.axes_manager[0].name = 'y'
         out.axes_manager[0].size = out.data.shape[0]

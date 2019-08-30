@@ -112,3 +112,7 @@ hyperspy_log.py
 hyperspy_log.py
 .pytest_cache/v/cache/nodeids
 .pytest_cache/v/cache/lastfailed
+
+# VS Code
+.vscode/
+.vscode/settings.json
