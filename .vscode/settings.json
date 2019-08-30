@@ -3,10 +3,10 @@
     "python.linting.flake8Enabled": true,
     "python.linting.enabled": true,
     "python.pythonPath": "C:\\Users\\aherzing\\Programs\\Miniconda3\\envs\\tomo-dev\\python.exe",
-    "python.testing.pyTestArgs": [
+    "python.testing.pytestArgs": [
         "tomotools"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-    "python.testing.pyTestEnabled": true
+    "python.testing.pytestEnabled": true
 }

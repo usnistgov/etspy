@@ -201,14 +201,14 @@ class TomoStack(Signal2D):
 
             F = np.fft.fftshift(np.fft.fft2(self.data))
 
-            x = (np.arange(0, cols) - np.fix(cols/2))/cols
-            y = (np.arange(0, rows) - np.fix(rows/2))/rows
+            x = (np.arange(0, cols) - np.fix(cols / 2)) / cols
+            y = (np.arange(0, rows) - np.fix(rows / 2)) / rows
             xx, yy = np.meshgrid(x, y)
             r = np.sqrt(xx**2 + yy**2)
-            lpf = 1/(1.0 + (r/lp_freq)**(2*lp_sigma))
+            lpf = 1 / (1.0 + (r / lp_freq)**(2 * lp_sigma))
 
-            hpf = 1 - (1/(1.0 + (r/hp_freq)**(2*hp_sigma)))
-            bpf = lpf*hpf
+            hpf = 1 - (1 / (1.0 + (r / hp_freq)**(2 * hp_sigma)))
+            bpf = lpf * hpf
             F_filtered = F * bpf
 
             filtered.data = np.fft.ifft2(np.fft.ifftshift(F_filtered)).real
@@ -222,7 +222,7 @@ class TomoStack(Signal2D):
             raise ValueError("Unknown filter method. Must be 'median', "
                              "'sobel', 'both', 'bpf', or None")
         if taper:
-            taper_size = np.int32(np.array(taper)*self.data.shape[1:])
+            taper_size = np.int32(np.array(taper) * self.data.shape[1:])
             filtered.data = np.pad(filtered.data,
                                    [(0, 0),
                                     (taper_size[0], taper_size[0]),
@@ -260,7 +260,7 @@ class TomoStack(Signal2D):
                               [self.data.shape[0], 1, 1])
         stdvals = np.reshape((normalized.data.std(2).std(1)),
                              [self.data.shape[0], 1, 1])
-        normalized.data = normalized.data/(meanvals+width*stdvals)
+        normalized.data = normalized.data / (meanvals + width * stdvals)
         return normalized
 
     def invert(self):
@@ -286,7 +286,7 @@ class TomoStack(Signal2D):
         maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
         minvals = self.data.min(2).min(1)
         minvals = minvals.reshape([self.data.shape[0], 1, 1])
-        ranges = maxvals-minvals
+        ranges = maxvals - minvals
 
         inverted = self.deepcopy()
         inverted.data = inverted.data - np.reshape(inverted.data.mean(
@@ -558,7 +558,7 @@ class TomoStack(Signal2D):
         out.axes_manager[1].units = self.axes_manager['x'].units
 
         if thickness:
-            offset = np.int32(np.floor((out.data.shape[1] - thickness)/2))
+            offset = np.int32(np.floor((out.data.shape[1] - thickness) / 2))
             if offset < 0:
                 pass
             else:
@@ -643,7 +643,7 @@ class TomoStack(Signal2D):
         rec = recon.run(shifted, method='FBP', cuda=False)
 
         if thickness:
-            offset = np.int32(np.floor((rec.shape[1] - thickness)/2))
+            offset = np.int32(np.floor((rec.shape[1] - thickness) / 2))
             if offset < 0:
                 pass
             else:
@@ -827,7 +827,7 @@ class TomoStack(Signal2D):
 
                 elif image.dtype == '<f4' or 'float32':
                     cv2.imshow(windowname,
-                               np.uint8(255*image[trackbarpos, :, :] /
+                               np.uint8(255 * image[trackbarpos, :, :] /
                                         image[trackbarpos, :, :].max()))
 
                 else:
@@ -898,14 +898,14 @@ class TomoStack(Signal2D):
 
         if white:
             raptor_cmd = 'raptor -exec %s ' % imod_path + \
-                        '-path . -inp stack.mrc -out raptor ' \
-                        '-diam %s -mark %s -white stack.mrc' % \
-                        (str(diameter), str(markers))
+                '-path . -inp stack.mrc -out raptor ' \
+                '-diam %s -mark %s -white stack.mrc' % \
+                (str(diameter), str(markers))
         else:
             raptor_cmd = 'raptor -exec %s ' % imod_path + \
-                        '-path . -inp stack.mrc -out raptor ' \
-                        '-diam %s -mark %s stack.mrc' % \
-                        (str(diameter), str(markers))
+                '-path . -inp stack.mrc -out raptor ' \
+                '-diam %s -mark %s stack.mrc' % \
+                (str(diameter), str(markers))
         os.system(raptor_cmd)
 
         alifile = 'raptor/align/stack.ali'
@@ -959,7 +959,7 @@ class TomoStack(Signal2D):
         self.axes_manager[0].scale = increment
         self.axes_manager[0].offset = start
         self.axes_manager[0].axis = np.arange(start,
-                                              nimages*increment + start,
+                                              nimages * increment + start,
                                               increment)
         return
 
@@ -1033,18 +1033,18 @@ class TomoStack(Signal2D):
             else:
                 pass
         if display:
-            old_im1 = self.data[nslice-1, :, :]
+            old_im1 = self.data[nslice - 1, :, :]
             old_im2 = self.data[nslice, :, :]
-            new_im1 = output.data[nslice-1, :, :]
+            new_im1 = output.data[nslice - 1, :, :]
             new_im2 = output.data[nslice, :, :]
             old_im1 = old_im1 - old_im1.min()
-            old_im1 = old_im1/old_im1.max()
+            old_im1 = old_im1 / old_im1.max()
             old_im2 = old_im2 - old_im2.min()
-            old_im2 = old_im2/old_im2.max()
+            old_im2 = old_im2 / old_im2.max()
             new_im1 = new_im1 - new_im1.min()
-            new_im1 = new_im1/new_im1.max()
+            new_im1 = new_im1 / new_im1.max()
             new_im2 = new_im2 - new_im2.min()
-            new_im2 = new_im2/new_im2.max()
+            new_im2 = new_im2 / new_im2.max()
 
             fig, ax = plt.subplots(2, 3)
             ax[0, 0].imshow(old_im1)
