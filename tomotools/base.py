@@ -1084,3 +1084,29 @@ class TomoStack(Signal2D):
                                                     self.data.dtype.name)
         self.save(filename)
         return
+
+    def sirt_error(self, nslice=None, tol=0.01, verbose=False, constrain=True):
+        """
+        Evaluate the difference between SIRT reconstruction and input data
+        to determine the optimum number ot iterations.
+
+        Args
+        ----------
+        nslice : int
+            Location at which to perform the evaluation.
+        tol : float
+            Fractional change between iterations at which the
+            evaluation will terminate.  Default is 0.01.
+        verbose : boolean
+            If True, output the percentage change in error between the current
+            iteration and the previous.
+        constraint : boolean
+            If True, perform SIRT reconstruction with a non-negativity
+            constraint.  Default is True
+
+        """
+        if not nslice:
+            nslice = np.int32(self.data.shape[1] / 2)
+        sinogram = self.isig[:, nslice].deepcopy()
+        error, rec_stack = recon.check_sirt_error(sinogram, tol, verbose)
+        return error, rec_stack
