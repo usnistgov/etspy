@@ -146,6 +146,7 @@ def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
         current_sinogram_id, forward_project = astra.create_sino(rec, proj_id)
         astra.data2d.store(current_sinogram_id,
                            sinogram.data - forward_project)
+
         error.append(np.sum((sinogram.data - forward_project)**2))
         if len(error) > 1:
             change = np.abs((error[-2] - error[-1]) / error[-2])

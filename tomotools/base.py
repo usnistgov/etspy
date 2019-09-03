@@ -1112,12 +1112,11 @@ class TomoStack(Signal2D):
         if not nslice:
             nslice = np.int32(self.data.shape[1] / 2)
 
-        # if not cuda:
-        #     if 'CUDA_Path' in os.environ.keys():
-        #         print('True')
-        #         cuda = True
-        #     else:
-        #         cuda = False
+        if not cuda:
+            if 'CUDA_Path' in os.environ.keys():
+                cuda = True
+            else:
+                cuda = False
         sinogram = self.isig[:, nslice].deepcopy()
         error, rec_stack = recon.check_sirt_error(sinogram, tol,
                                                   verbose, constrain, cuda)
