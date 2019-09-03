@@ -456,8 +456,10 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
         return hist, score
 
     image = np.max(data.data, 0)
-    rot_pos = ndimage.rotate(hamming(image), limit / 2, reshape=False, order=3)
-    rot_neg = ndimage.rotate(hamming(image), -limit / 2, reshape=False, order=3)
+    rot_pos = ndimage.rotate(hamming(image), limit / 2,
+                             reshape=False, order=3)
+    rot_neg = ndimage.rotate(hamming(image), -limit / 2,
+                             reshape=False, order=3)
     angles = np.arange(-limit, limit + delta, delta)
     scores_pos = []
     scores_neg = []
