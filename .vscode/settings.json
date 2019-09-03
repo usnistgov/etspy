@@ -2,7 +2,7 @@
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": true,
     "python.linting.enabled": true,
-    "python.pythonPath": "C:\\Users\\aherzing\\Programs\\Miniconda3\\envs\\tomo-dev\\python.exe",
+    "python.pythonPath": "c:\\Programs\\Miniconda3\\envs\\tomo-dev\\python.exe",
     "python.testing.pytestArgs": [
         "tomotools"
     ],

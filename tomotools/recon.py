@@ -109,7 +109,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
     return rec
 
 
-def check_sirt_error(sinogram, tol, verbose, constrain):
+def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
     tilts = sinogram.axes_manager[0].axis * np.pi / 180
     vol_geom = astra.create_vol_geom(sinogram.data.shape[1],
                                      sinogram.data.shape[1])
@@ -120,7 +120,10 @@ def check_sirt_error(sinogram, tol, verbose, constrain):
                                               sinogram.data)
     rec_id = astra.data2d.create('-vol', vol_geom)
 
-    cfg = astra.astra_dict('SIRT')
+    if cuda:
+        cfg = astra.astra_dict('SIRT_CUDA')
+    else:
+        cfg = astra.astra_dict('SIRT')
     cfg['ReconstructionDataId'] = rec_id
     cfg['ProjectorId'] = proj_id
     cfg['ProjectionDataId'] = current_sinogram_id
