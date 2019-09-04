@@ -1088,9 +1088,11 @@ class TomoStack(Signal2D):
     def sirt_error(self, nslice=None, tol=0.01, verbose=False,
                    constrain=True, cuda=None):
         """
-        Evaluate the difference between SIRT reconstruction and input data
-        to determine the optimum number ot iterations.
+        Determine the optimum number of SIRT iterations.
 
+        Evaluates the difference between SIRT reconstruction and input data
+        at each iteration and terminates when the change between iterations is
+        below tolerance.
         Args
         ----------
         nslice : int
@@ -1107,6 +1109,16 @@ class TomoStack(Signal2D):
         cuda : boolean
             If True, perform reconstruction using the GPU-accelrated algorithm.
             Default is True
+
+        Returns
+        ----------
+        error : Numpy array
+            Sum of squared difference between the forward-projected reconstruction
+            and the input sinogram at each iteration
+
+        rec_stack : Hyperspy Signal2D
+            Signal containing the SIRT reconstruction at each iteration
+            for visual inspection.
 
         """
         if not nslice:

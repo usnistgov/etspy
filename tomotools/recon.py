@@ -110,6 +110,40 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
 
 
 def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
+    """
+    Determine the optimum number of SIRT iterations.
+
+    Evaluates the difference between SIRT reconstruction and input data
+    at each iteration and terminates when the change between iterations is
+    below tolerance.
+
+    Args
+    ----------
+    sinogram : Hyperspy Signal2D
+        Single slice from a tomogram for reconstruction evaluation.
+    tol : float
+        Fractional change between iterations at which the
+        evaluation will terminate.
+    verbose : boolean
+        If True, output the percentage change in error between the current
+        iteration and the previous.
+    constrain : boolean
+        If True, perform SIRT reconstruction with a non-negativity
+        constraint.
+    cuda : boolean
+        If True, perform reconstruction using the GPU-accelrated algorithm.
+
+    Returns
+    ----------
+    error : Numpy array
+        Sum of squared difference between the forward-projected reconstruction
+        and the input sinogram at each iteration
+
+    rec_stack : Hyperspy Signal2D
+        Signal containing the SIRT reconstruction at each iteration
+        for visual inspection.
+
+    """
     tilts = sinogram.axes_manager[0].axis * np.pi / 180
     vol_geom = astra.create_vol_geom(sinogram.data.shape[1],
                                      sinogram.data.shape[1])
