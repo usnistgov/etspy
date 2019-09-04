@@ -99,7 +99,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
                 options = {'proj_type': 'cuda', 'method': 'SIRT_CUDA',
                            'num_iter': iterations}
             rec = tomopy.recon(stack.data, theta, center=rot_center,
-                               algorithm=tomopy.astra, options=options,
+                               algorithm=tomopy.astra, options=options, ncore=1,
                                **kwargs)
             print('Reconstruction complete')
         else:
