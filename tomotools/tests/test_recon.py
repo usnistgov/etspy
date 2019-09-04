@@ -5,7 +5,7 @@ from tomotools.io import load
 my_path = os.path.dirname(__file__)
 
 
-class TestAlignStackRegister:
+class TestReconstruction:
 
     def test_recon_fbp(self):
         filename = os.path.join(my_path, "test_data", "HAADF_Aligned.hdf5")
