@@ -478,7 +478,12 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
         print('Optimum positive rotation angle: {}'.format(pos_angle))
         print('Optimum negative rotation angle: {}'.format(neg_angle))
         print('Optimum positive rotation angle: {}'.format(opt_angle))
-    return opt_angle
+
+    out = copy.deepcopy(data)
+    out = out.trans_stack(xshift=0, yshift=0, angle=opt_angle)
+    out.data = np.transpose(out.data, (0, 2, 1))
+    out.original_metadata.tiltaxis = opt_angle
+    return out
 
 
 def align_to_other(stack, other):
