@@ -2,6 +2,7 @@ import tomotools.api as tomotools
 import hyperspy.api as hs
 import os
 import numpy as np
+import pytest
 
 my_path = os.path.dirname(__file__)
 
@@ -14,6 +15,7 @@ class TestMRC:
         assert type(stack) is tomotools.TomoStack
         assert stack.axes_manager.signal_shape == (256, 256)
         assert stack.axes_manager.navigation_shape == (77,)
+        assert stack.__repr__()[0:10] == '<TomoStack'
 
     def test_numpy_to_stack(self):
         stack = tomotools.io.numpy_to_tomo_stack(
@@ -36,3 +38,8 @@ class TestMRC:
         assert stack.axes_manager[0].offset == -90.0
         assert stack.axes_manager.signal_shape == (64, 64)
         assert stack.axes_manager.navigation_shape == (91,)
+
+    def test_load_unknown(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.NONE")
+        with pytest.raises(ValueError):
+            tomotools.load(filename)

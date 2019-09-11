@@ -1,5 +1,6 @@
 import tomotools.api as tomotools
 import os
+import pytest
 
 my_path = os.path.dirname(__file__)
 
@@ -47,6 +48,23 @@ class TestAlignStackRegister:
         stack = tomotools.load(filename)
         stack2 = stack.deepcopy()
         reg = stack.stack_register('PC')
+        reg2 = reg.align_other(stack2)
+        diff = reg.data - reg2.data
+        assert diff.sum() == 0.0
+
+    def test_align_to_other_no_alignment(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        stack2 = stack.deepcopy()
+        reg = stack.deepcopy()
+        with pytest.raises(ValueError):
+            reg.align_other(stack2)
+
+    def test_align_to_other_with_crop(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        stack2 = stack.deepcopy()
+        reg = stack.stack_register('PC', crop=True)
         reg2 = reg.align_other(stack2)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0

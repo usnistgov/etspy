@@ -153,7 +153,7 @@ class TomoStack(Signal2D):
 
     def filter(self, method='median', size=5, taper=0.1):
         """
-        Invert the contrast levels of an entire TomoStack.
+        Applies one of several image filters to an entire TomoStack.
 
         Args
         ----------

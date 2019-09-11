@@ -257,9 +257,9 @@ def loaddm(filename):
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
 
-    if s.data.min() < 0:
-        s.data = np.float32(s.data)
-        s.data += np.abs(s.data.min())
+    # if s.data.min() < 0:
+    #     s.data = np.float32(s.data)
+    #     s.data += np.abs(s.data.min())
 
     axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
