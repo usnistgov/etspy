@@ -271,6 +271,7 @@ def loaddm(filename):
     s_new.axes_manager[0].axis = tilts
     print('Tilts found in metadata')
 
+    s_new.axes_manager[0].name = 'Tilt'
     s_new.axes_manager[0].units = 'degrees'
     s_new.original_metadata.shifts = None
     s_new.original_metadata.tiltaxis = 0.0
