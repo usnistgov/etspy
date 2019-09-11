@@ -70,7 +70,7 @@ def numpy_to_tomo_stack(data, manual_tilts=False):
     return s
 
 
-def signal_to_tomo_stack(s, manual_tilts=None):
+def signal_to_tomo_stack(s, manual_tilts=None, tilt_signal=None):
     """
     Create a TomoStack object from a HyperSpy signal.
 
@@ -121,6 +121,12 @@ def signal_to_tomo_stack(s, manual_tilts=None):
                                       'angles', 'theta']:
         print('Tilts found in metadata')
         return s_new
+
+    elif tilt_signal:
+        s_new.axes_manager[0].name = tilt_signal.axes_manager[0].name
+        s_new.axes_manager[0].units = tilt_signal.axes_manager[0].units
+        s_new.axes_manager[0].scale = tilt_signal.axes_manager[0].scale
+        s_new.axes_manager[0].offset = tilt_signal.axes_manager[0].offset
 
     elif manual_tilts:
         negtilt = eval(input('Enter maximum negative tilt: '))
