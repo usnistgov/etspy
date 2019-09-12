@@ -352,8 +352,8 @@ class TomoStack(Signal2D):
         if method == 'ECC' or method == 'PC':
             out = align.align_stack(self, method, start, show_progressbar)
         else:
-            print("Unknown registration method.  Must use 'ECC' or 'PC'")
-            return ()
+            raise ValueError(
+                "Unknown registration method: %s. Must be ECC or PC" % method)
 
         if crop:
             shifts = out.original_metadata.shifts
@@ -450,8 +450,9 @@ class TomoStack(Signal2D):
             out = align.tilt_analyze(self, limit, delta, output,
                                      show_progressbar)
         else:
-            print('Invalid alignment method: Enter either "CoM" or "MaxImage"')
-            return
+            raise ValueError(
+                "Invalid alignment method: %s."
+                "Must be 'CoM' or 'MaxImage'" % method)
 
         if axis == 1:
             self = self.rotate(90)

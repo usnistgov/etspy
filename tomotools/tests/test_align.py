@@ -27,6 +27,12 @@ class TestAlignStackRegister:
         assert reg.axes_manager.navigation_shape == \
             stack.inav[0:20].axes_manager.navigation_shape
 
+    def test_register_unknown_method(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        with pytest.raises(ValueError):
+            stack.inav[0:20].stack_register('WRONG')
+
     def test_tilt_align_com(self):
         filename = os.path.join(my_path, "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
@@ -42,6 +48,12 @@ class TestAlignStackRegister:
         ali = reg.tilt_align(method='MaxImage')
         tilt_axis = ali.original_metadata.tiltaxis
         assert 100 * abs((-2.3 - tilt_axis) / -2.3) < 1.0
+
+    def test_tilt_align_unknown_method(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        with pytest.raises(ValueError):
+            stack.tilt_align(method='WRONG')
 
     def test_align_to_other(self):
         filename = os.path.join(my_path, "test_data", "HAADF.mrc")
