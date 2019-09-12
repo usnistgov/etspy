@@ -153,7 +153,7 @@ class TomoStack(Signal2D):
 
     def filter(self, method='median', size=5, taper=0.1):
         """
-        Applies one of several image filters to an entire TomoStack.
+        Apply one of several image filters to an entire TomoStack.
 
         Args
         ----------
