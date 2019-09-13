@@ -70,7 +70,7 @@ def numpy_to_tomo_stack(data, manual_tilts=False):
     return s
 
 
-def signal_to_tomo_stack(s, manual_tilts=None, tilt_signal=None):
+def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     """
     Create a TomoStack object from a HyperSpy signal.
 
@@ -257,9 +257,9 @@ def loaddm(filename):
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
 
-    if s.data.min() < 0:
-        s.data = np.float32(s.data)
-        s.data += np.abs(s.data.min())
+    # if s.data.min() < 0:
+    #     s.data = np.float32(s.data)
+    #     s.data += np.abs(s.data.min())
 
     axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
@@ -271,6 +271,7 @@ def loaddm(filename):
     s_new.axes_manager[0].axis = tilts
     print('Tilts found in metadata')
 
+    s_new.axes_manager[0].name = 'Tilt'
     s_new.axes_manager[0].units = 'degrees'
     s_new.original_metadata.shifts = None
     s_new.original_metadata.tiltaxis = 0.0
