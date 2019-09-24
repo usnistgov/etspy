@@ -168,12 +168,12 @@ def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
     error = []
     terminate = False
 
-    iteration = 1
+    iteration = 0
     while not terminate:
         alg_id = astra.algorithm.create(cfg)
         astra.algorithm.run(alg_id, 1)
         rec = astra.data2d.get(rec_id)
-        if iteration == 1:
+        if iteration == 0:
             rec_stack = rec[np.newaxis, :, :]
         else:
             rec_stack = np.vstack((rec_stack, rec[np.newaxis, :, :]))
