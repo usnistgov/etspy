@@ -374,7 +374,7 @@ class TomoStack(Signal2D):
 
     def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None,
                    axis=0, output=True, show_progressbar=False):
-        r"""
+        """
         Align the tilt axis of a TomoStack.
 
         Uses either a center-of-mass approach or a maximum image approach
@@ -841,7 +841,7 @@ class TomoStack(Signal2D):
         simpletrackbar(self.data, 'Press "ESC" to exit')
         return
 
-    def align_imod(self, diameter=7, markers=10, white=False):
+    def align_imod(self, diameter=7, markers=10, white=False, verbose=False):
         """
         Align the stack using IMODs RAPTOR algorithm.
 
@@ -926,6 +926,20 @@ class TomoStack(Signal2D):
 
             else:
                 ali.data = temp.reshape([shape[0], shape[1], shape[2]])
+                if verbose:
+                    print('**************************************************')
+                    print('RAPTOR alignment complete.\n')
+                    print('**************************************************')
+                    print('\n\n')
+                    print('RAPTOR log file contents:')
+                    print('**************************************************')
+                    with open(logfile, 'r') as h:
+                        print(h.read())
+                else:
+                    print('**************************************************')
+                    print('RAPTOR alignment complete.\n')
+                    print('**************************************************')
+                    print('\n\n')
         else:
             print('**************************************************')
             print('RAPTOR alignment failed.')
