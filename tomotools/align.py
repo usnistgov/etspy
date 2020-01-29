@@ -363,13 +363,13 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
             print(('Calculated shift value is: %s' % str(xshift)))
         count += 1
 
-        data = data.trans_stack(xshift=0, yshift=xshift, angle=tiltaxis)
+        data = data.trans_stack(xshift=0, yshift=xshift, angle=-tiltaxis)
 
     out = copy.deepcopy(data)
     out.data = np.transpose(data.data, (0, 2, 1))
     if output:
         print('\nTilt axis alignment complete')
-    out.original_metadata.tiltaxis = totaltilt
+    out.original_metadata.tiltaxis = -totaltilt
     out.original_metadata.xshift = totalshift
     return out
 
@@ -461,9 +461,9 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
         return hist, score
 
     image = np.max(data.data, 0)
-    rot_pos = ndimage.rotate(hamming(image), limit / 2,
+    rot_pos = ndimage.rotate(hamming(image), -limit / 2,
                              reshape=False, order=3)
-    rot_neg = ndimage.rotate(hamming(image), -limit / 2,
+    rot_neg = ndimage.rotate(hamming(image), limit / 2,
                              reshape=False, order=3)
     angles = np.arange(-limit, limit + delta, delta)
     scores_pos = []
@@ -514,13 +514,13 @@ def align_to_other(stack, other, verbose):
     out.original_metadata.shifts = shifts
 
     tiltaxis = stack.original_metadata.tiltaxis
-    out.original_metadata.shifts = tiltaxis
+    out.original_metadata.tiltaxis = tiltaxis
 
     xshift = stack.original_metadata.xshift
-    out.original_metadata.shifts = stack.original_metadata.xshift
+    out.original_metadata.xshift = stack.original_metadata.xshift
 
     yshift = stack.original_metadata.yshift
-    out.original_metadata.shifts = stack.original_metadata.yshift
+    out.original_metadata.yshift = stack.original_metadata.yshift
 
     if type(stack.original_metadata.shifts) is np.ndarray:
         for i in range(0, out.data.shape[0]):

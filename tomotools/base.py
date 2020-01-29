@@ -140,6 +140,7 @@ class TomoStack(Signal2D):
                              'to this stack')
 
         out = align.align_to_other(self, other, verbose)
+
         if self.original_metadata.has_item('cropped'):
             if self.original_metadata.cropped:
                 shifts = out.original_metadata.shifts
@@ -708,7 +709,7 @@ class TomoStack(Signal2D):
                                      order=0)
         if angle != 0.0:
             out.data = ndimage.rotate(out.data, axes=(1, 2),
-                                      angle=-angle, order=0,
+                                      angle=-angle, order=1,
                                       reshape=False)
         # if angle:
         #     image_center = tuple(np.array(out.data[0, :, :].shape) / 2)
