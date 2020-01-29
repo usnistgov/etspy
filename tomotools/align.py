@@ -45,16 +45,21 @@ def align_stack(stack, method, start, show_progressbar):
     """
     def apply_shifts(stack, shifts):
         shifted = stack.deepcopy()
-        trans = np.eye(2, 3, dtype=np.float32)
-        for i in range(0, stack.data.shape[0]):
-            trans[:, 2] = shifts[i, :]
-            shifted.data[i, :, :] = \
-                cv2.warpAffine(stack.data[i, :, :],
-                               trans,
-                               stack.data[i, :, :].T.shape,
-                               flags=cv2.INTER_LINEAR,
-                               borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=0.0)
+        # trans = np.eye(2, 3, dtype=np.float32)
+        # for i in range(0, stack.data.shape[0]):
+        #     trans[:, 2] = shifts[i, :]
+        #     shifted.data[i, :, :] = \
+        #         cv2.warpAffine(stack.data[i, :, :],
+        #                        trans,
+        #                        stack.data[i, :, :].T.shape,
+        #                        flags=cv2.INTER_LINEAR,
+        #                        borderMode=cv2.BORDER_CONSTANT,
+        #                        borderValue=0.0)
+        for i in range(0, shifted.data.shape[0]):
+            shifted.data[i, :, :] =\
+                ndimage.shift(shifted.data[i, :, :],
+                              shift=[shifts[i, 1], shifts[i, 0]],
+                              order=0)
         if not shifted.original_metadata.has_item('shifts'):
             shifted.original_metadata.add_node('shifts')
         shifted.original_metadata.shifts = shifts
