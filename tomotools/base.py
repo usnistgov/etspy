@@ -108,7 +108,7 @@ class TomoStack(Signal2D):
         ax3.set_title("Cross-correlation")
         return fig
 
-    def align_other(self, other):
+    def align_other(self, other, verbose=False):
         """
         Apply the alignment calculated for one dataset to another.
 
@@ -128,11 +128,18 @@ class TomoStack(Signal2D):
             The result of applying the alignment to other
 
         """
-        if self.original_metadata.shifts is None:
-            raise ValueError('Spatial registration has not been calculated '
-                             'for this stack')
+        # Check if any transformations have been applied to the current stack
+        if (self.original_metadata.shifts is None) and\
+           any([self.original_metadata.xshift is None,
+                self.original_metadata.xshift == 0.0]) and\
+           any([self.original_metadata.yshift is None,
+                self.original_metadata.yshift == 0.0]) and\
+           any([self.original_metadata.tiltaxis is None,
+                self.original_metadata.tiltaxis == 0.0]):
+            raise ValueError('No transformation have been applied '
+                             'to this stack')
 
-        out = align.align_to_other(self, other)
+        out = align.align_to_other(self, other, verbose)
         if self.original_metadata.has_item('cropped'):
             if self.original_metadata.cropped:
                 shifts = out.original_metadata.shifts
@@ -695,27 +702,52 @@ class TomoStack(Signal2D):
 
         """
         out = self.deepcopy()
-        if angle:
-            image_center = tuple(np.array(out.data[0, :, :].shape) / 2)
-            rot_mat = cv2.getRotationMatrix2D(image_center, angle, scale=1.0)
-            for i in range(0, out.data.shape[0]):
-                out.data[i, :, :] = \
-                    cv2.warpAffine(out.data[i, :, :],
-                                   rot_mat,
-                                   out.data[i, :, :].T.shape,
-                                   flags=cv2.INTER_LINEAR,
-                                   borderMode=cv2.BORDER_CONSTANT,
-                                   borderValue=0.0)
-        if xshift != 0.0 or yshift != 0.0:
-            trans_mat = np.array([[1., 0, xshift], [0, 1., yshift]])
-            for i in range(0, out.data.shape[0]):
-                out.data[i, :, :] = \
-                    cv2.warpAffine(out.data[i, :, :],
-                                   trans_mat,
-                                   out.data[i, :, :].T.shape,
-                                   flags=cv2.INTER_LINEAR,
-                                   borderMode=cv2.BORDER_CONSTANT,
-                                   borderValue=0.0)
+
+        if (xshift != 0) or (yshift != 0):
+            out.data = ndimage.shift(out.data, shift=[0, yshift, xshift],
+                                     order=0)
+        if angle != 0.0:
+            out.data = ndimage.rotate(out.data, axes=(1, 2),
+                                      angle=-angle, order=0,
+                                      reshape=False)
+        # if angle:
+        #     image_center = tuple(np.array(out.data[0, :, :].shape) / 2)
+        #     rot_mat = cv2.getRotationMatrix2D(image_center, angle, scale=1.0)
+        #     for i in range(0, out.data.shape[0]):
+        #         out.data[i, :, :] = \
+        #             cv2.warpAffine(out.data[i, :, :],
+        #                            rot_mat,
+        #                            out.data[i, :, :].T.shape,
+        #                            flags=cv2.INTER_LINEAR,
+        #                            borderMode=cv2.BORDER_CONSTANT,
+        #                            borderValue=0.0)
+        # if xshift != 0.0 or yshift != 0.0:
+        #     trans_mat = np.array([[1., 0, xshift], [0, 1., yshift]])
+        #     for i in range(0, out.data.shape[0]):
+        #         out.data[i, :, :] = \
+        #             cv2.warpAffine(out.data[i, :, :],
+        #                            trans_mat,
+        #                            out.data[i, :, :].T.shape,
+        #                            flags=cv2.INTER_LINEAR,
+        #                            borderMode=cv2.BORDER_CONSTANT,
+        #                            borderValue=0.0)
+        if self.original_metadata.has_item('xshift'):
+            out.original_metadata.xshift =\
+                self.original_metadata.xshift + xshift
+        else:
+            out.original_metadata.xshift = xshift
+
+        if self.original_metadata.has_item('yshift'):
+            out.original_metadata.yshift =\
+                self.original_metadata.yshift + yshift
+        else:
+            out.original_metadata.yshift = yshift
+
+        if self.original_metadata.has_item('tiltaxis'):
+            out.original_metadata.tiltaxis =\
+                self.original_metadata.tiltaxis + angle
+        else:
+            out.original_metadata.tiltaxis = angle
         return out
 
     # noinspection PyTypeChecker
