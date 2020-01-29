@@ -939,7 +939,6 @@ class TomoStack(Signal2D):
                     print('**************************************************')
                     print('RAPTOR alignment complete.\n')
                     print('**************************************************')
-                    print('\n\n')
         else:
             print('**************************************************')
             print('RAPTOR alignment failed.')
