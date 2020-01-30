@@ -167,25 +167,30 @@ def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0,
     return misaligned
 
 
-def add_gaussian_noise(stack, ratio=0.05):
+def add_gaussian_noise(stack, factor=0.2):
     """
-    Add Gaussian noise to a simulated TomoStack.
+    Apply misalignment to a model tilt series.
 
     Args
     ----------
-    stack : TomoStack
-        Simulated tilt series
-    ratio : float, optional
-        Ratio of the standard deviation of the Gaussian noise
-        distribution to the maximum value in data.
+    stack : TomoStack object
+        TomoStack simluation
+    factor : float
+        Amount of noise to add
 
     Returns
-    -------
-    noisy : TomoStack
-        Copy of the input stack with noise added
+    ----------
+    noisy : TomoStack object
+        Noisy copy of the input TomoStack
+
     """
     noisy = stack.deepcopy()
-    std = stack.data.max() * ratio
-    noise = np.random.normal(0, std, size=noisy.data.shape)
-    noisy.data = noisy.data + noise.astype('float32')
+    noise = np.random.normal(stack.data.mean(),
+                             factor * stack.data.mean(),
+                             stack.data.shape)
+    noisy.data = noisy.data + noise
+    if noisy.data.min() < 0:
+        noisy.data -= noisy.data.min()
+    scale_factor = noisy.data.max() / stack.data.max()
+    noisy.data = noisy.data / scale_factor
     return noisy
