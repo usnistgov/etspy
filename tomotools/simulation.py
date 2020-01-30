@@ -4,6 +4,7 @@ import astra
 from tomotools.io import numpy_to_tomo_stack
 import tomotools.api as tomotools
 import imp
+import hyperspy.api as hs
 
 
 def create_catalyst_model(nparticles=15, particle_density=255,
@@ -79,26 +80,48 @@ def create_catalyst_model(nparticles=15, particle_density=255,
         particle = (xx - x) ** 2 + (yy - y) ** 2 + (zz - z) ** 2
         catalyst[particle < particle_radius**2] = particle_density
 
+    catalyst = hs.signals.Signal2D(catalyst)
+    catalyst.axes_manager[0].name = 'Z'
+    catalyst.axes_manager[1].name = 'X'
+    catalyst.axes_manager[2].name = 'Y'
     return catalyst
 
 
-def create_catalyst_tilt_series(catalyst, angles=None):
-    if not angles:
-        angles = np.arange(-90, 90, 2)
+def create_model_tilt_series(model, angles=None):
+    """
+    Create a tilt series from a 3D volume
 
-    xdim = catalyst.shape[0]
-    ydim = catalyst.shape[1]
-    thickness = catalyst.shape[2]
+    Args
+    ----------
+    model : NumPy array
+        3D array containing the model volume to project to a tilt series
+    angles : NumPy array
+        Projection angles for tilt series
 
-    proj_data = np.zeros([len(angles), 600, 600])
+    Returns
+    ----------
+    model : TomoStack object
+        Tilt series of the model data
 
-    vol_geom = astra.create_vol_geom(ydim, thickness, xdim)
+    """
+    if type(angles) is not np.ndarray:
+        angles = np.arange(0, 180, 2)
+
+    if type(model) is hs.signals.Signal2D:
+        model = model.data
+
+    xdim = model.shape[2]
+    ydim = model.shape[1]
+    thickness = model.shape[0]
+
+    proj_data = np.zeros([len(angles), ydim, xdim])
+    vol_geom = astra.create_vol_geom(thickness, xdim, ydim)
     tilts = angles * np.pi / 180
-    proj_geom = astra.create_proj_geom('parallel', 1, ydim, tilts)
+    proj_geom = astra.create_proj_geom('parallel', 1, xdim, tilts)
     proj_id = astra.create_projector('strip', proj_geom, vol_geom)
 
-    for i in range(0, catalyst.shape[1]):
-        sino_id, proj_data[:, i, :] = astra.create_sino(catalyst[:, i, :],
+    for i in range(0, model.shape[1]):
+        sino_id, proj_data[:, i, :] = astra.create_sino(model[:, i, :],
                                                         proj_id)
 
     stack = numpy_to_tomo_stack(proj_data)
@@ -108,6 +131,15 @@ def create_catalyst_tilt_series(catalyst, angles=None):
 
 
 def get_catalyst_tilt_series():
+    """
+    Apply misalignment to a model tilt series.
+
+    Returns
+    ----------
+    catalyst : TomoStack object
+        TomoStack containing the simulated catalyst tilt series
+
+    """
     test_data_path = imp.find_module("tomotools")[1] + '\\tests\\test_data\\'
     catalyst =\
         tomotools.load(test_data_path + 'Catalyst3DModel_TiltSeries180.hdf5')
