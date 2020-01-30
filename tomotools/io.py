@@ -120,7 +120,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
                                       'Theta', 'tilt', 'tilts', 'angle',
                                       'angles', 'theta']:
         print('Tilts found in metadata')
-        return s_new
 
     elif tilt_signal:
         s_new.axes_manager[0].name = tilt_signal.axes_manager[0].name
@@ -182,9 +181,25 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
             s_new.axes_manager[2].units = 'unknown'
         print('Tilts not found.  Calibrate axis 0')
 
-    s_new.original_metadata.shifts = None
-    s_new.original_metadata.tiltaxis = 0.0
-    s_new.original_metadata.xshift = 0.0
+    if s.original_metadata.has_item('shifts'):
+        s_new.original_metadata.shifts = s.original_metadata.shifts
+    else:
+        s_new.original_metadata.shifts = None
+
+    if s.original_metadata.has_item('xshift'):
+        s_new.original_metadata.xshift = s.original_metadata.xshift
+    else:
+        s_new.original_metadata.xshift = 0.0
+
+    if s.original_metadata.has_item('yshift'):
+        s_new.original_metadata.yshift = s.original_metadata.yshift
+    else:
+        s_new.original_metadata.yshift = 0.0
+
+    if s.original_metadata.has_item('tiltaxis'):
+        s_new.original_metadata.tiltaxis = s.original_metadata.tiltaxis
+    else:
+        s_new.original_metadata.tiltaxis = 0.0
 
     return s_new
 

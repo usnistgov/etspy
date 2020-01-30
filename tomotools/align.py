@@ -45,16 +45,21 @@ def align_stack(stack, method, start, show_progressbar):
     """
     def apply_shifts(stack, shifts):
         shifted = stack.deepcopy()
-        trans = np.eye(2, 3, dtype=np.float32)
-        for i in range(0, stack.data.shape[0]):
-            trans[:, 2] = shifts[i, :]
-            shifted.data[i, :, :] = \
-                cv2.warpAffine(stack.data[i, :, :],
-                               trans,
-                               stack.data[i, :, :].T.shape,
-                               flags=cv2.INTER_LINEAR,
-                               borderMode=cv2.BORDER_CONSTANT,
-                               borderValue=0.0)
+        # trans = np.eye(2, 3, dtype=np.float32)
+        # for i in range(0, stack.data.shape[0]):
+        #     trans[:, 2] = shifts[i, :]
+        #     shifted.data[i, :, :] = \
+        #         cv2.warpAffine(stack.data[i, :, :],
+        #                        trans,
+        #                        stack.data[i, :, :].T.shape,
+        #                        flags=cv2.INTER_LINEAR,
+        #                        borderMode=cv2.BORDER_CONSTANT,
+        #                        borderValue=0.0)
+        for i in range(0, shifted.data.shape[0]):
+            shifted.data[i, :, :] =\
+                ndimage.shift(shifted.data[i, :, :],
+                              shift=[shifts[i, 1], shifts[i, 0]],
+                              order=0)
         if not shifted.original_metadata.has_item('shifts'):
             shifted.original_metadata.add_node('shifts')
         shifted.original_metadata.shifts = shifts
@@ -358,13 +363,13 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
             print(('Calculated shift value is: %s' % str(xshift)))
         count += 1
 
-        data = data.trans_stack(xshift=0, yshift=xshift, angle=tiltaxis)
+        data = data.trans_stack(xshift=0, yshift=xshift, angle=-tiltaxis)
 
     out = copy.deepcopy(data)
     out.data = np.transpose(data.data, (0, 2, 1))
     if output:
         print('\nTilt axis alignment complete')
-    out.original_metadata.tiltaxis = totaltilt
+    out.original_metadata.tiltaxis = -totaltilt
     out.original_metadata.xshift = totalshift
     return out
 
@@ -456,9 +461,9 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
         return hist, score
 
     image = np.max(data.data, 0)
-    rot_pos = ndimage.rotate(hamming(image), limit / 2,
+    rot_pos = ndimage.rotate(hamming(image), -limit / 2,
                              reshape=False, order=3)
-    rot_neg = ndimage.rotate(hamming(image), -limit / 2,
+    rot_neg = ndimage.rotate(hamming(image), limit / 2,
                              reshape=False, order=3)
     angles = np.arange(-limit, limit + delta, delta)
     scores_pos = []
@@ -486,7 +491,7 @@ def tilt_analyze(data, limit=10, delta=0.3, output=False,
     return out
 
 
-def align_to_other(stack, other):
+def align_to_other(stack, other, verbose):
     """
     Spatially register a TomoStack using previously calculated shifts.
 
@@ -504,36 +509,32 @@ def align_to_other(stack, other):
 
     """
     out = copy.deepcopy(other)
-    out.data = np.zeros(np.shape(other.data), dtype=other.data.dtype)
 
-    shifts = None
-    tiltaxis = 0
-    xshift = 0
+    shifts = stack.original_metadata.shifts
+    out.original_metadata.shifts = shifts
 
-    if stack.original_metadata.has_item('shifts'):
-        shifts = stack.original_metadata.shifts
-        out.original_metadata.shifts = stack.original_metadata.shifts
-    if stack.original_metadata.has_item('tiltaxis'):
-        tiltaxis = stack.original_metadata.tiltaxis
-        out.original_metadata.shifts = stack.original_metadata.tiltaxis
-    if stack.original_metadata.has_item('xshift'):
-        xshift = stack.original_metadata.xshift
-        out.original_metadata.shifts = stack.original_metadata.xshift
+    tiltaxis = stack.original_metadata.tiltaxis
+    out.original_metadata.tiltaxis = tiltaxis
 
-    out.original_metadata.shifts = stack.original_metadata.shifts
+    xshift = stack.original_metadata.xshift
+    out.original_metadata.xshift = stack.original_metadata.xshift
 
-    if stack.original_metadata.has_item('shifts'):
-        trans = np.eye(2, 3, dtype=np.float32)
+    yshift = stack.original_metadata.yshift
+    out.original_metadata.yshift = stack.original_metadata.yshift
+
+    if type(stack.original_metadata.shifts) is np.ndarray:
         for i in range(0, out.data.shape[0]):
-            trans[:, 2] = shifts[i]
-            out.data[i, :, :] = cv2.warpAffine(other.data[i, :, :],
-                                               trans,
-                                               other.data[i, :, :].T.shape,
-                                               flags=cv2.INTER_LINEAR,
-                                               borderMode=cv2.BORDER_CONSTANT,
-                                               borderValue=0.0)
+            out.data[i, :, :] =\
+                ndimage.shift(out.data[i, :, :],
+                              shift=[shifts[i, 1], shifts[i, 0]],
+                              order=0)
+
     if (tiltaxis != 0) or (xshift != 0):
-        out = out.trans_stack(xshift=0, yshift=xshift, angle=tiltaxis)
-        out.data = np.transpose(out.data, (0, 2, 1))
-    print('TomoStack alignment applied')
+        out = out.trans_stack(xshift=xshift, yshift=yshift, angle=tiltaxis)
+
+    if verbose:
+        print('TomoStack alignment applied')
+        print('X-shift: %.1f' % xshift)
+        print('Y-shift: %.1f' % yshift)
+        print('Rotation: %.1f' % tiltaxis)
     return out

@@ -36,6 +36,8 @@ class TestAlignStackRegister:
     def test_tilt_align_com(self):
         filename = os.path.join(my_path, "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
+        stack.axes_manager[0].offset = -76
+        stack.axes_manager[0].scale = 2
         reg = stack.stack_register('PC')
         ali = reg.tilt_align(method='CoM', locs=[64, 128, 192])
         tilt_axis = ali.original_metadata.tiltaxis
@@ -44,10 +46,12 @@ class TestAlignStackRegister:
     def test_tilt_align_maximage(self):
         filename = os.path.join(my_path, "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
+        stack.axes_manager[0].offset = -76
+        stack.axes_manager[0].scale = 2
         reg = stack.stack_register('PC')
         ali = reg.tilt_align(method='MaxImage')
         tilt_axis = ali.original_metadata.tiltaxis
-        assert 100 * abs((-2.3 - tilt_axis) / -2.3) < 1.0
+        assert abs(-2.3 - tilt_axis) < 1.0
 
     def test_tilt_align_unknown_method(self):
         filename = os.path.join(my_path, "test_data", "HAADF.mrc")
@@ -75,8 +79,7 @@ class TestAlignStackRegister:
     def test_align_to_other_with_crop(self):
         filename = os.path.join(my_path, "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
-        stack2 = stack.deepcopy()
         reg = stack.stack_register('PC', crop=True)
-        reg2 = reg.align_other(stack2)
+        reg2 = reg.align_other(stack)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0
