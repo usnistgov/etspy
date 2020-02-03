@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of TomoTools
+
+"""
+Simulation module for TomoTools package.
+
+@author: Andrew Herzing
+"""
 import numpy as np
 from scipy import ndimage
 import astra
@@ -89,7 +98,7 @@ def create_catalyst_model(nparticles=15, particle_density=255,
 
 def create_model_tilt_series(model, angles=None):
     """
-    Create a tilt series from a 3D volume
+    Create a tilt series from a 3D volume.
 
     Args
     ----------
