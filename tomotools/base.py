@@ -275,9 +275,6 @@ class TomoStack(Signal2D):
         """
         Invert the contrast levels of an entire TomoStack.
 
-        Args
-        ----------
-
         Returns
         ----------
         inverted : TomoStack object
@@ -790,6 +787,7 @@ class TomoStack(Signal2D):
          Upper and lower contrast limit to use for movie
         cmap : string
          Matplotlib colormap to use for movie
+
         """
         if clim is None:
             clim = [self.data.min(), self.data.max()]
