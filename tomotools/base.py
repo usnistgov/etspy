@@ -317,12 +317,13 @@ class TomoStack(Signal2D):
         return
 
     def stack_register(self, method='ECC', start=None, crop=False,
-                       show_progressbar=False):
+                       show_progressbar=False, nslice=None, ratio=0.5):
         """
-        Register stack spatially using one of two OpenCV based algorithms.
+        Register stack spatially.
 
-        Phase Correlation (PC) or Enhanced Correlation Coefficient (ECC)
-        maximization.
+        Options are phase correlation (PC) maximization, enhanced
+        correlation coefficient (ECC) maximization, or center of mass ('COM')
+        tracking.
 
         Args
         ----------
@@ -337,6 +338,11 @@ class TomoStack(Signal2D):
             False.
         show_progressbar : boolean
             Enable/disable progress bar
+        nslice : int
+            Location of slice to use for alignment.  Only used for 'COM' method
+        ratio : float
+            Value between 0 and 1 used to assess quality of projections.
+            Only used for 'COM' method.
 
         Returns
         ----------
@@ -356,9 +362,15 @@ class TomoStack(Signal2D):
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> regPC = s.inav[0:10].stack_register('PC',show_progressbar=False)
 
+        Registration with center of mass tracking (COM)
+        >>> import tomotools.api as tomotools
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        >>> regCOM = s.inav[0:10].stack_register('COM',show_progressbar=False)
+
         """
-        if method == 'ECC' or method == 'PC':
-            out = align.align_stack(self, method, start, show_progressbar)
+        if (method == 'ECC') or (method == 'PC') or (method == 'COM'):
+            out = align.align_stack(self, method, start, show_progressbar,
+                                    ratio=ratio, nslice=nslice)
         else:
             raise ValueError(
                 "Unknown registration method: %s. Must be ECC or PC" % method)
