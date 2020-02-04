@@ -370,7 +370,8 @@ class TomoStack(Signal2D):
                                     ratio=ratio, nslice=nslice)
         else:
             raise ValueError(
-                "Unknown registration method: %s. Must be ECC or PC" % method)
+                "Unknown registration method: "
+                "%s. Must be ECC, PC, or COM" % method)
 
         if crop:
             shifts = out.original_metadata.shifts
