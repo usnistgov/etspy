@@ -201,7 +201,8 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
         aligned = calculate_shifts(stack, method, start,
                                    show_progressbar, nslice, ratio)
     else:
-        shifts = calculate_shifts(stack, method, start, show_progressbar)
+        shifts = calculate_shifts(stack, method, start,
+                                  show_progressbar, nslice, ratio)
         composed = compose_shifts(shifts, start)
         aligned = apply_shifts(stack, composed)
     return aligned
