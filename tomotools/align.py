@@ -21,7 +21,16 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     """
     Compute the shifts for spatial registration.
 
-    Shifts are determined by the OpenCV phaseCorrelate algorithm.
+    Shifts are determined by one of three methods:
+        1.) Phase correlation (PC) as implemented in OpenCV.
+        2.) Enhanced correlation coefficient (ECC) as implemented in OpenCV.
+        3.) Center of mass (COM) tracking.  A Python implementation of
+            Matlab code described in:
+            T. Sanders. Matlab imaging algorithms: Image reconstruction,
+            restoration, and alignment, with a focus in tomography.
+            http://www.toby-sanders.com/software ,
+            https://doi.org/10.13140/RG.2.2.33492.60801
+
     Shifts are then applied and the aligned stack is returned.
 
     Args
