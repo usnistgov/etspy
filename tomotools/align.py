@@ -17,7 +17,7 @@ import warnings
 import tqdm
 
 
-def align_stack(stack, method, start, show_progressbar):
+def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     """
     Compute the shifts for spatial registration.
 
@@ -30,7 +30,7 @@ def align_stack(stack, method, start, show_progressbar):
         3-D numpy array containing the tilt series data
     method : string
         Method by which to calculate the alignments. Valid options
-        are 'PC', 'ECC', or 'CC'.
+        are 'PC', 'ECC', or 'COM'.
     start : integer
         Position in tilt series to use as starting point for the alignment.
         If None, the central projection is used.
@@ -45,16 +45,6 @@ def align_stack(stack, method, start, show_progressbar):
     """
     def apply_shifts(stack, shifts):
         shifted = stack.deepcopy()
-        # trans = np.eye(2, 3, dtype=np.float32)
-        # for i in range(0, stack.data.shape[0]):
-        #     trans[:, 2] = shifts[i, :]
-        #     shifted.data[i, :, :] = \
-        #         cv2.warpAffine(stack.data[i, :, :],
-        #                        trans,
-        #                        stack.data[i, :, :].T.shape,
-        #                        flags=cv2.INTER_LINEAR,
-        #                        borderMode=cv2.BORDER_CONSTANT,
-        #                        borderValue=0.0)
         for i in range(0, shifted.data.shape[0]):
             shifted.data[i, :, :] =\
                 ndimage.shift(shifted.data[i, :, :],
@@ -76,47 +66,80 @@ def align_stack(stack, method, start, show_progressbar):
             composed[i, :] = composed[i + 1, :] + shifts[i]
         return composed
 
-    def calculate_shifts(stack, method, start, show_progressbar):
-        shifts = np.zeros([stack.data.shape[0] - 1, 2])
-        if start is None:
-            start = np.int32(np.floor(stack.data.shape[0] / 2))
+    def calculate_shifts(stack, method, start,
+                         show_progressbar, nslice, ratio):
+        if method == 'COM':
+            if not nslice:
+                nslice = np.int32(stack.data.shape[2]/2)
+            sino = np.transpose(stack.isig[nslice:nslice + 1, :].data,
+                                axes=[0, 2, 1])
+            angles = stack.axes_manager[0].axis
 
-        if method == 'ECC':
-            number_of_iterations = 1000
-            termination_eps = 1e-3
-            criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
-                        number_of_iterations, termination_eps)
+            [ntilts, ydim, xdim] = sino.shape
+            angles = angles*np.pi/180
 
-        for i in tqdm.tqdm(range(start, stack.data.shape[0] - 1),
-                           disable=(not show_progressbar)):
-            if method == 'PC':
-                shifts[i, :] = cv2.phaseCorrelate(
-                    np.float64(stack.data[i, :, :]),
-                    np.float64(stack.data[i + 1, :, :]))[0]
+            t = np.zeros([ntilts, 1, ydim])
+            ss = np.zeros([ntilts, 1, ydim])
+            w = np.arange(1, xdim+1).T
+
+            for i in range(0, ydim):
+                for l in range(0, ntilts):
+                    ss[l, 0, i] = np.sum(sino[l, i, :])
+                    t[l, 0, i] = np.sum(sino[l, i, :] * w) / ss[l, 0, i]
+
+            t = t-(xdim+1)/2
+            ss2 = np.median(ss)
+
+            for l in range(0, ntilts):
+                ss[l, :, :] = np.abs((ss[l, :, :]-ss2)/ss2)
+            ss2 = np.mean(ss, 0)
+
+            num = round(ratio*ydim)
+            if num == 0:
+                num = 1
+            usables = np.zeros([num, 1])
+            t_select = np.zeros([ntilts*num, 1])
+            disp_mat = np.zeros([ydim, 1])
+
+            s3 = np.argsort(ss2[0, :])
+            usables = np.reshape(s3[0:num], [num, 1])
+            t_select[:, 0] = np.reshape(t[:, 0, np.int32(usables[:, 0])],
+                                        [ntilts * num])
+            disp_mat[np.int32(usables[:, 0]), 0] = 1
+
+            I_tilts = np.eye(ntilts)
+            A = np.zeros([ntilts * num, ntilts])
+
+            theta = angles
+            Gam = (np.array([np.cos(theta), np.sin(theta)])).T
+            Gam = np.dot(Gam, np.linalg.pinv(Gam)) - I_tilts
+            for j in range(0, num):
+                t_select[ntilts*j:ntilts*(j+1), 0] =\
+                    np.dot(-Gam, t_select[ntilts * j:ntilts*(j+1), 0])
+                A[ntilts*j:ntilts*(j+1), 0:ntilts] = Gam
+
+            shifts = np.dot(np.linalg.pinv(A), t_select)
+
+            ali = stack.deepcopy()
+            for i in range(0, ntilts):
+                ali.data[i, :, :] = ndimage.shift(ali.data[i, :, :],
+                                                  [shifts[i], 0])
+
+            ali.original_metadata.shifts = shifts
+            return ali
+
+        else:
+            shifts = np.zeros([stack.data.shape[0] - 1, 2])
+            if start is None:
+                start = np.int32(np.floor(stack.data.shape[0] / 2))
+
             if method == 'ECC':
-                if np.int32(cv2.__version__.split('.')[0]) == 4:
-                    warp_matrix = np.eye(2, 3, dtype=np.float32)
-                    (cc, trans) = cv2.findTransformECC(
-                        np.float32(stack.data[i, :, :]),
-                        np.float32(stack.data[i + 1, :, :]),
-                        warp_matrix,
-                        cv2.MOTION_TRANSLATION,
-                        criteria,
-                        inputMask=None,
-                        gaussFiltSize=5)
-                    shifts[i, :] = trans[:, 2]
-                else:
-                    warp_matrix = np.eye(2, 3, dtype=np.float32)
-                    (cc, trans) = cv2.findTransformECC(
-                        np.float32(stack.data[i, :, :]),
-                        np.float32(stack.data[i + 1, :, :]),
-                        warp_matrix,
-                        cv2.MOTION_TRANSLATION,
-                        criteria)
-                    shifts[i, :] = trans[:, 2]
+                number_of_iterations = 1000
+                termination_eps = 1e-3
+                criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
+                            number_of_iterations, termination_eps)
 
-        if start != 0:
-            for i in tqdm.tqdm(range(start - 1, -1, -1),
+            for i in tqdm.tqdm(range(start, stack.data.shape[0] - 1),
                                disable=(not show_progressbar)):
                 if method == 'PC':
                     shifts[i, :] = cv2.phaseCorrelate(
@@ -143,11 +166,45 @@ def align_stack(stack, method, start, show_progressbar):
                             cv2.MOTION_TRANSLATION,
                             criteria)
                         shifts[i, :] = trans[:, 2]
-        return shifts
 
-    shifts = calculate_shifts(stack, method, start, show_progressbar)
-    composed = compose_shifts(shifts, start)
-    aligned = apply_shifts(stack, composed)
+            if start != 0:
+                for i in tqdm.tqdm(range(start - 1, -1, -1),
+                                   disable=(not show_progressbar)):
+                    if method == 'PC':
+                        shifts[i, :] = cv2.phaseCorrelate(
+                            np.float64(stack.data[i, :, :]),
+                            np.float64(stack.data[i + 1, :, :]))[0]
+                    if method == 'ECC':
+                        if np.int32(cv2.__version__.split('.')[0]) == 4:
+                            warp_matrix = np.eye(2, 3, dtype=np.float32)
+                            (cc, trans) = cv2.findTransformECC(
+                                np.float32(stack.data[i, :, :]),
+                                np.float32(stack.data[i + 1, :, :]),
+                                warp_matrix,
+                                cv2.MOTION_TRANSLATION,
+                                criteria,
+                                inputMask=None,
+                                gaussFiltSize=5)
+                            shifts[i, :] = trans[:, 2]
+                        else:
+                            warp_matrix = np.eye(2, 3, dtype=np.float32)
+                            (cc, trans) = cv2.findTransformECC(
+                                np.float32(stack.data[i, :, :]),
+                                np.float32(stack.data[i + 1, :, :]),
+                                warp_matrix,
+                                cv2.MOTION_TRANSLATION,
+                                criteria)
+                            shifts[i, :] = trans[:, 2]
+            return shifts
+
+    if method == 'COM':
+        aligned = calculate_shifts(stack, method, start,
+                                   show_progressbar, nslice, ratio)
+    else:
+        shifts = calculate_shifts(stack, method, start,
+                                  show_progressbar, nslice, ratio)
+        composed = compose_shifts(shifts, start)
+        aligned = apply_shifts(stack, composed)
     return aligned
 
 
