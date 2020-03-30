@@ -15,6 +15,7 @@ from scipy import optimize, ndimage
 import pylab as plt
 import warnings
 import tqdm
+from pystackreg import StackReg
 
 
 def align_stack(stack, method, start, show_progressbar, nslice, ratio):
@@ -209,6 +210,16 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     if method == 'COM':
         aligned = calculate_shifts(stack, method, start,
                                    show_progressbar, nslice, ratio)
+    elif method == 'StackReg':
+        aligned = stack.deepcopy()
+        sr = StackReg(StackReg.TRANSLATION)
+        tmats = sr.register_stack(stack.data, reference='previous')
+        composed = np.zeros([len(tmats), 2])
+        for i in range(0, len(tmats)):
+            composed[i, :] = tmats[i][0:2, 2]
+        aligned.data = sr.register_transform_stack(stack.data,
+                                                   reference='previous')
+        aligned.original_metadata.shifts = composed
     else:
         shifts = calculate_shifts(stack, method, start,
                                   show_progressbar, nslice, ratio)

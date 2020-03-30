@@ -10,6 +10,7 @@ setup(
             'tomography data',
     packages=['tomotools'],
     install_requires=[
-        # 'tomopy @ git+http://github.com/tomopy/tomopy.git',
-    ]
+        'pystackreg',
+         # 'tomopy @ git+http://github.com/tomopy/tomopy.git',
+                      ]
 )

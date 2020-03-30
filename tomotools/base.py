@@ -365,13 +365,14 @@ class TomoStack(Signal2D):
         >>> regCOM = s.inav[0:10].stack_register('COM',show_progressbar=False)
 
         """
-        if (method == 'ECC') or (method == 'PC') or (method == 'COM'):
+        if (method == 'ECC') or (method == 'PC') or (method == 'COM')\
+                or (method == 'StackReg'):
             out = align.align_stack(self, method, start, show_progressbar,
                                     ratio=ratio, nslice=nslice)
         else:
             raise ValueError(
                 "Unknown registration method: "
-                "%s. Must be ECC, PC, or COM" % method)
+                "%s. Must be ECC, PC, StackReg, or COM" % method)
 
         if crop:
             shifts = out.original_metadata.shifts
