@@ -7,3 +7,4 @@ RUN apt-get update -q
 RUN conda install hyperspy opencv tomopy astra-toolbox pytest flake8 pydocstyle
 RUN apt-get install python3-pyqt5 -y
 RUN apt-get install -qy xvfb
+RUN apt-get -y install gcc
