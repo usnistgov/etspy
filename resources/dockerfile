@@ -1,11 +1,13 @@
-FROM continuumio/anaconda3:latest
+FROM continuumio/miniconda3:latest
 
 RUN conda update conda
-RUN conda config --add channels conda-forge
-RUN conda config --add channels astra-toolbox
+
+RUN conda install pytest flake8 pydocstyle -c defaults
+RUN conda install astra-toolbox -c astra-toolbox/label/dev
+RUN conda install hyperspy opencv tomopy -c conda-forge
+
 RUN apt-get update -q
-RUN conda install hyperspy opencv tomopy astra-toolbox pytest flake8 pydocstyle
-RUN apt-get install -y libc-dev
-RUN apt-get install python3-pyqt5 -y
+RUN apt-get -y install g++
+RUN pip install pystackreg
 RUN apt-get install -qy xvfb
-RUN conda install gcc
+RUN apt-get install python3-pyqt5 -y
