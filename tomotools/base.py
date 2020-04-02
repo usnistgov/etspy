@@ -522,7 +522,6 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP')
-        Reconstruction complete
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         >>> import tomotools.api as tomotools
@@ -531,7 +530,6 @@ class TomoStack(Signal2D):
         Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5)
-        Reconstruction complete
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
@@ -544,7 +542,6 @@ class TomoStack(Signal2D):
         >>> constrain = True
         >>> thresh = 0
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh)
-        Reconstruction complete
 
         """
         if cuda is None:
