@@ -352,21 +352,25 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
         >>> s = tomotools.load(filename)
-        >>> regECC = s.inav[0:10].stack_register('ECC',show_progressbar=False)
+        >>> regECC = s.inav[0:10].stack_register('ECC')
 
         Registration with phase correlation algorithm (PC)
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> regPC = s.inav[0:10].stack_register('PC',show_progressbar=False)
+        >>> regPC = s.inav[0:10].stack_register('PC')
 
         Registration with center of mass tracking (COM)
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> regCOM = s.inav[0:10].stack_register('COM',show_progressbar=False)
+        >>> regCOM = s.inav[0:10].stack_register('COM')
+
+        Registration with StackReg
+        >>> import tomotools.api as tomotools
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        >>> regSR = s.inav[0:10].stack_register('StackReg')
 
         """
-        if (method == 'ECC') or (method == 'PC') or (method == 'COM')\
-                or (method == 'StackReg'):
+        if method in ['ECC', 'PC', 'COM', 'StackReg']:
             out = align.align_stack(self, method, start, show_progressbar,
                                     ratio=ratio, nslice=nslice)
         else:
