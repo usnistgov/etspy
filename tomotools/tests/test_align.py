@@ -37,6 +37,16 @@ class TestAlignStackRegister:
         assert reg.axes_manager.navigation_shape == \
             stack.inav[0:20].axes_manager.navigation_shape
 
+    def test_register_stackreg(self):
+        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        reg = stack.inav[0:20].stack_register('StackReg')
+        assert type(reg) is tomotools.TomoStack
+        assert reg.axes_manager.signal_shape == \
+            stack.inav[0:20].axes_manager.signal_shape
+        assert reg.axes_manager.navigation_shape == \
+            stack.inav[0:20].axes_manager.navigation_shape
+
     def test_register_unknown_method(self):
         filename = os.path.join(my_path, "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
