@@ -20,7 +20,8 @@ from pystackreg import StackReg
 
 def apply_shifts(stack, shifts):
     """
-    Apply a series of shifts to a TomoStack
+
+    Apply a series of shifts to a TomoStack.
 
     Args
     ----------
@@ -53,8 +54,8 @@ def apply_shifts(stack, shifts):
 
 def compose_shifts(shifts, start=None):
     """
-    Compose a series of calculated shifts prior to applying them to an
-    image stack
+
+    Compose a series of calculated shifts.
 
     Args
     ----------
@@ -83,8 +84,8 @@ def compose_shifts(shifts, start=None):
 
 def calculate_shifts_com(stack, nslice, ratio):
     """
-    Calculate shifts using a center of mass method (see description in
-    align_stack function below).
+
+    Calculate shifts using a center of mass method.
 
     Args
     ----------
@@ -152,8 +153,8 @@ def calculate_shifts_com(stack, nslice, ratio):
 
 def calculate_shifts_ecc(stack, start, show_progressbar):
     """
-    Calculate shifts using the enhanced correlation coefficient implementation
-    in OpenCV (see description in align_stack function below).
+
+    Calculate shifts using the enhanced correlation coefficient algorithm.
 
     Args
     ----------
@@ -212,8 +213,8 @@ def calculate_shifts_ecc(stack, start, show_progressbar):
 
 def calculate_shifts_pc(stack, start, show_progressbar):
     """
-    Calculate shifts using the phase correlation implementation in
-    OpenCV (see description in align_stack function below).
+
+    Calculate shifts using the phase correlation algorithm.
 
     Args
     ----------
@@ -247,8 +248,8 @@ def calculate_shifts_pc(stack, start, show_progressbar):
 
 def calculate_shifts_stackreg(stack):
     """
-    Calculate shifts using PyStackReg (see description in
-    align_stack function below)
+
+    Calculate shifts using PyStackReg.
 
     Args
     ----------
@@ -261,7 +262,6 @@ def calculate_shifts_stackreg(stack):
         The X- and Y-shifts to be applied to each image
 
     """
-
     sr = StackReg(StackReg.TRANSLATION)
     shifts = sr.register_stack(stack.data, reference='previous')
     shifts = -np.array([i[0:2, 2] for i in shifts])
@@ -320,7 +320,6 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
         Spatially registered copy of the input stack
 
     """
-
     if method == 'COM':
         shifts = calculate_shifts_com(stack, nslice, ratio)
         ali = stack.deepcopy()
