@@ -82,6 +82,21 @@ def compose_shifts(shifts, start=None):
 
 
 def calculate_shifts_com(stack, nslice, ratio):
+    """
+    Calculate shifts using a center of mass method (see description in
+    align_stack function below).
+
+    Args
+    ----------
+    stack : TomoStack object
+        The image series to be aligned
+
+    Returns
+    ----------
+    shifts : NumPy array
+        The X- and Y-shifts to be applied to each image
+
+    """
     if not nslice:
         nslice = np.int32(stack.data.shape[2]/2)
     sino = np.transpose(stack.isig[nslice:nslice + 1, :].data,
@@ -136,6 +151,21 @@ def calculate_shifts_com(stack, nslice, ratio):
 
 
 def calculate_shifts_ecc(stack, start, show_progressbar):
+    """
+    Calculate shifts using the enhanced correlation coefficient implementation
+    in OpenCV (see description in align_stack function below).
+
+    Args
+    ----------
+    stack : TomoStack object
+        The image series to be aligned
+
+    Returns
+    ----------
+    shifts : NumPy array
+        The X- and Y-shifts to be applied to each image
+
+    """
     def calc_ecc(source, shifted, criteria):
         warp_matrix = np.eye(2, 3, dtype=np.float32)
         if np.int32(cv2.__version__.split('.')[0]) == 4:
@@ -181,6 +211,21 @@ def calculate_shifts_ecc(stack, start, show_progressbar):
 
 
 def calculate_shifts_pc(stack, start, show_progressbar):
+    """
+    Calculate shifts using the phase correlation implementation in
+    OpenCV (see description in align_stack function below).
+
+    Args
+    ----------
+    stack : TomoStack object
+        The image series to be aligned
+
+    Returns
+    ----------
+    shifts : NumPy array
+        The X- and Y-shifts to be applied to each image
+
+    """
     def calc_pc(source, shifted):
         shift = cv2.phaseCorrelate(source, shifted)
         return shift[0]
@@ -197,10 +242,26 @@ def calculate_shifts_pc(stack, start, show_progressbar):
                            disable=(not show_progressbar)):
             shifts[i, :] = calc_pc(np.float64(stack.data[i, :, :]),
                                    np.float64(stack.data[i + 1, :, :]))
-        return shifts
+    return shifts
 
 
 def calculate_shifts_stackreg(stack):
+    """
+    Calculate shifts using PyStackReg (see description in
+    align_stack function below)
+
+    Args
+    ----------
+    stack : TomoStack object
+        The image series to be aligned
+
+    Returns
+    ----------
+    shifts : NumPy array
+        The X- and Y-shifts to be applied to each image
+
+    """
+
     sr = StackReg(StackReg.TRANSLATION)
     shifts = sr.register_stack(stack.data, reference='previous')
     shifts = -np.array([i[0:2, 2] for i in shifts])
@@ -212,14 +273,31 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     Compute the shifts for spatial registration.
 
     Shifts are determined by one of three methods:
-        1.) Phase correlation (PC) as implemented in OpenCV.
+        1.) Phase correlation (PC) as implemented in OpenCV. OpenCV is
+            described in:
+            G. Bradski. The OpenCV Library, Dr. Dobb’s Journal of Software
+            Tools vol. 120, pp. 122-125, 2000.
+            https://docs.opencv.org/
         2.) Enhanced correlation coefficient (ECC) as implemented in OpenCV.
+            OpenCV is described in:
+            G. Bradski. The OpenCV Library, Dr. Dobb’s Journal of Software
+            Tools vol. 120, pp. 122-125, 2000.
+            https://docs.opencv.org/
         3.) Center of mass (COM) tracking.  A Python implementation of
             Matlab code described in:
             T. Sanders. Matlab imaging algorithms: Image reconstruction,
             restoration, and alignment, with a focus in tomography.
             http://www.toby-sanders.com/software ,
             https://doi.org/10.13140/RG.2.2.33492.60801
+        4.) Rigid translation using PyStackReg for shift calculatiosn.
+            PyStackReg is a Python port of the StackReg plugin for ImageJ
+            which uses a pyramidal approach to minimize the least-squares
+            difference in image intensity between a source and target image.
+            StackReg is described in:
+            P. Thevenaz, U.E. Ruttimann, M. Unser. A Pyramid Approach to
+            Subpixel Registration Based on Intensity, IEEE Transactions
+            on Image Processing vol. 7, no. 1, pp. 27-41, January 1998.
+            https://doi.org/10.1109/83.650848
 
     Shifts are then applied and the aligned stack is returned.
 
