@@ -16,6 +16,7 @@ import pylab as plt
 import warnings
 import tqdm
 from pystackreg import StackReg
+from scipy.ndimage import center_of_mass
 
 
 def apply_shifts(stack, shifts):
@@ -365,159 +366,21 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
         make the tilt axis vertical
 
     """
-    def getpoints(data, numpoints=3):
-        """
-        Prompt user for locations at which to fit the CoM.
-
-        Displays the central image in a stack and prompt the user to
-        choose three locations by mouse click.  Once three locations have been
-        clicked, the window closes and the function returns the coordinates
-
-        Args
-        ----------
-        data : Numpy array
-            Tilt series datastack
-        numpoints : integer
-            Number of points to use in fitting the tilt axis
-
-        Returns
-        ----------
-        coords : Numpy array
-            array containing the XY coordinates selected interactively by the
-            user
-
-        """
+    data = stack.deepcopy()
+    if locs is None:
+        """Prompt user for locations at which to fit the CoM"""
         warnings.filterwarnings('ignore')
         plt.figure(num='Align Tilt', frameon=False)
-        if len(data.shape) == 3:
-            plt.imshow(data[np.int(data.shape[0] / 2), :, :], cmap='gray')
+        if len(data.data.shape) == 3:
+            plt.imshow(data.data[np.int(data.data.shape[0] / 2), :, :],
+                       cmap='gray')
         else:
             plt.imshow(data, cmap='gray')
         plt.title('Choose %s points for tilt axis alignment....' %
-                  str(numpoints))
-        coords = np.array(plt.ginput(numpoints, timeout=0, show_clicks=True))
+                  str(3))
+        coords = np.array(plt.ginput(3, timeout=0, show_clicks=True))
         plt.close()
-        return coords
-
-    def sinocalc(array, y):
-        """
-        Extract sinograms at three stack positions chosen by user.
-
-        Args
-        ----------
-        array : Numpy array
-            3-D numpy array containing the tilt series data
-        y : Numpy array
-            Array containing the coordinates selected by the user in
-            getPoints()
-
-        Returns
-        ----------
-        outvals : Numpy array
-            Array containing the center of mass as a function of tilt for the
-            selected sinograms
-
-        """
-        def center_of_mass(row):
-            """
-            Compute the center of mass for a row of pixels.
-
-            Args
-            ----------
-            row : Numpy array
-                Row of pixels extracted from a sinogram
-
-            Returns
-            ----------
-            value : float
-                Center of mass of the input row
-
-            """
-            size = np.size(row)
-            value = 0.0
-            for j in range(0, size):
-                value = value + row[j] * (j + 1)
-            value = value / np.sum(row)
-            return value
-
-        outvals = np.zeros([np.size(array, axis=0), 3])
-        sinotop = array[:, :, y[0]]
-        sinomid = array[:, :, y[1]]
-        sinobot = array[:, :, y[2]]
-
-        for k in range(array.shape[0]):
-            outvals[k][0] = center_of_mass(sinotop[k, :])
-            outvals[k][1] = center_of_mass(sinomid[k, :])
-            outvals[k][2] = center_of_mass(sinobot[k, :])
-
-        return outvals
-
-    def fit_coms(thetas, coms):
-        """
-        Fit the motion of calculated centers-of-mass in a sinogram.
-
-        Fit is to a sinusoidal function: (r0-A*cos(tilt)-B*sin(tilt)) as
-        would be expected for an ideal cylinder. Return the coefficient of
-        the fit equation for use in fitTiltAxis
-
-        Args
-        ----------
-        thetas : Numpy array
-            Array containing the stage tilt at each row in the sinogram
-        coms : Numpy array
-            Array containing the calculated center of mass as a function of
-            tilt for the sinogram
-
-        Returns
-        ----------
-        coeffs : Numpy array
-            Coefficients (r0 , A , and B) resulting from the fit
-
-        """
-        def func(x, r0, a, b):
-            return r0 - a * np.cos(x) - b * np.sin(x)
-
-        guess = (0.0, 0.0, 0.0)
-        # noinspection PyTypeChecker
-        coeffs, covars = optimize.curve_fit(func,
-                                            thetas,
-                                            np.int16(coms),
-                                            guess)
-        return coeffs
-
-    def fit_tilt_axis(coords, vals):
-        """
-        Fit the coefficients calculated by fit_coms() to a linear function.
-
-        Fit is performed at each of the three user chosen positions to
-        determine the necessary rotation to vertically align the tilt axis
-
-        Args
-        ----------
-        coords : Numpy array
-            Horizontal coordinates from which the sinograms were extracted
-        vals : Numpy array
-            Array containing the r0 coefficient calculated for each sinogram by
-            fitCoMs
-
-        Returns
-        ----------
-        coeffs : Numpy array
-            Coefficients (m and b) resulting from the fit
-
-        """
-        def func(x, m, b):
-            return m * x + b
-
-        guess = [0.0, 0.0]
-        # noinspection PyTypeChecker
-        coeffs, covars = optimize.curve_fit(f=func, xdata=coords, ydata=vals,
-                                            p0=guess)
-        return coeffs
-
-    data = stack.deepcopy()
-    if locs is None:
-        locs = np.int16(np.sort(getpoints(stack.data)[:, 0]))
+        locs = np.int16(np.sort(coords[:, 0]))
     else:
         locs = np.int16(np.sort(locs))
     if output:
@@ -530,17 +393,35 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
     count = 1
 
     while abs(tiltaxis) >= 1 or abs(xshift) >= 1 or count == 1:
-        centers = sinocalc(data.data, locs)
+        centers = np.zeros([data.data.shape[0], 3])
+        sinos = data.data[:, :, locs]
+        for k in range(0, 3):
+            for i in range(0, data.data.shape[0]):
+                centers[i, k] = center_of_mass(sinos[i, :, k])[0]
 
-        com_results = np.zeros([3, 3])
-        com_results[0, :] = fit_coms(tilts, centers[:, 0])
-        com_results[1, :] = fit_coms(tilts, centers[:, 1])
-        com_results[2, :] = fit_coms(tilts, centers[:, 2])
+        com_results = np.zeros(3)
 
-        r = np.zeros(3)
-        r[:] = com_results[:, 0]
+        def com_func(x, r0, a, b):
+            return r0 - a * np.cos(x) - b * np.sin(x)
 
-        axis_fits = fit_tilt_axis(locs, r)
+        guess = (0.0, 0.0, 0.0)
+        # noinspection PyTypeChecker
+        for i in range(0, 3):
+            com_results[i] =\
+                optimize.curve_fit(com_func,
+                                   tilts,
+                                   np.int32(centers[:, i]),
+                                   guess)[0][0]
+
+        def axis_func(x, m, b):
+            return m * x + b
+
+        guess = [0.0, 0.0]
+        # noinspection PyTypeChecker
+        axis_fits =\
+            optimize.curve_fit(f=axis_func, xdata=locs,
+                               ydata=com_results, p0=guess)[0]
+
         tiltaxis = 180 / np.pi * np.tanh(axis_fits[0])
         xshift = (axis_fits[1] / axis_fits[0] * np.sin(np.pi / 180 * tiltaxis))
         xshift = (data.data.shape[1] / 2) - xshift - offset
@@ -555,7 +436,7 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
 
         data = data.trans_stack(xshift=0, yshift=xshift, angle=-tiltaxis)
 
-    out = copy.deepcopy(data)
+    out = stack.deepcopy()
     out.data = np.transpose(data.data, (0, 2, 1))
     if output:
         print('\nTilt axis alignment complete')
