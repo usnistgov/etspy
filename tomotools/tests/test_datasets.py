@@ -19,7 +19,7 @@ class TestSimDatasetRetrieval:
         assert type(stack) is tomotools.TomoStack
 
     def test_get_misaligned_simulated_series(self, misalign=True):
-        stack = ds.get_catalyst_tilt_series()
+        stack = ds.get_catalyst_tilt_series(misalign=True)
         assert type(stack) is tomotools.TomoStack
 
     def test_get_noisy_simluated_series(self, noise=True):
