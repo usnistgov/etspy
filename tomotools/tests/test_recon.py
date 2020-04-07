@@ -2,13 +2,15 @@ import tomotools
 import os
 from tomotools.io import load
 
-my_path = os.path.dirname(__file__)
+tomotools_path = os.path.dirname(tomotools.__file__)
 
 
 class TestReconstruction:
 
     def test_recon_fbp(self):
-        filename = os.path.join(my_path, "test_data", "HAADF_Aligned.hdf5")
+        filename = os.path.join(tomotools_path, "tests", "test_data",
+                                "HAADF_Aligned.hdf5")
+        print(filename)
         stack = load(filename)
         slices = stack.isig[:, 120:131].deepcopy()
         rec = slices.reconstruct('FBP')
@@ -18,7 +20,8 @@ class TestReconstruction:
             slices.axes_manager.signal_shape[1]
 
     def test_recon_sirt(self):
-        filename = os.path.join(my_path, "test_data", "HAADF_Aligned.hdf5")
+        filename = os.path.join(tomotools_path, "tests", "test_data",
+                                "HAADF_Aligned.hdf5")
         stack = load(filename)
         slices = stack.isig[:, 120:131].deepcopy()
         rec = slices.reconstruct('SIRT',

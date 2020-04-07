@@ -4,13 +4,14 @@ import os
 import numpy as np
 import pytest
 
-my_path = os.path.dirname(__file__)
+tomotools_path = os.path.dirname(tomotools.__file__)
 
 
 class TestMRC:
 
     def test_load_hspy(self):
-        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
         assert type(stack) is tomotools.TomoStack
         assert stack.axes_manager.signal_shape == (256, 256)
@@ -32,7 +33,8 @@ class TestMRC:
         assert stack.axes_manager.navigation_shape == (50,)
 
     def test_signal_to_stack_with_tiltsignal(self):
-        filename = os.path.join(my_path, "test_data", "HAADF.mrc")
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.mrc")
         tilt_signal = tomotools.load(filename)
         tilt_signal.set_tilts(-76, 2)
         signal = hs.signals.Signal2D(np.random.random([77, 100, 100]))
@@ -45,7 +47,8 @@ class TestMRC:
             tilt_signal.axes_manager[0].axis.all()
 
     def test_load_dm(self):
-        filename = os.path.join(my_path, "test_data", "HAADF.dm3")
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.dm3")
         stack = tomotools.load(filename)
         assert stack.axes_manager[0].name == 'Tilt'
         assert stack.axes_manager[0].offset == -90.0
@@ -53,6 +56,7 @@ class TestMRC:
         assert stack.axes_manager.navigation_shape == (91,)
 
     def test_load_unknown(self):
-        filename = os.path.join(my_path, "test_data", "HAADF.NONE")
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.NONE")
         with pytest.raises(ValueError):
             tomotools.load(filename)

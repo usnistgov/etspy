@@ -11,8 +11,6 @@ import numpy as np
 from scipy import ndimage
 import astra
 from tomotools.io import numpy_to_tomo_stack
-import tomotools.api as tomotools
-import imp
 import hyperspy.api as hs
 
 
@@ -137,22 +135,6 @@ def create_model_tilt_series(model, angles=None):
     stack.axes_manager[0].offset = angles[0]
     stack.axes_manager[0].scale = np.abs(angles[1] - angles[0])
     return stack
-
-
-def get_catalyst_tilt_series():
-    """
-    Apply misalignment to a model tilt series.
-
-    Returns
-    ----------
-    catalyst : TomoStack object
-        TomoStack containing the simulated catalyst tilt series
-
-    """
-    test_data_path = imp.find_module("tomotools")[1] + '\\tests\\test_data\\'
-    catalyst =\
-        tomotools.load(test_data_path + 'Catalyst3DModel_TiltSeries180.hdf5')
-    return catalyst
 
 
 def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0,
