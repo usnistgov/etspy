@@ -342,7 +342,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     return aligned
 
 
-def tilt_correct(stack, offset=0, locs=None, output=True):
+def tilt_com(stack, offset=0, locs=None, output=True):
     """
     Perform tilt axis alignment using center of mass (CoM) tracking.
 
@@ -445,8 +445,8 @@ def tilt_correct(stack, offset=0, locs=None, output=True):
     return out
 
 
-def tilt_analyze(data, limit=10, delta=0.3, output=False,
-                 show_progressbar=False):
+def tilt_maximage(data, limit=10, delta=0.3, output=False,
+                  show_progressbar=False):
     """
     Perform automated determination of the tilt axis of a TomoStack.
 
