@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of TomoTools
+
+"""
+Test dataset handling module for TomoTools package.
+
+@author: Andrew Herzing
+"""
+
 import tomotools.api as tomotools
 from tomotools.simulation import misalign_stack, add_gaussian_noise
 import os
@@ -30,6 +40,27 @@ def get_catalyst_tilt_series(misalign=False, minshift=-5, maxshift=5,
                              noise=False, noise_factor=0.2):
     """
     Retrieve model catalyst tilt series.
+
+    Arguments
+    ----------
+    misalign : bool
+        If True, apply random shifts to each projection to simulated drift
+    minshift : float
+        Lower bound for random shifts
+    maxshift : float
+        Upper bound for random shifts
+    tiltshift : float
+        Number of pixels by which to shift entire tilt series. Simulates
+        offset tilt axis.
+    rotate : float
+        Angle by which to rotate entire tilt series. Simulates non-vertical
+        tilt axis.
+    xonly : bool
+        If True, shifts are only applied along the X-axis
+    noise : bool
+        If True, add Gaussian noise to the stack
+    noise_factor : float
+        Percentage noise to be added. Must be between 0 and 1.
 
     Returns
     ----------
