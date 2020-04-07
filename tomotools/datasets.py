@@ -1,5 +1,6 @@
 import tomotools.api as tomotools
 from tomotools.simulation import misalign_stack, add_gaussian_noise
+import os
 
 
 def get_needle_data(aligned=False):
@@ -12,7 +13,8 @@ def get_needle_data(aligned=False):
         TomoStack containing the simulated catalyst tilt series
 
     """
-    test_data_path = os.path.dirname(tomotools.__file__)
+    test_data_path = os.path.dirname(tomotools.__file__) +\
+        "\\tests\\test_data\\"
     # test_data_path = imp.find_module("tomotools")[1] + '\\tests\\test_data\\'
     if aligned:
         needle =\
@@ -35,7 +37,8 @@ def get_catalyst_tilt_series(misalign=False, minshift=-5, maxshift=5,
         TomoStack containing the simulated catalyst tilt series
 
     """
-    test_data_path = os.path.dirname(tomotools.__file__)
+    test_data_path = os.path.dirname(tomotools.__file__) +\
+        "\\tests\\test_data\\"
     # test_data_path = imp.find_module("tomotools")[1] + '\\tests\\test_data\\'
     catalyst =\
         tomotools.load(test_data_path + 'Catalyst3DModel_TiltSeries180.hdf5')

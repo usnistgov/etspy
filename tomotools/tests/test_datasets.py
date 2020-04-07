@@ -15,7 +15,7 @@ class TestExptlDatasetRetrieval:
 
 class TestSimDatasetRetrieval:
     def test_get_simulated_series(self):
-        stack = ds.get_simulated_data()
+        stack = ds.get_catalyst_tilt_series()
         assert type(stack) is tomotools.TomoStack
 
     def test_get_misaligned_simulated_series(self, misalign=True):
