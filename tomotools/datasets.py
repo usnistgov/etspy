@@ -25,7 +25,6 @@ def get_needle_data(aligned=False):
         TomoStack containing the simulated catalyst tilt series
 
     """
-
     if aligned:
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")
@@ -72,7 +71,6 @@ def get_catalyst_tilt_series(misalign=False, minshift=-5, maxshift=5,
         TomoStack containing the simulated catalyst tilt series
 
     """
-
     filename = os.path.join(tomotools_path, "tests", "test_data",
                             "Catalyst3DModel_TiltSeries180.hdf5")
     catalyst =\
