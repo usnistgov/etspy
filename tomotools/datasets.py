@@ -12,6 +12,8 @@ import tomotools.api as tomotools
 from tomotools.simulation import misalign_stack, add_gaussian_noise
 import os
 
+tomotools_path = os.path.dirname(tomotools.__file__)
+
 
 def get_needle_data(aligned=False):
     """
@@ -23,15 +25,17 @@ def get_needle_data(aligned=False):
         TomoStack containing the simulated catalyst tilt series
 
     """
-    test_data_path = os.path.dirname(tomotools.__file__) +\
-        "\\tests\\test_data\\"
 
     if aligned:
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.mrc")
         needle =\
-            tomotools.load(test_data_path + 'HAADF_Aligned.hdf5')
+            tomotools.load(filename)
     else:
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.mrc")
         needle =\
-            tomotools.load(test_data_path + 'HAADF.mrc')
+            tomotools.load(filename)
     return needle
 
 
@@ -68,11 +72,11 @@ def get_catalyst_tilt_series(misalign=False, minshift=-5, maxshift=5,
         TomoStack containing the simulated catalyst tilt series
 
     """
-    test_data_path = os.path.dirname(tomotools.__file__) +\
-        "\\tests\\test_data\\"
 
+    filename = os.path.join(tomotools_path, "tests", "test_data",
+                            "Catalyst3DModel_TiltSeries180.hdf5")
     catalyst =\
-        tomotools.load(test_data_path + 'Catalyst3DModel_TiltSeries180.hdf5')
+        tomotools.load(filename)
     if misalign:
         catalyst = misalign_stack(catalyst, min_shift=minshift,
                                   max_shift=maxshift, tilt_shift=tiltshift,
