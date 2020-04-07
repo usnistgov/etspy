@@ -468,10 +468,10 @@ class TomoStack(Signal2D):
         if axis == 1:
             self = self.rotate(-90)
         if method == 'CoM':
-            out = align.tilt_correct(self, offset, locs, output)
+            out = align.tilt_com(self, offset, locs, output)
         elif method == 'MaxImage':
-            out = align.tilt_analyze(self, limit, delta, output,
-                                     show_progressbar)
+            out = align.tilt_maximage(self, limit, delta, output,
+                                      show_progressbar)
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
