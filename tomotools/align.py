@@ -17,6 +17,10 @@ import warnings
 import tqdm
 from pystackreg import StackReg
 from scipy.ndimage import center_of_mass
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def apply_shifts(stack, shifts):
@@ -384,7 +388,7 @@ def tilt_com(stack, offset=0, locs=None, output=True):
     else:
         locs = np.int16(np.sort(locs))
     if output:
-        print('\nCorrecting tilt axis....')
+        logger.info('\nCorrecting tilt axis....')
     tilts = stack.axes_manager[0].axis * np.pi / 180
     xshift = 0
     tiltaxis = 0
@@ -429,9 +433,9 @@ def tilt_com(stack, offset=0, locs=None, output=True):
         totalshift += xshift
 
         if output:
-            print(('Iteration #%s' % count))
-            print(('Calculated tilt correction is: %s' % str(tiltaxis)))
-            print(('Calculated shift value is: %s' % str(xshift)))
+            logger.info(('Iteration #%s' % count))
+            logger.info(('Calculated tilt correction is: %s' % str(tiltaxis)))
+            logger.info(('Calculated shift value is: %s' % str(xshift)))
         count += 1
 
         data = data.trans_stack(xshift=0, yshift=xshift, angle=-tiltaxis)
@@ -439,7 +443,7 @@ def tilt_com(stack, offset=0, locs=None, output=True):
     out = stack.deepcopy()
     out.data = np.transpose(data.data, (0, 2, 1))
     if output:
-        print('\nTilt axis alignment complete')
+        logger.info('\nTilt axis alignment complete')
     out.original_metadata.tiltaxis = -totaltilt
     out.original_metadata.xshift = totalshift
     return out
@@ -551,9 +555,9 @@ def tilt_maximage(data, limit=10, delta=0.3, output=False,
     neg_angle = -angles[scores_neg.index(best_score_neg)]
     opt_angle = (pos_angle + neg_angle) / 2
     if output:
-        print('Optimum positive rotation angle: {}'.format(pos_angle))
-        print('Optimum negative rotation angle: {}'.format(neg_angle))
-        print('Optimum positive rotation angle: {}'.format(opt_angle))
+        logger.info('Optimum positive rotation angle: {}'.format(pos_angle))
+        logger.info('Optimum negative rotation angle: {}'.format(neg_angle))
+        logger.info('Optimum positive rotation angle: {}'.format(opt_angle))
 
     out = copy.deepcopy(data)
     out = out.trans_stack(xshift=0, yshift=0, angle=opt_angle)
@@ -604,8 +608,8 @@ def align_to_other(stack, other, verbose):
         out = out.trans_stack(xshift=xshift, yshift=yshift, angle=tiltaxis)
 
     if verbose:
-        print('TomoStack alignment applied')
-        print('X-shift: %.1f' % xshift)
-        print('Y-shift: %.1f' % yshift)
-        print('Rotation: %.1f' % tiltaxis)
+        logger.info('TomoStack alignment applied')
+        logger.info('X-shift: %.1f' % xshift)
+        logger.info('Y-shift: %.1f' % yshift)
+        logger.info('Rotation: %.1f' % tiltaxis)
     return out

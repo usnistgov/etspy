@@ -20,6 +20,10 @@ import matplotlib.animation as animation
 from hyperspy.signals import Signal2D
 from scipy import ndimage
 from tempfile import TemporaryDirectory
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class TomoStack(Signal2D):
@@ -523,7 +527,6 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
-        Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP')
 
@@ -531,7 +534,6 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
-        Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5)
 
@@ -540,7 +542,6 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
-        Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> iterations = 5
         >>> constrain = True

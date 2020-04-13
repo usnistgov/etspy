@@ -12,6 +12,10 @@ import numpy as np
 import os
 import hyperspy.api as hspy
 from tomotools.base import TomoStack
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def numpy_to_tomo_stack(data, manual_tilts=False):
@@ -43,7 +47,6 @@ def numpy_to_tomo_stack(data, manual_tilts=False):
     >>> s = np.random.random((50, 500,500))
     >>> from tomotools.io import numpy_to_tomo_stack
     >>> s_new = numpy_to_tomo_stack(s)
-    Tilts not found.  Calibrate axis 0
     >>> s_new
     <TomoStack, title: , dimensions: (50|500, 500)>
 
@@ -100,7 +103,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     <Signal2D, title: test dataset, dimensions: (50|500, 500)>
     >>> from tomotools.io import signal_to_tomo_stack
     >>> s_new = signal_to_tomo_stack(s)
-    Tilts not found.  Calibrate axis 0
     >>> s_new
     <TomoStack, title: test dataset, dimensions: (50|500, 500)>
 
@@ -119,7 +121,7 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     if s_new.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
                                       'Theta', 'tilt', 'tilts', 'angle',
                                       'angles', 'theta']:
-        print('Tilts found in metadata')
+        logger.info('Tilts found in metadata')
 
     elif tilt_signal:
         s_new.axes_manager[0].name = tilt_signal.axes_manager[0].name
@@ -132,7 +134,7 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         postilt = eval(input('Enter maximum positive tilt: '))
         tiltstep = eval(input('Enter tilt step: '))
         tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
-        print('User provided tilts stored')
+        logger.info('User provided tilts stored')
         s_new.axes_manager[0].name = 'Tilt'
         s_new.axes_manager[0].units = 'degrees'
         s_new.axes_manager[0].scale = tilts[1] - tilts[0]
@@ -143,18 +145,20 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
             s.metadata.General.original_filename)[0])[1]))
         if os.path.isfile(tiltfile):
             tilts = np.loadtxt(tiltfile)
-            print('Tilts loaded from .RAWTLT File')
+            logger.info('Tilts loaded from .RAWTLT file')
             s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'degrees'
             s_new.axes_manager[0].scale = tilts[1] - tilts[0]
             s_new.axes_manager[0].offset = tilts[0]
+        else:
+            logger.info('No .RAWTLT file found')
 
     elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
         tilt_alpha = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha
         if type(tilt_alpha) is list:
             n = s.data.shape[0]
             tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
-            print('Tilts found in metadata')
+            logger.info('Tilts found in metadata')
             s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'degrees'
             s_new.axes_manager[0].scale = tilts[1] - tilts[0]
@@ -168,7 +172,7 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
             if s_new.axes_manager[2].name != 'y':
                 s_new.axes_manager[2].name = 'y'
                 s_new.axes_manager[2].units = 'unknown'
-            print('Tilts not found.  Calibrate axis 0')
+            logger.info('Tilts not found.  Calibrate axis 0')
 
     else:
         s_new.axes_manager[0].name = 'Tilt'
@@ -179,7 +183,7 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         if s_new.axes_manager[2].name != 'y':
             s_new.axes_manager[2].name = 'y'
             s_new.axes_manager[2].units = 'unknown'
-        print('Tilts not found.  Calibrate axis 0')
+        logger.info('Tilts not found.  Calibrate axis 0')
 
     if s.original_metadata.has_item('shifts'):
         s_new.original_metadata.shifts = s.original_metadata.shifts
@@ -284,7 +288,7 @@ def loaddm(filename):
     s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
                       original_metadata=original_metadata)
     s_new.axes_manager[0].axis = tilts
-    print('Tilts found in metadata')
+    logger.info('Tilts found in metadata')
 
     s_new.axes_manager[0].name = 'Tilt'
     s_new.axes_manager[0].units = 'degrees'

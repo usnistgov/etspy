@@ -11,6 +11,10 @@ import tomopy
 import numpy as np
 import astra
 import hyperspy.api as hs
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def run(stack, method, rot_center=None, iterations=None, constrain=None,
@@ -56,7 +60,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
             rec = tomopy.recon(stack.data, theta, center=rot_center,
                                algorithm=tomopy.astra, filter_name='ramlak',
                                options=options, **kwargs)
-            # print('Reconstruction complete')
+            logger.info('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA weighted-backprojection CUDA reconstruction of single
             slice'''
@@ -64,7 +68,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
             rec = tomopy.recon(stack.data, theta, center=rot_center,
                                algorithm=tomopy.astra, filter_name='ramlak',
                                options=options, **kwargs)
-            # print('Reconstruction complete')
+            logger.info('Reconstruction complete')
         else:
             raise Exception('Error related to ASTRA Toolbox')
     elif method == 'SIRT':
@@ -85,7 +89,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
             rec = tomopy.recon(stack.data, theta, center=rot_center,
                                algorithm=tomopy.astra, options=options,
                                **kwargs)
-            # print('Reconstruction complete')
+            logger.info('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
             if constrain:
@@ -101,7 +105,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
             rec = tomopy.recon(stack.data, theta, center=rot_center,
                                algorithm=tomopy.astra, options=options,
                                ncore=1, **kwargs)
-            # print('Reconstruction complete')
+            logger.info('Reconstruction complete')
         else:
             raise Exception('Error related to ASTRA Toolbox')
     else:
