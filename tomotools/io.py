@@ -119,7 +119,7 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     if s_new.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
                                       'Theta', 'tilt', 'tilts', 'angle',
                                       'angles', 'theta']:
-        print('Tilts found in metadata')
+        pass
 
     elif tilt_signal:
         s_new.axes_manager[0].name = tilt_signal.axes_manager[0].name
@@ -138,20 +138,9 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         s_new.axes_manager[0].scale = tilts[1] - tilts[0]
         s_new.axes_manager[0].offset = tilts[0]
 
-    elif s.metadata.General.has_item('original_filename'):
-        tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(
-            s.metadata.General.original_filename)[0])[1]))
-        if os.path.isfile(tiltfile):
-            tilts = np.loadtxt(tiltfile)
-            print('Tilts loaded from .RAWTLT File')
-            s_new.axes_manager[0].name = 'Tilt'
-            s_new.axes_manager[0].units = 'degrees'
-            s_new.axes_manager[0].scale = tilts[1] - tilts[0]
-            s_new.axes_manager[0].offset = tilts[0]
-
     elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
         tilt_alpha = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha
-        if type(tilt_alpha) is list:
+        if type(tilt_alpha) is np.ndarray:
             n = s.data.shape[0]
             tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
             print('Tilts found in metadata')
@@ -159,16 +148,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
             s_new.axes_manager[0].units = 'degrees'
             s_new.axes_manager[0].scale = tilts[1] - tilts[0]
             s_new.axes_manager[0].offset = tilts[0]
-        else:
-            s_new.axes_manager[0].name = 'Tilt'
-            s_new.axes_manager[0].units = 'unknown'
-            if s_new.axes_manager[1].name != 'x':
-                s_new.axes_manager[1].name = 'x'
-                s_new.axes_manager[1].units = 'unknown'
-            if s_new.axes_manager[2].name != 'y':
-                s_new.axes_manager[2].name = 'y'
-                s_new.axes_manager[2].units = 'unknown'
-            print('Tilts not found.  Calibrate axis 0')
 
     else:
         s_new.axes_manager[0].name = 'Tilt'
@@ -223,6 +202,15 @@ def loadhspy(filename, tilts=None):
 
     """
     stack = hspy.load(filename)
+    tiltfile = os.path.splitext(filename)[0] + '.rawtlt'
+    print(tiltfile)
+    if os.path.isfile(tiltfile):
+        tilts = np.loadtxt(tiltfile)
+        print('Tilts loaded from .RAWTLT File')
+        stack.axes_manager[0].name = 'Tilt'
+        stack.axes_manager[0].units = 'degrees'
+        stack.axes_manager[0].scale = tilts[1] - tilts[0]
+        stack.axes_manager[0].offset = tilts[0]
     if stack.data.min() < 0:
         stack.data = np.float32(stack.data)
         stack.data += np.abs(stack.data.min())
