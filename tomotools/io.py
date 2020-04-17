@@ -43,7 +43,6 @@ def numpy_to_tomo_stack(data, manual_tilts=False):
     >>> s = np.random.random((50, 500,500))
     >>> from tomotools.io import numpy_to_tomo_stack
     >>> s_new = numpy_to_tomo_stack(s)
-    Tilts not found.  Calibrate axis 0
     >>> s_new
     <TomoStack, title: , dimensions: (50|500, 500)>
 
@@ -62,7 +61,6 @@ def numpy_to_tomo_stack(data, manual_tilts=False):
         postilt = eval(input('Enter maximum positive tilt: '))
         tiltstep = eval(input('Enter tilt step: '))
         tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
-        print('User provided tilts stored')
         s.axes_manager[0].scale = tilts[1] - tilts[0]
         s.axes_manager[0].offset = tilts[0]
         s.axes_manager[0].units = 'degrees'
@@ -100,7 +98,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     <Signal2D, title: test dataset, dimensions: (50|500, 500)>
     >>> from tomotools.io import signal_to_tomo_stack
     >>> s_new = signal_to_tomo_stack(s)
-    Tilts not found.  Calibrate axis 0
     >>> s_new
     <TomoStack, title: test dataset, dimensions: (50|500, 500)>
 
@@ -132,7 +129,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         postilt = eval(input('Enter maximum positive tilt: '))
         tiltstep = eval(input('Enter tilt step: '))
         tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
-        print('User provided tilts stored')
         s_new.axes_manager[0].name = 'Tilt'
         s_new.axes_manager[0].units = 'degrees'
         s_new.axes_manager[0].scale = tilts[1] - tilts[0]
@@ -143,7 +139,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         if type(tilt_alpha) is np.ndarray:
             n = s.data.shape[0]
             tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
-            print('Tilts found in metadata')
             s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'degrees'
             s_new.axes_manager[0].scale = tilts[1] - tilts[0]
@@ -158,7 +153,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         if s_new.axes_manager[2].name != 'y':
             s_new.axes_manager[2].name = 'y'
             s_new.axes_manager[2].units = 'unknown'
-        print('Tilts not found.  Calibrate axis 0')
 
     if s.original_metadata.has_item('shifts'):
         s_new.original_metadata.shifts = s.original_metadata.shifts
@@ -203,10 +197,8 @@ def loadhspy(filename, tilts=None):
     """
     stack = hspy.load(filename)
     tiltfile = os.path.splitext(filename)[0] + '.rawtlt'
-    print(tiltfile)
     if os.path.isfile(tiltfile):
         tilts = np.loadtxt(tiltfile)
-        print('Tilts loaded from .RAWTLT File')
         stack.axes_manager[0].name = 'Tilt'
         stack.axes_manager[0].units = 'degrees'
         stack.axes_manager[0].scale = tilts[1] - tilts[0]
@@ -260,10 +252,6 @@ def loaddm(filename):
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
 
-    # if s.data.min() < 0:
-    #     s.data = np.float32(s.data)
-    #     s.data += np.abs(s.data.min())
-
     axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
     metadata = s.metadata.as_dictionary()
@@ -272,7 +260,6 @@ def loaddm(filename):
     s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
                       original_metadata=original_metadata)
     s_new.axes_manager[0].axis = tilts
-    print('Tilts found in metadata')
 
     s_new.axes_manager[0].name = 'Tilt'
     s_new.axes_manager[0].units = 'degrees'

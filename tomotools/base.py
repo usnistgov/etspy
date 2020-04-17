@@ -484,7 +484,7 @@ class TomoStack(Signal2D):
     def reconstruct(self, method='FBP', rot_center=None, iterations=None,
                     constrain=False, thresh=0, cuda=None, thickness=None,
                     **kwargs):
-        r"""
+        """
         Reconstruct a TomoStack series using one of the available methods.
 
         astraWBP, astraSIRT, astraSIRT_GPU
@@ -523,7 +523,6 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
-        Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP')
 
@@ -531,7 +530,6 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
-        Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5)
 
@@ -540,7 +538,6 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
         >>> stack = tomotools.load(file)
-        Tilts found in metadata
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> iterations = 5
         >>> constrain = True
