@@ -488,7 +488,7 @@ class TomoStack(Signal2D):
     def reconstruct(self, method='FBP', rot_center=None, iterations=None,
                     constrain=False, thresh=0, cuda=None, thickness=None,
                     **kwargs):
-        r"""
+        """
         Reconstruct a TomoStack series using one of the available methods.
 
         astraWBP, astraSIRT, astraSIRT_GPU
