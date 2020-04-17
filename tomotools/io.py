@@ -120,11 +120,8 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     if s_new.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
                                       'Theta', 'tilt', 'tilts', 'angle',
                                       'angles', 'theta']:
-<<<<<<< HEAD
         logger.info('Tilts found in metadata')
-=======
         pass
->>>>>>> Fix-RAWTLT-file-issue
 
     elif tilt_signal:
         s_new.axes_manager[0].name = tilt_signal.axes_manager[0].name
@@ -137,16 +134,12 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         postilt = eval(input('Enter maximum positive tilt: '))
         tiltstep = eval(input('Enter tilt step: '))
         tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
-<<<<<<< HEAD
         logger.info('User provided tilts stored')
-=======
->>>>>>> Fix-RAWTLT-file-issue
         s_new.axes_manager[0].name = 'Tilt'
         s_new.axes_manager[0].units = 'degrees'
         s_new.axes_manager[0].scale = tilts[1] - tilts[0]
         s_new.axes_manager[0].offset = tilts[0]
 
-<<<<<<< HEAD
     elif s.metadata.General.has_item('original_filename'):
         tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(
             s.metadata.General.original_filename)[0])[1]))
@@ -160,22 +153,16 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         else:
             logger.info('No .RAWTLT file found')
 
-=======
->>>>>>> Fix-RAWTLT-file-issue
     elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
         tilt_alpha = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha
         if type(tilt_alpha) is np.ndarray:
             n = s.data.shape[0]
             tilts = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha[0:n]
-<<<<<<< HEAD
             logger.info('Tilts found in metadata')
-=======
->>>>>>> Fix-RAWTLT-file-issue
             s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'degrees'
             s_new.axes_manager[0].scale = tilts[1] - tilts[0]
             s_new.axes_manager[0].offset = tilts[0]
-<<<<<<< HEAD
         else:
             s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'unknown'
@@ -186,8 +173,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
                 s_new.axes_manager[2].name = 'y'
                 s_new.axes_manager[2].units = 'unknown'
             logger.info('Tilts not found.  Calibrate axis 0')
-=======
->>>>>>> Fix-RAWTLT-file-issue
 
     else:
         s_new.axes_manager[0].name = 'Tilt'
@@ -198,10 +183,7 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         if s_new.axes_manager[2].name != 'y':
             s_new.axes_manager[2].name = 'y'
             s_new.axes_manager[2].units = 'unknown'
-<<<<<<< HEAD
         logger.info('Tilts not found.  Calibrate axis 0')
-=======
->>>>>>> Fix-RAWTLT-file-issue
 
     if s.original_metadata.has_item('shifts'):
         s_new.original_metadata.shifts = s.original_metadata.shifts
@@ -309,10 +291,7 @@ def loaddm(filename):
     s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
                       original_metadata=original_metadata)
     s_new.axes_manager[0].axis = tilts
-<<<<<<< HEAD
     logger.info('Tilts found in metadata')
-=======
->>>>>>> Fix-RAWTLT-file-issue
 
     s_new.axes_manager[0].name = 'Tilt'
     s_new.axes_manager[0].units = 'degrees'
