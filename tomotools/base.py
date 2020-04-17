@@ -724,27 +724,6 @@ class TomoStack(Signal2D):
             out.data = ndimage.rotate(out.data, axes=(1, 2),
                                       angle=-angle, order=1,
                                       reshape=False)
-        # if angle:
-        #     image_center = tuple(np.array(out.data[0, :, :].shape) / 2)
-        #     rot_mat = cv2.getRotationMatrix2D(image_center, angle, scale=1.0)
-        #     for i in range(0, out.data.shape[0]):
-        #         out.data[i, :, :] = \
-        #             cv2.warpAffine(out.data[i, :, :],
-        #                            rot_mat,
-        #                            out.data[i, :, :].T.shape,
-        #                            flags=cv2.INTER_LINEAR,
-        #                            borderMode=cv2.BORDER_CONSTANT,
-        #                            borderValue=0.0)
-        # if xshift != 0.0 or yshift != 0.0:
-        #     trans_mat = np.array([[1., 0, xshift], [0, 1., yshift]])
-        #     for i in range(0, out.data.shape[0]):
-        #         out.data[i, :, :] = \
-        #             cv2.warpAffine(out.data[i, :, :],
-        #                            trans_mat,
-        #                            out.data[i, :, :].T.shape,
-        #                            flags=cv2.INTER_LINEAR,
-        #                            borderMode=cv2.BORDER_CONSTANT,
-        #                            borderValue=0.0)
         if self.original_metadata.has_item('xshift'):
             out.original_metadata.xshift =\
                 self.original_metadata.xshift + xshift
@@ -910,18 +889,19 @@ class TomoStack(Signal2D):
             Aligned copy of the input stack
 
         """
-        # TODO Automatic detection of IMOD presence and path
-        # if 'IMOD' in os.environ["PATH"]:
-        #     imod_path = [s for s in os.environ["PATH"].split(';') if "IMOD"
-        #                  in s][0]
-        #     imod_path = imod_path.replace("\\", "/")
-        #     logger.info('IMOD found in %s' % imod_path)
-        # else:
-        #     logger.info('IMOD does not appear to be installed. '
-        #                 'Cannot run RAPTOR')
-        #     return
+        # Automatic detection of IMOD presence and path
+        imod_path = False
+        split_path = os.environ["PATH"].split(';')
+        for i in split_path:
+            if 'IMOD' in i:
+                imod_path = i
+        if imod_path:
+            logger.info('IMOD found in %s' % imod_path)
+        else:
+            raise RuntimeError('IMOD does not appear to be '
+                               'installed. Cannot run RAPTOR')
 
-        imod_path = 'c:/progra~1/imod/bin/'
+        # imod_path = 'c:/progra~1/imod/bin/'
         if self.data.dtype == '<f8':
             self.data = np.float32(self.data)
 
