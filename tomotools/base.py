@@ -888,7 +888,7 @@ class TomoStack(Signal2D):
         simpletrackbar(self.data, 'Press "ESC" to exit')
         return
 
-    def align_imod(self, diameter=7, markers=10, white=False, verbose=False):
+    def align_imod(self, diameter=7, markers=10, white=False):
         """
         Align the stack using IMODs RAPTOR algorithm.
 
@@ -915,9 +915,10 @@ class TomoStack(Signal2D):
         #     imod_path = [s for s in os.environ["PATH"].split(';') if "IMOD"
         #                  in s][0]
         #     imod_path = imod_path.replace("\\", "/")
-        #     print('IMOD found in %s' % imod_path)
+        #     logger.info('IMOD found in %s' % imod_path)
         # else:
-        #     print('IMOD does not appear to be installed. Cannot run RAPTOR')
+        #     logger.info('IMOD does not appear to be installed. '
+        #                 'Cannot run RAPTOR')
         #     return
 
         imod_path = 'c:/progra~1/imod/bin/'
@@ -962,39 +963,43 @@ class TomoStack(Signal2D):
                 temp = np.fromfile(h, np.float32)
 
             if np.mod(len(temp), shape[0]) != 0:
-                print('**************************************************')
-                print('RAPTOR alignment was unable to fit all images.')
-                print('Improve rough alignment or image quality.\n')
-                print('**************************************************\n\n')
-                print('RAPTOR log file contents:')
-                print('**************************************************')
+                logger.info('************************************'
+                            '**************')
+                logger.info('RAPTOR alignment was unable to fit all images.')
+                logger.info('Improve rough alignment or image quality.\n')
+                logger.info('*************************************'
+                            '*************\n\n')
+                logger.info('RAPTOR log file contents:')
+                logger.info('*************************************'
+                            '*************')
                 with open(logfile, 'r') as h:
-                    print(h.read())
+                    logger.info(h.read())
 
             else:
                 ali.data = temp.reshape([shape[0], shape[1], shape[2]])
-                if verbose:
-                    print('**************************************************')
-                    print('RAPTOR alignment complete.\n')
-                    print('**************************************************')
-                    print('\n\n')
-                    print('RAPTOR log file contents:')
-                    print('**************************************************')
-                    with open(logfile, 'r') as h:
-                        print(h.read())
-                else:
-                    print('**************************************************')
-                    print('RAPTOR alignment complete.\n')
-                    print('**************************************************')
+                logger.info('**************************************'
+                            '************')
+                logger.info('RAPTOR alignment complete.\n')
+                logger.info('**************************************'
+                            '************')
+                logger.info('\n\n')
+                logger.info('RAPTOR log file contents:')
+                logger.info('***************************************'
+                            '***********')
+                with open(logfile, 'r') as h:
+                    logger.info(h.read())
         else:
-            print('**************************************************')
-            print('RAPTOR alignment failed.')
-            print('Improve rough alignment or image quality.')
-            print('**************************************************\n\n')
-            print('RAPTOR log file contents:')
-            print('**************************************************')
+            logger.info('*******************************************'
+                        '*******')
+            logger.info('RAPTOR alignment failed.')
+            logger.info('Improve rough alignment or image quality.')
+            logger.info('*******************************************'
+                        '*******\n\n')
+            logger.info('RAPTOR log file contents:')
+            logger.info('*******************************************'
+                        '*******')
             with open(logfile, 'r') as h:
-                print(h.read())
+                logger.info(h.read())
 
         os.chdir(orig_path)
         return ali

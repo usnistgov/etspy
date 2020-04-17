@@ -188,14 +188,12 @@ def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
         error.append(np.sum((sinogram.data - forward_project)**2))
         if len(error) > 1:
             change = np.abs((error[-2] - error[-1]) / error[-2])
-            if verbose:
-                print("Change after iteration %s: %.1f %%" %
-                      (iteration, 100 * change))
+            logger.info("Change after iteration %s: %.1f %%" %
+                        (iteration, 100 * change))
             if change < tol:
                 terminate = True
-                if verbose:
-                    print('Change in error below tolerance after %s iterations'
-                          % iteration)
+                logger.info('Change in error below tolerance after %s '
+                            'iterations' % iteration)
         iteration += 1
     error = np.array(error)
     rec_stack = hs.signals.Signal2D(rec_stack)
