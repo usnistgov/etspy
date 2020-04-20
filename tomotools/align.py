@@ -105,8 +105,10 @@ def calculate_shifts_com(stack, nslice, ratio):
     """
     if not nslice:
         nslice = np.int32(stack.data.shape[2]/2)
+
     sino = np.transpose(stack.isig[nslice:nslice + 1, :].data,
                         axes=[0, 2, 1])
+
     angles = stack.axes_manager[0].axis
 
     [ntilts, ydim, xdim] = sino.shape

@@ -1,0 +1,31 @@
+11/18/11 10:36:43  Date/Time: 11/18/11 10:36:43
+11/18/11 10:36:43  ---------------
+11/18/11 10:36:43  Used parameters
+11/18/11 10:36:43   Sample Geometry : rod
+11/18/11 10:36:43   Max negative tilt [°]: -76.00
+11/18/11 10:36:43   Max positive tilt [°]: 76.00
+11/18/11 10:36:43   Tiltscheme starts at high angle (continuous).
+11/18/11 10:36:43   Start tilt (skipping angles) [°]: -76.00
+11/18/11 10:36:43   Relaxation Time [s]: 2.000
+11/18/11 10:36:43   Linear tilt scheme applied:
+11/18/11 10:36:43    Low tilt step [°]: 2.00
+11/18/11 10:36:43    High tilt switch [°]: 80.00
+11/18/11 10:36:43    High tilt step [°]: 2.00
+11/18/11 10:36:43   STEM imaging mode
+11/18/11 10:36:43    Exposure Time [s]: 10.00
+11/18/11 10:36:43    Binning: 1
+11/18/11 10:36:43    Image pixel size [nm]: 3.36
+11/18/11 10:36:43    Image area: (0, 0),(256,256)
+11/18/11 10:36:43   Apply Corrections: NO
+11/18/11 10:36:43   Optimized Position [µm]: -0.41
+11/18/11 10:36:43   Tracking after (on) exposures: Yes
+11/18/11 10:36:43   Tracking before exposures:     No
+11/18/11 10:36:43   Check Focus: Yes
+11/18/11 10:36:43    Periodicity (high tilt range): 2
+11/18/11 10:36:43    Periodicity (low tilt range): 5
+11/18/11 10:36:43    Periodicity switch angle: 80.00
+11/18/11 10:36:43    Applied Defocus [µm]: 0.00
+11/18/11 10:36:43   microscope STEM Magnification: 115000
+11/18/11 10:36:43   STEM Dynamic focus: OFF
+11/18/11 10:36:43   Tilt Axis Angle [°]:90.00
+11/18/11 10:36:43  ---------------

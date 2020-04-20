@@ -103,19 +103,21 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     >>> from tomotools.io import signal_to_tomo_stack
     >>> s_new = signal_to_tomo_stack(s)
     >>> s_new
-    <TomoStack, title: test dataset, dimensions: (50|500, 500)>
+    <TomoStack, title: , dimensions: (50|500, 500)>
 
     """
     if isinstance(type(s), hspy.signals.BaseSignal):
         s = s.as_signal2D((0, 1))
 
-    axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
+    # axes_list =\
+    #  [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
-    metadata = s.metadata.as_dictionary()
-    original_metadata = s.original_metadata.as_dictionary()
+    # metadata = s.metadata.as_dictionary()
+    # original_metadata = s.original_metadata.as_dictionary()
 
-    s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
-                      original_metadata=original_metadata)
+    # s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
+    #                   original_metadata=original_metadata)
+    s_new = TomoStack(s)
 
     if s_new.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
                                       'Theta', 'tilt', 'tilts', 'angle',
@@ -123,13 +125,13 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         logger.info('Tilts found in metadata')
         pass
 
-    elif tilt_signal:
+    elif tilt_signal is not None:
         s_new.axes_manager[0].name = tilt_signal.axes_manager[0].name
         s_new.axes_manager[0].units = tilt_signal.axes_manager[0].units
         s_new.axes_manager[0].scale = tilt_signal.axes_manager[0].scale
         s_new.axes_manager[0].offset = tilt_signal.axes_manager[0].offset
 
-    elif manual_tilts:
+    elif manual_tilts is not False:
         negtilt = eval(input('Enter maximum negative tilt: '))
         postilt = eval(input('Enter maximum positive tilt: '))
         tiltstep = eval(input('Enter tilt step: '))
@@ -139,19 +141,6 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
         s_new.axes_manager[0].units = 'degrees'
         s_new.axes_manager[0].scale = tilts[1] - tilts[0]
         s_new.axes_manager[0].offset = tilts[0]
-
-    elif s.metadata.General.has_item('original_filename'):
-        tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(
-            s.metadata.General.original_filename)[0])[1]))
-        if os.path.isfile(tiltfile):
-            tilts = np.loadtxt(tiltfile)
-            logger.info('Tilts loaded from .RAWTLT file')
-            s_new.axes_manager[0].name = 'Tilt'
-            s_new.axes_manager[0].units = 'degrees'
-            s_new.axes_manager[0].scale = tilts[1] - tilts[0]
-            s_new.axes_manager[0].offset = tilts[0]
-        else:
-            logger.info('No .RAWTLT file found')
 
     elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
         tilt_alpha = s.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha
@@ -173,6 +162,22 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
                 s_new.axes_manager[2].name = 'y'
                 s_new.axes_manager[2].units = 'unknown'
             logger.info('Tilts not found.  Calibrate axis 0')
+
+    elif s.metadata.General.has_item('original_filename'):
+        tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(
+            s.metadata.General.original_filename)[0])[1]))
+        if os.path.isfile(tiltfile):
+            tilts = np.loadtxt(tiltfile)
+            logger.info('.rawtlt file detected.')
+            s_new.axes_manager[0].name = 'Tilt'
+            s_new.axes_manager[0].units = 'degrees'
+            s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+            s_new.axes_manager[0].offset = tilts[0]
+            if len(tilts) == s.data.shape[0]:
+                logger.info('Tilts loaded from .rawtlt file')
+            else:
+                logger.info('Number of tilts in .rawtlt file inconsistent'
+                            ' with data shape')
 
     else:
         s_new.axes_manager[0].name = 'Tilt'
@@ -227,17 +232,76 @@ def loadhspy(filename, tilts=None):
 
     """
     stack = hspy.load(filename)
-    tiltfile = os.path.splitext(filename)[0] + '.rawtlt'
-    if os.path.isfile(tiltfile):
-        tilts = np.loadtxt(tiltfile)
-        stack.axes_manager[0].name = 'Tilt'
-        stack.axes_manager[0].units = 'degrees'
-        stack.axes_manager[0].scale = tilts[1] - tilts[0]
-        stack.axes_manager[0].offset = tilts[0]
+    ext = os.path.splitext(filename)[1]
+    if ext.upper() in ['.MRC', '.ALI', '.REC']:
+        tiltfile = os.path.splitext(filename)[0] + '.rawtlt'
+        txtfile = os.path.splitext(filename)[0] + '.txt'
+        if stack.original_metadata.fei_header.has_item('a_tilt'):
+            tilts = stack.original_metadata.\
+                      fei_header['a_tilt'][0:stack.data.shape[0]]
+            stack.axes_manager[0].name = 'Tilt'
+            stack.axes_manager[0].units = 'degrees'
+            stack.axes_manager[0].scale = tilts[1] - tilts[0]
+            stack.axes_manager[0].offset = tilts[0]
+            logger.info('Tilts found in MRC file header')
+        elif os.path.isfile(tiltfile):
+            tilts = np.loadtxt(tiltfile)
+            logger.info('.rawtlt file detected.')
+            stack.axes_manager[0].name = 'Tilt'
+            stack.axes_manager[0].units = 'degrees'
+            stack.axes_manager[0].scale = tilts[1] - tilts[0]
+            stack.axes_manager[0].offset = tilts[0]
+            if len(tilts) == stack.data.shape[0]:
+                logger.info('Tilts loaded from .rawtlt file')
+            else:
+                logger.info('Number of tilts in .rawtlt file inconsistent'
+                            ' with data shape')
+        else:
+            logger.info('Unable to find tilt angles. Calibrate axis 0.')
+            stack.axes_manager[0].name = 'Tilt'
+            stack.axes_manager[0].units = 'degrees'
+
+        if stack.original_metadata.fei_header.has_item('pixel_size'):
+            pixel_size = stack.original_metadata.fei_header.pixel_size[0]
+            logger.info('Pixel size found in MRC file header')
+        elif os.path.isfile(txtfile):
+            pixel_line = None
+            with open(txtfile, 'r') as h:
+                text = h.readlines()
+            for i in text:
+                if 'Image pixel size' in i:
+                    pixel_line = i
+            if pixel_line:
+                pixel_size = np.float32(pixel_line.split()[-1:])[0]
+                pixel_units = pixel_line.split()[-2:-1][0][1:-2]
+                stack.axes_manager[1].name = 'x'
+                stack.axes_manager[1].units = pixel_units
+                stack.axes_manager[1].scale = pixel_size
+                stack.axes_manager[1].offset = 0
+
+                stack.axes_manager[2].name = 'y'
+                stack.axes_manager[2].units = pixel_units
+                stack.axes_manager[2].scale = pixel_size
+                stack.axes_manager[2].offset = 0
+                logger.info('Pixel size loaded from text file')
+            else:
+                logger.info('Unable to find pixel size in text file')
+        else:
+            logger.info('Unable to find pixel size')
+            stack.axes_manager[1].name = 'x'
+            stack.axes_manager[1].units = 'unknown'
+
+            stack.axes_manager[2].name = 'y'
+            stack.axes_manager[2].units = 'unknown'
+
+    elif ext.upper() in ['.HDF5', '.HD5', '.HSPY']:
+        pass
+    else:
+        raise ValueError('Cannot read file type: %s' % ext)
     if stack.data.min() < 0:
         stack.data = np.float32(stack.data)
         stack.data += np.abs(stack.data.min())
-    return signal_to_tomo_stack(stack, tilts)
+    return TomoStack(stack)
 
 
 def loaddm(filename):
@@ -283,18 +347,13 @@ def loaddm(filename):
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
 
-    axes_list = [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
-
-    metadata = s.metadata.as_dictionary()
-    original_metadata = s.original_metadata.as_dictionary()
-
-    s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
-                      original_metadata=original_metadata)
-    s_new.axes_manager[0].axis = tilts
-    logger.info('Tilts found in metadata')
-
+    s_new = TomoStack(s)
     s_new.axes_manager[0].name = 'Tilt'
     s_new.axes_manager[0].units = 'degrees'
+    s_new.axes_manager[0].offset = tilts[0]
+    s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+    logger.info('Tilts found in metadata')
+
     s_new.original_metadata.shifts = None
     s_new.original_metadata.tiltaxis = 0.0
     s_new.original_metadata.xshift = 0.0

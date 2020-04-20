@@ -32,15 +32,8 @@ class TomoStack(Signal2D):
 
     Note: All attributes are initialized with values of None or 0.0 in __init__
 
-    #TODO create __init__ function
     # Attributes
     # ----------
-    # stack : Hyperspy Signal2D
-    #     The tilt series or reconstruction data array. It can be either 2 or 3
-    #     dimensional. For a tilt series, the first dimension must be the tilt
-    #     increment axis (e.g. [theta,X] or [theta,X,Y]). Prior to
-    #     reconstruction, the third dimension must describe the tilt axis
-    #     orientation. For a reconstruction, the dimensions will be [Y,X,Z].
     # shifts : numpy array
     #     X,Y shifts calculated for each image for stack registration
     # tiltaxis : float
@@ -51,25 +44,14 @@ class TomoStack(Signal2D):
     #     Lateral shift of the tilt axis from the center of the stack.
     """
 
-    def __repr__(self):
-        """Provide name and dimensions to TomoStack."""
-        string = '<TomoStack, '
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        if 'title' in self.metadata['General'].keys():
-            string += "title: %s" % self.metadata['General']['title']
-        else:
-            string += "title: "
-        if self.data is None:
-            string += ", Empty"
-        elif len(self.data.shape) == 2:
-            string += ", dimensions: (|%s, %s)" % (str(self.data.shape[1]),
-                                                   str(self.data.shape[0]))
-        elif len(self.data.shape) == 3:
-            string += ", dimensions: (%s|%s, %s)" % (str(self.data.shape[0]),
-                                                     str(self.data.shape[2]),
-                                                     str(self.data.shape[1]))
-        string += '>'
-        return string
+        if not self.original_metadata:
+            self.original_metadata.tiltaxis = 0
+            self.original_metadata.xshift = 0
+            self.original_metadata.yshift = 0
+            self.original_metadata.shifts = None
 
     def test_correlation(self, images=None):
         """

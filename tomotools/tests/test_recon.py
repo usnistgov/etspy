@@ -10,7 +10,6 @@ class TestReconstruction:
     def test_recon_fbp(self):
         filename = os.path.join(tomotools_path, "tests", "test_data",
                                 "HAADF_Aligned.hdf5")
-        print(filename)
         stack = load(filename)
         slices = stack.isig[:, 120:131].deepcopy()
         rec = slices.reconstruct('FBP')
