@@ -30,7 +30,8 @@ class TomoStack(Signal2D):
     """
     Create a TomoStack object for tomography data.
 
-    Note: All attributes are initialized with values of None or 0.0 in __init__
+    Note: All attributes are initialized with values of None or 0.0
+    in __init__ unless they are already defined
 
     # Attributes
     # ----------
