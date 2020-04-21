@@ -27,7 +27,7 @@ def get_needle_data(aligned=False):
     """
     if aligned:
         filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
+                                "test_data", "HAADF_Aligned.hdf5")
         needle =\
             tomotools.load(filename)
     else:
