@@ -45,6 +45,7 @@ class TomoStack(Signal2D):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialize TomoStack class."""
         super().__init__(*args, **kwargs)
 
         if not self.original_metadata:
