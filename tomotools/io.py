@@ -68,8 +68,9 @@ def numpy_to_tomo_stack(data, manual_tilts=False):
         s.axes_manager[0].scale = tilts[1] - tilts[0]
         s.axes_manager[0].offset = tilts[0]
         s.axes_manager[0].units = 'degrees'
-
-    return s
+    axes_list = [x for _,
+                 x in sorted(s.axes_manager.as_dictionary().items())]
+    return TomoStack(s, axes=axes_list)
 
 
 def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
@@ -301,7 +302,9 @@ def loadhspy(filename, tilts=None):
     if stack.data.min() < 0:
         stack.data = np.float32(stack.data)
         stack.data += np.abs(stack.data.min())
-    return TomoStack(stack)
+    axes_list = [x for _,
+                 x in sorted(stack.axes_manager.as_dictionary().items())]
+    return TomoStack(stack, axes=axes_list)
 
 
 def loaddm(filename):
