@@ -1154,7 +1154,7 @@ class TomoStack(Signal2D):
                 cuda = True
             else:
                 cuda = False
-        sinogram = self.isig[:, nslice].deepcopy()
+        sinogram = self.isig[:, nslice:nslice+1].deepcopy()
         error, rec_stack = recon.check_sirt_error(sinogram, tol,
                                                   verbose, constrain, cuda)
         return error, rec_stack
