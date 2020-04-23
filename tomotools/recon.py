@@ -113,7 +113,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
     return rec
 
 
-def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
+def check_sirt_error(sinogram, algorithm, tol, verbose, constrain, cuda):
     """
     Determine the optimum number of SIRT iterations.
 
@@ -155,7 +155,7 @@ def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
     rec = None
     iteration = 0
     while not terminate:
-        rec = tomopy.recon(sinogram.data, theta=tilts, algorithm='sirt',
+        rec = tomopy.recon(sinogram.data, theta=tilts, algorithm=algorithm,
                            num_iter=1, init_recon=rec)
         if iteration == 0:
             rec_stack = rec

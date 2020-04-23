@@ -170,7 +170,18 @@ class TestTomoStack:
                                 "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
         stack.set_tilts(-76, 2)
-        error, rec_stack = stack.sirt_error(128, 0.5)
+        error, rec_stack = stack.recon_error(128, 0.5, algorithm='sirt')
+        assert error.shape[0] == rec_stack.data.shape[0]
+        assert rec_stack.data.shape[1:] == stack.data.shape[1:]
+        assert (1 - (3.8709e12 / error[0])) < 0.001
+        assert (1 - (2.8624e12 / error[1])) < 0.001
+
+    def test_mlem_error(self):
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.mrc")
+        stack = tomotools.load(filename)
+        stack.set_tilts(-76, 2)
+        error, rec_stack = stack.recon_error(128, 0.5, algorithm='mlem')
         assert error.shape[0] == rec_stack.data.shape[0]
         assert rec_stack.data.shape[1:] == stack.data.shape[1:]
         assert (1 - (3.8709e12 / error[0])) < 0.001
