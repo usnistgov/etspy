@@ -1154,7 +1154,9 @@ class TomoStack(Signal2D):
         --------
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
-        >>> error, rec_stack = s.recon_error(method='median')
+        >>> error, rec_stack = s.recon_error(algorithm='sirt', tol=0.5)
+        Reconstructing 1 slice groups with 1 master threads...
+        Reconstructing 1 slice groups with 1 master threads...
         """
         if not nslice:
             nslice = np.int32(self.data.shape[1] / 2)
