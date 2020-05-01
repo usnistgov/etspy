@@ -20,6 +20,7 @@ import matplotlib.animation as animation
 from hyperspy.signals import Signal2D
 from scipy import ndimage
 from tempfile import TemporaryDirectory
+import matplotlib as mpl
 import logging
 
 logger = logging.getLogger(__name__)
@@ -653,7 +654,10 @@ class TomoStack(Signal2D):
             else:
                 rec = rec[:, offset:-offset, :]
 
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 10))
+        if mpl.get_backend() == 'nbAgg':
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(6, 2))
+        else:
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
         ax1.imshow(rec[0, :, :], cmap='afmhot')
         ax1.set_title('Slice %s' % str(slices[0]))
         ax1.set_axis_off()
@@ -665,7 +669,7 @@ class TomoStack(Signal2D):
         ax3.imshow(rec[2, :, :], cmap='afmhot')
         ax3.set_title('Slice %s' % str(slices[2]))
         ax3.set_axis_off()
-
+        fig.tight_layout()
         return
 
     def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
