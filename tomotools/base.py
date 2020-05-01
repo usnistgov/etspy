@@ -633,16 +633,11 @@ class TomoStack(Signal2D):
             mid = np.int32(self.data.shape[1] / 2)
             slices = np.int32([mid / 2, mid, mid + mid / 2])
 
-        temp = self.deepcopy()
-        if angle != 0:
-            shifted = temp.trans_stack(xshift, 0, angle)
-        elif angle == 0 and xshift != 0:
-            shifted = self.deepcopy()
-            shifted.data = shifted.data[:, slices, :]
-            shifted = shifted.trans_stack(xshift, 0, 0)
+        if (xshift != 0.0) or (angle != 0.0):
+            shifted = self.trans_stack(xshift=xshift, yshift=0, angle=angle)
         else:
             shifted = self.deepcopy()
-            shifted.data = shifted.data[:, slices, :]
+        shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
         rec = recon.run(shifted, method='FBP', cuda=False)
