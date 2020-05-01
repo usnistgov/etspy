@@ -22,6 +22,7 @@ logger.setLevel(logging.INFO)
 
 @contextmanager
 def suppress_stdout():
+    """Suppress text output from tomopy reconstruction algorithm."""
     with open(os.devnull, "w") as devnull:
         old_stdout = sys.stdout
         sys.stdout = devnull
