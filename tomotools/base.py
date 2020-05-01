@@ -668,8 +668,9 @@ class TomoStack(Signal2D):
 
         return
 
-    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0):
-        r"""
+    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
+                    interpolation='linear'):
+        """
         Transform the stack using the OpenCV warpAffine function.
 
         Args
@@ -679,7 +680,11 @@ class TomoStack(Signal2D):
         yshift : float
             Number of pixels by which to shift the stack in the Y dimension
         angle : float
-            Number of degrees by which to rotate the stack about the X-Y plane
+            Angle in degrees by which to rotate the stack about the X-Y plane
+        interpolation : str
+            Mode of interpolation to employ. Must be either 'linear',
+            'cubic', 'nearest' or 'none'.  Note that 'nearest' and 'none'
+            are equivalent.  Default is 'linear'.
 
         Returns
         ----------
@@ -699,33 +704,66 @@ class TomoStack(Signal2D):
         <TomoStack, title: , dimensions: (77|256, 256)>
 
         """
-        out = self.deepcopy()
+        transformed = self.deepcopy()
+        theta = np.pi * angle / 180.
+        center_x, center_y = np.float32(np.array(transformed.data.shape[1:])/2)
 
-        if (xshift != 0) or (yshift != 0):
-            out.data = ndimage.shift(out.data, shift=[0, yshift, xshift],
-                                     order=0)
-        if angle != 0.0:
-            out.data = ndimage.rotate(out.data, axes=(1, 2),
-                                      angle=-angle, order=1,
-                                      reshape=False)
+        rot_mat = np.array([[np.cos(theta), -np.sin(theta), 0],
+                            [np.sin(theta), np.cos(theta), 0],
+                            [0, 0, 1]])
+
+        trans_mat = np.array([[1, 0, center_x],
+                              [0, 1, center_y],
+                              [0, 0, 1]])
+
+        rev_mat = np.array([[1, 0, -center_x],
+                            [0, 1, -center_y],
+                            [0, 0, 1]])
+
+        rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
+
+        xshift = np.array([[1, 0, np.float32(xshift)],
+                           [0, 1, np.float32(yshift)],
+                           [0, 0, 1]])
+
+        full_transform = np.dot(xshift, rotation_mat)
+
+        if interpolation == 'linear':
+            mode = cv2.INTER_LINEAR
+        elif interpolation == 'cubic':
+            mode = cv2.INTER_LINEAR
+        elif interpolation == 'none' or interpolation == 'nearest':
+            mode = cv2.INTER_NEAREST
+        else:
+            raise ValueError("Interpolation method %s unknown. "
+                             "Must be 'linear', 'cubic', 'nearest' "
+                             "or 'none'" % interpolation)
+
+        for i in range(0, self.data.shape[0]):
+            transformed.data[i, :, :] = \
+                cv2.warpAffine(transformed.data[i, :, :],
+                               full_transform[:2, :],
+                               transformed.data.shape[1:],
+                               flags=mode)
+
         if self.original_metadata.has_item('xshift'):
-            out.original_metadata.xshift =\
+            transformed.original_metadata.xshift =\
                 self.original_metadata.xshift + xshift
         else:
-            out.original_metadata.xshift = xshift
+            transformed.original_metadata.xshift = xshift
 
         if self.original_metadata.has_item('yshift'):
-            out.original_metadata.yshift =\
+            transformed.original_metadata.yshift =\
                 self.original_metadata.yshift + yshift
         else:
-            out.original_metadata.yshift = yshift
+            transformed.original_metadata.yshift = yshift
 
         if self.original_metadata.has_item('tiltaxis'):
-            out.original_metadata.tiltaxis =\
+            transformed.original_metadata.tiltaxis =\
                 self.original_metadata.tiltaxis + angle
         else:
-            out.original_metadata.tiltaxis = angle
-        return out
+            transformed.original_metadata.tiltaxis = angle
+        return transformed
 
     # noinspection PyTypeChecker
     def savemovie(self, start, stop, axis='XY', fps=15, dpi=100,
