@@ -440,7 +440,7 @@ def tilt_com(stack, offset=0, locs=None, output=True):
             logger.info(('Calculated shift value is: %s' % str(xshift)))
         count += 1
 
-        data = data.trans_stack(xshift=0, yshift=xshift, angle=-tiltaxis)
+        data = data.trans_stack(xshift=xshift, yshift=0, angle=-tiltaxis)
 
     out = stack.deepcopy()
     out.data = np.transpose(data.data, (0, 2, 1))
@@ -608,7 +608,7 @@ def align_to_other(stack, other, verbose):
 
     if (tiltaxis != 0) or (xshift != 0):
         out = out.trans_stack(xshift=xshift, yshift=yshift, angle=tiltaxis)
-
+        out.data = np.transpose(out.data, (0, 2, 1))
     if verbose:
         logger.info('TomoStack alignment applied')
         logger.info('X-shift: %.1f' % xshift)

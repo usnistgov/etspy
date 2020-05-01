@@ -20,6 +20,7 @@ import matplotlib.animation as animation
 from hyperspy.signals import Signal2D
 from scipy import ndimage
 from tempfile import TemporaryDirectory
+import matplotlib as mpl
 import logging
 
 logger = logging.getLogger(__name__)
@@ -632,16 +633,11 @@ class TomoStack(Signal2D):
             mid = np.int32(self.data.shape[1] / 2)
             slices = np.int32([mid / 2, mid, mid + mid / 2])
 
-        temp = self.deepcopy()
-        if angle != 0:
-            shifted = temp.trans_stack(xshift, 0, angle)
-        elif angle == 0 and xshift != 0:
-            shifted = self.deepcopy()
-            shifted.data = shifted.data[:, slices, :]
-            shifted = shifted.trans_stack(xshift, 0, 0)
+        if (xshift != 0.0) or (angle != 0.0):
+            shifted = self.trans_stack(xshift=xshift, yshift=0, angle=angle)
         else:
             shifted = self.deepcopy()
-            shifted.data = shifted.data[:, slices, :]
+        shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
         rec = recon.run(shifted, method='FBP', cuda=False)
@@ -653,7 +649,10 @@ class TomoStack(Signal2D):
             else:
                 rec = rec[:, offset:-offset, :]
 
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 10))
+        if mpl.get_backend() == 'nbAgg':
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(6, 2))
+        else:
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
         ax1.imshow(rec[0, :, :], cmap='afmhot')
         ax1.set_title('Slice %s' % str(slices[0]))
         ax1.set_axis_off()
@@ -665,11 +664,12 @@ class TomoStack(Signal2D):
         ax3.imshow(rec[2, :, :], cmap='afmhot')
         ax3.set_title('Slice %s' % str(slices[2]))
         ax3.set_axis_off()
-
+        fig.tight_layout()
         return
 
-    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0):
-        r"""
+    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
+                    interpolation='cubic'):
+        """
         Transform the stack using the OpenCV warpAffine function.
 
         Args
@@ -679,7 +679,11 @@ class TomoStack(Signal2D):
         yshift : float
             Number of pixels by which to shift the stack in the Y dimension
         angle : float
-            Number of degrees by which to rotate the stack about the X-Y plane
+            Angle in degrees by which to rotate the stack about the X-Y plane
+        interpolation : str
+            Mode of interpolation to employ. Must be either 'linear',
+            'cubic', 'nearest' or 'none'.  Note that 'nearest' and 'none'
+            are equivalent.  Default is 'linear'.
 
         Returns
         ----------
@@ -699,33 +703,66 @@ class TomoStack(Signal2D):
         <TomoStack, title: , dimensions: (77|256, 256)>
 
         """
-        out = self.deepcopy()
+        transformed = self.deepcopy()
+        theta = np.pi * angle / 180.
+        center_y, center_x = np.float32(np.array(transformed.data.shape[1:])/2)
 
-        if (xshift != 0) or (yshift != 0):
-            out.data = ndimage.shift(out.data, shift=[0, yshift, xshift],
-                                     order=0)
-        if angle != 0.0:
-            out.data = ndimage.rotate(out.data, axes=(1, 2),
-                                      angle=-angle, order=1,
-                                      reshape=False)
+        rot_mat = np.array([[np.cos(theta), -np.sin(theta), 0],
+                            [np.sin(theta), np.cos(theta), 0],
+                            [0, 0, 1]])
+
+        trans_mat = np.array([[1, 0, center_x],
+                              [0, 1, center_y],
+                              [0, 0, 1]])
+
+        rev_mat = np.array([[1, 0, -center_x],
+                            [0, 1, -center_y],
+                            [0, 0, 1]])
+
+        rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
+
+        xshift = np.array([[1, 0, np.float32(xshift)],
+                           [0, 1, np.float32(-yshift)],
+                           [0, 0, 1]])
+
+        full_transform = np.dot(xshift, rotation_mat)
+
+        if interpolation == 'linear':
+            mode = cv2.INTER_LINEAR
+        elif interpolation == 'cubic':
+            mode = cv2.INTER_LINEAR
+        elif interpolation == 'none' or interpolation == 'nearest':
+            mode = cv2.INTER_NEAREST
+        else:
+            raise ValueError("Interpolation method %s unknown. "
+                             "Must be 'linear', 'cubic', 'nearest' "
+                             "or 'none'" % interpolation)
+
+        for i in range(0, self.data.shape[0]):
+            transformed.data[i, :, :] = \
+                cv2.warpAffine(transformed.data[i, :, :],
+                               full_transform[:2, :],
+                               transformed.data.shape[1:][::-1],
+                               flags=mode)
+
         if self.original_metadata.has_item('xshift'):
-            out.original_metadata.xshift =\
+            transformed.original_metadata.xshift =\
                 self.original_metadata.xshift + xshift
         else:
-            out.original_metadata.xshift = xshift
+            transformed.original_metadata.xshift = xshift
 
         if self.original_metadata.has_item('yshift'):
-            out.original_metadata.yshift =\
+            transformed.original_metadata.yshift =\
                 self.original_metadata.yshift + yshift
         else:
-            out.original_metadata.yshift = yshift
+            transformed.original_metadata.yshift = yshift
 
         if self.original_metadata.has_item('tiltaxis'):
-            out.original_metadata.tiltaxis =\
+            transformed.original_metadata.tiltaxis =\
                 self.original_metadata.tiltaxis + angle
         else:
-            out.original_metadata.tiltaxis = angle
-        return out
+            transformed.original_metadata.tiltaxis = angle
+        return transformed
 
     # noinspection PyTypeChecker
     def savemovie(self, start, stop, axis='XY', fps=15, dpi=100,
