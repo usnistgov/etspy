@@ -673,7 +673,7 @@ class TomoStack(Signal2D):
         return
 
     def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
-                    interpolation='linear'):
+                    interpolation='cubic'):
         """
         Transform the stack using the OpenCV warpAffine function.
 
@@ -710,7 +710,7 @@ class TomoStack(Signal2D):
         """
         transformed = self.deepcopy()
         theta = np.pi * angle / 180.
-        center_x, center_y = np.float32(np.array(transformed.data.shape[1:])/2)
+        center_y, center_x = np.float32(np.array(transformed.data.shape[1:])/2)
 
         rot_mat = np.array([[np.cos(theta), -np.sin(theta), 0],
                             [np.sin(theta), np.cos(theta), 0],
@@ -727,7 +727,7 @@ class TomoStack(Signal2D):
         rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
 
         xshift = np.array([[1, 0, np.float32(xshift)],
-                           [0, 1, np.float32(yshift)],
+                           [0, 1, np.float32(-yshift)],
                            [0, 0, 1]])
 
         full_transform = np.dot(xshift, rotation_mat)
@@ -747,7 +747,7 @@ class TomoStack(Signal2D):
             transformed.data[i, :, :] = \
                 cv2.warpAffine(transformed.data[i, :, :],
                                full_transform[:2, :],
-                               transformed.data.shape[1:],
+                               transformed.data.shape[1:][::-1],
                                flags=mode)
 
         if self.original_metadata.has_item('xshift'):
