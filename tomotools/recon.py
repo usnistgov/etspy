@@ -12,9 +12,24 @@ import numpy as np
 import astra
 import hyperspy.api as hs
 import logging
+from contextlib import contextmanager
+import sys
+import os
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+@contextmanager
+def suppress_stdout():
+    """Suppress text output from tomopy reconstruction algorithm."""
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
 
 
 def run(stack, method, rot_center=None, iterations=None, constrain=None,
@@ -57,17 +72,23 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
             options = {'proj_type': 'linear', 'method': 'FBP'}
-            rec = tomopy.recon(stack.data, theta, center=rot_center,
-                               algorithm=tomopy.astra, filter_name='ramlak',
-                               options=options, **kwargs)
+            logger.info('Reconstruction volume using FBP')
+            with suppress_stdout():
+                rec = tomopy.recon(stack.data, theta, center=rot_center,
+                                   algorithm=tomopy.astra,
+                                   filter_name='ramlak',
+                                   options=options, **kwargs)
             logger.info('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA weighted-backprojection CUDA reconstruction of single
             slice'''
+            logger.info('Reconstruction volume using FBP_CUDA')
             options = {'proj_type': 'cuda', 'method': 'FBP_CUDA'}
-            rec = tomopy.recon(stack.data, theta, center=rot_center,
-                               algorithm=tomopy.astra, filter_name='ramlak',
-                               options=options, **kwargs)
+            with suppress_stdout():
+                rec = tomopy.recon(stack.data, theta, center=rot_center,
+                                   algorithm=tomopy.astra,
+                                   filter_name='ramlak',
+                                   options=options, **kwargs)
             logger.info('Reconstruction complete')
         else:
             raise Exception('Error related to ASTRA Toolbox')
@@ -79,32 +100,40 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
             if constrain:
                 if not thresh:
                     thresh = 0
+                logger.info("Reconstructing volume using SIRT w/ "
+                            "minimum constraint. Minimum value: %s" % thresh)
                 extra_options = {'MinConstraint': thresh}
                 options = {'proj_type': 'linear', 'method': 'SIRT',
                            'num_iter': iterations,
                            'extra_options': extra_options}
             else:
+                logger.info("Reconstructing volume using SIRT")
                 options = {'proj_type': 'linear', 'method': 'SIRT',
                            'num_iter': iterations}
-            rec = tomopy.recon(stack.data, theta, center=rot_center,
-                               algorithm=tomopy.astra, options=options,
-                               **kwargs)
+            with suppress_stdout():
+                rec = tomopy.recon(stack.data, theta, center=rot_center,
+                                   algorithm=tomopy.astra, options=options,
+                                   **kwargs)
             logger.info('Reconstruction complete')
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
             if constrain:
                 if not thresh:
                     thresh = 0
+                logger.info("Reconstructing volume using SIRT_CUDA w/ "
+                            "minimum constraint. Minimum value: %s" % thresh)
                 extra_options = {'MinConstraint': thresh}
                 options = {'proj_type': 'cuda', 'method': 'SIRT_CUDA',
                            'num_iter': iterations,
                            'extra_options': extra_options}
             else:
+                logger.info("Reconstructing volume using SIRT_CUDA")
                 options = {'proj_type': 'cuda', 'method': 'SIRT_CUDA',
                            'num_iter': iterations}
-            rec = tomopy.recon(stack.data, theta, center=rot_center,
-                               algorithm=tomopy.astra, options=options,
-                               ncore=1, **kwargs)
+            with suppress_stdout():
+                rec = tomopy.recon(stack.data, theta, center=rot_center,
+                                   algorithm=tomopy.astra, options=options,
+                                   ncore=1, **kwargs)
             logger.info('Reconstruction complete')
         else:
             raise Exception('Error related to ASTRA Toolbox')
@@ -155,13 +184,15 @@ def check_sirt_error(sinogram, algorithm, tol, verbose, constrain, cuda):
     rec = None
     iteration = 0
     while not terminate:
-        rec = tomopy.recon(sinogram.data, theta=tilts, algorithm=algorithm,
-                           num_iter=1, init_recon=rec)
+        with suppress_stdout():
+            rec = tomopy.recon(sinogram.data, theta=tilts, algorithm=algorithm,
+                               num_iter=1, init_recon=rec)
         if iteration == 0:
             rec_stack = rec
         else:
             rec_stack = np.vstack((rec_stack, rec))
-        forward_project = tomopy.project(rec, theta=tilts, pad=False)
+        with suppress_stdout():
+            forward_project = tomopy.project(rec, theta=tilts, pad=False)
 
         error.append(np.sum((sinogram.data - forward_project)**2))
         if len(error) > 1:
