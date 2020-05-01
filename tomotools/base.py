@@ -513,6 +513,7 @@ class TomoStack(Signal2D):
         >>> stack = tomotools.load(file)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP')
+        Reconstructing 1 slice groups with 1 master threads...
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         >>> import tomotools.api as tomotools
@@ -520,6 +521,7 @@ class TomoStack(Signal2D):
         >>> stack = tomotools.load(file)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5)
+        Reconstructing 1 slice groups with 1 master threads...
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
@@ -531,6 +533,7 @@ class TomoStack(Signal2D):
         >>> constrain = True
         >>> thresh = 0
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh)
+        Reconstructing 1 slice groups with 1 master threads...
 
         """
         if cuda is None:
@@ -1150,13 +1153,12 @@ class TomoStack(Signal2D):
 
         Examples
         ----------
-        Examples
-        --------
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
         >>> error, rec_stack = s.recon_error(algorithm='sirt', tol=0.5)
         Reconstructing 1 slice groups with 1 master threads...
         Reconstructing 1 slice groups with 1 master threads...
+
         """
         if not nslice:
             nslice = np.int32(self.data.shape[1] / 2)
