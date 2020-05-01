@@ -113,7 +113,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
     return rec
 
 
-def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
+def check_sirt_error(sinogram, algorithm, tol, verbose, constrain, cuda):
     """
     Determine the optimum number of SIRT iterations.
 
@@ -149,41 +149,19 @@ def check_sirt_error(sinogram, tol, verbose, constrain, cuda):
 
     """
     tilts = sinogram.axes_manager[0].axis * np.pi / 180
-    vol_geom = astra.create_vol_geom(sinogram.data.shape[1],
-                                     sinogram.data.shape[1])
-    proj_geom = astra.create_proj_geom('parallel', 1.0, sinogram.data.shape[1],
-                                       tilts)
-    proj_id = astra.create_projector('strip', proj_geom, vol_geom)
-    current_sinogram_id = astra.data2d.create('-sino', proj_geom,
-                                              sinogram.data)
-    rec_id = astra.data2d.create('-vol', vol_geom)
-
-    if cuda:
-        cfg = astra.astra_dict('SIRT_CUDA')
-    else:
-        cfg = astra.astra_dict('SIRT')
-    cfg['ReconstructionDataId'] = rec_id
-    cfg['ProjectorId'] = proj_id
-    cfg['ProjectionDataId'] = current_sinogram_id
-    if constrain:
-        cfg['option'] = {}
-        cfg['option']['MinConstraint'] = 0
 
     error = []
     terminate = False
-
+    rec = None
     iteration = 0
     while not terminate:
-        alg_id = astra.algorithm.create(cfg)
-        astra.algorithm.run(alg_id, 1)
-        rec = astra.data2d.get(rec_id)
+        rec = tomopy.recon(sinogram.data, theta=tilts, algorithm=algorithm,
+                           num_iter=1, init_recon=rec)
         if iteration == 0:
-            rec_stack = rec[np.newaxis, :, :]
+            rec_stack = rec
         else:
-            rec_stack = np.vstack((rec_stack, rec[np.newaxis, :, :]))
-        current_sinogram_id, forward_project = astra.create_sino(rec, proj_id)
-        astra.data2d.store(current_sinogram_id,
-                           sinogram.data - forward_project)
+            rec_stack = np.vstack((rec_stack, rec))
+        forward_project = tomopy.project(rec, theta=tilts, pad=False)
 
         error.append(np.sum((sinogram.data - forward_project)**2))
         if len(error) > 1:

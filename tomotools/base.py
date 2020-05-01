@@ -1110,16 +1110,19 @@ class TomoStack(Signal2D):
         self.save(filename)
         return
 
-    def sirt_error(self, nslice=None, tol=0.01, verbose=False,
-                   constrain=True, cuda=None):
+    def recon_error(self, nslice=None, tol=0.01, algorithm='sirt',
+                    verbose=False, constrain=True, cuda=None):
         """
-        Determine the optimum number of SIRT iterations.
+        Determine the optimum number of iterations for reconstruction.
 
-        Evaluates the difference between SIRT reconstruction and input data
+        Evaluates the difference between reconstruction and input data
         at each iteration and terminates when the change between iterations is
         below tolerance.
+
         Args
         ----------
+        algorithm : str
+            Reconstruction algorithm use.
         nslice : int
             Location at which to perform the evaluation.
         tol : float
@@ -1145,6 +1148,12 @@ class TomoStack(Signal2D):
             Signal containing the SIRT reconstruction at each iteration
             for visual inspection.
 
+        Examples
+        ----------
+        >>> import tomotools.api as tomotools
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        >>> error, rec_stack = s.recon_error(algorithm='sirt', tol=0.5)
+
         """
         if not nslice:
             nslice = np.int32(self.data.shape[1] / 2)
@@ -1154,7 +1163,7 @@ class TomoStack(Signal2D):
                 cuda = True
             else:
                 cuda = False
-        sinogram = self.isig[:, nslice].deepcopy()
-        error, rec_stack = recon.check_sirt_error(sinogram, tol,
+        sinogram = self.isig[:, nslice:nslice+1].deepcopy()
+        error, rec_stack = recon.check_sirt_error(sinogram, algorithm, tol,
                                                   verbose, constrain, cuda)
         return error, rec_stack
