@@ -608,7 +608,7 @@ def align_to_other(stack, other, verbose):
 
     if (tiltaxis != 0) or (xshift != 0):
         out = out.trans_stack(xshift=xshift, yshift=yshift, angle=tiltaxis)
-
+        out.data = np.transpose(out.data, (0, 2, 1))
     if verbose:
         logger.info('TomoStack alignment applied')
         logger.info('X-shift: %.1f' % xshift)
