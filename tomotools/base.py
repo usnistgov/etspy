@@ -721,11 +721,11 @@ class TomoStack(Signal2D):
 
         rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
 
-        xshift = np.array([[1, 0, np.float32(xshift)],
-                           [0, 1, np.float32(-yshift)],
-                           [0, 0, 1]])
+        shift = np.array([[1, 0, np.float32(xshift)],
+                          [0, 1, np.float32(-yshift)],
+                          [0, 0, 1]])
 
-        full_transform = np.dot(xshift, rotation_mat)
+        full_transform = np.dot(shift, rotation_mat)
 
         if interpolation == 'linear':
             mode = cv2.INTER_LINEAR
