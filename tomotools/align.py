@@ -348,7 +348,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     return aligned
 
 
-def tilt_com(stack, offset=0, locs=None, output=True):
+def tilt_com(stack, offset=0, locs=None):
     """
     Perform tilt axis alignment using center of mass (CoM) tracking.
 
@@ -372,6 +372,53 @@ def tilt_com(stack, offset=0, locs=None, output=True):
         make the tilt axis vertical
 
     """
+    def com_motion(theta, r, x0, z0):
+        return r-x0*np.cos(theta)-z0*np.sin(theta)
+
+    def get_coms(stack, nslice):
+        sino = stack.isig[:, nslice].deepcopy().data
+        coms = [center_of_mass(sino[i, :])[0] for i in range(0, sino.shape[0])]
+        return np.array(coms)
+
+    def fit_line(x, m, b):
+        return m*x + b
+
+    def shift_stack(stack, shifts):
+        shifted = stack.deepcopy()
+        for i in range(0, stack.data.shape[0]):
+            shifted.data[i, :, :] = ndimage.shift(stack.data[i, :, :],
+                                                  [0, shifts[i]])
+        return shifted
+
+    def calc_shifts(stack, nslice):
+        thetas = np.pi * stack.axes_manager[0].axis / 180.
+        coms = get_coms(stack, nslice)
+        r, x0, z0 = optimize.curve_fit(com_motion, xdata=thetas,
+                                       ydata=coms, p0=[0, 0, 0])[0]
+        shifts = com_motion(thetas, r, x0, z0) - coms
+        return shifts, coms
+
+    def tilt_analyze(stack, slices):
+        thetas = np.pi * stack.axes_manager[0].axis / 180.
+        r = np.zeros(len(slices))
+        x0 = np.zeros(len(slices))
+        z0 = np.zeros(len(slices))
+        for i in range(0, len(slices)):
+            coms = get_coms(stack, slices[i])
+            r[i], x0[i], z0[i] = optimize.curve_fit(com_motion,
+                                                    xdata=thetas,
+                                                    ydata=coms,
+                                                    p0=[0, 0, 0])[0]
+        slope, intercept = optimize.curve_fit(fit_line,
+                                              xdata=r,
+                                              ydata=slices,
+                                              p0=[0, 0])[0]
+        xshift = stack.data.shape[2]/2\
+            - (stack.data.shape[2]/2 - intercept)\
+            / slope
+        rotation = 180*np.arctan(1/slope)/np.pi
+        return xshift, rotation, r
+
     data = stack.deepcopy()
     if locs is None:
         """Prompt user for locations at which to fit the CoM"""
@@ -389,66 +436,17 @@ def tilt_com(stack, offset=0, locs=None, output=True):
         locs = np.int16(np.sort(coords[:, 0]))
     else:
         locs = np.int16(np.sort(locs))
-    if output:
-        logger.info('\nCorrecting tilt axis....')
-    tilts = stack.axes_manager[0].axis * np.pi / 180
-    xshift = 0
-    tiltaxis = 0
-    totaltilt = 0
-    totalshift = 0
-    count = 1
 
-    while abs(tiltaxis) >= 1 or abs(xshift) >= 1 or count == 1:
-        centers = np.zeros([data.data.shape[0], 3])
-        sinos = data.data[:, :, locs]
-        for k in range(0, 3):
-            for i in range(0, data.data.shape[0]):
-                centers[i, k] = center_of_mass(sinos[i, :, k])[0]
+    shifts, coms = calc_shifts(stack, locs[1])
+    shifted = shift_stack(stack, shifts)
+    tilt_shift, tilt_rotation, r = tilt_analyze(stack, locs)
+    final = shifted.trans_stack(xshift=tilt_shift, angle=tilt_rotation)
 
-        com_results = np.zeros(3)
-
-        def com_func(x, r0, a, b):
-            return r0 - a * np.cos(x) - b * np.sin(x)
-
-        guess = (0.0, 0.0, 0.0)
-        # noinspection PyTypeChecker
-        for i in range(0, 3):
-            com_results[i] =\
-                optimize.curve_fit(com_func,
-                                   tilts,
-                                   np.int32(centers[:, i]),
-                                   guess)[0][0]
-
-        def axis_func(x, m, b):
-            return m * x + b
-
-        guess = [0.0, 0.0]
-        # noinspection PyTypeChecker
-        axis_fits =\
-            optimize.curve_fit(f=axis_func, xdata=locs,
-                               ydata=com_results, p0=guess)[0]
-
-        tiltaxis = 180 / np.pi * np.tanh(axis_fits[0])
-        xshift = (axis_fits[1] / axis_fits[0] * np.sin(np.pi / 180 * tiltaxis))
-        xshift = (data.data.shape[1] / 2) - xshift - offset
-        totaltilt += tiltaxis
-        totalshift += xshift
-
-        if output:
-            logger.info(('Iteration #%s' % count))
-            logger.info(('Calculated tilt correction is: %s' % str(tiltaxis)))
-            logger.info(('Calculated shift value is: %s' % str(xshift)))
-        count += 1
-
-        data = data.trans_stack(xshift=0, yshift=-xshift, angle=-tiltaxis)
-
-    out = stack.deepcopy()
-    out.data = np.transpose(data.data, (0, 2, 1))
-    if output:
-        logger.info('\nTilt axis alignment complete')
-    out.original_metadata.tiltaxis = -totaltilt
-    out.original_metadata.xshift = totalshift
-    return out
+    logger.info("Calculated tilt-axis shift %.2f" % tilt_shift)
+    logger.info("Calculated tilt-axis rotation %.2f" % tilt_rotation)
+    final.original_metadata.tiltaxis = -tilt_rotation
+    final.original_metadata.xshift = tilt_shift
+    return final
 
 
 def tilt_maximage(data, limit=10, delta=0.3, output=False,
