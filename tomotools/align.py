@@ -376,7 +376,7 @@ def tilt_com(stack, offset=0, locs=None):
         return r-x0*np.cos(theta)-z0*np.sin(theta)
 
     def get_coms(stack, nslice):
-        sino = stack.isig[:, nslice].deepcopy().data
+        sino = stack.isig[nslice, :].deepcopy().data
         coms = [center_of_mass(sino[i, :])[0] for i in range(0, sino.shape[0])]
         return np.array(coms)
 
@@ -387,7 +387,7 @@ def tilt_com(stack, offset=0, locs=None):
         shifted = stack.deepcopy()
         for i in range(0, stack.data.shape[0]):
             shifted.data[i, :, :] = ndimage.shift(stack.data[i, :, :],
-                                                  [0, shifts[i]])
+                                                  [shifts[i], 0])
         return shifted
 
     def calc_shifts(stack, nslice):
@@ -413,11 +413,11 @@ def tilt_com(stack, offset=0, locs=None):
                                               xdata=r,
                                               ydata=slices,
                                               p0=[0, 0])[0]
-        xshift = stack.data.shape[2]/2\
-            - (stack.data.shape[2]/2 - intercept)\
+        tilt_shift = stack.data.shape[1]/2\
+            - (stack.data.shape[1]/2 - intercept)\
             / slope
         rotation = 180*np.arctan(1/slope)/np.pi
-        return xshift, rotation, r
+        return -tilt_shift, -rotation, r
 
     data = stack.deepcopy()
     if locs is None:
@@ -440,11 +440,12 @@ def tilt_com(stack, offset=0, locs=None):
     shifts, coms = calc_shifts(stack, locs[1])
     shifted = shift_stack(stack, shifts)
     tilt_shift, tilt_rotation, r = tilt_analyze(stack, locs)
-    final = shifted.trans_stack(xshift=tilt_shift, angle=tilt_rotation)
+    final = shifted.trans_stack(yshift=tilt_shift, angle=tilt_rotation)
 
     logger.info("Calculated tilt-axis shift %.2f" % tilt_shift)
     logger.info("Calculated tilt-axis rotation %.2f" % tilt_rotation)
-    final.original_metadata.tiltaxis = -tilt_rotation
+    final = final.swap_axes(1, 2)
+    final.original_metadata.tiltaxis = tilt_rotation
     final.original_metadata.xshift = tilt_shift
     return final
 

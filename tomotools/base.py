@@ -457,7 +457,7 @@ class TomoStack(Signal2D):
         if axis == 1:
             self = self.rotate(-90)
         if method == 'CoM':
-            out = align.tilt_com(self, offset, locs, output)
+            out = align.tilt_com(self, offset, locs)
         elif method == 'MaxImage':
             out = align.tilt_maximage(self, limit, delta, output,
                                       show_progressbar)
