@@ -209,8 +209,8 @@ def check_sirt_error(sinogram, algorithm, tol, verbose, constrain, cuda):
     return error, rec_stack
 
 
-def astra_sirt_gpu(stack, angles, iterations=150, thickness=None,
-                   constrain=True):
+def astra_sirt(stack, angles, iterations=150, thickness=None,
+               constrain=True, cuda=False):
     data = np.rollaxis(stack, 1)
     if thickness is None:
         thickness = data.shape[2]
@@ -220,37 +220,59 @@ def astra_sirt_gpu(stack, angles, iterations=150, thickness=None,
 
     vol_geom = astra.create_vol_geom(thickness, x_pix, y_pix)
 
-    proj_geom = astra.create_proj_geom('parallel3d', 1.0, 1.0,
-                                       y_pix, x_pix, thetas)
+    if cuda:
+        proj_geom = astra.create_proj_geom('parallel3d', 1.0, 1.0,
+                                           y_pix, x_pix, thetas)
 
-    proj_id = astra.data3d.create('-proj3d', proj_geom, data)
-    rec_id = astra.data3d.create('-vol', vol_geom)
+        proj_id = astra.data3d.create('-proj3d', proj_geom, data)
+        rec_id = astra.data3d.create('-vol', vol_geom)
 
-    cfg = astra.astra_dict('SIRT3D_CUDA')
+        cfg = astra.astra_dict('SIRT3D_CUDA')
+
+    else:
+        proj_geom = astra.create_proj_geom('parallel', 1.0, x_pix, thetas)
+        proj_id = astra.data3d.create('-strip', proj_geom, data)
+        rec_id = astra.data3d.create('-vol', vol_geom)
+
+        cfg = astra.astra_dict('SIRT')
+
     cfg['ReconstructionDataId'] = rec_id
     cfg['ProjectionDataId'] = proj_id
 
     if constrain:
         cfg['option'] = {'MinConstraint': 0.0}
     alg_id = astra.algorithm.create(cfg)
-
     astra.algorithm.run(alg_id, iterations)
-    rec = astra.data3d.get(rec_id)
+
+    if cuda:
+        rec = astra.data3d.get(rec_id)
+        astra.data3d.delete(rec_id)
+        astra.data3d.delete(proj_id)
+    else:
+        rec = astra.data2d.get(rec_id)
+        astra.data2d.delete(rec_id)
+        astra.data2d.delete(proj_id)
 
     astra.algorithm.delete(alg_id)
-    astra.data3d.delete(rec_id)
-    astra.data3d.delete(proj_id)
+    astra.projector.delete(proj_id)
     return rec
 
 
-def astra_project_gpu(reconstruction, angles):
+def astra_project(object, angles, cuda=False):
     thetas = np.pi * angles / 180.
-    y_pix, thickness, x_pix = reconstruction.shape
-    vol_geom = astra.create_vol_geom(thickness, x_pix, y_pix)
-    proj_geom = astra.create_proj_geom('parallel3d', 1.0, 1.0,
-                                       y_pix, x_pix, thetas)
-    proj_id, proj_data = astra.create_sino3d_gpu(reconstruction,
-                                                 proj_geom,
-                                                 vol_geom)
+    y_pix, thickness, x_pix = object.shape
+    if cuda:
+        vol_geom = astra.create_vol_geom(thickness, x_pix, y_pix)
+        proj_geom = astra.create_proj_geom('parallel3d', 1.0, 1.0,
+                                           y_pix, x_pix, thetas)
+        proj_id, proj_data = astra.create_sino3d_gpu(object,
+                                                     proj_geom,
+                                                     vol_geom)
+    else:
+        vol_geom = astra.create_vol_geom(thickness, x_pix)
+        proj_geom = astra.create_proj_geom('parallel', 1.0, x_pix, thetas)
+        proj_id, proj_data = astra.create_sino(object,
+                                               proj_geom,
+                                               vol_geom)
     proj_data = np.rollaxis(proj_data, 1)
     return proj_data
