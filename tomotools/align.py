@@ -568,40 +568,99 @@ def tilt_maximage(data, limit=10, delta=0.3, output=False,
     return out
 
 
-def tilt_minimize(stack):
-    def align_stack(x, stack, slices=None):
+def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
+    """
+    Perform tilt axis alignment by minimization of reconstruction error.
+
+    Args
+    ----------
+    stack : TomoStack object
+       TomoStack containing the tilt series to reconstruct.
+    boundaries : tuple
+        Boundary conditiosn for the minimization algorithm.  Should be of
+        the form:
+
+        ((shift_min, shift_max), (rotation_min, rotation_max),)
+
+        where shift_min and shift_max are the constraints for shifting
+        the tilt axis along the x-axis and rotation_min and rotation_max
+        are the constraints for rotating the tilt axis about the center
+        of the image. Default is ((-30, 30), (-5, 5),).
+    tol : float
+        Tolerance for termination of optimization algorithm. Default
+        is 0.5.
+
+    Returns
+    ----------
+    out : TomoStack object
+        Copy of the input stack after rotation and translation to center and
+        make the tilt axis vertical
+
+    """
+    def align_stack_cuda(x, stack, slices=None):
         xshift = x[0]
         angle = x[1]
         if slices is None:
             middle = np.int32(stack.data.shape[2]/2)
             slices = [middle-10, middle+10]
         trans = stack.trans_stack(xshift=xshift, angle=angle)
-        sino = np.zeros([stack.data.shape[0], 2, stack.data.shape[2]])
+        sino = np.zeros([stack.data.shape[0],
+                         len(slices),
+                         stack.data.shape[2]])
         for i in range(0, len(slices)):
-            sino[:, i, :] = trans.isig[:, slices[i]].deepcopy().data
-        rec = recon.astra_sirt_gpu(sino, stack.axes_manager[0].axis, 50)
-        proj = recon.astra_project_gpu(rec, stack.axes_manager[0].axis)
-        diff = np.abs(proj-sino)
+            sino = trans.isig[:, slices[i]].deepcopy().data
+        rec = recon.astra_sirt(sino, stack.axes_manager[0].axis, 50, cuda=True)
+        proj = recon.astra_project(rec, stack.axes_manager[0].axis, cuda=True)
+        diff = np.abs(proj-sino.data)
+        error = diff.sum()
+        return error
+
+    def align_stack_cpu(x, stack, slices=None):
+        xshift = x[0]
+        angle = x[1]
+        if slices is None:
+            middle = np.int32(stack.data.shape[2]/2)
+            slices = [middle-10, middle+10]
+        trans = stack.trans_stack(xshift=xshift, angle=angle)
+        sino = np.zeros([stack.data.shape[0],
+                         len(slices),
+                         stack.data.shape[2]])
+        for i in range(0, len(slices)):
+            sino = trans.isig[:, slices[i]].deepcopy().data
+        rec = recon.astra_sirt(sino, stack.axes_manager[0].axis,
+                               iterations=50, cuda=False)
+        proj = recon.astra_project(rec, stack.axes_manager[0].axis, cuda=False)
+        diff = np.abs(proj-sino.data)
         error = diff.sum()
         return error
 
     def callback_de(X, convergence):
-        print('Shift: %.2f, Angle: %.2f, Error: %.4f' %
-              (X[0], X[1], convergence))
+        logger.info('Shift: %.2f, Angle: %.2f, Error: %.4f' %
+                    (X[0], X[1], convergence))
 
     ali = stack.deepcopy()
+    if boundaries is None:
+        boundaries = ((-30, 30), (-5, 5),)
 
-    result = optimize.differential_evolution(align_stack,
-                                             bounds=((-30, 30), (-5, 5),),
-                                             args=(ali,),
-                                             disp=False,
-                                             callback=callback_de,
-                                             tol=0.5)
+    if cuda:
+        result = optimize.differential_evolution(align_stack_cuda,
+                                                 bounds=boundaries,
+                                                 args=(ali,),
+                                                 disp=False,
+                                                 callback=callback_de,
+                                                 tol=0.5)
+    else:
+        result = optimize.differential_evolution(align_stack_cpu,
+                                                 bounds=boundaries,
+                                                 args=(ali,),
+                                                 disp=False,
+                                                 callback=callback_de,
+                                                 tol=0.5)
     shift, rotation = result['x']
-    print('Shift: %.2f, Rotation: %.2f' % (shift, rotation))
+    logger.info('Shift: %.2f, Rotation: %.2f' % (shift, rotation))
 
-    final = ali.trans_stack(xshift=shift, angle=rotation)
-    return final
+    out = ali.trans_stack(xshift=shift, angle=rotation)
+    return out
 
 
 def align_to_other(stack, other, verbose):
