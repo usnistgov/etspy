@@ -459,7 +459,7 @@ class TomoStack(Signal2D):
         """
         method = method.lower()
         if axis == 1:
-            self = self.rotate(-90)
+            self = self.swap_axes(1, 2)
         if method == 'com':
             out = align.tilt_com(self, locs)
         elif method == 'maximage':
@@ -473,7 +473,7 @@ class TomoStack(Signal2D):
                 "Must be 'CoM', 'MaxImage', or 'Minimize'" % method)
 
         if axis == 1:
-            self = self.rotate(90)
+            self = self.swap_axes(2, 1)
         return out
 
     def reconstruct(self, method='FBP', rot_center=None, iterations=None,
@@ -576,38 +576,6 @@ class TomoStack(Signal2D):
                 out = out.isig[:, offset:-offset]
 
         return out
-
-    def rotate(self, angle):
-        """
-        Rotate the stack by a given angle.
-
-        Uses the scipy.ndimage.rotate function
-
-        Args
-        ----------
-        angle : float
-            Angle by which to rotate the data in the TomoStack about the XY
-            plane
-
-        Returns
-        ----------
-        rotated : TomoStack object
-            Rotated copy of the input stack
-
-        Examples
-        ----------
-        >>> import tomotools.api as tomotools
-        >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
-        >>> stack = tomotools.load(filename)
-        >>> stack.isig[100:156,:]
-        <TomoStack, title: , dimensions: (77|56, 256)>
-        >>> rotated = stack.isig[100:156,:].rotate(90)
-        >>> rotated
-        <TomoStack, title: , dimensions: (77|256, 56)>
-
-        """
-        rotated = self.trans_stack(angle=angle)
-        return rotated
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None):
         """
