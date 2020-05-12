@@ -361,8 +361,6 @@ def tilt_com(stack, locs=None):
         3-D numpy array containing the tilt series data
     locs : list
         Locations at which to perform the CoM analysis
-    output : boolean
-        Output alignment results to console after each iteration
 
     Returns
     ----------
@@ -449,8 +447,7 @@ def tilt_com(stack, locs=None):
     return final
 
 
-def tilt_maximage(data, limit=10, delta=0.3, output=False,
-                  show_progressbar=False):
+def tilt_maximage(data, limit=10, delta=0.3, show_progressbar=False):
     """
     Perform automated determination of the tilt axis of a TomoStack.
 
@@ -466,8 +463,6 @@ def tilt_maximage(data, limit=10, delta=0.3, output=False,
         Maximum rotation angle to use for MaxImage calculation
     delta : float
         Angular increment for MaxImage calculation
-    output : boolean
-        Output alignment results to console after each iteration
     show_progressbar : boolean
         Enable/disable progress bar
 
@@ -554,10 +549,10 @@ def tilt_maximage(data, limit=10, delta=0.3, output=False,
     pos_angle = -angles[scores_pos.index(best_score_pos)]
     neg_angle = -angles[scores_neg.index(best_score_neg)]
     opt_angle = (pos_angle + neg_angle) / 2
-    if output:
-        logger.info('Optimum positive rotation angle: {}'.format(pos_angle))
-        logger.info('Optimum negative rotation angle: {}'.format(neg_angle))
-        logger.info('Optimum positive rotation angle: {}'.format(opt_angle))
+
+    logger.info('Optimum positive rotation angle: {}'.format(pos_angle))
+    logger.info('Optimum negative rotation angle: {}'.format(neg_angle))
+    logger.info('Optimum positive rotation angle: {}'.format(opt_angle))
 
     out = copy.deepcopy(data)
     out = out.trans_stack(xshift=0, yshift=0, angle=opt_angle)
@@ -661,7 +656,7 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
     return out
 
 
-def align_to_other(stack, other, verbose):
+def align_to_other(stack, other):
     """
     Spatially register a TomoStack using previously calculated shifts.
 
@@ -702,9 +697,9 @@ def align_to_other(stack, other, verbose):
     if (tiltaxis != 0) or (xshift != 0):
         out = out.trans_stack(xshift=xshift, yshift=yshift, angle=tiltaxis)
         out.data = np.transpose(out.data, (0, 2, 1))
-    if verbose:
-        logger.info('TomoStack alignment applied')
-        logger.info('X-shift: %.1f' % xshift)
-        logger.info('Y-shift: %.1f' % yshift)
-        logger.info('Rotation: %.1f' % tiltaxis)
+
+    logger.info('TomoStack alignment applied')
+    logger.info('X-shift: %.1f' % xshift)
+    logger.info('Y-shift: %.1f' % yshift)
+    logger.info('Rotation: %.1f' % tiltaxis)
     return out

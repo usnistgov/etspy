@@ -98,7 +98,7 @@ class TomoStack(Signal2D):
         ax3.set_title("Cross-correlation")
         return fig
 
-    def align_other(self, other, verbose=False):
+    def align_other(self, other):
         """
         Apply the alignment calculated for one dataset to another.
 
@@ -129,7 +129,7 @@ class TomoStack(Signal2D):
             raise ValueError('No transformation have been applied '
                              'to this stack')
 
-        out = align.align_to_other(self, other, verbose)
+        out = align.align_to_other(self, other)
 
         if self.original_metadata.has_item('cropped'):
             if self.original_metadata.cropped:
@@ -386,7 +386,7 @@ class TomoStack(Signal2D):
         return out
 
     def tilt_align(self, method, limit=10, delta=0.3, locs=None,
-                   axis=0, output=True, show_progressbar=False):
+                   axis=0, show_progressbar=False):
         """
         Align the tilt axis of a TomoStack.
 
@@ -430,8 +430,6 @@ class TomoStack(Signal2D):
         axis : integer
             Axis along which to extract sinograms. Value of 0 means tilt axis
             is horizontally oriented.  1 means vertically oriented.
-        output : boolean
-            Output alignment results to console after each iteration
         show_progressbar : boolean
             Enable/disable progress bar
 
@@ -447,14 +445,14 @@ class TomoStack(Signal2D):
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> reg = s.stack_register('ECC',show_progressbar=False)
         >>> method = 'CoM'
-        >>> ali = reg.tilt_align(method, locs=[50,100,160], output=False)
+        >>> ali = reg.tilt_align(method, locs=[50,100,160])
 
         Align tilt axis using the maximum image method
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> reg = s.stack_register('ECC',show_progressbar=False)
         >>> method = 'MaxImage'
-        >>> ali = reg.tilt_align(method, output=False, show_progressbar=False)
+        >>> ali = reg.tilt_align(method, show_progressbar=False)
 
         """
         method = method.lower()
@@ -463,8 +461,7 @@ class TomoStack(Signal2D):
         if method == 'com':
             out = align.tilt_com(self, locs)
         elif method == 'maximage':
-            out = align.tilt_maximage(self, limit, delta, output,
-                                      show_progressbar)
+            out = align.tilt_maximage(self, limit, delta, show_progressbar)
         elif method == 'minimize':
             out = align.tilt_minimize(self, cuda=astra.use_cuda())
         else:
@@ -1002,14 +999,14 @@ class TomoStack(Signal2D):
         ----------
         nslice : integer
             Slice position at which to implement shift
-
         xshift : integer
             Number of pixels with which to shift the second portion of the
             stack relative to the first in the X dimension.
-
         yshift : integer
             Number of pixels with which to shift the second portion of the
             stack relative to the first in the Y dimension.
+        display : bool
+            If True, display the result.
 
         """
         output = self.deepcopy()
@@ -1114,7 +1111,7 @@ class TomoStack(Signal2D):
         return
 
     def recon_error(self, nslice=None, tol=0.01, algorithm='sirt',
-                    verbose=False, constrain=True, cuda=None):
+                    constrain=True, cuda=None):
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1131,9 +1128,6 @@ class TomoStack(Signal2D):
         tol : float
             Fractional change between iterations at which the
             evaluation will terminate.  Default is 0.01.
-        verbose : boolean
-            If True, output the percentage change in error between the current
-            iteration and the previous.
         constrain : boolean
             If True, perform SIRT reconstruction with a non-negativity
             constraint.  Default is True
@@ -1168,5 +1162,5 @@ class TomoStack(Signal2D):
                 cuda = False
         sinogram = self.isig[:, nslice:nslice+1].deepcopy()
         error, rec_stack = recon.check_sirt_error(sinogram, algorithm, tol,
-                                                  verbose, constrain, cuda)
+                                                  constrain, cuda)
         return error, rec_stack

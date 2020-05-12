@@ -142,7 +142,7 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
     return rec
 
 
-def check_sirt_error(sinogram, algorithm, tol, verbose, constrain, cuda):
+def check_sirt_error(sinogram, algorithm, tol, constrain, cuda):
     """
     Determine the optimum number of SIRT iterations.
 
@@ -157,9 +157,6 @@ def check_sirt_error(sinogram, algorithm, tol, verbose, constrain, cuda):
     tol : float
         Fractional change between iterations at which the
         evaluation will terminate.
-    verbose : boolean
-        If True, output the percentage change in error between the current
-        iteration and the previous.
     constrain : boolean
         If True, perform SIRT reconstruction with a non-negativity
         constraint.
