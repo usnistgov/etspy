@@ -18,7 +18,7 @@ import tqdm
 from pystackreg import StackReg
 from scipy.ndimage import center_of_mass
 import logging
-from tomopy import recon
+from tomotools import recon
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -349,7 +349,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     return aligned
 
 
-def tilt_com(stack, offset=0, locs=None):
+def tilt_com(stack, locs=None):
     """
     Perform tilt axis alignment using center of mass (CoM) tracking.
 
@@ -359,8 +359,6 @@ def tilt_com(stack, offset=0, locs=None):
     ----------
     stack : TomoStack object
         3-D numpy array containing the tilt series data
-    offset : integer
-        Not currently used
     locs : list
         Locations at which to perform the CoM analysis
     output : boolean
