@@ -18,6 +18,7 @@ import tqdm
 from pystackreg import StackReg
 from scipy.ndimage import center_of_mass
 import logging
+from tomopy import recon
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -565,6 +566,42 @@ def tilt_maximage(data, limit=10, delta=0.3, output=False,
     out.data = np.transpose(out.data, (0, 2, 1))
     out.original_metadata.tiltaxis = opt_angle
     return out
+
+
+def tilt_minimize(stack):
+    def align_stack(x, stack, slices=None):
+        xshift = x[0]
+        angle = x[1]
+        if slices is None:
+            middle = np.int32(stack.data.shape[2]/2)
+            slices = [middle-10, middle+10]
+        trans = stack.trans_stack(xshift=xshift, angle=angle)
+        sino = np.zeros([stack.data.shape[0], 2, stack.data.shape[2]])
+        for i in range(0, len(slices)):
+            sino[:, i, :] = trans.isig[:, slices[i]].deepcopy().data
+        rec = recon.astra_sirt_gpu(sino, stack.axes_manager[0].axis, 50)
+        proj = recon.astra_project_gpu(rec, stack.axes_manager[0].axis)
+        diff = np.abs(proj-sino)
+        error = diff.sum()
+        return error
+
+    def callback_de(X, convergence):
+        print('Shift: %.2f, Angle: %.2f, Error: %.4f' %
+              (X[0], X[1], convergence))
+
+    ali = stack.deepcopy()
+
+    result = optimize.differential_evolution(align_stack,
+                                             bounds=((-30, 30), (-5, 5),),
+                                             args=(ali,),
+                                             disp=False,
+                                             callback=callback_de,
+                                             tol=0.5)
+    shift, rotation = result['x']
+    print('Shift: %.2f, Rotation: %.2f' % (shift, rotation))
+
+    final = ali.trans_stack(xshift=shift, angle=rotation)
+    return final
 
 
 def align_to_other(stack, other, verbose):

@@ -405,11 +405,15 @@ class TomoStack(Signal2D):
         Hamming window, and the rotation angle is determined by iterative
         histogram analysis
 
+        minimize: Perform automated determination of the tilt axis of a
+        TomoStack by minimizing the difference between the reconstruction and
+        the input dataset usign scipy.optimize.differential_evolution.
+
         Args
         ----------
         method : string
-            Algorithm to use for registration alignment. Must be either 'CoM'
-            or 'MaxImage'
+            Algorithm to use for registration alignment. Must be either 'CoM',
+            'MaxImage', or 'minimize'.
         limit : integer
             Position in tilt series to use as starting point for the
             alignment. If None, the central projection is used.
@@ -461,6 +465,8 @@ class TomoStack(Signal2D):
         elif method == 'MaxImage':
             out = align.tilt_maximage(self, limit, delta, output,
                                       show_progressbar)
+        elif method == 'minimize':
+            out = align.tilt_minimize(self)
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
