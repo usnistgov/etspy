@@ -114,13 +114,6 @@ class TestTomoStack:
         assert out[2] == 'Max: %.1f' % stack.data.max()
         assert out[3] == 'Min: %.1f' % stack.data.min()
 
-    def test_stack_rotate(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
-        rotated = stack.rotate(-45)
-        assert rotated.data.shape[0] == stack.data.shape[0]
-
     def test_test_align_no_slices(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")

@@ -22,6 +22,7 @@ from scipy import ndimage
 from tempfile import TemporaryDirectory
 import matplotlib as mpl
 import logging
+import astra
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -384,7 +385,7 @@ class TomoStack(Signal2D):
             out.original_metadata.cropped = True
         return out
 
-    def tilt_align(self, method, limit=10, delta=0.3, offset=0.0, locs=None,
+    def tilt_align(self, method, limit=10, delta=0.3, locs=None,
                    axis=0, output=True, show_progressbar=False):
         """
         Align the tilt axis of a TomoStack.
@@ -405,18 +406,20 @@ class TomoStack(Signal2D):
         Hamming window, and the rotation angle is determined by iterative
         histogram analysis
 
+        minimize: Perform automated determination of the tilt axis of a
+        TomoStack by minimizing the difference between the reconstruction and
+        the input dataset usign scipy.optimize.differential_evolution.
+
         Args
         ----------
         method : string
-            Algorithm to use for registration alignment. Must be either 'CoM'
-            or 'MaxImage'
+            Algorithm to use for registration alignment. Must be either 'CoM',
+            'MaxImage', or 'minimize'.
         limit : integer
             Position in tilt series to use as starting point for the
             alignment. If None, the central projection is used.
         delta : integer
             Position i
-        offset : integer
-            Not currently used
         limit : integer or float
             Maximum rotation angle to use for MaxImage calculation
         delta : float
@@ -454,20 +457,23 @@ class TomoStack(Signal2D):
         >>> ali = reg.tilt_align(method, output=False, show_progressbar=False)
 
         """
+        method = method.lower()
         if axis == 1:
-            self = self.rotate(-90)
-        if method == 'CoM':
-            out = align.tilt_com(self, offset, locs)
-        elif method == 'MaxImage':
+            self = self.swap_axes(1, 2)
+        if method == 'com':
+            out = align.tilt_com(self, locs)
+        elif method == 'maximage':
             out = align.tilt_maximage(self, limit, delta, output,
                                       show_progressbar)
+        elif method == 'minimize':
+            out = align.tilt_minimize(self, cuda=astra.use_cuda())
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
-                "Must be 'CoM' or 'MaxImage'" % method)
+                "Must be 'CoM', 'MaxImage', or 'Minimize'" % method)
 
         if axis == 1:
-            self = self.rotate(90)
+            self = self.swap_axes(2, 1)
         return out
 
     def reconstruct(self, method='FBP', rot_center=None, iterations=None,
@@ -570,46 +576,6 @@ class TomoStack(Signal2D):
                 out = out.isig[:, offset:-offset]
 
         return out
-
-    def rotate(self, angle, resize=True):
-        """
-        Rotate the stack by a given angle.
-
-        Uses the scipy.ndimage.rotate function
-
-        Args
-        ----------
-        angle : float
-            Angle by which to rotate the data in the TomoStack about the XY
-            plane
-        resize : boolean
-            If True, output stack size is increased relative to input so that
-            no pixels are lost.
-            If False, output stack is the same size as the input.
-
-        Returns
-        ----------
-        rot : TomoStack object
-            Rotated copy of the input stack
-
-        Examples
-        ----------
-        >>> import tomotools.api as tomotools
-        >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
-        >>> stack = tomotools.load(filename)
-        >>> stack.isig[100:156,:]
-        <TomoStack, title: , dimensions: (77|56, 256)>
-        >>> rotated = stack.isig[100:156,:].rotate(90)
-        >>> rotated
-        <TomoStack, title: , dimensions: (77|256, 56)>
-
-        """
-        rot = self.deepcopy()
-        rot.data = ndimage.rotate(rot.data, angle, axes=(1, 2), reshape=resize)
-
-        rot.axes_manager[1].size = rot.data.shape[2]
-        rot.axes_manager[2].size = rot.data.shape[1]
-        return rot
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None):
         """
