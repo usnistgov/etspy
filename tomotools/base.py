@@ -22,6 +22,7 @@ from scipy import ndimage
 from tempfile import TemporaryDirectory
 import matplotlib as mpl
 import logging
+import astra
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -466,7 +467,7 @@ class TomoStack(Signal2D):
             out = align.tilt_maximage(self, limit, delta, output,
                                       show_progressbar)
         elif method == 'minimize':
-            out = align.tilt_minimize(self)
+            out = align.tilt_minimize(self, cuda=astra.use_cuda())
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
