@@ -602,7 +602,8 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
                          stack.data.shape[2]])
         for i in range(0, len(slices)):
             sino = trans.isig[:, slices[i]].deepcopy().data
-        rec = recon.astra_sirt(sino, stack.axes_manager[0].axis, 50, cuda=True)
+        rec = recon.astra_sirt(sino, stack.axes_manager[0].axis,
+                               iterations=50, cuda=True)
         proj = recon.astra_project(rec, stack.axes_manager[0].axis, cuda=True)
         diff = np.abs(proj-sino.data)
         error = diff.sum()
