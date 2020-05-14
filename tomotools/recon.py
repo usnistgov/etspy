@@ -254,9 +254,12 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
     if cuda:
         rec = np.zeros([y_pix, thickness, x_pix], data.dtype)
         nchunks = y_pix/128
+
         if nchunks < 1:
             nchunks = 1
             chunksize = y_pix
+        else:
+            chunksize = 128
 
         for i in range(0, np.int32(nchunks)):
             chunk = data[i*chunksize:(i+1)*chunksize, :, :]
