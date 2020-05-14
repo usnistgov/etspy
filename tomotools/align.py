@@ -605,7 +605,7 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
         rec = recon.astra_sirt(sino, stack.axes_manager[0].axis,
                                iterations=50, cuda=True)
         proj = recon.astra_project(rec, stack.axes_manager[0].axis, cuda=True)
-        diff = np.abs(proj-sino.data)
+        diff = np.abs(proj-sino)
         error = diff.sum()
         return error
 
@@ -624,7 +624,7 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
         rec = recon.astra_sirt(sino, stack.axes_manager[0].axis,
                                iterations=5, cuda=False)
         proj = recon.astra_project(rec, stack.axes_manager[0].axis, cuda=False)
-        diff = np.abs(proj-sino.data)
+        diff = np.abs(proj-sino)
         error = diff.sum()
         return error
 
