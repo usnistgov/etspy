@@ -310,6 +310,7 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
         astra.algorithm.delete(alg_id)
         astra.data2d.delete(rec_id)
         astra.data2d.delete(sinogram_id)
+        astra.clear()
     return rec
 
 
@@ -357,4 +358,5 @@ def astra_project(obj, angles, cuda=False):
                                                        proj_id,
                                                        vol_geom)
     sino = np.rollaxis(sino, 1)
+    astra.clear()
     return sino
