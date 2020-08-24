@@ -27,7 +27,7 @@ Installation
 
   * Install the TomoTools package from GitHub:
     ```bash
-    pip install git+https://github.com/andrewherzing/tomotools.git
+    pip install git+https://github.com/usnistgov/tomotools.git
     ```
 
 Removal
