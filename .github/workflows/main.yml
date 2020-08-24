@@ -39,8 +39,7 @@ jobs:
       run: |
         conda create --yes -n test
         source ~/miniconda3/etc/profile.d/conda.sh
-        conda info --envs
-        conda activate test
+        conda activate /usr/share/miniconda/envs/test
     
     - name: Install dependencies
       run: |
