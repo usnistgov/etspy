@@ -40,10 +40,10 @@ jobs:
         conda create --yes -n test python=3.7
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
-        conda info python
   
     - name: Install dependencies
       run: |
+        source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
         conda install -c astra-toolbox astra-toolbox
         conda install -c conda-forge hyperspy opencv tomopy
