@@ -44,14 +44,14 @@ jobs:
       run: |
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
-        flake8 --exclude=api.py tomotools/
+        flake8 --exclude=api.py --ignore=E741 tomotools/
       continue-on-error: true
 
     - name: pytests
       run: |
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
-        python setup.py install
+        # python setup.py install
         pytest --doctest-modules tomotools/
       continue-on-error: true
         
