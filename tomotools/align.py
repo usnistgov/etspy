@@ -120,15 +120,15 @@ def calculate_shifts_com(stack, nslice, ratio):
     w = np.arange(1, xdim+1).T
 
     for i in range(0, ydim):
-        for l in range(0, ntilts):
-            ss[l, 0, i] = np.sum(sino[l, i, :])
-            t[l, 0, i] = np.sum(sino[l, i, :] * w) / ss[l, 0, i]
+        for k in range(0, ntilts):
+            ss[k, 0, i] = np.sum(sino[k, i, :])
+            t[k, 0, i] = np.sum(sino[k, i, :] * w) / ss[k, 0, i]
 
     t = t-(xdim+1)/2
     ss2 = np.median(ss)
 
-    for l in range(0, ntilts):
-        ss[l, :, :] = np.abs((ss[l, :, :]-ss2)/ss2)
+    for k in range(0, ntilts):
+        ss[k, :, :] = np.abs((ss[k, :, :]-ss2)/ss2)
     ss2 = np.mean(ss, 0)
 
     num = round(ratio*ydim)
