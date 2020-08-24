@@ -16,7 +16,7 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -44,7 +44,8 @@ jobs:
       run: |
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
-        flake8 --exclude=api.py --ignore=E741 tomotools/
+        flake8 --exclude=api.py tomotools/
+      continue-on-error: true
 
     - name: pytests
       run: |
@@ -52,9 +53,11 @@ jobs:
         conda activate /usr/share/miniconda/envs/test
         python setup.py install
         pytest --doctest-modules tomotools/
+      continue-on-error: true
         
     - name: pydocstyle_checks
       run: |
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
         pydocstyle tomotools/
+      continue-on-error: true
