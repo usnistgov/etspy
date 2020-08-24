@@ -37,9 +37,10 @@ jobs:
 
     - name: Create conda environment
       run: |
-        conda create --yes -n test -c astra-toolbox -c conda-forge astra-toolbox hyperspy opencv tomopy
+        conda create --yes -n test -c astra-toolbox/label/dev astra-toolbox
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
+        conda list astra-toolbox
   
 #     - name: Install dependencies
 #       run: |
