@@ -37,7 +37,7 @@ jobs:
 
     - name: Create conda environment
       run: |
-        conda create --yes -n test python=3.7
+        conda create --yes -n test python=3.6
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
   
