@@ -28,24 +28,25 @@ jobs:
         wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
         chmod +x miniconda.sh
         ./miniconda.sh -b
-        # export PATH=/home/travis/miniconda/bin:$PATH
         conda update --yes conda
 
     - name: Create conda environment
       run: |
-        # conda create --yes -n test -c astra-toolbox/label/dev astra-toolbox
         conda create --yes -n test -c conda-forge opencv
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
         conda install -c astra-toolbox/label/dev astra-toolbox
-        conda install -c conda-forge hyperspy tomopy
-        # conda install -c conda-forge opencv
-  
-#     - name: Install dependencies
-#       run: |
-#         source ~/miniconda3/etc/profile.d/conda.sh
-#         conda activate /usr/share/miniconda/envs/test
-#         # conda install -c astra-toolbox astra-toolbox
-#         conda install -c conda-forge hyperspy opencv tomopy
+        conda install -c conda-forge hyperspy tomopy flake8 pytest pydocstyle
+    
+    - name: flake8_checksRun tests
+      run: |
+        flake8 --exclude=api.py tomotools/
 
-
+    - name: pytests
+      run: |
+        python setup.py install
+        pytest --doctest-modules tomotools/
+        
+    - name: pydocstyle_checks
+      run: |
+        pydocstyle tomotools/
