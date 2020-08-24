@@ -38,7 +38,7 @@ jobs:
     - name: Create conda environment
       run: |
         conda create --yes -n test python=3.7
-        # source ~/miniconda3/etc/profile.d/conda.sh
+        source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
     
     - name: Install dependencies
