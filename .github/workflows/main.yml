@@ -32,21 +32,29 @@ jobs:
 
     - name: Create conda environment
       run: |
+        conda update -n base -c defaults conda
         conda create --yes -n test -c conda-forge opencv
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
         conda install -c astra-toolbox/label/dev astra-toolbox
         conda install -c conda-forge hyperspy tomopy flake8 pytest pydocstyle
+        pip install .
     
     - name: flake8_checksRun tests
       run: |
+        source ~/miniconda3/etc/profile.d/conda.sh
+        conda activate /usr/share/miniconda/envs/test
         flake8 --exclude=api.py tomotools/
 
     - name: pytests
       run: |
+        source ~/miniconda3/etc/profile.d/conda.sh
+        conda activate /usr/share/miniconda/envs/test
         python setup.py install
         pytest --doctest-modules tomotools/
         
     - name: pydocstyle_checks
       run: |
+        source ~/miniconda3/etc/profile.d/conda.sh
+        conda activate /usr/share/miniconda/envs/test
         pydocstyle tomotools/
