@@ -35,12 +35,14 @@ jobs:
         export PATH=/home/travis/miniconda/bin:$PATH
         conda update --yes conda
     
-#     - name: Create conda environment
-#         conda create --yes -n test
-#         source activate test
+    - name: Create conda environment
+      run: |
+        conda create --yes -n test
+        source activate test
     
-#     - name: Install dependencies
-#         conda install -c astra-toolbox astra-toolbox
-#         conda install -c conda-forge hyperspy opencv tomopy
+    - name: Install dependencies
+      run: |
+        conda install -c astra-toolbox astra-toolbox
+        conda install -c conda-forge hyperspy opencv tomopy
 
 
