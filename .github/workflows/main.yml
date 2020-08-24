@@ -29,11 +29,20 @@ jobs:
       run: echo Hello, world!
 
     # Runs a set of commands using the runners shell
-    - name: Run a multi-line script
+    - name: Set up miniconda
       run: |
-        wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+        wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
         chmod +x miniconda.sh
         ./miniconda.sh -b
         export PATH=/home/travis/miniconda/bin:$PATH
         conda update --yes conda
+    
+    - name: Create conda environment
+        conda create --yes -n test
+        source activate test
+    
+    - name: Install dependencies
+        conda install -c astra-toolbox astra-toolbox
+        conda install -c conda-forge hyperspy opencv tomopy
+
 
