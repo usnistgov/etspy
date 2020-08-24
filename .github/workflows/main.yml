@@ -40,7 +40,7 @@ jobs:
         conda create --yes -n test -c astra-toolbox/label/dev astra-toolbox
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
-        conda list astra-toolbox
+        conda install -c conda-forge hyperspy
   
 #     - name: Install dependencies
 #       run: |
