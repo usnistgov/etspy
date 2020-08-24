@@ -22,10 +22,6 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
 
-    # Runs a single command using the runners shell
-    - name: Run a one-line script
-      run: echo Hello, world!
-
     # Runs a set of commands using the runners shell
     - name: Set up miniconda
       run: |
@@ -37,10 +33,12 @@ jobs:
 
     - name: Create conda environment
       run: |
-        conda create --yes -n test -c astra-toolbox/label/dev astra-toolbox
+        # conda create --yes -n test -c astra-toolbox/label/dev astra-toolbox
+        conda create --yes -n test -c conda-forge opencv
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
-        conda install -c conda-forge hyperspy tomopy opencv
+        conda install -c astra-toolbox/label/dev astra-toolbox
+        conda install -c conda-forge hyperspy tomopy
         # conda install -c conda-forge opencv
   
 #     - name: Install dependencies
