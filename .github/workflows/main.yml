@@ -40,9 +40,8 @@ jobs:
         conda create --yes -n test -c astra-toolbox/label/dev astra-toolbox
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate /usr/share/miniconda/envs/test
-        conda install -c conda-forge hyperspy tomopy
-        # conda install -c tomopy
-        # conda install -c opencv
+        conda install -c conda-forge hyperspy tomopy opencv
+        # conda install -c conda-forge opencv
   
 #     - name: Install dependencies
 #       run: |
