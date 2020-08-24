@@ -34,10 +34,12 @@ jobs:
         ./miniconda.sh -b
         export PATH=/home/travis/miniconda/bin:$PATH
         conda update --yes conda
-    
+        conda info | grep -i 'base environment'
+
     - name: Create conda environment
       run: |
         conda create --yes -n test
+        source ~/miniconda3/etc/profile.d/conda.sh
         conda activate test
     
     - name: Install dependencies
