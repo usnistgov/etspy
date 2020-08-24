@@ -8,7 +8,7 @@ on:
   push:
     branches:
       - master
-      - 'AndrewHerzing/*'
+      - 'AndrewHerzing*'
   pull_request:
     branches: [ master ]
 
