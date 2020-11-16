@@ -20,7 +20,7 @@ Installation
     through conda. NOTE: `astra-toolbox` must be installed first due to a
     dependency conflict.
     ```bash
-    conda install -c astra-toolbox astra-toolbox
+    conda install -c astra-toolbox/label/dev astra-toolbox
     conda install -c conda-forge hyperspy opencv tomopy
 
     ```
