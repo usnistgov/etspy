@@ -111,18 +111,18 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     if isinstance(type(s), hspy.signals.BaseSignal):
         s = s.as_signal2D((0, 1))
 
-    # axes_list =\
-    #  [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
+    axes_list =\
+        [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
 
-    # metadata = s.metadata.as_dictionary()
-    # original_metadata = s.original_metadata.as_dictionary()
+    metadata = s.metadata.as_dictionary()
+    original_metadata = s.original_metadata.as_dictionary()
 
-    # s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
-    #                   original_metadata=original_metadata)
-    axes_list = [x for _,
-                 x in sorted(s.axes_manager.as_dictionary().items())]
-    s_new = TomoStack(s, axes=axes_list)
-    # s_new = TomoStack(s)
+    s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
+                      original_metadata=original_metadata)
+
+    # axes_list = [x for _,
+    #              x in sorted(s.axes_manager.as_dictionary().items())]
+    # s_new = TomoStack(s, axes=axes_list)
 
     if s_new.axes_manager[0].name in ['Tilt', 'Tilts', 'Angle', 'Angles',
                                       'Theta', 'tilt', 'tilts', 'angle',
@@ -187,10 +187,10 @@ def signal_to_tomo_stack(s, manual_tilts=False, tilt_signal=None):
     else:
         s_new.axes_manager[0].name = 'Tilt'
         s_new.axes_manager[0].units = 'unknown'
-        if s_new.axes_manager[1].name.lower() != 'x':
+        if s_new.axes_manager[1].name not in ['x', 'X']:
             s_new.axes_manager[1].name = 'x'
             s_new.axes_manager[1].units = 'unknown'
-        if s_new.axes_manager[2].name.lower() != 'y':
+        if s_new.axes_manager[2].name not in ['y', 'Y']:
             s_new.axes_manager[2].name = 'y'
             s_new.axes_manager[2].units = 'unknown'
         logger.info('Tilts not found.  Calibrate axis 0')
@@ -391,12 +391,14 @@ def load_dm_series(dirname):
     sorted_order = np.argsort(tilts)
     tilts_sorted = np.sort(tilts)
     files_sorted = list(np.array(files)[sorted_order])
+    del s
     stack = hspy.load(files_sorted, stack=True, new_axis_name='tilt')
     stack.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha\
         = tilts_sorted
     stack.axes_manager[0].scale = tilts_sorted[1]-tilts_sorted[0]
     stack.axes_manager[0].units = 'degrees'
     stack.axes_manager[0].offset = tilts_sorted[0]
+
     stack = signal_to_tomo_stack(stack)
     return stack
 
