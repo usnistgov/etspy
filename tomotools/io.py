@@ -423,7 +423,7 @@ def load(filename, tilts=None):
     """
     ext = os.path.splitext(filename)[1]
     if ext in ['.HDF5', '.hdf5', '.hd5', '.HD5', '.MRC', '.mrc', '.ALI',
-               '.ali', '.REC', '.rec']:
+               '.ali', '.REC', '.rec', '.hspy', '.HSPY']:
         stack = loadhspy(filename, tilts)
     elif ext in ['.dm3', '.DM3', '.dm4', '.DM4']:
         stack = loaddm(filename)
