@@ -400,7 +400,7 @@ def load_dm_series(dirname):
     stack.axes_manager[0].offset = tilts_sorted[0]
 
     stack = signal_to_tomo_stack(stack)
-    return stack
+    return stack, tilts_sorted
 
 
 def load(filename, tilts=None):
