@@ -351,7 +351,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     return aligned
 
 
-def tilt_com(stack, locs=None):
+def tilt_com(stack, locs=None, interactive=False):
     """
     Perform tilt axis alignment using center of mass (CoM) tracking.
 
@@ -420,19 +420,24 @@ def tilt_com(stack, locs=None):
 
     data = stack.deepcopy()
     if locs is None:
-        """Prompt user for locations at which to fit the CoM"""
-        warnings.filterwarnings('ignore')
-        plt.figure(num='Align Tilt', frameon=False)
-        if len(data.data.shape) == 3:
-            plt.imshow(data.data[np.int(data.data.shape[0] / 2), :, :],
-                       cmap='gray')
+        if interactive:
+            """Prompt user for locations at which to fit the CoM"""
+            warnings.filterwarnings('ignore')
+            plt.figure(num='Align Tilt', frameon=False)
+            if len(data.data.shape) == 3:
+                plt.imshow(data.data[np.int(data.data.shape[0] / 2), :, :],
+                           cmap='gray')
+            else:
+                plt.imshow(data, cmap='gray')
+            plt.title('Choose %s points for tilt axis alignment....' %
+                      str(3))
+            coords = np.array(plt.ginput(3, timeout=0, show_clicks=True))
+            plt.close()
+            locs = np.int16(np.sort(coords[:, 0]))
         else:
-            plt.imshow(data, cmap='gray')
-        plt.title('Choose %s points for tilt axis alignment....' %
-                  str(3))
-        coords = np.array(plt.ginput(3, timeout=0, show_clicks=True))
-        plt.close()
-        locs = np.int16(np.sort(coords[:, 0]))
+            locs = np.int16(stack.data.shape[1] * np.array([0.33, 0.5, 0.67]))
+            logger.info("Performing alignments using slices: [%s, %s, %s]"
+                        % (locs[0], locs[1], locs[2]))
     else:
         locs = np.int16(np.sort(locs))
 
