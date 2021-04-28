@@ -67,7 +67,10 @@ def run(stack, method, rot_center=None, iterations=None, constrain=None,
         Containing the reconstructed volume
 
     """
-    theta = stack.axes_manager[0].axis * np.pi / 180
+    if stack.metadata.Tomography.tilts is None:
+        raise ValueError("Tilts not defined")
+
+    theta = stack.metadata.Tomography.tilts * np.pi / 180
     if method == 'FBP':
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
@@ -174,7 +177,10 @@ def check_sirt_error(sinogram, algorithm, tol, constrain, cuda):
         for visual inspection.
 
     """
-    tilts = sinogram.axes_manager[0].axis * np.pi / 180
+    if sinogram.metadata.Tomography.tilts is None:
+        raise ValueError("Tilts not defined")
+
+    tilts = sinogram.metadata.Tomography.tilts * np.pi / 180
 
     error = []
     terminate = False
@@ -239,6 +245,7 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
+
     thetas = angles * np.pi / 180
 
     if len(stack.shape) == 2:

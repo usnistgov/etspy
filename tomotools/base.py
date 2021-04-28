@@ -51,11 +51,27 @@ class TomoStack(Signal2D):
         """Initialize TomoStack class."""
         super().__init__(*args, **kwargs)
 
-        if not self.original_metadata:
-            self.original_metadata.tiltaxis = 0
-            self.original_metadata.xshift = 0
-            self.original_metadata.yshift = 0
-            self.original_metadata.shifts = None
+        if not self.metadata.has_item("Tomography"):
+            self.metadata.add_node("Tomography")
+            self.metadata.Tomography.set_item("tilts", None)
+            self.metadata.Tomography.set_item("tiltaxis", 0)
+            self.metadata.Tomography.set_item("xshift", 0)
+            self.metadata.Tomography.set_item("yshift", 0)
+            self.metadata.Tomography.set_item("shifts", None)
+            self.metadata.Tomography.set_item("cropped", False)
+        else:
+            if not self.metadata.Tomography.has_item("tilts"):
+                self.metadata.Tomography.set_item("tilts", None)
+            if not self.metadata.Tomography.has_item("tiltaxis"):
+                self.metadata.Tomography.set_item("tiltaxis", 0)
+            if not self.metadata.Tomography.has_item("xshift"):
+                self.metadata.Tomography.set_item("xshift", 0)
+            if not self.metadata.Tomography.has_item("yshift"):
+                self.metadata.Tomography.set_item("yshift", 0)
+            if not self.metadata.Tomography.has_item("shifts"):
+                self.metadata.Tomography.set_item("shifts", None)
+            if not self.metadata.Tomography.has_item("cropped"):
+                self.metadata.Tomography.set_item("cropped", False)
 
     def test_correlation(self, images=None):
         """
@@ -119,34 +135,31 @@ class TomoStack(Signal2D):
 
         """
         # Check if any transformations have been applied to the current stack
-        if (self.original_metadata.shifts is None) and\
-           any([self.original_metadata.xshift is None,
-                self.original_metadata.xshift == 0.0]) and\
-           any([self.original_metadata.yshift is None,
-                self.original_metadata.yshift == 0.0]) and\
-           any([self.original_metadata.tiltaxis is None,
-                self.original_metadata.tiltaxis == 0.0]):
+        if (self.metadata.Tomography.shifts is None) and\
+           any([self.metadata.Tomography.xshift is None,
+                self.metadata.Tomography.xshift == 0.0]) and\
+           any([self.metadata.Tomography.yshift is None,
+                self.metadata.Tomography.yshift == 0.0]) and\
+           any([self.metadata.Tomography.tiltaxis is None,
+                self.metadata.Tomography.tiltaxis == 0.0]):
             raise ValueError('No transformation have been applied '
                              'to this stack')
 
         out = align.align_to_other(self, other)
 
-        if self.original_metadata.has_item('cropped'):
-            if self.original_metadata.cropped:
-                shifts = out.original_metadata.shifts
-                x_shifts = np.zeros(len(shifts))
-                y_shifts = np.zeros(len(shifts))
-                for i in range(0, len(shifts)):
-                    x_shifts[i] = shifts[i][0]
-                    y_shifts[i] = shifts[i][1]
-                x_max = np.int32(np.floor(x_shifts.min()))
-                x_min = np.int32(np.ceil(x_shifts.max()))
-                y_max = np.int32(np.floor(y_shifts.min()))
-                y_min = np.int32(np.ceil(y_shifts.max()))
-                out = out.isig[x_min:x_max, y_min:y_max]
-                if not out.original_metadata.has_item('cropped'):
-                    out.original_metadata.add_node('cropped')
-            out.original_metadata.cropped = True
+        if self.metadata.Tomography.cropped:
+            shifts = out.metadata.Tomography.shifts
+            x_shifts = np.zeros(len(shifts))
+            y_shifts = np.zeros(len(shifts))
+            for i in range(0, len(shifts)):
+                x_shifts[i] = shifts[i][0]
+                y_shifts[i] = shifts[i][1]
+            x_max = np.int32(np.floor(x_shifts.min()))
+            x_min = np.int32(np.ceil(x_shifts.max()))
+            y_max = np.int32(np.floor(y_shifts.min()))
+            y_min = np.int32(np.ceil(y_shifts.max()))
+            out = out.isig[y_min:y_max, x_min:x_max]
+            out.metadata.Tomography.cropped = True
         return out
 
     def filter(self, method='median', size=5, taper=0.1):
@@ -369,7 +382,7 @@ class TomoStack(Signal2D):
                 "%s. Must be ECC, PC, StackReg, or COM" % method)
 
         if crop:
-            shifts = out.original_metadata.shifts
+            shifts = out.metadata.Tomography.shifts
             x_shifts = np.zeros(len(shifts))
             y_shifts = np.zeros(len(shifts))
             for i in range(0, len(shifts)):
@@ -380,9 +393,7 @@ class TomoStack(Signal2D):
             y_max = np.int32(np.floor(y_shifts.min()))
             y_min = np.int32(np.ceil(y_shifts.max()))
             out = out.isig[x_min:x_max, y_min:y_max]
-            if not out.original_metadata.has_item('cropped'):
-                out.original_metadata.add_node('cropped')
-            out.original_metadata.cropped = True
+            out.metadata.Tomography.cropped = True
         return out
 
     def tilt_align(self, method, limit=10, delta=0.3, locs=None,
@@ -708,23 +719,14 @@ class TomoStack(Signal2D):
                                transformed.data.shape[1:][::-1],
                                flags=mode)
 
-        if self.original_metadata.has_item('xshift'):
-            transformed.original_metadata.xshift =\
-                self.original_metadata.xshift + xshift
-        else:
-            transformed.original_metadata.xshift = xshift
+        transformed.metadata.Tomography.xshift =\
+            self.metadata.Tomography.xshift + xshift
 
-        if self.original_metadata.has_item('yshift'):
-            transformed.original_metadata.yshift =\
-                self.original_metadata.yshift + yshift
-        else:
-            transformed.original_metadata.yshift = yshift
+        transformed.metadata.Tomography.yshift =\
+            self.metadata.Tomography.yshift + yshift
 
-        if self.original_metadata.has_item('tiltaxis'):
-            transformed.original_metadata.tiltaxis =\
-                self.original_metadata.tiltaxis + angle
-        else:
-            transformed.original_metadata.tiltaxis = angle
+        transformed.metadata.Tomography.tiltaxis =\
+            self.metadata.Tomography.tiltaxis + angle
         return transformed
 
     # noinspection PyTypeChecker

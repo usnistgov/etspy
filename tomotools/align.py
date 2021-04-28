@@ -52,9 +52,11 @@ def apply_shifts(stack, shifts):
             ndimage.shift(shifted.data[i, :, :],
                           shift=[shifts[i, 1], shifts[i, 0]],
                           order=0)
-    if not shifted.original_metadata.has_item('shifts'):
-        shifted.original_metadata.add_node('shifts')
-    shifted.original_metadata.shifts = shifts
+    if shifted.metadata.Tomography.shifts is None:
+        shifted.metadata.Tomography.shifts = shifts
+    else:
+        shifted.metadata.Tomography.shifts = \
+            shifted.metadata.Tomography.shifts + shifts
     return shifted
 
 
@@ -335,7 +337,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
             ali.data[i, :, :] = ndimage.shift(ali.data[i, :, :],
                                               [shifts[i], 0])
 
-        ali.original_metadata.shifts = shifts
+        ali.metadata.Tomography.shifts = shifts
         return ali
     elif method == 'ECC':
         shifts = calculate_shifts_ecc(stack, start, show_progressbar)
@@ -442,8 +444,8 @@ def tilt_com(stack, locs=None):
     logger.info("Calculated tilt-axis shift %.2f" % tilt_shift)
     logger.info("Calculated tilt-axis rotation %.2f" % tilt_rotation)
     final = final.swap_axes(1, 2)
-    final.original_metadata.tiltaxis = tilt_rotation
-    final.original_metadata.xshift = tilt_shift
+    final.metadata.Tomography.tiltaxis = tilt_rotation
+    final.metadata.Tomography.xshift = tilt_shift
     return final
 
 
@@ -557,7 +559,7 @@ def tilt_maximage(data, limit=10, delta=0.3, show_progressbar=False):
     out = copy.deepcopy(data)
     out = out.trans_stack(xshift=0, yshift=0, angle=opt_angle)
     out.data = np.transpose(out.data, (0, 2, 1))
-    out.original_metadata.tiltaxis = opt_angle
+    out.metadata.Tomography.tiltaxis = opt_angle
     return out
 
 
@@ -676,19 +678,19 @@ def align_to_other(stack, other):
     """
     out = copy.deepcopy(other)
 
-    shifts = stack.original_metadata.shifts
-    out.original_metadata.shifts = shifts
+    shifts = stack.metadata.Tomography.shifts
+    out.metadata.Tomography.shifts = shifts
 
-    tiltaxis = stack.original_metadata.tiltaxis
-    out.original_metadata.tiltaxis = tiltaxis
+    tiltaxis = stack.metadata.Tomography.tiltaxis
+    out.metadata.Tomography.tiltaxis = tiltaxis
 
-    xshift = stack.original_metadata.xshift
-    out.original_metadata.xshift = stack.original_metadata.xshift
+    xshift = stack.metadata.Tomography.xshift
+    out.metadata.Tomography.xshift = stack.metadata.Tomography.xshift
 
-    yshift = stack.original_metadata.yshift
-    out.original_metadata.yshift = stack.original_metadata.yshift
+    yshift = stack.metadata.Tomography.yshift
+    out.metadata.Tomography.yshift = stack.metadata.Tomography.yshift
 
-    if type(stack.original_metadata.shifts) is np.ndarray:
+    if type(stack.metadata.Tomography.shifts) is np.ndarray:
         for i in range(0, out.data.shape[0]):
             out.data[i, :, :] =\
                 ndimage.shift(out.data[i, :, :],
