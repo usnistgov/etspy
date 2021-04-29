@@ -147,19 +147,6 @@ class TomoStack(Signal2D):
 
         out = align.align_to_other(self, other)
 
-        if self.metadata.Tomography.cropped:
-            shifts = out.metadata.Tomography.shifts
-            x_shifts = np.zeros(len(shifts))
-            y_shifts = np.zeros(len(shifts))
-            for i in range(0, len(shifts)):
-                x_shifts[i] = shifts[i][0]
-                y_shifts[i] = shifts[i][1]
-            x_max = np.int32(np.floor(x_shifts.min()))
-            x_min = np.int32(np.ceil(x_shifts.max()))
-            y_max = np.int32(np.floor(y_shifts.min()))
-            y_min = np.int32(np.ceil(y_shifts.max()))
-            out = out.isig[x_min:x_max, y_min:y_max]
-            out.metadata.Tomography.cropped = True
         return out
 
     def filter(self, method='median', size=5, taper=0.1):
@@ -382,18 +369,7 @@ class TomoStack(Signal2D):
                 "%s. Must be ECC, PC, StackReg, or COM" % method)
 
         if crop:
-            shifts = out.metadata.Tomography.shifts
-            x_shifts = np.zeros(len(shifts))
-            y_shifts = np.zeros(len(shifts))
-            for i in range(0, len(shifts)):
-                x_shifts[i] = shifts[i][0]
-                y_shifts[i] = shifts[i][1]
-            x_max = np.int32(np.floor(x_shifts.min()))
-            x_min = np.int32(np.ceil(x_shifts.max()))
-            y_max = np.int32(np.floor(y_shifts.min()))
-            y_min = np.int32(np.ceil(y_shifts.max()))
-            out = out.isig[x_min:x_max, y_min:y_max]
-            out.metadata.Tomography.cropped = True
+            out = align.shift_crop(out)
         return out
 
     def tilt_align(self, method, limit=10, delta=0.3, locs=None,

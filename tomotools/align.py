@@ -50,8 +50,7 @@ def apply_shifts(stack, shifts):
     for i in range(0, shifted.data.shape[0]):
         shifted.data[i, :, :] =\
             ndimage.shift(shifted.data[i, :, :],
-                          shift=[shifts[i, 1], shifts[i, 0]],
-                          order=0)
+                          shift=[shifts[i, 1], shifts[i, 0]])
     if shifted.metadata.Tomography.shifts is None:
         shifted.metadata.Tomography.shifts = shifts
     else:
@@ -443,12 +442,16 @@ def tilt_com(stack, locs=None, interactive=False):
 
     shifts, coms = calc_shifts(stack, locs[1])
     shifted = shift_stack(stack, shifts)
+    shifted.metadata.Tomography.shifts[:, 0] = \
+        shifted.metadata.Tomography.shifts[:, 0] - shifts
     tilt_shift, tilt_rotation, r = tilt_analyze(stack, locs)
-    final = shifted.trans_stack(yshift=tilt_shift, angle=tilt_rotation)
+
+    final = shifted.swap_axes(1, 2)
+    final = final.trans_stack(xshift=-tilt_shift, angle=-tilt_rotation)
 
     logger.info("Calculated tilt-axis shift %.2f" % tilt_shift)
     logger.info("Calculated tilt-axis rotation %.2f" % tilt_rotation)
-    final = final.swap_axes(1, 2)
+
     final.metadata.Tomography.tiltaxis = tilt_rotation
     final.metadata.Tomography.xshift = tilt_shift
     return final
@@ -684,7 +687,7 @@ def align_to_other(stack, other):
     out = copy.deepcopy(other)
 
     shifts = stack.metadata.Tomography.shifts
-    out.metadata.Tomography.shifts = shifts
+    out.metadata.Tomography.shifts = None
 
     tiltaxis = stack.metadata.Tomography.tiltaxis
     out.metadata.Tomography.tiltaxis = tiltaxis
@@ -695,19 +698,35 @@ def align_to_other(stack, other):
     yshift = stack.metadata.Tomography.yshift
     out.metadata.Tomography.yshift = stack.metadata.Tomography.yshift
 
-    if type(stack.metadata.Tomography.shifts) is np.ndarray:
-        for i in range(0, out.data.shape[0]):
-            out.data[i, :, :] =\
-                ndimage.shift(out.data[i, :, :],
-                              shift=[shifts[i, 1], shifts[i, 0]],
-                              order=0)
+    if type(shifts) is np.ndarray:
+        out = apply_shifts(out, shifts)
+    else:
+        raise TypeError("Shifts found in metadata are of type %s. "
+                        "Expected NumPy array" % (type(shifts)))
+
+    if stack.metadata.Tomography.cropped:
+        out = shift_crop(out)
 
     if (tiltaxis != 0) or (xshift != 0):
-        out = out.trans_stack(xshift=xshift, yshift=yshift, angle=tiltaxis)
-        out.data = np.transpose(out.data, (0, 2, 1))
+        out = out.trans_stack(yshift=xshift, angle=tiltaxis)
+        out = out.swap_axes(1, 2)
 
     logger.info('TomoStack alignment applied')
     logger.info('X-shift: %.1f' % xshift)
     logger.info('Y-shift: %.1f' % yshift)
     logger.info('Rotation: %.1f' % tiltaxis)
+    return out
+
+
+def shift_crop(stack):
+    out = copy.deepcopy(stack)
+    shifts = stack.metadata.Tomography.shifts
+    x_shifts = shifts[:, 0]
+    y_shifts = shifts[:, 1]
+    x_max = np.int32(np.floor(x_shifts.min()))
+    x_min = np.int32(np.ceil(x_shifts.max()))
+    y_max = np.int32(np.floor(y_shifts.min()))
+    y_min = np.int32(np.ceil(y_shifts.max()))
+    out = out.isig[x_min:x_max, y_min:y_max]
+    out.metadata.Tomography.cropped = True
     return out
