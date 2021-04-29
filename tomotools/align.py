@@ -719,7 +719,22 @@ def align_to_other(stack, other):
 
 
 def shift_crop(stack):
-    out = copy.deepcopy(stack)
+    """
+    Crop shifted stack to common area.
+
+    Args
+    ----------
+    stack : TomoStack object
+        TomoStack which was previously aligned
+
+    Returns
+    ----------
+    out : TomoStack object
+        Aligned copy of other TomoStack
+
+    """
+
+    cropped = copy.deepcopy(stack)
     shifts = stack.metadata.Tomography.shifts
     x_shifts = shifts[:, 0]
     y_shifts = shifts[:, 1]
@@ -727,6 +742,6 @@ def shift_crop(stack):
     x_min = np.int32(np.ceil(x_shifts.max()))
     y_max = np.int32(np.floor(y_shifts.min()))
     y_min = np.int32(np.ceil(y_shifts.max()))
-    out = out.isig[x_min:x_max, y_min:y_max]
-    out.metadata.Tomography.cropped = True
-    return out
+    cropped = cropped.isig[x_min:x_max, y_min:y_max]
+    cropped.metadata.Tomography.cropped = True
+    return cropped
