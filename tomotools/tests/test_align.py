@@ -66,7 +66,7 @@ class TestAlignStackRegister:
         stack.axes_manager[0].scale = 2
         reg = stack.stack_register('PC')
         ali = reg.tilt_align(method='CoM', locs=[64, 128, 192])
-        tilt_axis = ali.original_metadata.tiltaxis
+        tilt_axis = ali.metadata.Tomography.tiltaxis
         assert abs(-2.7 - tilt_axis) < 1.0
 
     def test_tilt_align_maximage(self):
@@ -77,7 +77,7 @@ class TestAlignStackRegister:
         stack.axes_manager[0].scale = 2
         reg = stack.stack_register('PC')
         ali = reg.tilt_align(method='MaxImage')
-        tilt_axis = ali.original_metadata.tiltaxis
+        tilt_axis = ali.metadata.Tomography.tiltaxis
         assert abs(-2.3 - tilt_axis) < 1.0
 
     def test_tilt_align_unknown_method(self):

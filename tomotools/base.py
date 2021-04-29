@@ -158,7 +158,7 @@ class TomoStack(Signal2D):
             x_min = np.int32(np.ceil(x_shifts.max()))
             y_max = np.int32(np.floor(y_shifts.min()))
             y_min = np.int32(np.ceil(y_shifts.max()))
-            out = out.isig[y_min:y_max, x_min:x_max]
+            out = out.isig[x_min:x_max, y_min:y_max]
             out.metadata.Tomography.cropped = True
         return out
 

@@ -131,17 +131,12 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
     if isinstance(type(s), hspy.signals.BaseSignal):
         s = s.as_signal2D((0, 1))
 
-    axes_list =\
-        [x for _, x in sorted(s.axes_manager.as_dictionary().items())]
-
-    metadata = s.metadata.as_dictionary()
-    original_metadata = s.original_metadata.as_dictionary()
-
     s_new = s.deepcopy()
 
     if tilt_signal is not None:
         if type(tilt_signal) in [np.ndarray, list]:
             s_new.metadata.Tomography.tilts = tilt_signal
+            s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'degrees'
             s_new.axes_manager[0].offset = tilt_signal[0]
             s_new.axes_manager[0].scale = tilt_signal[1] - tilt_signal[0]
@@ -211,13 +206,14 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
         logger.info('Tilts not found.  Calibrate axis 0')
         tilts = None
 
+    axes_list =\
+        [x for _, x in sorted(s_new.axes_manager.as_dictionary().items())]
+
+    metadata = s.metadata.as_dictionary()
+    original_metadata = s.original_metadata.as_dictionary()
+
     s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
                       original_metadata=original_metadata)
-
-    if s.metadata.has_item("Tomography"):
-        s_new.metadata = s.metadata.Tomography.as_dict()
-
-    s_new.metadata.Tomography.tilts = tilts
     return s_new
 
 
