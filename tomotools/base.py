@@ -988,9 +988,18 @@ class TomoStack(Signal2D):
         self.axes_manager[0].units = 'degrees'
         self.axes_manager[0].scale = increment
         self.axes_manager[0].offset = start
-        self.axes_manager[0].axis = np.arange(start,
-                                              nimages * increment + start,
-                                              increment)
+        tilts = np.arange(start, nimages * increment + start, increment)
+
+        if not self.metadata.has_item("Tomography"):
+            self.metadata.add_node("Tomography")
+            self.metadata.Tomography.set_item("tilts", tilts)
+            self.metadata.Tomography.set_item("tiltaxis", 0)
+            self.metadata.Tomography.set_item("xshift", 0)
+            self.metadata.Tomography.set_item("yshift", 0)
+            self.metadata.Tomography.set_item("shifts", None)
+            self.metadata.Tomography.set_item("cropped", False)
+        else:
+            self.metadata.Tomography.set_item("tilts", tilts)
         return
 
     def manual_align(self, nslice, xshift=0, yshift=0, display=False):
