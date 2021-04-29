@@ -2,6 +2,7 @@ FROM continuumio/miniconda3:latest
 
 RUN conda update conda
 
+RUN conda install python=3.7
 RUN conda install pytest flake8 pydocstyle -c defaults
 RUN conda install astra-toolbox -c astra-toolbox/label/dev
 RUN conda install opencv=3 -c conda-forge
