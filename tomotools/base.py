@@ -627,18 +627,28 @@ class TomoStack(Signal2D):
                 rec = rec[:, offset:-offset, :]
 
         if mpl.get_backend() == 'nbAgg':
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(6, 2))
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
-        ax1.imshow(rec[0, :, :], cmap='afmhot')
+
+        minvals = rec.mean() - 2 * rec.std((1, 2))
+        minvals[minvals < 0] = 0
+        maxvals = rec.mean() + 2 * rec.std((1, 2))
+        for i in range(0, 3):
+            if maxvals[i] > rec[i].max():
+                maxvals[i] = rec[i].max()
+        ax1.imshow(rec[0, :, :], cmap='afmhot', vmin=minvals[0],
+                   vmax=maxvals[0])
         ax1.set_title('Slice %s' % str(slices[0]))
         ax1.set_axis_off()
 
-        ax2.imshow(rec[1, :, :], cmap='afmhot')
+        ax2.imshow(rec[1, :, :], cmap='afmhot', vmin=minvals[1],
+                   vmax=maxvals[1])
         ax2.set_title('Slice %s' % str(slices[1]))
         ax2.set_axis_off()
 
-        ax3.imshow(rec[2, :, :], cmap='afmhot')
+        ax3.imshow(rec[2, :, :], cmap='afmhot', vmin=minvals[2],
+                   vmax=maxvals[2])
         ax3.set_title('Slice %s' % str(slices[2]))
         ax3.set_axis_off()
         fig.tight_layout()
