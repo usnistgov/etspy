@@ -299,10 +299,10 @@ def align_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution,
         will be aligned to this reference.  If not provided, the midpoint
         of the stack will be chosen.
     cl_resolution : float
-        Resolution for subpixel common line alignment. Default is 0.01.
+        Resolution for subpixel common line alignment. Default is 0.05.
         Should be less than 0.5.
     cl_div_factor : integer
-        Factor which determines the number of iteratoins of common line
+        Factor which determines the number of iterations of common line
         alignment to perform.  Default is 8.
 
     Returns
