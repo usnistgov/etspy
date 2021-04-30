@@ -360,7 +360,8 @@ class TomoStack(Signal2D):
         >>> regSR = s.inav[0:10].stack_register('StackReg')
 
         """
-        if method in ['ECC', 'PC', 'COM', 'StackReg']:
+        method = method.lower()
+        if method in ['ecc', 'pc', 'com', 'stackreg', 'com-cl']:
             out = align.align_stack(self, method, start, show_progressbar,
                                     ratio=ratio, nslice=nslice)
         else:
