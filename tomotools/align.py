@@ -464,20 +464,30 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     """
     method = method.lower()
     if method == 'com':
+        logger.info("Performing stack registration using "
+                    "center of mass method")
         shifts = calculate_shifts_com(stack, nslice, ratio)
         print(shifts.shape)
     elif method == 'ecc':
+        logger.info("Performing stack registration using "
+                    "enhanced correlation coefficient (ECC) method")
         shifts = calculate_shifts_ecc(stack, start, show_progressbar)
     elif method == 'pc':
+        logger.info("Performing stack registration using "
+                    "phase correlation method")
         shifts = calculate_shifts_pc(stack, start, show_progressbar)
     elif method == 'stackreg':
+        logger.info("Performing stack registration using PyStackReg")
         shifts = calculate_shifts_stackreg(stack)
     elif method == 'com-cl':
+        logger.info("Performing stack registration using "
+                    "combined center of mass and common line methods")
         aligned = align_com_cl(stack)
         return aligned
     if method in ['ecc', 'pc']:
         shifts = compose_shifts(shifts, start)
     aligned = apply_shifts(stack, shifts)
+    logger.info("Stack registration complete")
     return aligned
 
 
