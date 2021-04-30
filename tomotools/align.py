@@ -157,7 +157,8 @@ def calculate_shifts_com(stack, nslice, ratio):
             np.dot(-Gam, t_select[ntilts * j:ntilts*(j+1), 0])
         A[ntilts*j:ntilts*(j+1), 0:ntilts] = Gam
 
-    shifts = np.dot(np.linalg.pinv(A), t_select)
+    shifts = np.zeros([stack.data.shape[0], 2])
+    shifts[:, 1] = np.dot(np.linalg.pinv(A), t_select)[:, 0]
     return shifts
 
 
@@ -464,6 +465,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     method = method.lower()
     if method == 'com':
         shifts = calculate_shifts_com(stack, nslice, ratio)
+        print(shifts.shape)
     elif method == 'ecc':
         shifts = calculate_shifts_ecc(stack, start, show_progressbar)
     elif method == 'pc':
