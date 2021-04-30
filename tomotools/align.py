@@ -19,6 +19,7 @@ from pystackreg import StackReg
 from scipy.ndimage import center_of_mass
 import logging
 from tomotools import recon
+from numpy.fft import fft, fftshift, ifftshift, ifft
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -277,6 +278,129 @@ def calculate_shifts_stackreg(stack):
     return shifts
 
 
+def align_com_cl(stack, com_ref_index=None, cl_ref_index=None,
+                 cl_resolution=0.01, cl_div_factor=4):
+    def pad_preserve_center(line, paddedsize):
+        padded = np.zeros(paddedsize)
+        npix = len(line)
+        if np.mod(npix, 2) == 0:
+            if np.mod(paddedsize, 2) == 0:
+                start_idx = (paddedsize - npix)/2
+                end_idx = npix + (paddedsize - npix)/2
+            else:
+                start_idx = (paddedsize - npix - 1)/2
+                end_idx = npix + (paddedsize - npix - 1)/2
+        else:
+            if np.mod(paddedsize, 2) == 0:
+                start_idx = (paddedsize - npix + 1)/2
+                end_idx = npix + (paddedsize - npix + 1)/2
+            else:
+                start_idx = (paddedsize - npix)/2
+                end_idx = npix + (paddedsize - npix)/2
+        padded[int(start_idx):int(end_idx)] = line
+        return padded
+
+    def com_cl_alignX(stack, com_ref=None):
+        ntilts = stack.data.shape[0]
+        aliX = stack.deepcopy()
+        coms = np.zeros(ntilts)
+        xhifts = np.zeros_like(coms)
+
+        for i in tqdm.tqdm(range(0, ntilts)):
+            im = aliX.data[i, :, :]
+            coms[i], _ = ndimage.center_of_mass(im)
+            xhifts[i] = com_ref - coms[i]
+        return xhifts
+
+    def calc_cl_shifts(ref_line, line, cl_resolution, cl_div_factor):
+        npix = np.shape(ref_line)[0]
+        npad = npix*2-1
+
+        # Pad with zeros while preserving the center location
+        ref_line_pad = pad_preserve_center(ref_line, npad)
+        line_pad = pad_preserve_center(line, npad)
+
+        niters = np.int32(np.abs(np.floor(np.log(cl_resolution)
+                          / np.log(cl_div_factor))))
+        start = -0.5
+        end = 0.5
+
+        midpoint = (npad)/2
+        kx = np.arange(-midpoint, midpoint)
+
+        # Fourier transform
+        ref_line_pad_FT = fftshift(fft(ifftshift(ref_line_pad)))
+        line_pad_FT = fftshift(fft(ifftshift(line_pad)))
+
+        for i in range(0, niters):
+            # determine current iteration intervals
+            boundary = np.arange(start, end, (end-start)/cl_div_factor)
+            index = (np.roll(boundary, -1) + boundary)/2
+            index = index[:-1]
+
+            # run cross correlation at each interval points
+            max_vals = np.zeros(len(index))
+            for j in range(0, len(index)):
+                pfactor = np.exp(2*np.pi*1j*(index[j]*kx/npad))
+                conjugate = np.conj(ref_line_pad_FT)*line_pad_FT * pfactor
+                xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
+                max_vals[j] = np.max(xcorr)
+
+            # determine the maximim cross correlatoon
+            max_loc = np.argmax(max_vals)
+
+            # update next iteration start and end points for the intervals
+            start = boundary[max_loc]
+            end = boundary[max_loc+1]
+
+        subpixel_shift = index[max_loc] + 1
+        max_pfactor = np.exp(2*np.pi*1j*(index[max_loc]*kx/npad))
+
+        # integer-pixel cross correlation
+        conjugate = np.conj(ref_line_pad_FT)*line_pad_FT*max_pfactor
+        xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
+        # maxVal = np.max(max_Xcorr)
+        max_loc = np.argmax(xcorr)
+
+        integer_shift = max_loc + 1
+        integer_shift = integer_shift - (midpoint+1)
+
+        # combine integer and sub-pixel shift result
+        shift = integer_shift + subpixel_shift
+
+        return -shift
+
+    def com_cl_alignY(stack, cl_ref_index, cl_resolution, cl_div_factor):
+        aliY = stack.deepcopy()
+        yshifts = np.zeros(stack.data.shape[0])
+        ref_cm_line = stack.data[cl_ref_index].sum(0)
+        for i in tqdm.tqdm(range(0, stack.data.shape[0])):
+            if i == cl_ref_index:
+                aliY.data[i] = stack.data[i]
+            else:
+                curr_cm_line = stack.data[i].sum(0)
+                yshifts[i] = calc_cl_shifts(ref_cm_line, curr_cm_line,
+                                            cl_resolution, cl_div_factor)
+        return yshifts
+
+    if cl_resolution >= 0.5:
+        raise ValueError("Resolution should be less than 0.5")
+    if not com_ref_index:
+        com_ref_index = round(stack.data.shape[1]/2)
+    if not cl_ref_index:
+        cl_ref_index = round(stack.data.shape[0]/2)
+    xshifts = np.zeros([stack.data.shape[0], 2])
+    yshifts = np.zeros([stack.data.shape[0], 2])
+    xshifts[:, 1] = com_cl_alignX(stack, com_ref_index)
+    reg = apply_shifts(stack, xshifts)
+    yshifts[:, 0] = com_cl_alignY(reg, cl_ref_index,
+                                  cl_resolution, cl_div_factor)
+    reg = apply_shifts(reg, yshifts)
+    shifts = np.stack([yshifts[:, 0], xshifts[:, 1]], axis=1)
+    reg.metadata.Tomography.shifts = shifts
+    return reg
+
+
 def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     """
     Compute the shifts for spatial registration.
@@ -298,7 +422,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
             restoration, and alignment, with a focus in tomography.
             http://www.toby-sanders.com/software ,
             https://doi.org/10.13140/RG.2.2.33492.60801
-        4.) Rigid translation using PyStackReg for shift calculatiosn.
+        4.) Rigid translation using PyStackReg for shift calculation.
             PyStackReg is a Python port of the StackReg plugin for ImageJ
             which uses a pyramidal approach to minimize the least-squares
             difference in image intensity between a source and target image.
@@ -307,8 +431,16 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
             Subpixel Registration Based on Intensity, IEEE Transactions
             on Image Processing vol. 7, no. 1, pp. 27-41, January 1998.
             https://doi.org/10.1109/83.650848
+        5.) A combination of center of mass tracking for aligment of
+            projections perpendicular to the tilt axis and common line
+            alignment for parallel to the tilt axis. This is a Python
+            implementation of Matlab code described in:
+            M. C. Scott, et al. Electron tomography at 2.4-ångström resolution,
+            Nature 483, 444–447 (2012).
+            https://doi.org/10.1038/nature10934
 
-    Shifts are then applied and the aligned stack is returned.
+    Shifts are then applied and the aligned stack is returned.  The tilts are
+    stored in stack.metadata.Tomography.shifts for later use.
 
     Args
     ----------
@@ -316,7 +448,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
         3-D numpy array containing the tilt series data
     method : string
         Method by which to calculate the alignments. Valid options
-        are 'PC', 'ECC', or 'COM'.
+        are 'PC', 'ECC', 'COM', or 'COM-CL'.
     start : integer
         Position in tilt series to use as starting point for the alignment.
         If None, the central projection is used.
@@ -331,22 +463,18 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     """
     if method == 'COM':
         shifts = calculate_shifts_com(stack, nslice, ratio)
-        ali = stack.deepcopy()
-        for i in range(0, stack.data.shape[0]):
-            ali.data[i, :, :] = ndimage.shift(ali.data[i, :, :],
-                                              [shifts[i], 0])
-
-        ali.metadata.Tomography.shifts = shifts
-        return ali
     elif method == 'ECC':
         shifts = calculate_shifts_ecc(stack, start, show_progressbar)
     elif method == 'PC':
         shifts = calculate_shifts_pc(stack, start, show_progressbar)
     elif method == 'StackReg':
-        composed = calculate_shifts_stackreg(stack)
-    if method != 'StackReg':
-        composed = compose_shifts(shifts, start)
-    aligned = apply_shifts(stack, composed)
+        shifts = calculate_shifts_stackreg(stack)
+    elif method == 'COM-CL':
+        aligned = align_com_cl(stack)
+        return aligned
+    if method in ['ECC', 'PC']:
+        shifts = compose_shifts(shifts, start)
+    aligned = apply_shifts(stack, shifts)
     return aligned
 
 
