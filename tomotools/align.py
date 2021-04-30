@@ -281,6 +281,38 @@ def calculate_shifts_stackreg(stack):
 
 def align_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution,
                  cl_div_factor):
+    """
+    Align stack using combined center of mass and common line methods.
+    Center of mass aligns stack perpendicular to the tilt axis and
+    common line is used to align the stack parallel to the tilt axis.
+
+    Args
+    ----------
+    stack : TomoStack object
+        Tilt series to be aligned
+    com_ref_index : integer
+        Reference slice for center of mass alignment.  All other slices
+        will be aligned to this reference.  If not provided, the midpoint
+        of the stack will be chosen.
+    cl_ref_index : integer
+        Reference slice for common line alignment.  All other slices
+        will be aligned to this reference.  If not provided, the midpoint
+        of the stack will be chosen.
+    cl_resolution : float
+        Resolution for subpixel common line alignment. Default is 0.01.
+        Should be less than 0.5.
+    cl_div_factor : integer
+        Factor which determines the number of iteratoins of common line
+        alignment to perform.  Default is 8.
+
+    Returns
+    ----------
+    reg : TomoStack object
+        Copy of stack after spatial registration.  Shift values are stored
+        in reg.metadata.Tomography.shifts for later use.
+
+    """
+
     def pad_preserve_center(line, paddedsize):
         padded = np.zeros(paddedsize)
         npix = len(line)
@@ -323,6 +355,7 @@ def align_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution,
 
         niters = np.int32(np.abs(np.floor(np.log(cl_resolution)
                           / np.log(cl_div_factor))))
+        logger.info("Number of common line iterations: %s" % niters)
         start = -0.5
         end = 0.5
 
