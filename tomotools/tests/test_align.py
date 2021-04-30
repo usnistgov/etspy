@@ -33,6 +33,8 @@ class TestAlignStackRegister:
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")
         stack = tomotools.load(filename)
+        stack.metadata.Tomography.tilts = \
+            stack.metadata.Tomography.tilts[0:20]
         reg = stack.inav[0:20].stack_register('COM')
         assert type(reg) is tomotools.TomoStack
         assert reg.axes_manager.signal_shape == \
