@@ -305,7 +305,7 @@ class TomoStack(Signal2D):
 
     def stack_register(self, method='ECC', start=None, crop=False,
                        show_progressbar=False, nslice=None, ratio=0.5,
-                       cl_resolution=0.1, cl_div_factor=4, com_ref_index=None,
+                       cl_resolution=0.05, cl_div_factor=8, com_ref_index=None,
                        cl_ref_index=None):
         """
         Register stack spatially.

@@ -329,17 +329,14 @@ def align_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution,
         midpoint = (npad-1)/2
         kx = np.arange(-midpoint, midpoint+1)
 
-        # Fourier transform
         ref_line_pad_FT = fftshift(fft(ifftshift(ref_line_pad)))
         line_pad_FT = fftshift(fft(ifftshift(line_pad)))
 
         for i in range(0, niters):
-            # determine current iteration intervals
             boundary = np.arange(start, end, (end-start)/cl_div_factor)
             index = (np.roll(boundary, -1) + boundary)/2
             index = index[:-1]
 
-            # run cross correlation at each interval points
             max_vals = np.zeros(len(index))
             for j in range(0, len(index)):
                 pfactor = np.exp(2*np.pi*1j*(index[j]*kx/npad))
@@ -347,17 +344,14 @@ def align_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution,
                 xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
                 max_vals[j] = np.max(xcorr)
 
-            # determine the maximim cross correlatoon
             max_loc = np.argmax(max_vals)
-
-            # update next iteration start and end points for the intervals
             start = boundary[max_loc]
             end = boundary[max_loc+1]
 
         subpixel_shift = index[max_loc]
         max_pfactor = np.exp(2*np.pi*1j*(index[max_loc]*kx/npad))
 
-        # integer-pixel cross correlation
+        # Determine integer shift via cross correlation
         conjugate = np.conj(ref_line_pad_FT)*line_pad_FT*max_pfactor
         xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
         max_loc = np.argmax(xcorr)
@@ -365,7 +359,7 @@ def align_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution,
         integer_shift = max_loc
         integer_shift = integer_shift - midpoint
 
-        # combine integer and sub-pixel shift result
+        # Calculate full shift
         shift = integer_shift + subpixel_shift
 
         return -shift
