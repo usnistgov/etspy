@@ -304,7 +304,9 @@ class TomoStack(Signal2D):
         return
 
     def stack_register(self, method='ECC', start=None, crop=False,
-                       show_progressbar=False, nslice=None, ratio=0.5):
+                       show_progressbar=False, nslice=None, ratio=0.5,
+                       cl_resolution=0.1, cl_div_factor=4, com_ref_index=None,
+                       cl_ref_index=None):
         """
         Register stack spatially.
 
@@ -369,7 +371,11 @@ class TomoStack(Signal2D):
         method = method.lower()
         if method in ['ecc', 'pc', 'com', 'stackreg', 'com-cl']:
             out = align.align_stack(self, method, start, show_progressbar,
-                                    ratio=ratio, nslice=nslice)
+                                    ratio=ratio, nslice=nslice,
+                                    cl_resolution=cl_resolution,
+                                    cl_div_factor=cl_div_factor,
+                                    com_ref_index=com_ref_index,
+                                    cl_ref_index=cl_ref_index)
         else:
             raise ValueError(
                 "Unknown registration method: "

@@ -279,8 +279,8 @@ def calculate_shifts_stackreg(stack):
     return shifts
 
 
-def align_com_cl(stack, com_ref_index=None, cl_ref_index=None,
-                 cl_resolution=0.01, cl_div_factor=4):
+def align_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution,
+                 cl_div_factor):
     def pad_preserve_center(line, paddedsize):
         padded = np.zeros(paddedsize)
         npix = len(line)
@@ -326,8 +326,8 @@ def align_com_cl(stack, com_ref_index=None, cl_ref_index=None,
         start = -0.5
         end = 0.5
 
-        midpoint = (npad)/2
-        kx = np.arange(-midpoint, midpoint)
+        midpoint = (npad-1)/2
+        kx = np.arange(-midpoint, midpoint+1)
 
         # Fourier transform
         ref_line_pad_FT = fftshift(fft(ifftshift(ref_line_pad)))
@@ -354,17 +354,16 @@ def align_com_cl(stack, com_ref_index=None, cl_ref_index=None,
             start = boundary[max_loc]
             end = boundary[max_loc+1]
 
-        subpixel_shift = index[max_loc] + 1
+        subpixel_shift = index[max_loc]
         max_pfactor = np.exp(2*np.pi*1j*(index[max_loc]*kx/npad))
 
         # integer-pixel cross correlation
         conjugate = np.conj(ref_line_pad_FT)*line_pad_FT*max_pfactor
         xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
-        # maxVal = np.max(max_Xcorr)
         max_loc = np.argmax(xcorr)
 
-        integer_shift = max_loc + 1
-        integer_shift = integer_shift - (midpoint+1)
+        integer_shift = max_loc
+        integer_shift = integer_shift - midpoint
 
         # combine integer and sub-pixel shift result
         shift = integer_shift + subpixel_shift
@@ -404,7 +403,8 @@ def align_com_cl(stack, com_ref_index=None, cl_ref_index=None,
     return reg
 
 
-def align_stack(stack, method, start, show_progressbar, nslice, ratio):
+def align_stack(stack, method, start, show_progressbar, nslice, ratio,
+                cl_ref_index, com_ref_index, cl_resolution, cl_div_factor):
     """
     Compute the shifts for spatial registration.
 
@@ -484,7 +484,8 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
     elif method == 'com-cl':
         logger.info("Performing stack registration using "
                     "combined center of mass and common line methods")
-        aligned = align_com_cl(stack)
+        aligned = align_com_cl(stack, com_ref_index, cl_ref_index,
+                               cl_resolution, cl_div_factor)
         return aligned
     if method in ['ecc', 'pc']:
         shifts = compose_shifts(shifts, start)
