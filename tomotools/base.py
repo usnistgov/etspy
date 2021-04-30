@@ -588,7 +588,8 @@ class TomoStack(Signal2D):
 
         return out
 
-    def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None):
+    def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None,
+                   method='FBP', iterations=50, constrain=True):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -617,7 +618,8 @@ class TomoStack(Signal2D):
         shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
-        rec = recon.run(shifted, method='FBP', cuda=False)
+        rec = recon.run(shifted, method=method, iterations=iterations,
+                        constrain=constrain)
 
         if thickness:
             offset = np.int32(np.floor((rec.shape[1] - thickness) / 2))
@@ -631,9 +633,13 @@ class TomoStack(Signal2D):
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
-        minvals = rec.mean() - 2 * rec.std((1, 2))
-        minvals[minvals < 0] = 0
-        maxvals = rec.mean() + 2 * rec.std((1, 2))
+        if method == 'FBP':
+            minvals = rec.mean((1, 2)) - 2 * rec.std((1, 2))
+            minvals[minvals < 0] = 0
+            maxvals = rec.mean((1, 2)) + 2 * rec.std((1, 2))
+        else:
+            minvals = np.zeros(3)
+            maxvals = rec.max((1, 2))
         for i in range(0, 3):
             if maxvals[i] > rec[i].max():
                 maxvals[i] = rec[i].max()
