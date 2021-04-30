@@ -309,14 +309,15 @@ class TomoStack(Signal2D):
         Register stack spatially.
 
         Options are phase correlation (PC) maximization, enhanced
-        correlation coefficient (ECC) maximization, or center of mass ('COM')
-        tracking.
+        correlation coefficient (ECC) maximization, StackReg, center of
+        mass ('COM'), or combined center of mass and common line methods.
+        See docstring for tomotools.align.align_stack for details.
 
         Args
         ----------
         method : string
             Algorithm to use for registration calculation. Must be either
-            'PC' or 'ECC'
+            'PC', 'ECC', 'StackReg', 'COM', or 'COM-CL'.
         start : integer
             Position in tilt series to use as starting point for the
             alignment. If None, the central projection is used.
@@ -358,6 +359,11 @@ class TomoStack(Signal2D):
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
         >>> regSR = s.inav[0:10].stack_register('StackReg')
+
+        Registration with center of mass and common line (COM-CL)
+        >>> import tomotools.api as tomotools
+        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        >>> regCOMCL = s.inav[0:10].stack_register('COM-CL')
 
         """
         method = method.lower()

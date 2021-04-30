@@ -390,6 +390,8 @@ def align_com_cl(stack, com_ref_index=None, cl_ref_index=None,
         com_ref_index = round(stack.data.shape[1]/2)
     if not cl_ref_index:
         cl_ref_index = round(stack.data.shape[0]/2)
+    logger.info("Center of mass reference slice: %s" % com_ref_index)
+    logger.info("Common line reference slice: %s" % cl_ref_index)
     xshifts = np.zeros([stack.data.shape[0], 2])
     yshifts = np.zeros([stack.data.shape[0], 2])
     xshifts[:, 1] = com_cl_alignX(stack, com_ref_index)
