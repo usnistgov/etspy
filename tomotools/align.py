@@ -461,18 +461,19 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio):
         Spatially registered copy of the input stack
 
     """
-    if method == 'COM':
+    method = method.lower()
+    if method == 'com':
         shifts = calculate_shifts_com(stack, nslice, ratio)
-    elif method == 'ECC':
+    elif method == 'ecc':
         shifts = calculate_shifts_ecc(stack, start, show_progressbar)
-    elif method == 'PC':
+    elif method == 'pc':
         shifts = calculate_shifts_pc(stack, start, show_progressbar)
-    elif method == 'StackReg':
+    elif method == 'stackreg':
         shifts = calculate_shifts_stackreg(stack)
-    elif method == 'COM-CL':
+    elif method == 'com-cl':
         aligned = align_com_cl(stack)
         return aligned
-    if method in ['ECC', 'PC']:
+    if method in ['ecc', 'pc']:
         shifts = compose_shifts(shifts, start)
     aligned = apply_shifts(stack, shifts)
     return aligned
