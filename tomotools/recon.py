@@ -357,7 +357,7 @@ def astra_project(obj, angles, cuda=False):
     return sino
 
 
-def astra_sirt_error(sino, angles, thickness=None, iterations=50,
+def astra_sirt_error(sinogram, angles, iterations=50,
                      constrain=True, thresh=0, cuda=False):
     """
     Perform SIRT reconstruction using the Astra toolbox algorithms.
@@ -390,13 +390,13 @@ def astra_sirt_error(sino, angles, thickness=None, iterations=50,
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-
+    sino = sinogram.data[:, 0, :]
+    print(sino.shape)
     thetas = angles * np.pi / 180
 
     n_angles, x_pix = sino.shape
 
-    if thickness is None:
-        thickness = sino.shape[1]
+    thickness = x_pix
 
     rec = np.zeros([thickness, x_pix], sino.dtype)
     vol_geom = astra.create_vol_geom(thickness, x_pix)
