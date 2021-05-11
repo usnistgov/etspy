@@ -499,9 +499,6 @@ class TomoStack(Signal2D):
         method : string
             Reconstruction algorithm to use.  Must be either 'FBP' (default)
             or 'SIRT'
-        rot_center : float
-            Location of the rotation center.  If None, position is assumed to
-            be the center of the image.
         iterations : integer
             Number of iterations for the SIRT reconstruction (for astraSIRT
             and astraSIRT_GPU, methods only)
@@ -514,8 +511,6 @@ class TomoStack(Signal2D):
             If True, use the CUDA-accelerated reconstruction algorithm
         thickness : integer
             Size of the output volume (in pixels) in the projection direction.
-        **kwargs : dict
-            Other keyword arguments are passed through to ``tomopy.recon``
 
         Returns
         ----------

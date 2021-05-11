@@ -39,9 +39,6 @@ def run(stack, method, iterations=None, constrain=None,
     method : string
         Reconstruction algorithm to use.  Must be either 'FBP' (default) or
         'SIRT'
-    rot_center : float
-        Location of the rotation center.  If None, position is assumed to be
-        the center of the image.
     iterations : integer (only required for SIRT)
         Number of iterations for the SIRT reconstruction (for SIRT methods
         only)
@@ -53,8 +50,6 @@ def run(stack, method, iterations=None, constrain=None,
     cuda : boolean
         If True, use the CUDA-accelerated Astra algorithms. Otherwise,
         use the CPU-based algorithms
-    **kwargs : dict
-        Any other keyword arguments are passed through to ``tomopy.recon``
 
     Returns
     ----------
