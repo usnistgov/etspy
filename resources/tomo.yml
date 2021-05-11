@@ -144,7 +144,6 @@ dependencies:
 - pyreadline=2.1=py36_0
 - scikit-learn=0.19.0=np113py36_0
 - scipy=0.19.1=np113py36_0
-- tomopy=1.2.1=py36_1
 - pip:
   - backports.functools-lru-cache==1.4
   - cython==0.27.3

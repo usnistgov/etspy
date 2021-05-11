@@ -15,18 +15,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# @contextmanager
-# def suppress_stdout():
-#     """Suppress text output from tomopy reconstruction algorithm."""
-#     with open(os.devnull, "w") as devnull:
-#         old_stdout = sys.stdout
-#         sys.stdout = devnull
-#         try:
-#             yield
-#         finally:
-#             sys.stdout = old_stdout
-
-
 def run(stack, method, iterations=None, constrain=None,
         thresh=None, cuda=True, **kwargs):
     """
