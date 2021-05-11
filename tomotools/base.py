@@ -487,9 +487,8 @@ class TomoStack(Signal2D):
             self = self.swap_axes(2, 1)
         return out
 
-    def reconstruct(self, method='FBP', rot_center=None, iterations=None,
-                    constrain=False, thresh=0, cuda=None, thickness=None,
-                    **kwargs):
+    def reconstruct(self, method='FBP', iterations=None, constrain=False,
+                    thresh=0, cuda=None, thickness=None):
         """
         Reconstruct a TomoStack series using one of the available methods.
 
@@ -500,9 +499,6 @@ class TomoStack(Signal2D):
         method : string
             Reconstruction algorithm to use.  Must be either 'FBP' (default)
             or 'SIRT'
-        rot_center : float
-            Location of the rotation center.  If None, position is assumed to
-            be the center of the image.
         iterations : integer
             Number of iterations for the SIRT reconstruction (for astraSIRT
             and astraSIRT_GPU, methods only)
@@ -515,8 +511,6 @@ class TomoStack(Signal2D):
             If True, use the CUDA-accelerated reconstruction algorithm
         thickness : integer
             Size of the output volume (in pixels) in the projection direction.
-        **kwargs : dict
-            Other keyword arguments are passed through to ``tomopy.recon``
 
         Returns
         ----------
@@ -558,8 +552,7 @@ class TomoStack(Signal2D):
                 cuda = False
 
         out = copy.deepcopy(self)
-        out.data = recon.run(self, method, rot_center, iterations, constrain,
-                             thresh, cuda, **kwargs)
+        out.data = recon.run(self, method, iterations, constrain, thresh, cuda)
 
         out.axes_manager[0].name = 'y'
         out.axes_manager[0].size = out.data.shape[0]
@@ -1140,8 +1133,8 @@ class TomoStack(Signal2D):
         self.save(filename)
         return
 
-    def recon_error(self, nslice=None, tol=0.01, algorithm='sirt',
-                    constrain=True, cuda=None):
+    def recon_error(self, nslice=None, iterations=50, constrain=True,
+                    cuda=None):
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1155,9 +1148,6 @@ class TomoStack(Signal2D):
             Reconstruction algorithm use.
         nslice : int
             Location at which to perform the evaluation.
-        tol : float
-            Fractional change between iterations at which the
-            evaluation will terminate.  Default is 0.01.
         constrain : boolean
             If True, perform SIRT reconstruction with a non-negativity
             constraint.  Default is True
@@ -1186,11 +1176,11 @@ class TomoStack(Signal2D):
             nslice = np.int32(self.data.shape[1] / 2)
 
         if not cuda:
-            if 'CUDA_Path' in os.environ.keys():
-                cuda = True
-            else:
-                cuda = False
+            cuda = astra.use_cuda()
         sinogram = self.isig[:, nslice:nslice+1].deepcopy()
-        error, rec_stack = recon.check_sirt_error(sinogram, algorithm, tol,
-                                                  constrain, cuda)
-        return error, rec_stack
+        angles = self.metadata.Tomography.tilts
+        rec_stack, error = recon.astra_sirt_error(sinogram, angles,
+                                                  iterations=iterations,
+                                                  constrain=constrain,
+                                                  thresh=0, cuda=False)
+        return rec_stack, error

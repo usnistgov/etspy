@@ -16,12 +16,11 @@ Installation
   Anaconda (Preferred):
   ---------------------
   * The required packages can be installed into an existing Anaconda environmnent.
-    Install major dependencies Astra Toolbox, Hyperspy, OpenCV, and TomoPy 
-    through conda. NOTE: `astra-toolbox` must be installed first due to a
-    dependency conflict.
+    Install major dependencies Astra Toolbox, Hyperspy, and OpenCV through conda.
+    NOTE: `astra-toolbox` must be installed first due to a dependency conflict.
     ```bash
     conda install -c astra-toolbox/label/dev astra-toolbox
-    conda install -c conda-forge hyperspy opencv tomopy
+    conda install -c conda-forge hyperspy opencv
 
     ```
 
@@ -65,5 +64,3 @@ http://hyperspy.org/
 https://opencv.org/
 
 https://www.astra-toolbox.com/
-
-https://tomopy.readthedocs.io/en/latest/
