@@ -55,6 +55,8 @@ def run(stack, method, iterations=None, constrain=None,
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
             nchunks = int(stack.data.shape[1]/ncpus)
+            if nchunks == 0:
+                nchunks = 1
             logger.info('Reconstructing volume using FBP')
             logger.info('%s chunks using %s cores' % (nchunks, ncpus))
             pool = mp.Pool(ncpus)
@@ -63,7 +65,11 @@ def run(stack, method, iterations=None, constrain=None,
                                  angles) for i in range(0, nchunks)])
             pool.close()
             logger.info('Reconstruction complete')
-            rec = np.vstack(rec)
+            if type(rec) is list:
+                if len(rec) > 1:
+                    rec = np.vstack(rec)
+                else:
+                    rec = rec[0]
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA weighted-backprojection CUDA reconstruction of single
             slice'''
@@ -85,6 +91,8 @@ def run(stack, method, iterations=None, constrain=None,
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA SIRT reconstruction'''
             nchunks = int(stack.data.shape[1]/ncpus)
+            if nchunks == 0:
+                nchunks = 1
             logger.info('Reconstructing volume using %s SIRT iterations'
                         % iterations)
             logger.info('%s chunks using %s cores' % (nchunks, ncpus))
@@ -94,7 +102,12 @@ def run(stack, method, iterations=None, constrain=None,
                                  angles) for i in range(0, nchunks)])
             pool.close()
             logger.info('Reconstruction complete')
-            rec = np.vstack(rec)
+            if type(rec) is list:
+                rec = np.vstack(rec)
+                if len(rec) > 1:
+                    rec = np.vstack(rec)
+                else:
+                    rec = rec[0]
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
             rec = astra_sirt(stack.data, angles, iterations=iterations,
