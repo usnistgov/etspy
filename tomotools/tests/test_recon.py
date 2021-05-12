@@ -13,7 +13,7 @@ class TestReconstruction:
         filename = os.path.join(tomotools_path, "tests", "test_data",
                                 "HAADF_Aligned.hdf5")
         stack = load(filename)
-        slices = stack.isig[:, 120:131].deepcopy()
+        slices = stack.isig[:, 120:121].deepcopy()
         rec = slices.reconstruct('FBP')
         assert type(stack) is tomotools.base.TomoStack
         assert type(rec) is tomotools.base.TomoStack
@@ -24,7 +24,7 @@ class TestReconstruction:
         filename = os.path.join(tomotools_path, "tests", "test_data",
                                 "HAADF_Aligned.hdf5")
         stack = load(filename)
-        slices = stack.isig[:, 120:131].deepcopy()
+        slices = stack.isig[:, 120:121].deepcopy()
         rec = slices.reconstruct('SIRT',
                                  constrain=True,
                                  iterations=2,
