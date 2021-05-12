@@ -10,7 +10,9 @@ Reconstruction module for TomoTools package.
 import numpy as np
 import astra
 import logging
+import multiprocessing as mp
 
+ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -52,9 +54,16 @@ def run(stack, method, iterations=None, constrain=None,
     if method == 'FBP':
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
-            logger.info('Reconstruction volume using FBP')
-            rec = astra_fbp(stack.data, angles, cuda=False)
+            nchunks = int(stack.data.shape[1]/ncpus)
+            logger.info('Reconstructing volume using FBP')
+            logger.info('%s chunks using %s cores' % (nchunks, ncpus))
+            pool = mp.Pool(ncpus)
+            rec = pool.starmap(astra_fbp,
+                               [(stack.data[:, ncpus*i:ncpus*i+ncpus, :],
+                                 angles) for i in range(0, nchunks)])
+            pool.close()
             logger.info('Reconstruction complete')
+            rec = np.vstack(rec)
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA weighted-backprojection CUDA reconstruction of single
             slice'''
@@ -74,10 +83,18 @@ def run(stack, method, iterations=None, constrain=None,
         else:
             logger.info("Reconstructing volume using SIRT")
         if not astra.astra.use_cuda() or not cuda:
-            '''ASTRA SIRT reconstruction of single slice'''
-            rec = astra_sirt(stack.data, angles, iterations=iterations,
-                             constrain=constrain, thresh=thresh, cuda=False)
+            '''ASTRA SIRT reconstruction'''
+            nchunks = int(stack.data.shape[1]/ncpus)
+            logger.info('Reconstructing volume using %s SIRT iterations'
+                        % iterations)
+            logger.info('%s chunks using %s cores' % (nchunks, ncpus))
+            pool = mp.Pool(ncpus)
+            rec = pool.starmap(astra_sirt,
+                               [(stack.data[:, ncpus*i:ncpus*i+ncpus, :],
+                                 angles) for i in range(0, nchunks)])
+            pool.close()
             logger.info('Reconstruction complete')
+            rec = np.vstack(rec)
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
             rec = astra_sirt(stack.data, angles, iterations=iterations,
