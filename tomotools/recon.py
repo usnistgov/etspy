@@ -103,7 +103,6 @@ def run(stack, method, iterations=None, constrain=None,
             pool.close()
             logger.info('Reconstruction complete')
             if type(rec) is list:
-                rec = np.vstack(rec)
                 if len(rec) > 1:
                     rec = np.vstack(rec)
                 else:

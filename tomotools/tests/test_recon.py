@@ -17,8 +17,7 @@ class TestReconstruction:
         rec = slices.reconstruct('FBP')
         assert type(stack) is tomotools.base.TomoStack
         assert type(rec) is tomotools.base.TomoStack
-        assert rec.axes_manager.navigation_shape[0] == \
-            slices.axes_manager.signal_shape[1]
+        assert rec.data.shape[1] == slices.data.shape[2]
 
     def test_recon_sirt(self):
         filename = os.path.join(tomotools_path, "tests", "test_data",
@@ -31,8 +30,7 @@ class TestReconstruction:
                                  thresh=0)
         assert type(stack) is tomotools.base.TomoStack
         assert type(rec) is tomotools.base.TomoStack
-        assert rec.axes_manager.navigation_shape[0] == \
-            slices.axes_manager.signal_shape[1]
+        assert rec.data.shape[1] == slices.data.shape[2]
 
 
 class TestAstraReconstruction:
