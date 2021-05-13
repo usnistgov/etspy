@@ -390,7 +390,6 @@ def load_dm_series(dirname):
     stack : TomoStack object
 
     """
-
     if dirname[-1] != "/":
         dirname = dirname + "/"
     files = glob.glob(dirname + "*.dm3")

@@ -152,7 +152,6 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-
     thetas = angles * np.pi / 180
 
     if len(stack.shape) == 2:
@@ -252,7 +251,6 @@ def astra_fbp(stack, angles, thickness=None, cuda=False):
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-
     thetas = angles * np.pi / 180
 
     if len(stack.shape) == 2:
