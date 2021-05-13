@@ -9,10 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: pip install flake8
-      - run: pip install pytest
+      - run: pip install pydocstyle
       - run: flake8 --exclude=api.py tomotools/
-      - if: always()
-        run: pytest --doctest-modules tomotools/ 
       - if: always()
         run: pydocstyle tomotools/
 
@@ -23,5 +21,9 @@ jobs:
       image: aaherzing/tomotools:latest
     steps:
     - uses: actions/checkout@v2
-    - run: pip install . -e
-    - run: pytest tomotools/tests/
+    - name: doctest-modules
+      run: pip install . -e
+      run: pytest --doctest-modules tomotools/ 
+    - name: pytests
+    #- if: always()
+      run: pytest tomotools/tests/
