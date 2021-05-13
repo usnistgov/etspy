@@ -401,7 +401,6 @@ def astra_sirt_error(sinogram, angles, iterations=50,
 
     """
     sino = sinogram.data[:, 0, :]
-    print(sino.shape)
     thetas = angles * np.pi / 180
 
     n_angles, x_pix = sino.shape
