@@ -12,26 +12,26 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-  build:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-      run: pip install .
+  # build:
+  #   needs: setup
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     run: pip install .
 
-  testing:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: flake8_checks
-        uses: actions/checkout@v2
-        run: flake8 --exclude=api.py tomotools/
-      - name: pytest-doctests
-        uses: actions/checkout@v2
-        run: pytest --doctest-modules tomotools/
-      - name: pydocstyle_checks
-        uses: actions/checkout@v2  
-        run: pydocstyle tomotools/
-      - name: pytest-tests
-        uses: actions/checkout@v2  
-        run: pytest tomotools/tests/
+  # testing:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: flake8_checks
+  #       uses: actions/checkout@v2
+  #       run: flake8 --exclude=api.py tomotools/
+  #     - name: pytest-doctests
+  #       uses: actions/checkout@v2
+  #       run: pytest --doctest-modules tomotools/
+  #     - name: pydocstyle_checks
+  #       uses: actions/checkout@v2  
+  #       run: pydocstyle tomotools/
+  #     - name: pytest-tests
+  #       uses: actions/checkout@v2  
+  #       run: pytest tomotools/tests/
