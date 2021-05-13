@@ -16,6 +16,8 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - run: ls
       - run: pip install .
 
   format-checks:
