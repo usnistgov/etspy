@@ -35,8 +35,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: checkout repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
       - name: flake8_checks
         run: flake8 --exclude=api.py tomotools/
       - name: pytest-doctests
