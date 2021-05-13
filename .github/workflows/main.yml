@@ -17,7 +17,7 @@ jobs:
       image: aaherzing/tomotools:latest
     steps:
     - uses: actions/checkout@v2
-    - run: pip install .
+    - run: pip install -e ./
     - run: pytest --doctest-modules tomotools/ 
     - if: always()
       run: pytest tomotools/tests/
