@@ -12,12 +12,12 @@ jobs:
   format-checks:
     needs: setup
     runs-on: ubuntu-latest
-    container:
-      image: aaherzing/tomotools:latest
+    # container:
+    #   image: aaherzing/tomotools:latest
     steps:
       - uses: actions/checkout@v2
-      - run: conda info --envs
-      - run: conda list
+      - run: pip install flake8
+      - run: pip install pytest
       - run: flake8 --exclude=api.py tomotools/
       - if: always()
         run: pytest --doctest-modules tomotools/ 
@@ -31,4 +31,5 @@ jobs:
       image: aaherzing/tomotools:latest
     steps:
       - uses: actions/checkout@v2
+      - run: pip install . -e
       - run: pytest tomotools/tests/
