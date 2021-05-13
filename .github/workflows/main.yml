@@ -34,18 +34,19 @@ jobs:
   testing:
     needs: build
     runs-on: ubuntu-latest
-    - name: flake8_checks
-      run: flake8 --exclude=api.py tomotools/
-      continue-on-error: false
+    steps:
+      - name: flake8_checks
+        run: flake8 --exclude=api.py tomotools/
+        continue-on-error: false
 
-    - name: pytest-doctests
-      run: pytest --doctest-modules tomotools/
-      continue-on-error: false
-        
-    - name: pydocstyle_checks
-      run: pydocstyle tomotools/
-      continue-on-error: false
+      - name: pytest-doctests
+        run: pytest --doctest-modules tomotools/
+        continue-on-error: false
+          
+      - name: pydocstyle_checks
+        run: pydocstyle tomotools/
+        continue-on-error: false
 
-    - name: pytest-tests
-      run: pytest tomotools/tests/
-      continue-on-error: false
+      - name: pytest-tests
+        run: pytest tomotools/tests/
+        continue-on-error: false
