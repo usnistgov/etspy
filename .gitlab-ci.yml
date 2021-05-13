@@ -3,13 +3,17 @@ image: aaherzing/tomotools:latest
 stages:
     - test
 
-pytests:
+pytest-doctest:
     stage: test
     script:
     - python setup.py install
     - pytest --doctest-modules tomotools/
 
-
+pytest-doctest:
+    stage: test
+    script:
+    - pytest tomotools/tomotools/tests/
+    
 flake8_checks:
     stage: test
     script:
@@ -19,4 +23,3 @@ pydocstyle_checks:
     stage: test
     script:
     - pydocstyle tomotools/
-    allow_failure: true
