@@ -2,10 +2,7 @@ name: CI
 on: push
 jobs:
   format-checks:
-    # needs: setup
     runs-on: ubuntu-latest
-    # container:
-    #   image: aaherzing/tomotools:latest
     steps:
       - uses: actions/checkout@v2
       - run: pip install flake8
@@ -15,15 +12,12 @@ jobs:
         run: pydocstyle tomotools/
 
   pytest:
-    # needs: setup
     runs-on: ubuntu-latest
     container:
       image: aaherzing/tomotools:latest
     steps:
     - uses: actions/checkout@v2
-    - name: doctest-modules
-      run: pip install . -e
-      run: pytest --doctest-modules tomotools/ 
-    - name: pytests
-    #- if: always()
+    - run: pip install . -e
+    - run: pytest --doctest-modules tomotools/ 
+    - if: always()
       run: pytest tomotools/tests/
