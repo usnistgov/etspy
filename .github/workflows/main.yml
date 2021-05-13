@@ -15,7 +15,8 @@ jobs:
   build:
     needs: setup
     runs-on: ubuntu-latest
-    run: pip install .
+    steps:
+      - run: pip install .
 
   # testing:
   #   needs: build
