@@ -54,7 +54,7 @@ def numpy_to_tomo_stack(data, tilts=None, manual_tilts=False):
     >>> from tomotools.io import numpy_to_tomo_stack
     >>> s_new = numpy_to_tomo_stack(s)
     >>> s_new
-    <TomoStack, title: , dimensions: (50|500, 500)>
+    <TomoStack, title: test dataset, dimensions: (50|500, 500)>
 
     """
     s = signal_to_tomo_stack(hspy.signals.Signal2D(data))

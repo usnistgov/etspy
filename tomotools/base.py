@@ -369,7 +369,7 @@ class TomoStack(Signal2D):
         Registration with center of mass tracking (COM)
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> regCOM = s.inav[0:10].stack_register('COM')
+        >>> regCOM = s.stack_register('COM')
 
         Registration with StackReg
         >>> import tomotools.api as tomotools
@@ -1169,7 +1169,7 @@ class TomoStack(Signal2D):
         ----------
         >>> import tomotools.api as tomotools
         >>> s = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
-        >>> error, rec_stack = s.recon_error(algorithm='sirt', tol=0.5)
+        >>> error, rec_stack = s.recon_error(iterations=5)
 
         """
         if not nslice:
