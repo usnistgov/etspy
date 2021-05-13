@@ -34,17 +34,17 @@ jobs:
         flake8 --exclude=api.py tomotools/
       continue-on-error: false
 
-    - name: pytests
+    - name: pytest-doctests
       run: |
-        source ~/miniconda3/etc/profile.d/conda.sh
-        conda activate /usr/share/miniconda/envs/test
-        # python setup.py install
         pytest --doctest-modules tomotools/
-      continue-on-error: true
+      continue-on-error: false
         
     - name: pydocstyle_checks
       run: |
-        source ~/miniconda3/etc/profile.d/conda.sh
-        conda activate /usr/share/miniconda/envs/test
         pydocstyle tomotools/
-      continue-on-error: true
+      continue-on-error: false
+
+    - name: pytest-tests
+      run: |
+        pytest tomotools/tests/
+      continue-on-error: false
