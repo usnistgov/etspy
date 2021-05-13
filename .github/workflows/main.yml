@@ -19,7 +19,9 @@ jobs:
       - run: conda info --envs
       - run: conda list
       - run: flake8 --exclude=api.py tomotools/
+      if: always()
       - run: pytest --doctest-modules tomotools/ 
+      if: always()
       - run: pydocstyle tomotools/
 
   pytest:
