@@ -33,6 +33,7 @@ jobs:
 
   testing:
     needs: build
+    runs-on: ubuntu-latest
     - name: flake8_checks
       run: flake8 --exclude=api.py tomotools/
       continue-on-error: false
