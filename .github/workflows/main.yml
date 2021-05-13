@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: conda list
+      - run: conda info --envs
       - run: flake8 --exclude=api.py tomotools/
       - run: pytest --doctest-modules tomotools/ 
       - run: pydocstyle tomotools/
