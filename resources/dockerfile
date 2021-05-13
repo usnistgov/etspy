@@ -4,10 +4,10 @@ RUN conda update conda
 
 RUN conda install python=3.7
 RUN conda install pytest flake8 pydocstyle -c defaults
-RUN conda install astra-toolbox -c astra-toolbox/label/dev
-RUN conda install opencv=3 -c conda-forge
 RUN conda install hyperspy -c conda-forge
+RUN conda install astra-toolbox -c astra-toolbox/label/dev
+RUN conda install opencv -c conda-forge
 
 RUN apt-get update -q
-RUN apt-get -y install g++
+RUN apt-get install ffmpeg libsm6 libxext6 g++ -y
 RUN pip install pystackreg
