@@ -12,11 +12,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-  # build:
-  #   needs: setup
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     run: pip install .
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      run: pip install .
 
   # testing:
   #   needs: build
