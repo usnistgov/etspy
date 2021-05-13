@@ -1,16 +1,8 @@
 name: CI
 on: push
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    container:
-      image: aaherzing/tomotools:latest
-    steps:
-    - uses: actions/checkout@v2
-    - run: pip install .      
-
   format-checks:
-    needs: setup
+    # needs: setup
     runs-on: ubuntu-latest
     # container:
     #   image: aaherzing/tomotools:latest
@@ -25,11 +17,11 @@ jobs:
         run: pydocstyle tomotools/
 
   pytest:
-    needs: setup
+    # needs: setup
     runs-on: ubuntu-latest
     container:
       image: aaherzing/tomotools:latest
     steps:
-      - uses: actions/checkout@v2
-      - run: pip install . -e
-      - run: pytest tomotools/tests/
+    - uses: actions/checkout@v2
+    - run: pip install . -e
+    - run: pytest tomotools/tests/
