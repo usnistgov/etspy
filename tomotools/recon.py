@@ -18,7 +18,7 @@ logger.setLevel(logging.INFO)
 
 
 def run(stack, method, iterations=None, constrain=None,
-        thresh=None, cuda=True, **kwargs):
+        thresh=None, cuda=True, thickness=None, **kwargs):
     """
     Perform reconstruction of input tilt series.
 
