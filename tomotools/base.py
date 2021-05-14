@@ -569,12 +569,12 @@ class TomoStack(Signal2D):
         out.axes_manager[1].scale = self.axes_manager['x'].scale
         out.axes_manager[1].units = self.axes_manager['x'].units
 
-        if thickness:
-            offset = np.int32(np.floor((out.data.shape[1] - thickness) / 2))
-            if offset < 0:
-                pass
-            else:
-                out = out.isig[:, offset:-offset]
+        # if thickness:
+        #     offset = np.int32(np.floor((out.data.shape[1] - thickness) / 2))
+        #     if offset < 0:
+        #         pass
+        #     else:
+        #         out = out.isig[:, offset:-offset]
 
         return out
 
