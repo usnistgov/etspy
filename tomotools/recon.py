@@ -62,7 +62,8 @@ def run(stack, method, iterations=None, constrain=None,
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_fbp,
                                [(stack.data[:, ncpus*i:ncpus*i+ncpus, :],
-                                 angles) for i in range(0, nchunks)])
+                                 angles,
+                                 thickness) for i in range(0, nchunks)])
             pool.close()
             logger.info('Reconstruction complete')
             if type(rec) is list:
@@ -99,7 +100,11 @@ def run(stack, method, iterations=None, constrain=None,
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_sirt,
                                [(stack.data[:, ncpus*i:ncpus*i+ncpus, :],
-                                 angles) for i in range(0, nchunks)])
+                                 angles,
+                                 thickness,
+                                 iterations,
+                                 constrain,
+                                 thresh) for i in range(0, nchunks)])
             pool.close()
             logger.info('Reconstruction complete')
             if type(rec) is list:
