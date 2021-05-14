@@ -92,25 +92,25 @@ class TestTomoStack:
         assert out[3] == 'Min: %.1f' % stack.data.min()
 
     def test_test_align_no_slices(self):
-        stack = ds.get_needle_data()
+        stack = ds.get_needle_data(True)
         stack.test_align()
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_test_align_with_angle(self):
-        stack = ds.get_needle_data()
+        stack = ds.get_needle_data(True)
         stack.test_align(angle=3.0)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_test_align_with_xshift(self):
-        stack = ds.get_needle_data()
+        stack = ds.get_needle_data(True)
         stack.test_align(xshift=3.0)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_test_align_with_thickness(self):
-        stack = ds.get_needle_data()
+        stack = ds.get_needle_data(True)
         stack.test_align(thickness=200)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
@@ -126,7 +126,7 @@ class TestTomoStack:
             np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
 
     def test_sirt_error(self):
-        stack = ds.get_needle_data()
+        stack = ds.get_needle_data(True)
         rec_stack, error = stack.recon_error(128, iterations=50,
                                              constrain=True, cuda=False)
         print(error.shape)
