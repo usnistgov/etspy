@@ -129,8 +129,6 @@ class TestTomoStack:
         stack = ds.get_needle_data(True)
         rec_stack, error = stack.recon_error(128, iterations=50,
                                              constrain=True, cuda=False)
-        print(error.shape)
-        print(rec_stack.shape)
         assert error.shape[0] == rec_stack.data.shape[0]
         assert rec_stack.data.shape[1:] ==\
             [stack.data.shape[1], stack.data.shape[1]]
