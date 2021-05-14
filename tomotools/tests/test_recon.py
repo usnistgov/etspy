@@ -1,18 +1,13 @@
 import tomotools
-import os
-from tomotools.io import load
 from tomotools import recon
+from tomotools import datasets as ds
 import numpy
-
-tomotools_path = os.path.dirname(tomotools.__file__)
 
 
 class TestReconstruction:
 
     def test_recon_fbp(self):
-        filename = os.path.join(tomotools_path, "tests", "test_data",
-                                "HAADF_Aligned.hdf5")
-        stack = load(filename)
+        stack = ds.get_needle_data(True)
         slices = stack.isig[:, 120:121].deepcopy()
         rec = slices.reconstruct('FBP')
         assert type(stack) is tomotools.base.TomoStack
@@ -20,9 +15,7 @@ class TestReconstruction:
         assert rec.data.shape[1] == slices.data.shape[2]
 
     def test_recon_sirt(self):
-        filename = os.path.join(tomotools_path, "tests", "test_data",
-                                "HAADF_Aligned.hdf5")
-        stack = load(filename)
+        stack = ds.get_needle_data(True)
         slices = stack.isig[:, 120:121].deepcopy()
         rec = slices.reconstruct('SIRT',
                                  constrain=True,
@@ -36,9 +29,7 @@ class TestReconstruction:
 class TestAstraReconstruction:
 
     def test_astra_sirt_3d_data(self):
-        filename = os.path.join(tomotools_path, "tests", "test_data",
-                                "HAADF_Aligned.hdf5")
-        stack = load(filename)
+        stack = ds.get_needle_data(True)
         angles = stack.axes_manager[0].axis
         slices = stack.isig[:, 120:121].deepcopy().data
         rec = recon.astra_sirt(slices, angles,
@@ -49,9 +40,7 @@ class TestAstraReconstruction:
         assert type(rec) is numpy.ndarray
 
     def test_astra_sirt_2d_data(self):
-        filename = os.path.join(tomotools_path, "tests", "test_data",
-                                "HAADF_Aligned.hdf5")
-        stack = load(filename)
+        stack = ds.get_needle_data(True)
         angles = stack.axes_manager[0].axis
         slices = stack.isig[:, 120].deepcopy().data
         rec = recon.astra_sirt(slices, angles,
@@ -62,9 +51,7 @@ class TestAstraReconstruction:
         assert type(rec) is numpy.ndarray
 
     def test_astra_project_3d_data(self):
-        filename = os.path.join(tomotools_path, "tests", "test_data",
-                                "HAADF_Aligned.hdf5")
-        stack = load(filename)
+        stack = ds.get_needle_data(True)
         angles = stack.axes_manager[0].axis
         slices = stack.isig[:, 120:121].deepcopy().data
         rec = recon.astra_sirt(slices, angles,
@@ -76,9 +63,7 @@ class TestAstraReconstruction:
         assert type(sino) is numpy.ndarray
 
     def test_astra_project_2d_data(self):
-        filename = os.path.join(tomotools_path, "tests", "test_data",
-                                "HAADF_Aligned.hdf5")
-        stack = load(filename)
+        stack = ds.get_needle_data(True)
         angles = stack.axes_manager[0].axis
         slices = stack.isig[:, 120].deepcopy().data
         rec = recon.astra_sirt(slices, angles,
