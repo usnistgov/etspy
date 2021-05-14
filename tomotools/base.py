@@ -376,8 +376,8 @@ class TomoStack(Signal2D):
         >>> regSR = stack.inav[0:10].stack_register('StackReg')
 
         Registration with center of mass and common line (COM-CL)
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
         >>> regCOMCL = s.inav[0:10].stack_register('COM-CL')
 
         """
@@ -1164,7 +1164,7 @@ class TomoStack(Signal2D):
         ----------
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data(True)
-        >>> error, rec_stack = s.recon_error(iterations=5)
+        >>> rec_stack, error = stack.recon_error(iterations=5)
 
         """
         if not nslice:
