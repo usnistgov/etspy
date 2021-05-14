@@ -607,9 +607,9 @@ class TomoStack(Signal2D):
         shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
-        rec = recon.run(shifted, method=method, iterations=iterations,
-                        constrain=constrain)
 
+        rec = shifted.reconstruct(method=method, iterations=iterations,
+                                  constrain=constrain, thickness=thickness)
         if thickness:
             offset = np.int32(np.floor((rec.shape[1] - thickness) / 2))
             if offset < 0:
