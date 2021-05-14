@@ -131,8 +131,9 @@ def pad_preserve_center(line, paddedsize):
 def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
     """
 
-    Calculate shifts using the common line method for alignment of stack
-    in dimension perpendicular to the tilt axis
+    Calculate shifts using the common line method.
+
+    Used to align stack in dimension perpendicular to the tilt axis
 
     Args
     ----------
