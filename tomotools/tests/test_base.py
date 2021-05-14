@@ -1,13 +1,9 @@
-import os
 import matplotlib
-import tomotools.api as tomotools
 from tomotools import datasets as ds
 import pytest
 import numpy as np
 import sys
 import io
-
-tomotools_path = os.path.dirname(tomotools.__file__)
 
 
 class TestTomoStack:
