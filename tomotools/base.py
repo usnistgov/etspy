@@ -600,7 +600,8 @@ class TomoStack(Signal2D):
         shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
-
+        print(shifted.data.shape)
+        print(slices)
         rec = shifted.reconstruct(method=method, iterations=iterations,
                                   constrain=constrain, thickness=thickness)
         print(rec.data.shape)
