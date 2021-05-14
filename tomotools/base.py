@@ -169,9 +169,9 @@ class TomoStack(Signal2D):
 
         Examples
         --------
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> s_filtered = s.filter(method='median')
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> filtered = stack.filter(method='median')
 
         """
         filtered = self.deepcopy()
@@ -245,9 +245,9 @@ class TomoStack(Signal2D):
 
         Examples
         --------
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> s_normalized = s.normalize()
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> s_normalized = stack.normalize()
 
         """
         normalized = self.deepcopy()
@@ -272,9 +272,9 @@ class TomoStack(Signal2D):
 
         Examples
         --------
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> s_inverted = s.invert()
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> s_inverted = stack.invert()
 
         """
         maxvals = self.data.max(2).max(1)
@@ -356,25 +356,24 @@ class TomoStack(Signal2D):
         Examples
         --------
         Registration with enhanced correlation coefficient algorithm (ECC)
-        >>> import tomotools.api as tomotools
-        >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
-        >>> s = tomotools.load(filename)
-        >>> regECC = s.inav[0:10].stack_register('ECC')
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> regECC = stack.inav[0:10].stack_register('ECC')
 
         Registration with phase correlation algorithm (PC)
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> regPC = s.inav[0:10].stack_register('PC')
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> regPC = stack.inav[0:10].stack_register('PC')
 
         Registration with center of mass tracking (COM)
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> regCOM = s.stack_register('COM')
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> regCOM = stack.stack_register('COM')
 
         Registration with StackReg
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> regSR = s.inav[0:10].stack_register('StackReg')
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> regSR = stack.inav[0:10].stack_register('StackReg')
 
         Registration with center of mass and common line (COM-CL)
         >>> import tomotools.api as tomotools
@@ -455,16 +454,16 @@ class TomoStack(Signal2D):
         Examples
         ----------
         Align tilt axis using the center of mass (CoM) method
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> reg = s.stack_register('ECC',show_progressbar=False)
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> reg = stack.stack_register('ECC',show_progressbar=False)
         >>> method = 'CoM'
         >>> ali = reg.tilt_align(method, locs=[50,100,160])
 
         Align tilt axis using the maximum image method
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF.mrc')
-        >>> reg = s.stack_register('ECC',show_progressbar=False)
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> reg = stack.stack_register('ECC',show_progressbar=False)
         >>> method = 'MaxImage'
         >>> ali = reg.tilt_align(method, show_progressbar=False)
 
@@ -520,24 +519,21 @@ class TomoStack(Signal2D):
         Examples
         ----------
         Filtered backprojection (FBP) reconstruction
-        >>> import tomotools.api as tomotools
-        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
-        >>> stack = tomotools.load(file)
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP')
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
-        >>> import tomotools.api as tomotools
-        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
-        >>> stack = tomotools.load(file)
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
-        >>> import tomotools.api as tomotools
-        >>> file = 'tomotools/tests/test_data/HAADF_Aligned.hdf5'
-        >>> stack = tomotools.load(file)
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> iterations = 5
         >>> constrain = True
@@ -678,9 +674,8 @@ class TomoStack(Signal2D):
 
         Examples
         ----------
-        >>> import tomotools.api as tomotools
-        >>> filename = 'tomotools/tests/test_data/HAADF.mrc'
-        >>> stack = tomotools.load(filename)
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
         >>> xshift = 10.0
         >>> yshift = 3.5
         >>> angle = -15.2
@@ -1167,8 +1162,8 @@ class TomoStack(Signal2D):
 
         Examples
         ----------
-        >>> import tomotools.api as tomotools
-        >>> s = tomotools.load('tomotools/tests/test_data/HAADF_Aligned.hdf5')
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data(True)
         >>> error, rec_stack = s.recon_error(iterations=5)
 
         """
