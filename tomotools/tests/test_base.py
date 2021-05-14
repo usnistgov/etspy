@@ -132,6 +132,7 @@ class TestTomoStack:
         print(error.shape)
         print(rec_stack.shape)
         assert error.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == stack.data.shape[1:]
+        assert rec_stack.data.shape[1:] ==\
+            [stack.data.shape[1], stack.data.shape[1]]
         assert (1 - (3.8709e12 / error[0])) < 0.001
         assert (1 - (2.8624e12 / error[1])) < 0.001
