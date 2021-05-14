@@ -54,7 +54,7 @@ def numpy_to_tomo_stack(data, tilts=None, manual_tilts=False):
     >>> from tomotools.io import numpy_to_tomo_stack
     >>> s_new = numpy_to_tomo_stack(s)
     >>> s_new
-    <TomoStack, title: test dataset, dimensions: (50|500, 500)>
+    <TomoStack, title: , dimensions: (50|500, 500)>
 
     """
     s = signal_to_tomo_stack(hspy.signals.Signal2D(data))
@@ -125,8 +125,7 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
     >>> from tomotools.io import signal_to_tomo_stack
     >>> s_new = signal_to_tomo_stack(s)
     >>> s_new
-    <TomoStack, title: , dimensions: (50|500, 500)>
-
+    <TomoStack, title: test dataset, dimensions: (50|500, 500)>
     """
     if isinstance(type(s), hspy.signals.BaseSignal):
         s = s.as_signal2D((0, 1))
@@ -390,7 +389,6 @@ def load_dm_series(dirname):
     stack : TomoStack object
 
     """
-
     if dirname[-1] != "/":
         dirname = dirname + "/"
     files = glob.glob(dirname + "*.dm3")

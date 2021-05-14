@@ -91,6 +91,23 @@ def compose_shifts(shifts, start=None):
 
 
 def pad_preserve_center(line, paddedsize):
+    """
+
+    Pad a 1D array for FFT treatment without altering center location.
+
+    Args
+    ----------
+    line : 1D NumPy array
+        The data to be padded
+    paddedsize : int
+        The size of the desired padded data.
+
+    Returns
+    ----------
+    padded : 1D NumPy array
+        Padded version of input data
+
+    """
     padded = np.zeros(paddedsize)
     npix = len(line)
     if np.mod(npix, 2) == 0:
@@ -112,7 +129,30 @@ def pad_preserve_center(line, paddedsize):
 
 
 def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
+    """
 
+    Calculate shifts using the common line method.
+
+    Used to align stack in dimension perpendicular to the tilt axis
+
+    Args
+    ----------
+    stack : TomoStack object
+        The stack on which to calculate shifts
+    cl_ref_index : int
+        Tilt index of reference projection. If not provided the projection
+        closest to the middle of the stack will be chosen.
+    cl_resolution : float
+        Degree of sub-pixel analysis
+    cl_div_factor : int
+        Factor used to determine number of iterations of alignment.
+
+    Returns
+    ----------
+    yshifts : NumPy array
+        Shifts perpendicular to tilt axis for each projection
+
+    """
     def align_line(ref_line, line, cl_resolution, cl_div_factor):
         npix = np.shape(ref_line)[0]
         npad = npix*2-1
@@ -183,9 +223,11 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
 
 def calculate_shifts_com(stack, nslice, ratio):
     """
-    Align stack using a center of mass method. Data is first registered
-    using PyStackReg. Then, the shifts perpendicular to the tilt axis are
-    refined by a center of mass analysis.
+    Align stack using a center of mass method.
+
+    Data is first registered using PyStackReg. Then, the shifts
+    perpendicular to the tilt axis are refined by a center of
+    mass analysis.
 
     Args
     ----------
@@ -385,6 +427,7 @@ def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution,
                        cl_div_factor):
     """
     Align stack using combined center of mass and common line methods.
+
     Center of mass aligns stack perpendicular to the tilt axis and
     common line is used to align the stack parallel to the tilt axis.
 
@@ -912,7 +955,6 @@ def shift_crop(stack):
         Aligned copy of other TomoStack
 
     """
-
     cropped = copy.deepcopy(stack)
     shifts = stack.metadata.Tomography.shifts
     x_shifts = shifts[:, 0]

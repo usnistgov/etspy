@@ -18,7 +18,7 @@ logger.setLevel(logging.INFO)
 
 
 def run(stack, method, iterations=None, constrain=None,
-        thresh=None, cuda=True, **kwargs):
+        thresh=None, cuda=True, thickness=None, **kwargs):
     """
     Perform reconstruction of input tilt series.
 
@@ -62,7 +62,8 @@ def run(stack, method, iterations=None, constrain=None,
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_fbp,
                                [(stack.data[:, ncpus*i:ncpus*i+ncpus, :],
-                                 angles) for i in range(0, nchunks)])
+                                 angles,
+                                 thickness) for i in range(0, nchunks)])
             pool.close()
             logger.info('Reconstruction complete')
             if type(rec) is list:
@@ -99,7 +100,11 @@ def run(stack, method, iterations=None, constrain=None,
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_sirt,
                                [(stack.data[:, ncpus*i:ncpus*i+ncpus, :],
-                                 angles) for i in range(0, nchunks)])
+                                 angles,
+                                 thickness,
+                                 iterations,
+                                 constrain,
+                                 thresh) for i in range(0, nchunks)])
             pool.close()
             logger.info('Reconstruction complete')
             if type(rec) is list:
@@ -152,7 +157,6 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-
     thetas = angles * np.pi / 180
 
     if len(stack.shape) == 2:
@@ -252,7 +256,6 @@ def astra_fbp(stack, angles, thickness=None, cuda=False):
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-
     thetas = angles * np.pi / 180
 
     if len(stack.shape) == 2:
@@ -403,7 +406,6 @@ def astra_sirt_error(sinogram, angles, iterations=50,
 
     """
     sino = sinogram.data[:, 0, :]
-    print(sino.shape)
     thetas = angles * np.pi / 180
 
     n_angles, x_pix = sino.shape
