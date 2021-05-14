@@ -1,6 +1,7 @@
 import os
 import matplotlib
 import tomotools.api as tomotools
+from tomotools import datasets as ds
 import pytest
 import numpy as np
 import sys
@@ -12,17 +13,13 @@ tomotools_path = os.path.dirname(tomotools.__file__)
 class TestTomoStack:
 
     def test_correlation_check(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         fig = stack.test_correlation()
         assert type(fig) is matplotlib.figure.Figure
         assert len(fig.axes) == 3
 
     def test_image_filter_median(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         filt = stack.inav[0:10].filter(method='median')
         assert filt.axes_manager.navigation_shape == \
             stack.inav[0:10].axes_manager.navigation_shape
@@ -30,9 +27,7 @@ class TestTomoStack:
             stack.inav[0:10].axes_manager.signal_shape
 
     def test_image_filter_sobel(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         filt = stack.inav[0:10].filter(method='sobel')
         assert filt.axes_manager.navigation_shape == \
             stack.inav[0:10].axes_manager.navigation_shape
@@ -40,9 +35,7 @@ class TestTomoStack:
             stack.inav[0:10].axes_manager.signal_shape
 
     def test_image_filter_both(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         filt = stack.inav[0:10].filter(method='both')
         assert filt.axes_manager.navigation_shape == \
             stack.inav[0:10].axes_manager.navigation_shape
@@ -50,9 +43,7 @@ class TestTomoStack:
             stack.inav[0:10].axes_manager.signal_shape
 
     def test_image_filter_bpf(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         filt = stack.inav[0:10].filter(method='bpf')
         assert filt.axes_manager.navigation_shape == \
             stack.inav[0:10].axes_manager.navigation_shape
@@ -60,16 +51,12 @@ class TestTomoStack:
             stack.inav[0:10].axes_manager.signal_shape
 
     def test_image_filter_wrong_name(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         with pytest.raises(ValueError):
             stack.inav[0:10].filter(method='WRONG')
 
     def test_image_filter_none(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         filt = stack.inav[0:10].filter(method=None)
         assert filt.axes_manager.navigation_shape == \
             stack.inav[0:10].axes_manager.navigation_shape
@@ -77,9 +64,7 @@ class TestTomoStack:
             stack.inav[0:10].axes_manager.signal_shape
 
     def test_stack_normalize(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         norm = stack.normalize()
         assert norm.axes_manager.navigation_shape == \
             stack.axes_manager.navigation_shape
@@ -88,18 +73,14 @@ class TestTomoStack:
         assert norm.data.min() == 0.0
 
     def test_stack_invert(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         invert = stack.invert()
         hist, bins = np.histogram(stack.data)
         hist_inv, bins_inv = np.histogram(invert.data)
         assert hist[0] > hist_inv[0]
 
     def test_stack_stats(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         stdout = sys.stdout
         sys.stdout = io.StringIO()
 
@@ -115,41 +96,31 @@ class TestTomoStack:
         assert out[3] == 'Min: %.1f' % stack.data.min()
 
     def test_test_align_no_slices(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         stack.test_align()
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_test_align_with_angle(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         stack.test_align(angle=3.0)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_test_align_with_xshift(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         stack.test_align(xshift=3.0)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_test_align_with_thickness(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         stack.test_align(thickness=200)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_set_tilts(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
+        stack = ds.get_needle_data()
         stack.set_tilts(-50, 5)
         assert stack.axes_manager[0].name == "Tilt"
         assert stack.axes_manager[0].scale == 5
@@ -159,10 +130,7 @@ class TestTomoStack:
             np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
 
     def test_sirt_error(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        stack = tomotools.load(filename)
-        # stack.set_tilts(-76, 2)
+        stack = ds.get_needle_data()
         rec_stack, error = stack.recon_error(128, iterations=50,
                                              constrain=True, cuda=False)
         print(error.shape)
