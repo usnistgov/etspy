@@ -611,12 +611,12 @@ class TomoStack(Signal2D):
 
         rec = shifted.reconstruct(method=method, iterations=iterations,
                                   constrain=constrain, thickness=thickness)
-        if thickness:
-            offset = np.int32(np.floor((rec.data.shape[1] - thickness) / 2))
-            if offset < 0:
-                pass
-            else:
-                rec.data = rec.data[:, offset:-offset, :]
+        # if thickness:
+        #     offset = np.int32(np.floor((rec.data.shape[1] - thickness) / 2))
+        #     if offset < 0:
+        #         pass
+        #     else:
+        #         rec.data = rec.data[:, offset:-offset, :]
 
         if mpl.get_backend() == 'nbAgg':
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
