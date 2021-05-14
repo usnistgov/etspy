@@ -600,11 +600,9 @@ class TomoStack(Signal2D):
         shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
-        print(shifted.data.shape)
-        print(slices)
+
         rec = shifted.reconstruct(method=method, iterations=iterations,
                                   constrain=constrain, thickness=thickness)
-        print(rec.data.shape)
 
         if mpl.get_backend() == 'nbAgg':
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
