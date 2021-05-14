@@ -568,14 +568,6 @@ class TomoStack(Signal2D):
         out.axes_manager[1].offset = self.axes_manager['x'].offset
         out.axes_manager[1].scale = self.axes_manager['x'].scale
         out.axes_manager[1].units = self.axes_manager['x'].units
-
-        # if thickness:
-        #     offset = np.int32(np.floor((out.data.shape[1] - thickness) / 2))
-        #     if offset < 0:
-        #         pass
-        #     else:
-        #         out = out.isig[:, offset:-offset]
-
         return out
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None,
@@ -611,12 +603,7 @@ class TomoStack(Signal2D):
 
         rec = shifted.reconstruct(method=method, iterations=iterations,
                                   constrain=constrain, thickness=thickness)
-        # if thickness:
-        #     offset = np.int32(np.floor((rec.data.shape[1] - thickness) / 2))
-        #     if offset < 0:
-        #         pass
-        #     else:
-        #         rec.data = rec.data[:, offset:-offset, :]
+        print(rec.data.shape)
 
         if mpl.get_backend() == 'nbAgg':
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
