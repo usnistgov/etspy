@@ -548,7 +548,8 @@ class TomoStack(Signal2D):
                 cuda = False
 
         out = copy.deepcopy(self)
-        out.data = recon.run(self, method, iterations, constrain, thresh, cuda)
+        out.data = recon.run(self, method, iterations, constrain, thresh,
+                             cuda, thickness)
 
         out.axes_manager[0].name = 'y'
         out.axes_manager[0].size = out.data.shape[0]
