@@ -378,7 +378,7 @@ class TomoStack(Signal2D):
         Registration with center of mass and common line (COM-CL)
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
-        >>> regCOMCL = s.inav[0:10].stack_register('COM-CL')
+        >>> regCOMCL = stack.inav[0:10].stack_register('COM-CL')
 
         """
         method = method.lower()
