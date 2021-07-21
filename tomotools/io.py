@@ -319,13 +319,13 @@ def loadhspy(filename, tilts=None):
 
 def loaddm(filename):
     """
-    Read series of DM3 files to a TomoStack object using the Hyperspy reader.
+    Read series of images in a single DM3 file to a TomoStack object
+    using the Hyperspy reader.
 
     Parameters
     ----------
     filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC,
-        .RAW/.RPL pair, .DM3, .DM4)
+        Name of DM3 file that contains data to be read.
 
     Returns
     ----------
