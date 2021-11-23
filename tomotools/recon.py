@@ -54,11 +54,8 @@ def run(stack, method, iterations=None, constrain=None,
     if method == 'FBP':
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
-            nchunks = int(stack.data.shape[1]/ncpus)
-            if nchunks == 0:
-                nchunks = 1
             logger.info('Reconstructing volume using FBP')
-            logger.info('%s chunks using %s cores' % (nchunks, ncpus))
+            logger.info('Reconstruction using %s cores' % ncpus)
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_fbp,
                                [(stack.data[:, i, :],
@@ -92,12 +89,9 @@ def run(stack, method, iterations=None, constrain=None,
             logger.info("Reconstructing volume using SIRT")
         if not astra.astra.use_cuda() or not cuda:
             '''ASTRA SIRT reconstruction'''
-            nchunks = int(stack.data.shape[1]/ncpus)
-            if nchunks == 0:
-                nchunks = 1
             logger.info('Reconstructing volume using %s SIRT iterations'
                         % iterations)
-            logger.info('%s chunks using %s cores' % (nchunks, ncpus))
+            logger.info('Reconstruction using %s cores' % ncpus)
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_sirt,
                                [(stack.data[:, i, :],
@@ -172,20 +166,25 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
         thickness = data.shape[2]
 
     if cuda:
+        chunksize = 128
         rec = np.zeros([y_pix, thickness, x_pix], data.dtype)
-        nchunks = y_pix/128
+        nchunks = int(np.ceil(y_pix/chunksize))
 
-        if nchunks < 1:
-            nchunks = 1
+        if nchunks == 1:
             chunksize = y_pix
+            chunk_list = [[0,y_pix]]
         else:
-            chunksize = 128
+            chunk_list = [None] * nchunks
+            for i in range(0, int(y_pix/chunksize)):
+                chunk_list[i] = [i*chunksize, (i+1)*chunksize]
+            if (np.mod(y_pix, chunksize) != 0) and (nchunks>1):
+                chunk_list[-1] = [chunk_list[-2][1] , chunk_list[-2][1] + np.mod(y_pix, chunksize)]
 
-        for i in range(0, np.int32(nchunks)):
-            chunk = data[i*chunksize:(i+1)*chunksize, :, :]
-            vol_geom = astra.create_vol_geom(thickness, x_pix, chunksize)
+        for i in range(0, len(chunk_list)):
+            chunk = data[chunk_list[i][0]:chunk_list[i][1], :, :]
+            vol_geom = astra.create_vol_geom(thickness, x_pix, chunk.shape[0])
             proj_geom = astra.create_proj_geom('parallel3d', 1, 1,
-                                               chunksize, x_pix, thetas)
+                                               chunk.shape[0], x_pix, thetas)
             data_id = astra.data3d.create('-proj3d', proj_geom, chunk)
             rec_id = astra.data3d.create('-vol', vol_geom)
 
@@ -200,7 +199,7 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
 
             astra.algorithm.run(alg_id, iterations)
 
-            rec[i*chunksize:(i+1)*chunksize, :, :] = astra.data3d.get(rec_id)
+            rec[chunk_list[i][0]:chunk_list[i][1], :, :] = astra.data3d.get(rec_id)
             astra.algorithm.delete(alg_id)
             astra.data3d.delete(rec_id)
             astra.data3d.delete(data_id)
