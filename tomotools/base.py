@@ -573,7 +573,7 @@ class TomoStack(Signal2D):
         return out
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None,
-                   method='FBP', iterations=50, constrain=True, cuda=None):
+                   method='FBP', iterations=50, constrain=True, cuda=None, thresh=0):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -612,7 +612,8 @@ class TomoStack(Signal2D):
                 cuda = False
                 logger.info('CUDA not detected with Astra')
         rec = shifted.reconstruct(method=method, iterations=iterations,
-                                  constrain=constrain, thickness=thickness, cuda=cuda)
+                                  constrain=constrain, thickness=thickness, cuda=cuda,
+                                  thresh=thresh)
 
         if 'ipympl' in mpl.get_backend().lower():
             fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(7,3))
