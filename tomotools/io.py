@@ -319,6 +319,8 @@ def loadhspy(filename, tilts=None):
 
 def loaddm(filename):
     """
+    Read DM image series.
+
     Read series of images in a single DM3 file to a TomoStack object
     using the Hyperspy reader.
 
