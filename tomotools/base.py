@@ -571,7 +571,7 @@ class TomoStack(Signal2D):
         return out
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None,
-                   method='FBP', iterations=50, constrain=True):
+                   method='FBP', iterations=50, constrain=True, cuda=None):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -587,7 +587,9 @@ class TomoStack(Signal2D):
             chosen.
         thickness : integer
             Size of the output volume (in pixels) in the projection direction.
-
+        cuda : bool
+            If True, use CUDA-accelerated Astra algorithms.  If None, use
+            CUDA if astra.use_cuda() is True.
         """
         if slices is None:
             mid = np.int32(self.data.shape[1] / 2)
@@ -600,9 +602,10 @@ class TomoStack(Signal2D):
         shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
-
+        if not cuda:
+            cuda = astra.use_cuda()
         rec = shifted.reconstruct(method=method, iterations=iterations,
-                                  constrain=constrain, thickness=thickness)
+                                  constrain=constrain, thickness=thickness, cuda=cuda)
 
         if mpl.get_backend() == 'nbAgg':
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
