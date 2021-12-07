@@ -573,7 +573,8 @@ class TomoStack(Signal2D):
         return out
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None,
-                   method='FBP', iterations=50, constrain=True, cuda=None, thresh=0):
+                   method='FBP', iterations=50, constrain=True, cuda=None,
+                   thresh=0):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -612,13 +613,13 @@ class TomoStack(Signal2D):
                 cuda = False
                 logger.info('CUDA not detected with Astra')
         rec = shifted.reconstruct(method=method, iterations=iterations,
-                                  constrain=constrain, thickness=thickness, cuda=cuda,
-                                  thresh=thresh)
+                                  constrain=constrain, thickness=thickness,
+                                  cuda=cuda, thresh=thresh)
 
         if 'ipympl' in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(7,3))
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
         elif 'nbagg' in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))            
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
@@ -1168,7 +1169,7 @@ class TomoStack(Signal2D):
         if not nslice:
             nslice = np.int32(self.data.shape[1] / 2)
 
-        if not cuda:    
+        if not cuda:
             if astra.use_cuda():
                 logger.info('CUDA detected with Astra')
                 cuda = True

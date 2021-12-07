@@ -173,13 +173,14 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
 
         if nchunks == 1:
             chunksize = y_pix
-            chunk_list = [[0,y_pix]]
+            chunk_list = [[0, y_pix]]
         else:
             chunk_list = [None] * nchunks
             for i in range(0, int(y_pix/chunksize)):
                 chunk_list[i] = [i*chunksize, (i+1)*chunksize]
-            if (np.mod(y_pix, chunksize) != 0) and (nchunks>1):
-                chunk_list[-1] = [chunk_list[-2][1] , chunk_list[-2][1] + np.mod(y_pix, chunksize)]
+            if (np.mod(y_pix, chunksize) != 0) and (nchunks > 1):
+                chunk_list[-1] = [chunk_list[-2][1], chunk_list[-2][1] +
+                                  np.mod(y_pix, chunksize)]
 
         for i in range(0, len(chunk_list)):
             chunk = data[chunk_list[i][0]:chunk_list[i][1], :, :]
@@ -200,7 +201,8 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
 
             astra.algorithm.run(alg_id, iterations)
 
-            rec[chunk_list[i][0]:chunk_list[i][1], :, :] = astra.data3d.get(rec_id)
+            rec[chunk_list[i][0]:chunk_list[i][1], :, :] =\
+                astra.data3d.get(rec_id)
             astra.algorithm.delete(alg_id)
             astra.data3d.delete(rec_id)
             astra.data3d.delete(data_id)
