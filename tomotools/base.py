@@ -622,12 +622,8 @@ class TomoStack(Signal2D):
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
-        if method == 'SIRT' and constrain is True:
-            if constrain:
-                minvals = np.ones(3) * thresh
-        else:
-            minvals = rec.data.mean((1, 2)) - 2 * rec.data.std((1, 2))
-            minvals[minvals < 0] = 0
+        minvals = rec.data.mean((1, 2)) - 3 * rec.data.std((1, 2))
+        minvals[minvals < 0] = 0
         maxvals = rec.data.mean((1, 2)) + 3 * rec.data.std((1, 2))
 
         for i in range(0, 3):
