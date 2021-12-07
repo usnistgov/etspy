@@ -541,11 +541,13 @@ class TomoStack(Signal2D):
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh)
 
         """
-        if cuda is None:
-            if 'CUDA_Path' in os.environ.keys():
+        if not cuda:
+            if astra.use_cuda():
+                logger.info('CUDA detected with Astra')
                 cuda = True
             else:
                 cuda = False
+                logger.info('CUDA not detected with Astra')
 
         out = copy.deepcopy(self)
         out.data = recon.run(self, method, iterations, constrain, thresh,
