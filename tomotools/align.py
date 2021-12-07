@@ -656,7 +656,7 @@ def tilt_com(stack, locs=None, interactive=False):
             plt.close()
             locs = np.int16(np.sort(coords[:, 0]))
         else:
-            locs = np.int16(stack.data.shape[1] * np.array([0.33, 0.5, 0.67]))
+            locs = np.int16(stack.data.shape[2] * np.array([0.33, 0.5, 0.67]))
             logger.info("Performing alignments using slices: [%s, %s, %s]"
                         % (locs[0], locs[1], locs[2]))
     else:
