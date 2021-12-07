@@ -607,8 +607,10 @@ class TomoStack(Signal2D):
         rec = shifted.reconstruct(method=method, iterations=iterations,
                                   constrain=constrain, thickness=thickness, cuda=cuda)
 
-        if mpl.get_backend() == 'nbAgg':
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
+        if 'ipympl' in mpl.get_backend().lower():
+            fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(7,3))
+        elif 'nbagg' in mpl.get_backend().lower():
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))            
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
