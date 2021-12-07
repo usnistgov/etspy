@@ -17,7 +17,7 @@ import os
 import cv2
 import pylab as plt
 import matplotlib.animation as animation
-from hyperspy.signals import Signal2D
+from hyperspy.signals import Signal2D, Signal1D
 from scipy import ndimage
 from tempfile import TemporaryDirectory
 import matplotlib as mpl
@@ -1154,7 +1154,7 @@ class TomoStack(Signal2D):
         rec_stack : Hyperspy Signal2D
             Signal containing the SIRT reconstruction at each iteration
             for visual inspection.
-        error : Numpy array
+        error : Hyperspy Signal1D
             Sum of squared difference between the forward-projected
             reconstruction and the input sinogram at each iteration
 
@@ -1181,5 +1181,15 @@ class TomoStack(Signal2D):
                                                   iterations=iterations,
                                                   constrain=constrain,
                                                   thresh=thresh, cuda=cuda)
-        rec_stack = hs.signals.Signal2D(rec_stack)
+        rec_stack = Signal2D(rec_stack)
+        rec_stack.axes_manager[0].name = 'z'
+        rec_stack.axes_manager[0].scale = self.axes_manager[1].scale
+        rec_stack.axes_manager[0].scale = self.axes_manager[1].scale
+        rec_stack.axes_manager[1].name = 'x'
+        rec_stack.axes_manager[1].scale = self.axes_manager[1].scale
+        rec_stack.axes_manager[1].scale = self.axes_manager[1].scale
+
+        error = Signal1D(error)
+        error.axes_manager[0].name = 'SIRT Iteration'
+        error.metadata.Signal.quantity = 'Sum of Squared Difference'
         return rec_stack, error
