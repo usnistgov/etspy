@@ -111,7 +111,8 @@ def run(stack, method, iterations=None, constrain=None,
         elif astra.astra.use_cuda() or cuda:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
             rec = astra_sirt(stack.data, angles, iterations=iterations,
-                             constrain=constrain, thresh=thresh, cuda=True)
+                             constrain=constrain, thresh=thresh, cuda=True,
+                             thickness=thickness)
             logger.info('Reconstruction complete')
         else:
             raise Exception('Unable to determine CUDA capability')
