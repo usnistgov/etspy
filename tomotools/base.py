@@ -603,7 +603,12 @@ class TomoStack(Signal2D):
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
         if not cuda:
-            cuda = astra.use_cuda()
+            if astra.use_cuda():
+                logger.info('CUDA detected with Astra')
+                cuda = True
+            else:
+                cuda = False
+                logger.info('CUDA not detected with Astra')
         rec = shifted.reconstruct(method=method, iterations=iterations,
                                   constrain=constrain, thickness=thickness, cuda=cuda)
 
