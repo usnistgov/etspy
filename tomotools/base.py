@@ -1126,7 +1126,7 @@ class TomoStack(Signal2D):
         return
 
     def recon_error(self, nslice=None, iterations=50, constrain=True,
-                    cuda=None):
+                    cuda=None, thresh=0):
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1146,6 +1146,8 @@ class TomoStack(Signal2D):
         cuda : boolean
             If True, perform reconstruction using the GPU-accelrated algorithm.
             Default is True
+        thresh : integer or float
+            Value above which to constrain the reconstructed data
 
         Returns
         ----------
@@ -1167,12 +1169,17 @@ class TomoStack(Signal2D):
         if not nslice:
             nslice = np.int32(self.data.shape[1] / 2)
 
-        if not cuda:
-            cuda = astra.use_cuda()
+        if not cuda:    
+            if astra.use_cuda():
+                logger.info('CUDA detected with Astra')
+                cuda = True
+            else:
+                cuda = False
+                logger.info('CUDA not detected with Astra')
         sinogram = self.isig[:, nslice:nslice+1].deepcopy()
         angles = self.metadata.Tomography.tilts
         rec_stack, error = recon.astra_sirt_error(sinogram, angles,
                                                   iterations=iterations,
                                                   constrain=constrain,
-                                                  thresh=0, cuda=False)
+                                                  thresh=thresh, cuda=cuda)
         return rec_stack, error
