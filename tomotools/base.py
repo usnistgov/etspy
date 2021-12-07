@@ -1151,13 +1151,12 @@ class TomoStack(Signal2D):
 
         Returns
         ----------
-        error : Numpy array
-            Sum of squared difference between the forward-projected
-            reconstruction and the input sinogram at each iteration
-
         rec_stack : Hyperspy Signal2D
             Signal containing the SIRT reconstruction at each iteration
             for visual inspection.
+        error : Numpy array
+            Sum of squared difference between the forward-projected
+            reconstruction and the input sinogram at each iteration
 
         Examples
         ----------
@@ -1182,4 +1181,5 @@ class TomoStack(Signal2D):
                                                   iterations=iterations,
                                                   constrain=constrain,
                                                   thresh=thresh, cuda=cuda)
+        rec_stack = hs.signals.Signal2D(rec_stack)
         return rec_stack, error
