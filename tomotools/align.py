@@ -617,10 +617,11 @@ def tilt_com(stack, locs=None, interactive=False):
         else:
             thetas = np.pi * stack.metadata.Tomography.tilts
 
-        # Calculate centers of mass for for each row of the sinogram    
+        # Calculate centers of mass for for each row of the sinogram
         coms = get_coms(stack, nslice)
 
-        # Fit measured centers of mass with function describing expected motion of a cylinder
+        # Fit measured centers of mass with function describing
+        # expected motion of a cylinder
         r, x0, z0 = optimize.curve_fit(com_motion, xdata=thetas,
                                        ydata=coms, p0=[0, 0, 0])[0]
 

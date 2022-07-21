@@ -392,13 +392,14 @@ def load_dm_series(input_data):
 
     """
     if type(input_data) is str:
+        dirname = input_data
         if dirname[-1] != "/":
             dirname = dirname + "/"
         files = glob.glob(dirname + "*.dm3")
     elif type(input_data) is list:
         files = input_data
     else:
-        raise ValueError("Unknown input data type.  Must be string or list of strings.")
+        raise ValueError("Unknown input data type.")
     s = hspy.load(files)
     tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
     sorted_order = np.argsort(tilts)
