@@ -615,7 +615,7 @@ def tilt_com(stack, locs=None, interactive=False):
         if stack.metadata.Tomography.tilts is None:
             thetas = np.pi * stack.axes_manager[0].axis / 180.
         else:
-            thetas = np.pi * stack.metadata.Tomography.tilts
+            thetas = np.pi * stack.metadata.Tomography.tilts / 180.
 
         # Calculate centers of mass for for each row of the sinogram
         coms = get_coms(stack, nslice)
@@ -630,10 +630,11 @@ def tilt_com(stack, locs=None, interactive=False):
         return shifts, coms
 
     def tilt_analyze(stack, slices):
+        # Convert tilts to rads
         if stack.metadata.Tomography.tilts is None:
             thetas = np.pi * stack.axes_manager[0].axis / 180.
         else:
-            thetas = np.pi * stack.metadata.Tomography.tilts
+            thetas = np.pi * stack.metadata.Tomography.tilts / 180.
         r = np.zeros(len(slices))
         x0 = np.zeros(len(slices))
         z0 = np.zeros(len(slices))
