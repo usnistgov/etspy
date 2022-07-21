@@ -377,23 +377,28 @@ def loaddm(filename):
     return s_new
 
 
-def load_dm_series(dirname):
+def load_dm_series(input_data):
     """
     Load a series of individual DM3/DM4 files as a TomoStack object.
 
     Parameters
     ----------
-    dirname : string
-        Path to image series data.
+    input_data : string or list of files
+        Path to image series data or a list of files.
 
     Returns
     ----------
     stack : TomoStack object
 
     """
-    if dirname[-1] != "/":
-        dirname = dirname + "/"
-    files = glob.glob(dirname + "*.dm3")
+    if type(input_data) is str:
+        if dirname[-1] != "/":
+            dirname = dirname + "/"
+        files = glob.glob(dirname + "*.dm3")
+    elif type(input_data) is list:
+        files = input_data
+    else:
+        raise ValueError("Unknown input data type.  Must be string or list of strings.")
     s = hspy.load(files)
     tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
     sorted_order = np.argsort(tilts)
