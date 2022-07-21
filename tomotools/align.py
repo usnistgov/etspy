@@ -611,15 +611,28 @@ def tilt_com(stack, locs=None, interactive=False):
         return shifted
 
     def calc_shifts(stack, nslice):
-        thetas = np.pi * stack.axes_manager[0].axis / 180.
+        # Convert tilts to rads
+        if stack.metadata.Tomography.tilts is None:
+            thetas = np.pi * stack.axes_manager[0].axis / 180.
+        else:
+            thetas = np.pi * stack.metadata.Tomography.tilts
+
+        # Calculate centers of mass for for each row of the sinogram    
         coms = get_coms(stack, nslice)
+
+        # Fit measured centers of mass with function describing expected motion of a cylinder
         r, x0, z0 = optimize.curve_fit(com_motion, xdata=thetas,
                                        ydata=coms, p0=[0, 0, 0])[0]
+
+        # Determine shifts to align centers of mass to cylindrical pathway
         shifts = com_motion(thetas, r, x0, z0) - coms
         return shifts, coms
 
     def tilt_analyze(stack, slices):
-        thetas = np.pi * stack.axes_manager[0].axis / 180.
+        if stack.metadata.Tomography.tilts is None:
+            thetas = np.pi * stack.axes_manager[0].axis / 180.
+        else:
+            thetas = np.pi * stack.metadata.Tomography.tilts
         r = np.zeros(len(slices))
         x0 = np.zeros(len(slices))
         z0 = np.zeros(len(slices))
