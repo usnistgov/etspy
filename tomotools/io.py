@@ -413,7 +413,8 @@ def load_dm_series(input_data):
     stack.axes_manager[0].offset = tilts_sorted[0]
 
     stack = signal_to_tomo_stack(stack)
-    return stack, tilts_sorted
+    stack.metadata.Tomography.tilts = tilts_sorted
+    return stack
 
 
 def load(filename, tilts=None):
