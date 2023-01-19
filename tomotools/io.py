@@ -57,7 +57,7 @@ def numpy_to_tomo_stack(data, tilts=None, manual_tilts=False):
     <TomoStack, title: , dimensions: (50|500, 500)>
 
     """
-    s = signal_to_tomo_stack(hspy.signals.Signal2D(data))
+    s = signal_to_tomo_stack(hspy.signals.Signal2D(data), tilts)
 
     s.axes_manager[0].name = 'Tilt'
     s.axes_manager[0].units = 'unknown'
@@ -66,7 +66,7 @@ def numpy_to_tomo_stack(data, tilts=None, manual_tilts=False):
     s.axes_manager[2].name = 'y'
     s.axes_manager[2].units = 'unknown'
 
-    if tilts:
+    if type(tilts) is np.ndarray:
         s.metadata.Tomography.tilts = tilts
         s.axes_manager[0].units = 'degrees'
         s.axes_manager[0].offset = tilts[0]
@@ -134,6 +134,8 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
 
     if tilt_signal is not None:
         if type(tilt_signal) in [np.ndarray, list]:
+            if not s_new.metadata.has_item("Tomography"):
+                s_new.metadata.add_node("Tomography")
             s_new.metadata.Tomography.tilts = tilt_signal
             s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'degrees'
