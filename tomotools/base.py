@@ -574,7 +574,7 @@ class TomoStack(Signal2D):
 
     def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None,
                    method='FBP', iterations=50, constrain=True, cuda=None,
-                   thresh=0):
+                   thresh=0, vmin_std=0.1, vmax_std=10):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -623,13 +623,10 @@ class TomoStack(Signal2D):
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
-        minvals = rec.data.mean((1, 2)) - 3 * rec.data.std((1, 2))
+        minvals = rec.data.mean((1, 2)) - vmin_std * rec.data.std((1, 2))
         minvals[minvals < 0] = 0
-        maxvals = rec.data.mean((1, 2)) + 3 * rec.data.std((1, 2))
+        maxvals = rec.data.mean((1, 2)) + vmax_std * rec.data.std((1, 2))
 
-        for i in range(0, 3):
-            if maxvals[i] > rec.data[i].max():
-                maxvals[i] = rec.data[i].max()
         ax1.imshow(rec.data[0, :, :], cmap='afmhot', vmin=minvals[0],
                    vmax=maxvals[0])
         ax1.set_title('Slice %s' % str(slices[0]))
@@ -645,7 +642,7 @@ class TomoStack(Signal2D):
         ax3.set_title('Slice %s' % str(slices[2]))
         ax3.set_axis_off()
         fig.tight_layout()
-        return
+        return rec
 
     def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
                     interpolation='cubic'):
