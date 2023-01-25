@@ -1193,6 +1193,19 @@ class TomoStack(Signal2D):
         return rec_stack, error
 
     def plot_slices(self, yslice=None, zslice=None, xslice=None):
+        """
+        Plot slices along all three axes of stack.
+
+        Args
+        ----------
+        yslice, zslice, xslice : int
+            Indices of slices to plot
+
+        Returns
+        ----------
+        fig : Matplotlib Figure
+
+        """
         if xslice is None:
             xslice = np.uint16(self.data.shape[1]/2)
         if yslice is None:
