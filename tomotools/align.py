@@ -52,11 +52,8 @@ def apply_shifts(stack, shifts):
         shifted.data[i, :, :] =\
             ndimage.shift(shifted.data[i, :, :],
                           shift=[shifts[i, 1], shifts[i, 0]])
-    if shifted.metadata.Tomography.shifts is None:
-        shifted.metadata.Tomography.shifts = shifts
-    else:
-        shifted.metadata.Tomography.shifts = \
-            shifted.metadata.Tomography.shifts + shifts
+    shifted.metadata.Tomography.shifts = \
+        shifted.metadata.Tomography.shifts + shifts
     return shifted
 
 
@@ -924,7 +921,7 @@ def align_to_other(stack, other):
     out = copy.deepcopy(other)
 
     shifts = stack.metadata.Tomography.shifts
-    out.metadata.Tomography.shifts = None
+    out.metadata.Tomography.shifts = np.zeros([out.data.shape[0], 2])
 
     tiltaxis = stack.metadata.Tomography.tiltaxis
     out.metadata.Tomography.tiltaxis = tiltaxis
