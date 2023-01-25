@@ -57,7 +57,7 @@ class TomoStack(Signal2D):
             self.metadata.Tomography.set_item("tiltaxis", 0)
             self.metadata.Tomography.set_item("xshift", 0)
             self.metadata.Tomography.set_item("yshift", 0)
-            self.metadata.Tomography.set_item("shifts", None)
+            self.metadata.Tomography.set_item("shifts", np.zeros(self.data.shape[0]))
             self.metadata.Tomography.set_item("cropped", False)
         else:
             if not self.metadata.Tomography.has_item("tilts"):
@@ -69,7 +69,7 @@ class TomoStack(Signal2D):
             if not self.metadata.Tomography.has_item("yshift"):
                 self.metadata.Tomography.set_item("yshift", 0)
             if not self.metadata.Tomography.has_item("shifts"):
-                self.metadata.Tomography.set_item("shifts", None)
+                self.metadata.Tomography.set_item("shifts", np.zeros(self.data.shape[0]))
             if not self.metadata.Tomography.has_item("cropped"):
                 self.metadata.Tomography.set_item("cropped", False)
 
@@ -135,7 +135,7 @@ class TomoStack(Signal2D):
 
         """
         # Check if any transformations have been applied to the current stack
-        if (self.metadata.Tomography.shifts is None) and\
+        if all(self.metadata.Tomography.shifts == 0) and\
            any([self.metadata.Tomography.xshift is None,
                 self.metadata.Tomography.xshift == 0.0]) and\
            any([self.metadata.Tomography.yshift is None,
