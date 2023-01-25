@@ -1191,3 +1191,38 @@ class TomoStack(Signal2D):
         error.axes_manager[0].name = 'SIRT Iteration'
         error.metadata.Signal.quantity = 'Sum of Squared Difference'
         return rec_stack, error
+
+    def plot_slices(self, yslice=None, zslice=None, xslice=None):
+        if xslice is None:
+            xslice = np.uint16(self.data.shape[1]/2)
+        if yslice is None:
+            yslice = np.uint16(self.data.shape[0]/2)
+        if zslice is None:
+            zslice = np.uint16(self.data.shape[2]/2)
+
+        if 'ipympl' in mpl.get_backend().lower():
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
+        elif 'nbagg' in mpl.get_backend().lower():
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
+        else:
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
+
+        ax1.imshow(self.data[yslice, :, :], cmap='afmhot')
+        ax1.set_title('Z-X Slice %s' % str(xslice))
+        ax1.set_ylabel('Z')
+        ax1.set_xlabel('X')
+
+        ax2.imshow(self.data[:, zslice, :], cmap='afmhot')
+        ax2.set_title('Y-X Slice %s' % str(zslice))
+        ax2.set_ylabel('Y')
+        ax2.set_xlabel('X')
+
+        ax3.imshow(self.data[:, :, xslice].T, cmap='afmhot')
+        ax3.set_title('Z-Y Slice %s' % str(xslice))
+        ax3.set_ylabel('Z')
+        ax3.set_xlabel('Y')
+        fig.tight_layout()
+        
+        [i.set_xticks([]) for i in [ax1, ax2, ax3]]
+        [i.set_yticks([]) for i in [ax1, ax2, ax3]]
+        return fig
