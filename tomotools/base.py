@@ -135,7 +135,7 @@ class TomoStack(Signal2D):
 
         """
         # Check if any transformations have been applied to the current stack
-        if all(self.metadata.Tomography.shifts == 0) and\
+        if np.all(self.metadata.Tomography.shifts == 0) and\
            any([self.metadata.Tomography.xshift is None,
                 self.metadata.Tomography.xshift == 0.0]) and\
            any([self.metadata.Tomography.yshift is None,

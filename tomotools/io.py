@@ -372,7 +372,7 @@ def loaddm(filename):
     logger.info('Tilts found in metadata')
 
     s_new.metadata.Tomography.tilts = tilts
-    s_new.metadata.Tomography.shifts = np.zeros(s_new.data.shape[0])
+    s_new.metadata.Tomography.shifts = np.zeros([s_new.data.shape[0], 2])
     s_new.metadata.Tomography.tiltaxis = 0.0
     s_new.metadata.Tomography.xshift = 0.0
 
