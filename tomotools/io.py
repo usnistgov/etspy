@@ -397,7 +397,15 @@ def load_dm_series(input_data):
         dirname = input_data
         if dirname[-1] != "/":
             dirname = dirname + "/"
-        files = glob.glob(dirname + "*.dm3")
+        dm3files, dm4files = [glob.glob(i) for i in [dirname + "*.dm3", dirname + "*.dm4"]]
+        if len(dm3files) == 0 and len(dm4files) == 0:
+            raise ValueError("No DM files found in path")
+        elif len(dm3files) > 0 and len(dm4files) > 0:
+            raise ValueError("Multipe DM formats found in path")
+        elif len(dm3files) > 0:
+            files = dm3files
+        else:
+            files = dm4files
     elif type(input_data) is list:
         files = input_data
     else:
