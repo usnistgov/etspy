@@ -1,7 +1,8 @@
-fn = datapath + "/AuPd.mrc"
+import numpy as np
+
 def parse_mrc_header(filename):
     header = {}
-    with open(fn, 'r') as h:
+    with open(filename, 'r') as h:
         header['nx'], header['ny'], header['nz'] = np.fromfile(h, np.uint32, 3)
         header['mode'] = np.fromfile(h, np.uint32, 1)[0]
         header['nxstart'], header['nystart'], header['nzstart'] = np.fromfile(h, np.uint32, 3)
@@ -34,5 +35,5 @@ def parse_mrc_header(filename):
         header['nlabl'] = np.fromfile(h, np.uint32, 1)[0]
         strbits = np.fromfile(h, np.int8, 800)
         header['text'] = ''.join([chr(item) for item in strbits])
-        header['ext_header'] = np.fromfile(h, np.int16, int(nextra/2))
+        header['ext_header'] = np.fromfile(h, np.int16, int(header['nextra']/2))
     return header
