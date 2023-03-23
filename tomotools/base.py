@@ -69,7 +69,7 @@ class TomoStack(Signal2D):
             if not self.metadata.Tomography.has_item("yshift"):
                 self.metadata.Tomography.set_item("yshift", 0)
             if not self.metadata.Tomography.has_item("shifts"):
-                self.metadata.Tomography.set_item("shifts", np.zeros(self.data.shape[0]))
+                self.metadata.Tomography.set_item("shifts", np.zeros([self.data.shape[0], 2]))
             if not self.metadata.Tomography.has_item("cropped"):
                 self.metadata.Tomography.set_item("cropped", False)
 
