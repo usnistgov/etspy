@@ -10,6 +10,7 @@ Utility module for TomoTools package.
 
 import numpy as np
 
+
 def parse_mrc_header(filename):
     """
     Read the mrc header and return as dictionary.
@@ -59,5 +60,5 @@ def parse_mrc_header(filename):
         header['nlabl'] = np.fromfile(h, np.uint32, 1)[0]
         strbits = np.fromfile(h, np.int8, 800)
         header['text'] = ''.join([chr(item) for item in strbits])
-        header['ext_header'] = np.fromfile(h, np.int16, int(header['nextra']/2))
+        header['ext_header'] = np.fromfile(h, np.int16, int(header['nextra'] / 2))
     return header

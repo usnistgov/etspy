@@ -244,8 +244,7 @@ def loadhspy(filename, tilts=None):
         tiltfile = os.path.splitext(filename)[0] + '.rawtlt'
         txtfile = os.path.splitext(filename)[0] + '.txt'
         if stack.original_metadata.fei_header.has_item('a_tilt'):
-            tilts = stack.original_metadata.\
-                      fei_header['a_tilt'][0:stack.data.shape[0]]
+            tilts = stack.original_metadata.fei_header['a_tilt'][0:stack.data.shape[0]]
             stack.axes_manager[0].name = 'Tilt'
             stack.axes_manager[0].units = 'degrees'
             stack.axes_manager[0].scale = tilts[1] - tilts[0]
@@ -419,7 +418,7 @@ def load_dm_series(input_data):
     stack = hspy.load(files_sorted, stack=True, new_axis_name='tilt')
     stack.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha\
         = tilts_sorted
-    stack.axes_manager[0].scale = tilts_sorted[1]-tilts_sorted[0]
+    stack.axes_manager[0].scale = tilts_sorted[1] - tilts_sorted[0]
     stack.axes_manager[0].units = 'degrees'
     stack.axes_manager[0].offset = tilts_sorted[0]
 

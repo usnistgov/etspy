@@ -43,7 +43,7 @@ class TestAlignStackRegister:
     def test_register_stackreg(self):
         stack = ds.get_needle_data()
         stack.metadata.Tomography.shifts = \
-            stack.metadata.Tomography.shifts[0:20]        
+            stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register('StackReg')
         assert type(reg) is tomotools.TomoStack
         assert reg.axes_manager.signal_shape == \

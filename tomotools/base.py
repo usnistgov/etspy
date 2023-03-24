@@ -57,7 +57,7 @@ class TomoStack(Signal2D):
             self.metadata.Tomography.set_item("tiltaxis", 0)
             self.metadata.Tomography.set_item("xshift", 0)
             self.metadata.Tomography.set_item("yshift", 0)
-            self.metadata.Tomography.set_item("shifts", np.zeros([self.data.shape[0],2]))
+            self.metadata.Tomography.set_item("shifts", np.zeros([self.data.shape[0], 2]))
             self.metadata.Tomography.set_item("cropped", False)
         else:
             if not self.metadata.Tomography.has_item("tilts"):
@@ -681,7 +681,7 @@ class TomoStack(Signal2D):
         """
         transformed = self.deepcopy()
         theta = np.pi * angle / 180.
-        center_y, center_x = np.float32(np.array(transformed.data.shape[1:])/2)
+        center_y, center_x = np.float32(np.array(transformed.data.shape[1:]) / 2)
 
         rot_mat = np.array([[np.cos(theta), -np.sin(theta), 0],
                             [np.sin(theta), np.cos(theta), 0],
@@ -840,13 +840,11 @@ class TomoStack(Signal2D):
 
                 elif image.dtype == '<f4' or 'float32':
                     cv2.imshow(windowname,
-                               np.uint8(255 * image[trackbarpos, :, :] /
-                                        image[trackbarpos, :, :].max()))
+                               np.uint8(255 * image[trackbarpos, :, :] / image[trackbarpos, :, :].max()))
 
                 else:
                     cv2.imshow(windowname,
-                               image[trackbarpos, :, :]
-                               / np.max(image[trackbarpos, :, :]))
+                               image[trackbarpos, :, :] / np.max(image[trackbarpos, :, :]))
                 ch = cv2.waitKey(5)
                 if ch == 27:
                     break
@@ -1173,7 +1171,7 @@ class TomoStack(Signal2D):
             else:
                 cuda = False
                 logger.info('CUDA not detected with Astra')
-        sinogram = self.isig[:, nslice:nslice+1].deepcopy()
+        sinogram = self.isig[:, nslice:nslice + 1].deepcopy()
         angles = self.metadata.Tomography.tilts
         rec_stack, error = recon.astra_sirt_error(sinogram, angles,
                                                   iterations=iterations,
@@ -1207,11 +1205,11 @@ class TomoStack(Signal2D):
 
         """
         if xslice is None:
-            xslice = np.uint16(self.data.shape[1]/2)
+            xslice = np.uint16(self.data.shape[1] / 2)
         if yslice is None:
-            yslice = np.uint16(self.data.shape[0]/2)
+            yslice = np.uint16(self.data.shape[0] / 2)
         if zslice is None:
-            zslice = np.uint16(self.data.shape[2]/2)
+            zslice = np.uint16(self.data.shape[2] / 2)
 
         if 'ipympl' in mpl.get_backend().lower():
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
@@ -1235,7 +1233,7 @@ class TomoStack(Signal2D):
         ax3.set_ylabel('Z')
         ax3.set_xlabel('Y')
         fig.tight_layout()
-        
+
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
         return fig
