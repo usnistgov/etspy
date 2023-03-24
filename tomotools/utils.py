@@ -1,6 +1,30 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of TomoTools
+
+"""
+Utility module for TomoTools package.
+
+@author: Andrew Herzing
+"""
+
 import numpy as np
 
 def parse_mrc_header(filename):
+    """
+    Read the mrc header and return as dictionary.
+
+    Args
+    ----------
+    filename : str
+        Name of the MRC file to parse
+
+    Returns
+    ----------
+    headar : dict
+        Dictionary with header values
+
+    """
     header = {}
     with open(filename, 'r') as h:
         header['nx'], header['ny'], header['nz'] = np.fromfile(h, np.uint32, 3)
