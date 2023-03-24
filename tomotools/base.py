@@ -814,45 +814,6 @@ class TomoStack(Signal2D):
         plt.close()
         return
 
-    def show(self):
-        """Display the TomoStack for interactive visualization."""
-        def nothing(x):
-            pass
-
-        def simpletrackbar(image, windowname):
-            trackbarname = 'Slice'
-            if (np.shape(image)[1] > 1024) or (np.shape(image)[2] > 1024):
-                new = np.zeros([np.shape(image)[0], 1024, 1024], image.dtype)
-                for i in range(0, np.size(image, 0)):
-                    new[i, :, :] = cv2.resize(image[i, :, :], (1024, 1024))
-                image = new
-            cv2.startWindowThread()
-            cv2.namedWindow(windowname)
-            cv2.createTrackbar(trackbarname, windowname, 0,
-                               np.size(image, 0) - 1, nothing)
-
-            while True:
-                trackbarpos = cv2.getTrackbarPos(trackbarname, windowname)
-
-                if image.max() == 1.0:
-                    cv2.imshow(windowname,
-                               image[trackbarpos, :, :])
-
-                elif image.dtype == '<f4' or 'float32':
-                    cv2.imshow(windowname,
-                               np.uint8(255 * image[trackbarpos, :, :] / image[trackbarpos, :, :].max()))
-
-                else:
-                    cv2.imshow(windowname,
-                               image[trackbarpos, :, :] / np.max(image[trackbarpos, :, :]))
-                ch = cv2.waitKey(5)
-                if ch == 27:
-                    break
-            cv2.destroyAllWindows()
-
-        simpletrackbar(self.data, 'Press "ESC" to exit')
-        return
-
     def align_imod(self, diameter=7, markers=10, white=False):
         """
         Align the stack using IMODs RAPTOR algorithm.
