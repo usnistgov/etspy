@@ -7,6 +7,8 @@ class TestAlignStackRegister:
 
     def test_register_ecc(self):
         stack = ds.get_needle_data()
+        stack.metadata.Tomography.shifts = \
+            stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register('ECC')
         assert type(reg) is tomotools.TomoStack
         assert reg.axes_manager.signal_shape == \
@@ -16,6 +18,8 @@ class TestAlignStackRegister:
 
     def test_register_pc(self):
         stack = ds.get_needle_data()
+        stack.metadata.Tomography.shifts = \
+            stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register('PC')
         assert type(reg) is tomotools.TomoStack
         assert reg.axes_manager.signal_shape == \
@@ -25,6 +29,8 @@ class TestAlignStackRegister:
 
     def test_register_com(self):
         stack = ds.get_needle_data()
+        stack.metadata.Tomography.shifts = \
+            stack.metadata.Tomography.shifts[0:20]
         stack.metadata.Tomography.tilts = \
             stack.metadata.Tomography.tilts[0:20]
         reg = stack.inav[0:20].stack_register('COM')
@@ -36,6 +42,8 @@ class TestAlignStackRegister:
 
     def test_register_stackreg(self):
         stack = ds.get_needle_data()
+        stack.metadata.Tomography.shifts = \
+            stack.metadata.Tomography.shifts[0:20]        
         reg = stack.inav[0:20].stack_register('StackReg')
         assert type(reg) is tomotools.TomoStack
         assert reg.axes_manager.signal_shape == \
@@ -45,6 +53,8 @@ class TestAlignStackRegister:
 
     def test_register_com_cl(self):
         stack = ds.get_needle_data()
+        stack.metadata.Tomography.shifts = \
+            stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register('COM-CL')
         assert type(reg) is tomotools.TomoStack
         assert reg.axes_manager.signal_shape == \
@@ -54,6 +64,8 @@ class TestAlignStackRegister:
 
     def test_register_unknown_method(self):
         stack = ds.get_needle_data()
+        stack.metadata.Tomography.shifts = \
+            stack.metadata.Tomography.shifts[0:20]
         with pytest.raises(ValueError):
             stack.inav[0:20].stack_register('WRONG')
 
