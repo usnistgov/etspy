@@ -109,18 +109,18 @@ def pad_preserve_center(line, paddedsize):
     npix = len(line)
     if np.mod(npix, 2) == 0:
         if np.mod(paddedsize, 2) == 0:
-            start_idx = (paddedsize - npix)/2
-            end_idx = npix + (paddedsize - npix)/2
+            start_idx = (paddedsize - npix) / 2
+            end_idx = npix + (paddedsize - npix) / 2
         else:
-            start_idx = (paddedsize - npix - 1)/2
-            end_idx = npix + (paddedsize - npix - 1)/2
+            start_idx = (paddedsize - npix - 1) / 2
+            end_idx = npix + (paddedsize - npix - 1) / 2
     else:
         if np.mod(paddedsize, 2) == 0:
-            start_idx = (paddedsize - npix + 1)/2
-            end_idx = npix + (paddedsize - npix + 1)/2
+            start_idx = (paddedsize - npix + 1) / 2
+            end_idx = npix + (paddedsize - npix + 1) / 2
         else:
-            start_idx = (paddedsize - npix)/2
-            end_idx = npix + (paddedsize - npix)/2
+            start_idx = (paddedsize - npix) / 2
+            end_idx = npix + (paddedsize - npix) / 2
     padded[int(start_idx):int(end_idx)] = line
     return padded
 
@@ -152,44 +152,43 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
     """
     def align_line(ref_line, line, cl_resolution, cl_div_factor):
         npix = np.shape(ref_line)[0]
-        npad = npix*2-1
+        npad = npix * 2 - 1
 
         # Pad with zeros while preserving the center location
         ref_line_pad = pad_preserve_center(ref_line, npad)
         line_pad = pad_preserve_center(line, npad)
 
-        niters = np.int32(np.abs(np.floor(np.log(cl_resolution)
-                          / np.log(cl_div_factor))))
+        niters = np.int32(np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))))
         start = -0.5
         end = 0.5
 
-        midpoint = (npad-1)/2
-        kx = np.arange(-midpoint, midpoint+1)
+        midpoint = (npad - 1) / 2
+        kx = np.arange(-midpoint, midpoint + 1)
 
         ref_line_pad_FT = fftshift(fft(ifftshift(ref_line_pad)))
         line_pad_FT = fftshift(fft(ifftshift(line_pad)))
 
         for i in range(0, niters):
-            boundary = np.arange(start, end, (end-start)/cl_div_factor)
-            index = (np.roll(boundary, -1) + boundary)/2
+            boundary = np.arange(start, end, (end - start) / cl_div_factor)
+            index = (np.roll(boundary, -1) + boundary) / 2
             index = index[:-1]
 
             max_vals = np.zeros(len(index))
             for j in range(0, len(index)):
-                pfactor = np.exp(2*np.pi*1j*(index[j]*kx/npad))
-                conjugate = np.conj(ref_line_pad_FT)*line_pad_FT * pfactor
+                pfactor = np.exp(2 * np.pi * 1j * (index[j] * kx / npad))
+                conjugate = np.conj(ref_line_pad_FT) * line_pad_FT * pfactor
                 xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
                 max_vals[j] = np.max(xcorr)
 
             max_loc = np.argmax(max_vals)
             start = boundary[max_loc]
-            end = boundary[max_loc+1]
+            end = boundary[max_loc + 1]
 
         subpixel_shift = index[max_loc]
-        max_pfactor = np.exp(2*np.pi*1j*(index[max_loc]*kx/npad))
+        max_pfactor = np.exp(2 * np.pi * 1j * (index[max_loc] * kx / npad))
 
         # Determine integer shift via cross correlation
-        conjugate = np.conj(ref_line_pad_FT)*line_pad_FT*max_pfactor
+        conjugate = np.conj(ref_line_pad_FT) * line_pad_FT * max_pfactor
         xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
         max_loc = np.argmax(xcorr)
 
@@ -202,7 +201,7 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
         return -shift
 
     if not cl_ref_index:
-        cl_ref_index = round(stack.data.shape[0]/2)
+        cl_ref_index = round(stack.data.shape[0] / 2)
 
     aliY = stack.deepcopy()
     yshifts = np.zeros(stack.data.shape[0])
@@ -244,7 +243,7 @@ def calculate_shifts_com(stack, nslice, ratio):
 
     """
     if not nslice:
-        nslice = np.int32(stack.data.shape[2]/2)
+        nslice = np.int32(stack.data.shape[2] / 2)
 
     stack = stack.stack_register('StackReg')
 
@@ -254,29 +253,29 @@ def calculate_shifts_com(stack, nslice, ratio):
 
     angles = stack.metadata.Tomography.tilts
     [ntilts, ydim, xdim] = sino.shape
-    angles = angles*np.pi/180
+    angles = angles * np.pi / 180
 
     t = np.zeros([ntilts, 1, ydim])
     ss = np.zeros([ntilts, 1, ydim])
-    w = np.arange(1, xdim+1).T
+    w = np.arange(1, xdim + 1).T
 
     for i in range(0, ydim):
         for k in range(0, ntilts):
             ss[k, 0, i] = np.sum(sino[k, i, :])
             t[k, 0, i] = np.sum(sino[k, i, :] * w) / ss[k, 0, i]
 
-    t = t-(xdim+1)/2
+    t = t - (xdim + 1) / 2
     ss2 = np.median(ss)
 
     for k in range(0, ntilts):
-        ss[k, :, :] = np.abs((ss[k, :, :]-ss2)/ss2)
+        ss[k, :, :] = np.abs((ss[k, :, :] - ss2) / ss2)
     ss2 = np.mean(ss, 0)
 
-    num = round(ratio*ydim)
+    num = round(ratio * ydim)
     if num == 0:
         num = 1
     usables = np.zeros([num, 1])
-    t_select = np.zeros([ntilts*num, 1])
+    t_select = np.zeros([ntilts * num, 1])
     disp_mat = np.zeros([ydim, 1])
 
     s3 = np.argsort(ss2[0, :])
@@ -292,9 +291,9 @@ def calculate_shifts_com(stack, nslice, ratio):
     Gam = (np.array([np.cos(theta), np.sin(theta)])).T
     Gam = np.dot(Gam, np.linalg.pinv(Gam)) - I_tilts
     for j in range(0, num):
-        t_select[ntilts*j:ntilts*(j+1), 0] =\
-            np.dot(-Gam, t_select[ntilts * j:ntilts*(j+1), 0])
-        A[ntilts*j:ntilts*(j+1), 0:ntilts] = Gam
+        t_select[ntilts * j:ntilts * (j + 1), 0] =\
+            np.dot(-Gam, t_select[ntilts * j:ntilts * (j + 1), 0])
+        A[ntilts * j:ntilts * (j + 1), 0:ntilts] = Gam
 
     shifts = np.zeros([stack.data.shape[0], 2])
     shifts[:, 1] = np.dot(np.linalg.pinv(A), t_select)[:, 0]
@@ -332,11 +331,11 @@ def calculate_shifts_ecc(stack, start, show_progressbar):
                 gaussFiltSize=5)
         else:
             (cc, trans) = cv2.findTransformECC(
-                    np.float32(source),
-                    np.float32(shifted),
-                    warp_matrix,
-                    cv2.MOTION_TRANSLATION,
-                    criteria)
+                np.float32(source),
+                np.float32(shifted),
+                warp_matrix,
+                cv2.MOTION_TRANSLATION,
+                criteria)
         shift = trans[:, 2]
         return shift
 
@@ -470,7 +469,7 @@ def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution,
     if cl_resolution >= 0.5:
         raise ValueError("Resolution should be less than 0.5")
     if not com_ref_index:
-        com_ref_index = round(stack.data.shape[1]/2)
+        com_ref_index = round(stack.data.shape[1] / 2)
     logger.info("Center of mass reference slice: %s" % com_ref_index)
     logger.info("Common line reference slice: %s" % cl_ref_index)
     xshifts = np.zeros(stack.data.shape[0])
@@ -590,7 +589,7 @@ def tilt_com(stack, locs=None, interactive=False):
 
     """
     def com_motion(theta, r, x0, z0):
-        return r-x0*np.cos(theta)-z0*np.sin(theta)
+        return r - x0 * np.cos(theta) - z0 * np.sin(theta)
 
     def get_coms(stack, nslice):
         sino = stack.isig[nslice, :].deepcopy().data
@@ -598,7 +597,7 @@ def tilt_com(stack, locs=None, interactive=False):
         return np.array(coms)
 
     def fit_line(x, m, b):
-        return m*x + b
+        return m * x + b
 
     def shift_stack(stack, shifts):
         shifted = stack.deepcopy()
@@ -645,10 +644,10 @@ def tilt_com(stack, locs=None, interactive=False):
                                               xdata=r,
                                               ydata=slices,
                                               p0=[0, 0])[0]
-        tilt_shift = stack.data.shape[1]/2\
-            - (stack.data.shape[1]/2 - intercept)\
+        tilt_shift = stack.data.shape[1] / 2\
+            - (stack.data.shape[1] / 2 - intercept)\
             / slope
-        rotation = 180*np.arctan(1/slope)/np.pi
+        rotation = 180 * np.arctan(1 / slope) / np.pi
         return -tilt_shift, -rotation, r
 
     data = stack.deepcopy()
@@ -838,8 +837,8 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
         xshift = x[0]
         angle = x[1]
         if slices is None:
-            middle = np.int32(stack.data.shape[2]/2)
-            slices = [middle-10, middle+10]
+            middle = np.int32(stack.data.shape[2] / 2)
+            slices = [middle - 10, middle + 10]
         trans = stack.trans_stack(xshift=xshift, angle=angle)
         sino = np.zeros([stack.data.shape[0],
                          len(slices),
@@ -849,7 +848,7 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
         rec = recon.astra_sirt(sino, stack.axes_manager[0].axis,
                                iterations=50, cuda=True)
         proj = recon.astra_project(rec, stack.axes_manager[0].axis, cuda=True)
-        diff = np.abs(proj-sino)
+        diff = np.abs(proj - sino)
         error = diff.sum()
         return error
 
@@ -857,8 +856,8 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
         xshift = x[0]
         angle = x[1]
         if slices is None:
-            middle = np.int32(stack.data.shape[2]/2)
-            slices = [middle-10, middle+10]
+            middle = np.int32(stack.data.shape[2] / 2)
+            slices = [middle - 10, middle + 10]
         trans = stack.trans_stack(xshift=xshift, angle=angle)
         sino = np.zeros([stack.data.shape[0],
                          len(slices),
@@ -868,7 +867,7 @@ def tilt_minimize(stack, boundaries=None, tol=0.5, cuda=False):
         rec = recon.astra_sirt(sino, stack.axes_manager[0].axis,
                                iterations=5, cuda=False)
         proj = recon.astra_project(rec, stack.axes_manager[0].axis, cuda=False)
-        diff = np.abs(proj-sino)
+        diff = np.abs(proj - sino)
         error = diff.sum()
         return error
 

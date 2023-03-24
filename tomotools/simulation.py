@@ -62,9 +62,7 @@ def create_catalyst_model(nparticles=15, particle_density=255,
             else:
                 overlap = False
 
-        z_exact = np.int32(np.sqrt(support_radius**2 -
-                                   (x - center[0])**2 -
-                                   (y - center[1])**2) + center[2])
+        z_exact = np.int32(np.sqrt(support_radius**2 - (x - center[0])**2 - (y - center[1])**2) + center[2])
         zmin = z_exact - np.int32(size / 2)
         zmax = z_exact + np.int32(size / 2)
         z_rand = np.random.randint(zmin, zmax)

@@ -12,5 +12,5 @@ setup(
     install_requires=[
         'pystackreg',
          # 'tomopy @ git+http://github.com/tomopy/tomopy.git',
-                      ]
+    ]
 )
