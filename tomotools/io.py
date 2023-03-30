@@ -243,64 +243,66 @@ def loadhspy(filename, tilts=None):
     if ext.lower() in ['.mrc', '.ali', '.rec']:
         tiltfile = os.path.splitext(filename)[0] + '.rawtlt'
         txtfile = os.path.splitext(filename)[0] + '.txt'
-        if stack.original_metadata.fei_header.has_item('a_tilt'):
-            tilts = stack.original_metadata.fei_header['a_tilt'][0:stack.data.shape[0]]
-            stack.axes_manager[0].name = 'Tilt'
-            stack.axes_manager[0].units = 'degrees'
-            stack.axes_manager[0].scale = tilts[1] - tilts[0]
-            stack.axes_manager[0].offset = tilts[0]
-            stack.metadata.Tomography.tilts = tilts
-            logger.info('Tilts found in MRC file header')
-        elif os.path.isfile(tiltfile):
-            tilts = np.loadtxt(tiltfile)
-            logger.info('.rawtlt file detected.')
-            stack.axes_manager[0].name = 'Tilt'
-            stack.axes_manager[0].units = 'degrees'
-            stack.axes_manager[0].scale = tilts[1] - tilts[0]
-            stack.axes_manager[0].offset = tilts[0]
-            stack.metadata.Tomography.tilts = tilts
-            if len(tilts) == stack.data.shape[0]:
-                logger.info('Tilts loaded from .rawtlt file')
+        if stack.original_metadata.has_item('fei_header'):
+            if stack.original_metadata.fei_header.has_item('a_tilt'):
+                tilts = stack.original_metadata.fei_header['a_tilt'][0:stack.data.shape[0]]
+                stack.axes_manager[0].name = 'Tilt'
+                stack.axes_manager[0].units = 'degrees'
+                stack.axes_manager[0].scale = tilts[1] - tilts[0]
+                stack.axes_manager[0].offset = tilts[0]
+                stack.metadata.Tomography.tilts = tilts
+                logger.info('Tilts found in MRC file header')
+            elif os.path.isfile(tiltfile):
+                tilts = np.loadtxt(tiltfile)
+                logger.info('.rawtlt file detected.')
+                stack.axes_manager[0].name = 'Tilt'
+                stack.axes_manager[0].units = 'degrees'
+                stack.axes_manager[0].scale = tilts[1] - tilts[0]
+                stack.axes_manager[0].offset = tilts[0]
+                stack.metadata.Tomography.tilts = tilts
+                if len(tilts) == stack.data.shape[0]:
+                    logger.info('Tilts loaded from .rawtlt file')
+                else:
+                    logger.info('Number of tilts in .rawtlt file inconsistent'
+                                ' with data shape')
+            if stack.original_metadata.fei_header.has_item('pixel_size'):
+                pixel_size = stack.original_metadata.fei_header.pixel_size[0]
+                logger.info('Pixel size found in MRC file header')
+            elif os.path.isfile(txtfile):
+                pixel_line = None
+                with open(txtfile, 'r') as h:
+                    text = h.readlines()
+                for i in text:
+                    if 'Image pixel size' in i:
+                        pixel_line = i
+                if pixel_line:
+                    pixel_size = np.float32(pixel_line.split()[-1:])[0]
+                    pixel_units = pixel_line.split()[-2:-1][0][1:-2]
+                    stack.axes_manager[1].name = 'x'
+                    stack.axes_manager[1].units = pixel_units
+                    stack.axes_manager[1].scale = pixel_size
+                    stack.axes_manager[1].offset = 0
+
+                    stack.axes_manager[2].name = 'y'
+                    stack.axes_manager[2].units = pixel_units
+                    stack.axes_manager[2].scale = pixel_size
+                    stack.axes_manager[2].offset = 0
+                    logger.info('Pixel size loaded from text file')
+                else:
+                    logger.info('Unable to find pixel size in text file')
             else:
-                logger.info('Number of tilts in .rawtlt file inconsistent'
-                            ' with data shape')
+                logger.info('Unable to find pixel size')
+                stack.axes_manager[1].name = 'x'
+                stack.axes_manager[1].units = 'unknown'
+
+                stack.axes_manager[2].name = 'y'
+                stack.axes_manager[2].units = 'unknown'
+        elif stack.original_metadata.has_item('std_header'):
+            logger.info('SerialEM generated MRC file detected')
         else:
             logger.info('Unable to find tilt angles. Calibrate axis 0.')
             stack.axes_manager[0].name = 'Tilt'
             stack.axes_manager[0].units = 'degrees'
-
-        if stack.original_metadata.fei_header.has_item('pixel_size'):
-            pixel_size = stack.original_metadata.fei_header.pixel_size[0]
-            logger.info('Pixel size found in MRC file header')
-        elif os.path.isfile(txtfile):
-            pixel_line = None
-            with open(txtfile, 'r') as h:
-                text = h.readlines()
-            for i in text:
-                if 'Image pixel size' in i:
-                    pixel_line = i
-            if pixel_line:
-                pixel_size = np.float32(pixel_line.split()[-1:])[0]
-                pixel_units = pixel_line.split()[-2:-1][0][1:-2]
-                stack.axes_manager[1].name = 'x'
-                stack.axes_manager[1].units = pixel_units
-                stack.axes_manager[1].scale = pixel_size
-                stack.axes_manager[1].offset = 0
-
-                stack.axes_manager[2].name = 'y'
-                stack.axes_manager[2].units = pixel_units
-                stack.axes_manager[2].scale = pixel_size
-                stack.axes_manager[2].offset = 0
-                logger.info('Pixel size loaded from text file')
-            else:
-                logger.info('Unable to find pixel size in text file')
-        else:
-            logger.info('Unable to find pixel size')
-            stack.axes_manager[1].name = 'x'
-            stack.axes_manager[1].units = 'unknown'
-
-            stack.axes_manager[2].name = 'y'
-            stack.axes_manager[2].units = 'unknown'
 
     elif ext.lower() in ['.hdf5', '.hd5', '.hspy']:
         pass
