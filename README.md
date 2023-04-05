@@ -19,8 +19,8 @@ Installation
     Install major dependencies Astra Toolbox, Hyperspy, and OpenCV through conda.
     NOTE: `astra-toolbox` must be installed first due to a dependency conflict.
     ```bash
-    conda install -c astra-toolbox/label/dev astra-toolbox
-    conda install -c conda-forge hyperspy opencv
+    conda install -c conda-forge hyperspy hyperspy-gui-ipywidgets opencv
+    conda install -c astra-toolbox astra-toolbox
 
     ```
 
