@@ -62,3 +62,33 @@ def parse_mrc_header(filename):
         header['text'] = ''.join([chr(item) for item in strbits])
         header['ext_header'] = np.fromfile(h, np.int16, int(header['nextra'] / 2))
     return header
+
+
+def parse_mdoc(mdoc_file):
+    """
+    Parse a SerialEM mdoc file.
+
+    Args
+    ----------
+    mdoc_file : str
+        Name of the mdoc file to parse
+
+    Returns
+    ----------
+    metadata : dict
+        Dictionary with values parsed from mdoc file
+
+    """
+    keys = ['PixelSpacing', 'Voltage', 'ImageFile', 'Image Size', 'DataMode',
+            'TiltAngle', 'Magnification', 'ExpTime', 'SpotSize', 'Defocus']
+    metadata = {}
+    with open(mdoc_file, 'r') as f:
+        for i in range(0, 35):
+            line = f.readline()
+            for k in keys:
+                if k in line:
+                    if k == 'ImageFile':
+                        metadata[k] = line.split('=')[1].strip()
+                    else:
+                        metadata[k] = float(line.split('=')[1].strip())
+    return metadata
