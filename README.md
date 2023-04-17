@@ -16,11 +16,14 @@ Installation
   Anaconda (Preferred):
   ---------------------
   * The required packages can be installed into an existing Anaconda environmnent.
-    Install major dependencies Astra Toolbox, Hyperspy, and OpenCV through conda.
+    Install major dependencies Astra Toolbox, Hyperspy, and Hyperspy widgets.
+    Install OpenCV through pip.  Currently, the conda repo for OpenCV has conflicts
+    with Hyperspy and/or Astra.
     NOTE: `astra-toolbox` must be installed first due to a dependency conflict.
     ```bash
-    conda install -c astra-toolbox/label/dev astra-toolbox
-    conda install -c conda-forge hyperspy opencv
+    conda create -n tomo -c astra-toolbox astra-toolbox
+    conda install -c conda-forge hyperspy hyperspy-gui-ipywidgets ipympl
+    pip install opencv-python
 
     ```
 
