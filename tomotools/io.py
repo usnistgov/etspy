@@ -444,12 +444,12 @@ def load_serialem_series(mrcfiles, mdocfiles, align=True):
         SerialEM metadata files for multi-frame tilt series data.
 
     align : bool
-        If True, align the frames using PyStackReg at each tilt prior to summing.
+        If True, align the frames using PyStackReg at each tilt prior to averaging.
 
     Returns
     ----------
     stack : TomoStack object
-        Tilt series resulting by summing frames at each tilt
+        Tilt series resulting by averaging frames at each tilt
 
     """
     stack = np.zeros([len(mrcfiles), 1024, 1024], np.float32)
@@ -468,9 +468,9 @@ def load_serialem_series(mrcfiles, mdocfiles, align=True):
         s = hspy.load(fn)
         if align:
             ali = sr.register_transform_stack(s.data, reference='previous')
-            stack[i] = ali.sum(0)
+            stack[i] = ali.mean(0)
         else:
-            stack[i] = s.data.sum(0)
+            stack[i] = s.data.mean(0)
     stack = numpy_to_tomo_stack(stack, tilts[tilts_sort])
     stack.axes_manager[1].scale = meta[0]['PixelSpacing'] / 10
     stack.axes_manager[2].scale = meta[0]['PixelSpacing'] / 10

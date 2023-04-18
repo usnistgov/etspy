@@ -33,11 +33,14 @@ def parse_mrc_header(filename):
     with open(filename, 'r') as h:
         header['nx'], header['ny'], header['nz'] = np.fromfile(h, np.uint32, 3)
         header['mode'] = np.fromfile(h, np.uint32, 1)[0]
-        header['nxstart'], header['nystart'], header['nzstart'] = np.fromfile(h, np.uint32, 3)
+        header['nxstart'], header['nystart'], header['nzstart'] = np.fromfile(
+            h, np.uint32, 3)
         header['mx'], header['my'], header['mz'] = np.fromfile(h, np.uint32, 3)
-        header['xlen'], header['ylen'], header['zlen'] = np.fromfile(h, np.uint32, 3)
+        header['xlen'], header['ylen'], header['zlen'] = np.fromfile(
+            h, np.uint32, 3)
         _ = np.fromfile(h, np.uint32, 6)
-        header['amin'], header['amax'], header['amean'] = np.fromfile(h, np.uint32, 3)
+        header['amin'], header['amax'], header['amean'] = np.fromfile(
+            h, np.uint32, 3)
         _ = np.fromfile(h, np.uint32, 1)
         header['nextra'] = np.fromfile(h, np.uint32, 1)[0]
         _ = np.fromfile(h, np.uint16, 1)[0]
@@ -53,9 +56,11 @@ def parse_mrc_header(filename):
         header['imodFlags'] = np.fromfile(h, np.uint32, 1)[0]
         header['idtype'] = np.fromfile(h, np.uint16, 1)[0]
         header['lens'] = np.fromfile(h, np.uint16, 1)[0]
-        header['nd1'], header['nd2'], header['vd1'], header['vd2'] = np.fromfile(h, np.uint16, 4)
+        header['nd1'], header['nd2'], header['vd1'], header['vd2'] = np.fromfile(
+            h, np.uint16, 4)
         _ = np.fromfile(h, np.float32, 6)
-        header['xorg'], header['yorg'], header['zorg'] = np.fromfile(h, np.float32, 3)
+        header['xorg'], header['yorg'], header['zorg'] = np.fromfile(
+            h, np.float32, 3)
         strbits = np.fromfile(h, np.int8, 4)
         header['cmap'] = ''.join([chr(item) for item in strbits])
         header['stamp'] = np.fromfile(h, np.int8, 4)
@@ -63,7 +68,8 @@ def parse_mrc_header(filename):
         header['nlabl'] = np.fromfile(h, np.uint32, 1)[0]
         strbits = np.fromfile(h, np.int8, 800)
         header['text'] = ''.join([chr(item) for item in strbits])
-        header['ext_header'] = np.fromfile(h, np.int16, int(header['nextra'] / 2))
+        header['ext_header'] = np.fromfile(
+            h, np.int16, int(header['nextra'] / 2))
     return header
 
 
@@ -110,12 +116,12 @@ def read_serialem_series(mrcfiles, mdocfiles):
         SerialEM metadata files for multi-frame tilt series data.
 
     align : bool
-        If True, align the frames using PyStackReg at each tilt prior to summing.
+        If True, align the frames using PyStackReg at each tilt prior to averaging.
 
     Returns
     ----------
     stack : TomoStack object
-        Tilt series resulting by summing frames at each tilt
+        Tilt series resulting by averaging frames at each tilt
 
     """
 
@@ -149,7 +155,8 @@ def read_serialem_series(mrcfiles, mdocfiles):
         stack.metadata.add_node('Acquisition_instrument.TEM')
     stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]['Magnification']
     stack.metadata.Acquisition_instrument.TEM.beam_energy = meta[0]['Voltage']
-    stack.metadata.Acquisition_instrument.TEM.dwell_time = meta[0]['ExposureTime'] * images_per_tilt * 1e-6
+    stack.metadata.Acquisition_instrument.TEM.dwell_time = meta[
+        0]['ExposureTime'] * images_per_tilt * 1e-6
     stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]['SpotSize']
     stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]['Defocus']
     stack.metadata.General.original_filename = meta[0]['ImageFile']
@@ -171,13 +178,14 @@ def register_serialem_stack(stack, method='ECC'):
     Returns
     ----------
     reg : TomoStack object
-        Result of aligning and integrating frames at each tilt with shape [ntilts, ny, nx]
+        Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
     """
 
-    reg = np.zeros([stack.data.shape[0], stack.data.shape[2], stack.data.shape[3]], stack.data.dtype)
+    reg = np.zeros([stack.data.shape[0], stack.data.shape[2],
+                   stack.data.shape[3]], stack.data.dtype)
     for i in range(0, stack.data.shape[0]):
-        temp = TomoStack(stack.data[i])
-        reg[i, :, :] = temp.stack_register(method=method).data.sum(0)
+        temp = TomoStack(np.float32(stack.data[i]))
+        reg[i, :, :] = temp.stack_register(method=method).data.mean(0)
     reg = numpy_to_tomo_stack(reg)
     return reg
