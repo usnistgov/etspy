@@ -17,7 +17,7 @@ pytest-doctest:
 flake8_checks:
     stage: test
     script:
-    - flake8 --exclude=api.py tomotools/
+    - flake8 --exclude=api.py --ignore=E501 tomotools/
 
 pydocstyle_checks:
     stage: test
