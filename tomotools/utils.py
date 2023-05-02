@@ -11,6 +11,7 @@ Utility module for TomoTools package.
 import numpy as np
 from tomotools.io import numpy_to_tomo_stack
 from tomotools.base import TomoStack
+import logging
 
 
 def register_serialem_stack(stack, method='ECC'):
@@ -31,6 +32,9 @@ def register_serialem_stack(stack, method='ECC'):
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
     """
+    align_logger = logging.getLogger("tomotools.align")
+    log_level = align_logger.getEffectiveLevel()
+    align_logger.setLevel(logging.ERROR)
 
     reg = np.zeros([stack.data.shape[0], stack.data.shape[2],
                    stack.data.shape[3]], stack.data.dtype)
@@ -38,4 +42,5 @@ def register_serialem_stack(stack, method='ECC'):
         temp = TomoStack(np.float32(stack.data[i]))
         reg[i, :, :] = temp.stack_register(method=method).data.mean(0)
     reg = numpy_to_tomo_stack(reg)
+    align_logger.setLevel(log_level)
     return reg
