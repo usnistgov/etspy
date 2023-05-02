@@ -16,7 +16,7 @@ jobs:
     container:
       image: aaherzing/tomotools:latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - run: pip install -e ./
     - run: pytest --doctest-modules --ignore=tomotools/tests/test_datasets.py tomotools/ 
     - if: always()
