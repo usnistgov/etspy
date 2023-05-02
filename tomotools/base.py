@@ -358,12 +358,12 @@ class TomoStack(Signal2D):
         Registration with enhanced correlation coefficient algorithm (ECC)
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
-        >>> regECC = stack.inav[0:10].stack_register('ECC')
+        >>> regECC = stack.stack_register('ECC')
 
         Registration with phase correlation algorithm (PC)
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
-        >>> regPC = stack.inav[0:10].stack_register('PC')
+        >>> regPC = stack.stack_register('PC')
 
         Registration with center of mass tracking (COM)
         >>> import tomotools.datasets as ds
@@ -373,12 +373,12 @@ class TomoStack(Signal2D):
         Registration with StackReg
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
-        >>> regSR = stack.inav[0:10].stack_register('StackReg')
+        >>> regSR = stack.stack_register('StackReg')
 
         Registration with center of mass and common line (COM-CL)
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
-        >>> regCOMCL = stack.inav[0:10].stack_register('COM-CL')
+        >>> regCOMCL = stack.stack_register('COM-CL')
 
         """
         method = method.lower()
