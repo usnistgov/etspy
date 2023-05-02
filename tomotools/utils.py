@@ -12,6 +12,7 @@ import numpy as np
 from tomotools.io import numpy_to_tomo_stack
 from tomotools.base import TomoStack
 import logging
+import tqdm
 
 
 def register_serialem_stack(stack, method='ECC'):
@@ -38,7 +39,7 @@ def register_serialem_stack(stack, method='ECC'):
 
     reg = np.zeros([stack.data.shape[0], stack.data.shape[2],
                    stack.data.shape[3]], stack.data.dtype)
-    for i in range(0, stack.data.shape[0]):
+    for i in tqdm.tqdm(range(0, stack.data.shape[0])):
         temp = TomoStack(np.float32(stack.data[i]))
         reg[i, :, :] = temp.stack_register(method=method).data.mean(0)
     reg = numpy_to_tomo_stack(reg)
