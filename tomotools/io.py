@@ -460,64 +460,6 @@ def parse_mdoc(mdoc_file):
     return metadata
 
 
-# def load_serialem_series(mrcfiles, mdocfiles, align=True):
-#     """
-#     Load a multi-frame series collected by SerialEM.
-
-#     Parameters
-#     ----------
-#     mrc_files : list of files
-#         MRC files containing multi-frame tilt series data.
-
-#     mdoc_files : list of files
-#         SerialEM metadata files for multi-frame tilt series data.
-
-#     align : bool
-#         If True, align the frames using PyStackReg at each tilt prior to averaging.
-
-#     Returns
-#     ----------
-#     stack : TomoStack object
-#         Tilt series resulting by averaging frames at each tilt
-
-#     """
-#     stack = np.zeros([len(mrcfiles), 1024, 1024], np.float32)
-
-#     sr = StackReg(StackReg.TRANSLATION)
-
-#     meta = [None] * len(mdocfiles)
-#     for i in range(0, len(mdocfiles)):
-#         meta[i] = parse_mdoc(mdocfiles[i])
-
-#     tilts = np.array([meta[i]['TiltAngle'] for i in range(0, len(meta))])
-#     tilts_sort = np.argsort(tilts)
-
-#     for i in range(0, len(mrcfiles)):
-#         fn = mdocfiles[tilts_sort[i]][:-5]
-#         s = hspy.load(fn)
-#         if align:
-#             ali = sr.register_transform_stack(s.data, reference='previous')
-#             stack[i] = ali.mean(0)
-#         else:
-#             stack[i] = s.data.mean(0)
-#     stack = numpy_to_tomo_stack(stack, tilts[tilts_sort])
-#     stack.axes_manager[1].scale = meta[0]['PixelSpacing'] / 10
-#     stack.axes_manager[2].scale = meta[0]['PixelSpacing'] / 10
-#     stack.axes_manager[1].name = 'nm'
-#     stack.axes_manager[2].name = 'nm'
-
-#     if not stack.metadata.has_item('Acquisition_instrument.TEM'):
-#         stack.metadata.add_node('Acquisition_instrument.TEM')
-#     stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]['Magnification']
-#     stack.metadata.Acquisition_instrument.TEM.beam_energy = meta[0]['Voltage']
-#     stack.metadata.Acquisition_instrument.TEM.dwell_time = meta[
-#         0]['ExposureTime'] * s.data.shape[0] * 1e-6
-#     stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]['SpotSize']
-#     stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]['Defocus']
-#     stack.metadata.General.original_filename = meta[0]['ImageFile']
-#     return stack
-
-
 def load(filename, tilts=None):
     """
     Create a TomoStack object using data from a file.
@@ -565,6 +507,9 @@ def read_serialem_series(mrcfiles, mdocfiles):
         Tilt series resulting by averaging frames at each tilt
 
     """
+    mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
+    log_level = mrc_logger.getEffectiveLevel()
+    mrc_logger.setLevel(logging.ERROR)
 
     stack = [None] * len(mrcfiles)
     meta = [None] * len(mdocfiles)
@@ -601,6 +546,8 @@ def read_serialem_series(mrcfiles, mdocfiles):
     stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]['SpotSize']
     stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]['Defocus']
     stack.metadata.General.original_filename = meta[0]['ImageFile']
+
+    mrc_logger.setLevel(log_level)
     return stack, tilts
 
 
