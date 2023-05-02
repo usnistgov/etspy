@@ -18,6 +18,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: pip install -e ./
-    - run: pytest --doctest-modules --ignore=tomotools/tomotools/tests/test_datasets.py tomotools/ 
+    - run: pytest --doctest-modules --ignore=tomotools/tests/test_datasets.py tomotools/ 
     - if: always()
-      run: pytest --ignore=tomotools/tomotools/tests/test_datasets.py tomotools/tests/
+      run: pytest --ignore=tomotools/tests/test_datasets.py tomotools/tests/
