@@ -174,6 +174,17 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
             s_new.axes_manager[0].scale = tilts[1] - tilts[0]
             s_new.axes_manager[0].offset = tilts[0]
 
+    elif s.metadata.has_item('Acquisition_instrument.SEM.Stage.tilt_alpha'):
+        tilt_alpha = s.metadata.Acquisition_instrument.SEM.Stage.tilt_alpha
+        if type(tilt_alpha) is np.ndarray:
+            n = s.data.shape[0]
+            tilts = s.metadata.Acquisition_instrument.SEM.Stage.tilt_alpha[0:n]
+            logger.info('Tilts found in metadata')
+            s_new.axes_manager[0].name = 'Tilt'
+            s_new.axes_manager[0].units = 'degrees'
+            s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+            s_new.axes_manager[0].offset = tilts[0]
+
     elif s.metadata.General.has_item('original_filename'):
         tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(
             s.metadata.General.original_filename)[0])[1]))
