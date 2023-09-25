@@ -221,8 +221,8 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
     axes_list =\
         [x for _, x in sorted(s_new.axes_manager.as_dictionary().items())]
 
-    metadata = s.metadata.as_dictionary()
-    original_metadata = s.original_metadata.as_dictionary()
+    metadata = s_new.metadata.as_dictionary()
+    original_metadata = s_new.original_metadata.as_dictionary()
 
     s_new = TomoStack(s.data, axes=axes_list, metadata=metadata,
                       original_metadata=original_metadata)
