@@ -73,7 +73,6 @@ dependencies:
 - networkx=2.0=py36_1
 - notebook=5.4.0=py36_0
 - olefile=0.44=py36_0
-- opencv=3.3.0=py36_202
 - openssl=1.0.2n=vc14_0
 - pandas=0.22.0=py36_0
 - pandoc=2.1.1=0
