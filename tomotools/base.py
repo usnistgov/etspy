@@ -14,7 +14,7 @@ import numpy as np
 from tomotools import recon, align
 import copy
 import os
-import cv2
+from skimage import transform
 import pylab as plt
 import matplotlib.animation as animation
 from hyperspy.signals import Signal2D, Signal1D
@@ -57,7 +57,8 @@ class TomoStack(Signal2D):
             self.metadata.Tomography.set_item("tiltaxis", 0)
             self.metadata.Tomography.set_item("xshift", 0)
             self.metadata.Tomography.set_item("yshift", 0)
-            self.metadata.Tomography.set_item("shifts", np.zeros([self.data.shape[0], 2]))
+            self.metadata.Tomography.set_item(
+                "shifts", np.zeros([self.data.shape[0], 2]))
             self.metadata.Tomography.set_item("cropped", False)
         else:
             if not self.metadata.Tomography.has_item("tilts"):
@@ -69,7 +70,8 @@ class TomoStack(Signal2D):
             if not self.metadata.Tomography.has_item("yshift"):
                 self.metadata.Tomography.set_item("yshift", 0)
             if not self.metadata.Tomography.has_item("shifts"):
-                self.metadata.Tomography.set_item("shifts", np.zeros([self.data.shape[0], 2]))
+                self.metadata.Tomography.set_item(
+                    "shifts", np.zeros([self.data.shape[0], 2]))
             if not self.metadata.Tomography.has_item("cropped"):
                 self.metadata.Tomography.set_item("cropped", False)
 
@@ -645,9 +647,9 @@ class TomoStack(Signal2D):
         return rec
 
     def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
-                    interpolation='cubic'):
+                    interpolation='linear'):
         """
-        Transform the stack using the OpenCV warpAffine function.
+        Transform the stack using the skimage Affine transform.
 
         Args
         ----------
@@ -681,7 +683,8 @@ class TomoStack(Signal2D):
         """
         transformed = self.deepcopy()
         theta = np.pi * angle / 180.
-        center_y, center_x = np.float32(np.array(transformed.data.shape[1:]) / 2)
+        center_y, center_x = np.float32(
+            np.array(transformed.data.shape[1:]) / 2)
 
         rot_mat = np.array([[np.cos(theta), -np.sin(theta), 0],
                             [np.sin(theta), np.cos(theta), 0],
@@ -702,24 +705,23 @@ class TomoStack(Signal2D):
                           [0, 0, 1]])
 
         full_transform = np.dot(shift, rotation_mat)
+        tform = transform.AffineTransform(full_transform)
 
-        if interpolation == 'linear':
-            mode = cv2.INTER_LINEAR
-        elif interpolation == 'cubic':
-            mode = cv2.INTER_LINEAR
-        elif interpolation == 'none' or interpolation == 'nearest':
-            mode = cv2.INTER_NEAREST
+        if interpolation.lower() == 'nearest' or interpolation.lower() == 'none':
+            interpolation_order = 0
+        elif interpolation.lower() == 'linear':
+            interpolation_order = 1
+        elif interpolation.lower() == 'cubic':
+            interpolation_order = 3
         else:
             raise ValueError("Interpolation method %s unknown. "
-                             "Must be 'linear', 'cubic', 'nearest' "
-                             "or 'none'" % interpolation)
+                             "Must be 'nearest', 'linear', or 'cubic'"
+                             % interpolation)
 
         for i in range(0, self.data.shape[0]):
             transformed.data[i, :, :] = \
-                cv2.warpAffine(transformed.data[i, :, :],
-                               full_transform[:2, :],
-                               transformed.data.shape[1:][::-1],
-                               flags=mode)
+                transform.warp(
+                    transformed.data[i, :, :], inverse_map=tform.inverse, order=interpolation_order)
 
         transformed.metadata.Tomography.xshift =\
             self.metadata.Tomography.xshift + xshift
