@@ -20,6 +20,7 @@ from scipy.ndimage import center_of_mass
 import logging
 from tomotools import recon
 from numpy.fft import fft, fftshift, ifftshift, ifft
+from skimage.registration import phase_cross_correlation as pcc
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -158,7 +159,8 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
         ref_line_pad = pad_preserve_center(ref_line, npad)
         line_pad = pad_preserve_center(line, npad)
 
-        niters = np.int32(np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))))
+        niters = np.int32(
+            np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))))
         start = -0.5
         end = 0.5
 
@@ -379,21 +381,23 @@ def calculate_shifts_pc(stack, start, show_progressbar):
 
     """
     def calc_pc(source, shifted):
-        shift = cv2.phaseCorrelate(source, shifted)
-        return shift[0]
+        shift = pcc(shifted, source, upsample_factor=3)
+        return shift[0][::-1]
 
     shifts = np.zeros([stack.data.shape[0] - 1, 2])
     if start is None:
         start = np.int32(np.floor(stack.data.shape[0] / 2))
+
     for i in tqdm.tqdm(range(start, stack.data.shape[0] - 1),
                        disable=(not show_progressbar)):
-        shifts[i, :] = calc_pc(np.float64(stack.data[i, :, :]),
-                               np.float64(stack.data[i + 1, :, :]))
-    else:
+        shifts[i, :] = calc_pc(stack.data[i, :, :],
+                               stack.data[i + 1, :, :])
+
+    if start != 0:
         for i in tqdm.tqdm(range(start - 1, -1, -1),
                            disable=(not show_progressbar)):
-            shifts[i, :] = calc_pc(np.float64(stack.data[i, :, :]),
-                                   np.float64(stack.data[i + 1, :, :]))
+            shifts[i, :] = calc_pc(stack.data[i, :, :],
+                                   stack.data[i + 1, :, :])
     return shifts
 
 
