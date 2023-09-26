@@ -9,7 +9,6 @@ Alignment module for TomoTools package.
 """
 
 import numpy as np
-import cv2
 import copy
 from scipy import optimize, ndimage
 import pylab as plt
@@ -304,66 +303,6 @@ def calculate_shifts_com(stack, nslice, ratio):
     return shifts
 
 
-def calculate_shifts_ecc(stack, start, show_progressbar):
-    """
-
-    Calculate shifts using the enhanced correlation coefficient algorithm.
-
-    Args
-    ----------
-    stack : TomoStack object
-        The image series to be aligned
-
-    Returns
-    ----------
-    shifts : NumPy array
-        The X- and Y-shifts to be applied to each image
-
-    """
-    def calc_ecc(source, shifted, criteria):
-        warp_matrix = np.eye(2, 3, dtype=np.float32)
-        if np.int32(cv2.__version__.split('.')[0]) == 4:
-            (cc, trans) = cv2.findTransformECC(
-                np.float32(source),
-                np.float32(shifted),
-                warp_matrix,
-                cv2.MOTION_TRANSLATION,
-                criteria,
-                inputMask=None,
-                gaussFiltSize=5)
-        else:
-            (cc, trans) = cv2.findTransformECC(
-                np.float32(source),
-                np.float32(shifted),
-                warp_matrix,
-                cv2.MOTION_TRANSLATION,
-                criteria)
-        shift = trans[:, 2]
-        return shift
-
-    number_of_iterations = 1000
-    termination_eps = 1e-3
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
-                number_of_iterations, termination_eps)
-    shifts = np.zeros([stack.data.shape[0] - 1, 2])
-    if start is None:
-        start = np.int32(np.floor(stack.data.shape[0] / 2))
-
-    for i in tqdm.tqdm(range(start, stack.data.shape[0] - 1),
-                       disable=(not show_progressbar)):
-        shifts[i, :] = calc_ecc(stack.data[i, :, :],
-                                stack.data[i + 1, :, :],
-                                criteria)
-
-    if start != 0:
-        for i in tqdm.tqdm(range(start - 1, -1, -1),
-                           disable=(not show_progressbar)):
-            shifts[i, :] = calc_ecc(stack.data[i, :, :],
-                                    stack.data[i + 1, :, :],
-                                    criteria)
-    return shifts
-
-
 def calculate_shifts_pc(stack, start, show_progressbar):
     """
 
@@ -496,18 +435,13 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
             G. Bradski. The OpenCV Library, Dr. Dobb’s Journal of Software
             Tools vol. 120, pp. 122-125, 2000.
             https://docs.opencv.org/
-        2.) Enhanced correlation coefficient (ECC) as implemented in OpenCV.
-            OpenCV is described in:
-            G. Bradski. The OpenCV Library, Dr. Dobb’s Journal of Software
-            Tools vol. 120, pp. 122-125, 2000.
-            https://docs.opencv.org/
-        3.) Center of mass (COM) tracking.  A Python implementation of
+        2.) Center of mass (COM) tracking.  A Python implementation of
             Matlab code described in:
             T. Sanders. Matlab imaging algorithms: Image reconstruction,
             restoration, and alignment, with a focus in tomography.
             http://www.toby-sanders.com/software ,
             https://doi.org/10.13140/RG.2.2.33492.60801
-        4.) Rigid translation using PyStackReg for shift calculation.
+        3.) Rigid translation using PyStackReg for shift calculation.
             PyStackReg is a Python port of the StackReg plugin for ImageJ
             which uses a pyramidal approach to minimize the least-squares
             difference in image intensity between a source and target image.
@@ -516,7 +450,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
             Subpixel Registration Based on Intensity, IEEE Transactions
             on Image Processing vol. 7, no. 1, pp. 27-41, January 1998.
             https://doi.org/10.1109/83.650848
-        5.) A combination of center of mass tracking for aligment of
+        4.) A combination of center of mass tracking for aligment of
             projections perpendicular to the tilt axis and common line
             alignment for parallel to the tilt axis. This is a Python
             implementation of Matlab code described in:
@@ -533,7 +467,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
         3-D numpy array containing the tilt series data
     method : string
         Method by which to calculate the alignments. Valid options
-        are 'PC', 'ECC', 'COM', or 'COM-CL'.
+        are 'PC', 'COM', or 'COM-CL'.
     start : integer
         Position in tilt series to use as starting point for the alignment.
         If None, the central projection is used.
@@ -549,10 +483,6 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
     method = method.lower()
     if method == 'com':
         shifts = calculate_shifts_com(stack, nslice, ratio)
-    elif method == 'ecc':
-        logger.info("Performing stack registration using "
-                    "enhanced correlation coefficient (ECC) method")
-        shifts = calculate_shifts_ecc(stack, start, show_progressbar)
     elif method == 'pc':
         logger.info("Performing stack registration using "
                     "phase correlation method")
@@ -565,7 +495,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
                     "combined center of mass and common line methods")
         shifts = calc_com_cl_shifts(stack, com_ref_index, cl_ref_index,
                                     cl_resolution, cl_div_factor)
-    if method in ['ecc', 'pc']:
+    if method == 'pc':
         shifts = compose_shifts(shifts, start)
     aligned = apply_shifts(stack, shifts)
     logger.info("Stack registration complete")
