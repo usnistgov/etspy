@@ -1,13 +1,9 @@
 TomoTools package
 ===========
 
-The tomotools package provides code for the aligment and reconstruction
-of electron tomography data from TEM/STEM instruments. 
-
-The package mostly wraps existing libraries to perform many of the lower level
-operations.  Hyperspy is employed for data input/output, the astra-toolbox performs
-the 3D reconstructions, and rigid transformation for alignments are calculated
-and applied using the OpenCV library.
+TomoTools is a Hyperspy-based software package for the aligment and reconstruction
+of electron tomography data from TEM/STEM instruments. Tools are provided for basic 
+tilt series data processing, stack alignment, and reconstruction using the astra-toolbox.
 
 
 Installation
