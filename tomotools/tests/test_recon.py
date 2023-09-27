@@ -2,9 +2,17 @@ import tomotools
 from tomotools import recon
 from tomotools import datasets as ds
 import numpy
+import pytest
 
 
 class TestReconstruction:
+
+    def test_recon_no_tilts(self):
+        stack = ds.get_needle_data(True)
+        stack.metadata.Tomography.tilts = None
+        slices = stack.isig[:, 120:121].deepcopy()
+        with pytest.raises(ValueError):
+            slices.reconstruct('FBP')
 
     def test_recon_fbp(self):
         stack = ds.get_needle_data(True)

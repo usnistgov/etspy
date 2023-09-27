@@ -261,10 +261,7 @@ def astra_fbp(stack, angles, thickness=None, cuda=False):
     """
     thetas = angles * np.pi / 180
 
-    if len(stack.shape) == 2:
-        data = np.expand_dims(stack, 1)
-    else:
-        data = stack
+    data = stack
     data = np.rollaxis(data, 1)
     y_pix, n_angles, x_pix = data.shape
 
