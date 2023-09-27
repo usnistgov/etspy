@@ -107,7 +107,7 @@ class TestOperations:
 
     def test_set_tilts_no_metadata(self):
         stack = ds.get_needle_data()
-        del(stack.metadata.Tomography)
+        del stack.metadata.Tomography
         stack.set_tilts(-50, 5)
         assert stack.axes_manager[0].name == "Tilt"
         assert stack.axes_manager[0].scale == 5
