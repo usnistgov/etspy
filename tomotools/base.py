@@ -19,7 +19,6 @@ import pylab as plt
 import matplotlib.animation as animation
 from hyperspy.signals import Signal2D, Signal1D
 from scipy import ndimage
-from tempfile import TemporaryDirectory
 import matplotlib as mpl
 import logging
 import astra
@@ -803,123 +802,6 @@ class TomoStack(Signal2D):
         ani.save(outfile, writer=writer, dpi=dpi)
         plt.close()
         return
-
-    def align_imod(self, diameter=7, markers=10, white=False):
-        """
-        Align the stack using IMODs RAPTOR algorithm.
-
-        Args
-        ----------
-        diameter : float
-            Diameter in pixels of the fiducial markers
-
-        markers : integer
-            Number of markers to include in the model
-
-        white : boolean
-            If True, the markers are bright compared to the background (i.e.
-            dark-field).
-
-        Returns
-        ----------
-        ali : TomoStack object
-            Aligned copy of the input stack
-
-        """
-        # Automatic detection of IMOD presence and path
-        imod_path = False
-        split_path = os.environ["PATH"].split(';')
-        for i in split_path:
-            if 'IMOD' in i:
-                imod_path = i
-        if imod_path:
-            logger.info('IMOD found in %s' % imod_path)
-        else:
-            raise RuntimeError('IMOD does not appear to be '
-                               'installed. Cannot run RAPTOR')
-
-        # imod_path = 'c:/progra~1/imod/bin/'
-        if self.data.dtype == '<f8':
-            self.data = np.float32(self.data)
-
-        ali = self.deepcopy()
-        shape = self.data.shape
-        orig_path = os.getcwd()
-        tmp_dir = TemporaryDirectory()
-        os.chdir(tmp_dir.name)
-
-        with open('stack.raw', 'wb') as h:
-            self.data.tofile(h)
-
-        mrc_cmd = 'raw2mrc -x %s -y %s -z %s -t float ' % \
-            (str(shape[2]), str(shape[1]), str(shape[0])) + \
-            'stack.raw stack.mrc'
-
-        os.system(mrc_cmd)
-        angles = self.axes_manager[0].axis
-
-        np.savetxt('stack.rawtlt', angles, fmt='%.1f')
-
-        if white:
-            raptor_cmd = 'raptor -exec %s ' % imod_path + \
-                '-path . -inp stack.mrc -out raptor ' \
-                '-diam %s -mark %s -white stack.mrc' % \
-                (str(diameter), str(markers))
-        else:
-            raptor_cmd = 'raptor -exec %s ' % imod_path + \
-                '-path . -inp stack.mrc -out raptor ' \
-                '-diam %s -mark %s stack.mrc' % \
-                (str(diameter), str(markers))
-        os.system(raptor_cmd)
-
-        alifile = 'raptor/align/stack.ali'
-        logfile = 'raptor/align/stack_RAPTOR.log'
-        if os.path.isfile(alifile):
-            with open(alifile, 'rb') as h:
-                np.fromfile(h, np.uint8, 1024)
-                temp = np.fromfile(h, np.float32)
-
-            if np.mod(len(temp), shape[0]) != 0:
-                logger.info('************************************'
-                            '**************')
-                logger.info('RAPTOR alignment was unable to fit all images.')
-                logger.info('Improve rough alignment or image quality.\n')
-                logger.info('*************************************'
-                            '*************\n\n')
-                logger.info('RAPTOR log file contents:')
-                logger.info('*************************************'
-                            '*************')
-                with open(logfile, 'r') as h:
-                    logger.info(h.read())
-
-            else:
-                ali.data = temp.reshape([shape[0], shape[1], shape[2]])
-                logger.info('**************************************'
-                            '************')
-                logger.info('RAPTOR alignment complete.\n')
-                logger.info('**************************************'
-                            '************')
-                logger.info('\n\n')
-                logger.info('RAPTOR log file contents:')
-                logger.info('***************************************'
-                            '***********')
-                with open(logfile, 'r') as h:
-                    logger.info(h.read())
-        else:
-            logger.info('*******************************************'
-                        '*******')
-            logger.info('RAPTOR alignment failed.')
-            logger.info('Improve rough alignment or image quality.')
-            logger.info('*******************************************'
-                        '*******\n\n')
-            logger.info('RAPTOR log file contents:')
-            logger.info('*******************************************'
-                        '*******')
-            with open(logfile, 'r') as h:
-                logger.info(h.read())
-
-        os.chdir(orig_path)
-        return ali
 
     def set_tilts(self, start, increment):
         """
