@@ -5,17 +5,6 @@ import pytest
 
 class TestAlignStackRegister:
 
-    def test_register_ecc(self):
-        stack = ds.get_needle_data()
-        stack.metadata.Tomography.shifts = \
-            stack.metadata.Tomography.shifts[0:20]
-        reg = stack.inav[0:20].stack_register('ECC')
-        assert type(reg) is tomotools.TomoStack
-        assert reg.axes_manager.signal_shape == \
-            stack.inav[0:20].axes_manager.signal_shape
-        assert reg.axes_manager.navigation_shape == \
-            stack.inav[0:20].axes_manager.navigation_shape
-
     def test_register_pc(self):
         stack = ds.get_needle_data()
         stack.metadata.Tomography.shifts = \

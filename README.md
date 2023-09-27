@@ -19,7 +19,6 @@ Installation
     ```bash
     conda create -n tomo -c astra-toolbox astra-toolbox
     conda install -c conda-forge hyperspy hyperspy-gui-ipywidgets ipympl
-    pip install opencv-python
 
     ```
 

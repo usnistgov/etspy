@@ -14,7 +14,7 @@ import numpy as np
 from tomotools import recon, align
 import copy
 import os
-import cv2
+from skimage import transform
 import pylab as plt
 import matplotlib.animation as animation
 from hyperspy.signals import Signal2D, Signal1D
@@ -57,7 +57,8 @@ class TomoStack(Signal2D):
             self.metadata.Tomography.set_item("tiltaxis", 0)
             self.metadata.Tomography.set_item("xshift", 0)
             self.metadata.Tomography.set_item("yshift", 0)
-            self.metadata.Tomography.set_item("shifts", np.zeros([self.data.shape[0], 2]))
+            self.metadata.Tomography.set_item(
+                "shifts", np.zeros([self.data.shape[0], 2]))
             self.metadata.Tomography.set_item("cropped", False)
         else:
             if not self.metadata.Tomography.has_item("tilts"):
@@ -69,7 +70,8 @@ class TomoStack(Signal2D):
             if not self.metadata.Tomography.has_item("yshift"):
                 self.metadata.Tomography.set_item("yshift", 0)
             if not self.metadata.Tomography.has_item("shifts"):
-                self.metadata.Tomography.set_item("shifts", np.zeros([self.data.shape[0], 2]))
+                self.metadata.Tomography.set_item(
+                    "shifts", np.zeros([self.data.shape[0], 2]))
             if not self.metadata.Tomography.has_item("cropped"):
                 self.metadata.Tomography.set_item("cropped", False)
 
@@ -303,15 +305,14 @@ class TomoStack(Signal2D):
         print('Min: %.1f\n' % self.data.min())
         return
 
-    def stack_register(self, method='ECC', start=None, crop=False,
+    def stack_register(self, method='PC', start=None, crop=False,
                        show_progressbar=False, nslice=None, ratio=0.5,
                        cl_resolution=0.05, cl_div_factor=8, com_ref_index=None,
                        cl_ref_index=None):
         """
         Register stack spatially.
 
-        Options are phase correlation (PC) maximization, enhanced
-        correlation coefficient (ECC) maximization, StackReg, center of
+        Options are phase correlation (PC) maximization, StackReg, center of
         mass ('COM'), or combined center of mass and common line methods.
         See docstring for tomotools.align.align_stack for details.
 
@@ -319,7 +320,7 @@ class TomoStack(Signal2D):
         ----------
         method : string
             Algorithm to use for registration calculation. Must be either
-            'PC', 'ECC', 'StackReg', 'COM', or 'COM-CL'.
+            'PC', 'StackReg', 'COM', or 'COM-CL'.
         start : integer
             Position in tilt series to use as starting point for the
             alignment. If None, the central projection is used.
@@ -355,11 +356,6 @@ class TomoStack(Signal2D):
 
         Examples
         --------
-        Registration with enhanced correlation coefficient algorithm (ECC)
-        >>> import tomotools.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> regECC = stack.stack_register('ECC')
-
         Registration with phase correlation algorithm (PC)
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
@@ -382,7 +378,7 @@ class TomoStack(Signal2D):
 
         """
         method = method.lower()
-        if method in ['ecc', 'pc', 'com', 'stackreg', 'com-cl']:
+        if method in ['pc', 'com', 'stackreg', 'com-cl']:
             out = align.align_stack(self, method, start, show_progressbar,
                                     ratio=ratio, nslice=nslice,
                                     cl_resolution=cl_resolution,
@@ -392,7 +388,7 @@ class TomoStack(Signal2D):
         else:
             raise ValueError(
                 "Unknown registration method: "
-                "%s. Must be ECC, PC, StackReg, or COM" % method)
+                "%s. Must be PC, StackReg, or COM" % method)
 
         if crop:
             out = align.shift_crop(out)
@@ -456,14 +452,14 @@ class TomoStack(Signal2D):
         Align tilt axis using the center of mass (CoM) method
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
-        >>> reg = stack.stack_register('ECC',show_progressbar=False)
+        >>> reg = stack.stack_register('PC',show_progressbar=False)
         >>> method = 'CoM'
         >>> ali = reg.tilt_align(method, locs=[50,100,160])
 
         Align tilt axis using the maximum image method
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
-        >>> reg = stack.stack_register('ECC',show_progressbar=False)
+        >>> reg = stack.stack_register('PC',show_progressbar=False)
         >>> method = 'MaxImage'
         >>> ali = reg.tilt_align(method, show_progressbar=False)
 
@@ -645,9 +641,9 @@ class TomoStack(Signal2D):
         return rec
 
     def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
-                    interpolation='cubic'):
+                    interpolation='linear'):
         """
-        Transform the stack using the OpenCV warpAffine function.
+        Transform the stack using the skimage Affine transform.
 
         Args
         ----------
@@ -681,7 +677,8 @@ class TomoStack(Signal2D):
         """
         transformed = self.deepcopy()
         theta = np.pi * angle / 180.
-        center_y, center_x = np.float32(np.array(transformed.data.shape[1:]) / 2)
+        center_y, center_x = np.float32(
+            np.array(transformed.data.shape[1:]) / 2)
 
         rot_mat = np.array([[np.cos(theta), -np.sin(theta), 0],
                             [np.sin(theta), np.cos(theta), 0],
@@ -702,24 +699,23 @@ class TomoStack(Signal2D):
                           [0, 0, 1]])
 
         full_transform = np.dot(shift, rotation_mat)
+        tform = transform.AffineTransform(full_transform)
 
-        if interpolation == 'linear':
-            mode = cv2.INTER_LINEAR
-        elif interpolation == 'cubic':
-            mode = cv2.INTER_LINEAR
-        elif interpolation == 'none' or interpolation == 'nearest':
-            mode = cv2.INTER_NEAREST
+        if interpolation.lower() == 'nearest' or interpolation.lower() == 'none':
+            interpolation_order = 0
+        elif interpolation.lower() == 'linear':
+            interpolation_order = 1
+        elif interpolation.lower() == 'cubic':
+            interpolation_order = 3
         else:
             raise ValueError("Interpolation method %s unknown. "
-                             "Must be 'linear', 'cubic', 'nearest' "
-                             "or 'none'" % interpolation)
+                             "Must be 'nearest', 'linear', or 'cubic'"
+                             % interpolation)
 
         for i in range(0, self.data.shape[0]):
             transformed.data[i, :, :] = \
-                cv2.warpAffine(transformed.data[i, :, :],
-                               full_transform[:2, :],
-                               transformed.data.shape[1:][::-1],
-                               flags=mode)
+                transform.warp(
+                    transformed.data[i, :, :], inverse_map=tform.inverse, order=interpolation_order)
 
         transformed.metadata.Tomography.xshift =\
             self.metadata.Tomography.xshift + xshift
