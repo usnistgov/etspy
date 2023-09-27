@@ -12,14 +12,17 @@ Installation
   Anaconda (Preferred):
   ---------------------
   * The required packages can be installed into an existing Anaconda environmnent.
-    Install major dependencies Astra Toolbox, Hyperspy, and Hyperspy widgets.
-    Install OpenCV through pip.  Currently, the conda repo for OpenCV has conflicts
-    with Hyperspy and/or Astra.
-    NOTE: `astra-toolbox` must be installed first due to a dependency conflict.
+    Install major dependencies Astra Toolbox and HyperSpy. Optional but highly recommended,
+    ipympl should also be installed to enable interactive plotting in Jupyter Lab.
+    
+    # NOTE: `astra-toolbox` must be installed first due to a dependency conflict.
     ```bash
-    conda create -n tomo -c astra-toolbox astra-toolbox
-    conda install -c conda-forge hyperspy hyperspy-gui-ipywidgets ipympl
-
+    conda create -n tomo
+    conda activate tomo
+    conda install -c astra-toolbox astra-toolbox 
+    conda install -c conda-forge hyperspy 
+    conda install -c conda-forge ipympl
+    conda update --all
     ```
 
   * Install the TomoTools package from GitHub:
@@ -52,13 +55,12 @@ Documentation
 -------------
 Release: https://github.com/andrewherzing/tomotools
 
-Further documentation, notebooks and examples will be made available over time.
+A demo notebook is available in the resources folder.  More documentation
+will be made available over time.
 
 
 Related projects
 ----------------
 http://hyperspy.org/
-
-https://opencv.org/
 
 https://www.astra-toolbox.com/

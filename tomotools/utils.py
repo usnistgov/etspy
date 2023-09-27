@@ -15,7 +15,7 @@ import logging
 import tqdm
 
 
-def register_serialem_stack(stack, method='ECC'):
+def register_serialem_stack(stack, method='PC'):
     """
     Register a multi-frame series collected by SerialEM.
 
