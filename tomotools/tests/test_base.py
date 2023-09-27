@@ -4,9 +4,10 @@ import pytest
 import numpy as np
 import sys
 import io
+from tomotools.base import TomoStack
 
 
-class TestTomoStack:
+class TestFiltering:
 
     def test_correlation_check(self):
         stack = ds.get_needle_data()
@@ -59,6 +60,9 @@ class TestTomoStack:
         assert filt.axes_manager.signal_shape == \
             stack.inav[0:10].axes_manager.signal_shape
 
+
+class TestOperations:
+
     def test_stack_normalize(self):
         stack = ds.get_needle_data()
         norm = stack.normalize()
@@ -91,6 +95,30 @@ class TestTomoStack:
         assert out[2] == 'Max: %.1f' % stack.data.max()
         assert out[3] == 'Min: %.1f' % stack.data.min()
 
+    def test_set_tilts(self):
+        stack = ds.get_needle_data()
+        stack.set_tilts(-50, 5)
+        assert stack.axes_manager[0].name == "Tilt"
+        assert stack.axes_manager[0].scale == 5
+        assert stack.axes_manager[0].units == "degrees"
+        assert stack.axes_manager[0].offset == -50
+        assert stack.axes_manager[0].axis.all() == \
+            np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
+
+    def test_set_tilts_no_metadata(self):
+        stack = ds.get_needle_data()
+        del(stack.metadata.Tomography)
+        stack.set_tilts(-50, 5)
+        assert stack.axes_manager[0].name == "Tilt"
+        assert stack.axes_manager[0].scale == 5
+        assert stack.axes_manager[0].units == "degrees"
+        assert stack.axes_manager[0].offset == -50
+        assert stack.axes_manager[0].axis.all() == \
+            np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
+
+
+class TestTestAlign:
+
     def test_test_align_no_slices(self):
         stack = ds.get_needle_data(True)
         stack.test_align()
@@ -115,15 +143,69 @@ class TestTomoStack:
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
-    def test_set_tilts(self):
-        stack = ds.get_needle_data()
-        stack.set_tilts(-50, 5)
-        assert stack.axes_manager[0].name == "Tilt"
-        assert stack.axes_manager[0].scale == 5
-        assert stack.axes_manager[0].units == "degrees"
-        assert stack.axes_manager[0].offset == -50
-        assert stack.axes_manager[0].axis.all() == \
-            np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
+    def test_test_align_cuda(self):
+        stack = ds.get_needle_data(True)
+        stack.test_align(thickness=200, cuda=True)
+        fig = matplotlib.pylab.gcf()
+        assert len(fig.axes) == 3
+
+    def test_test_align_no_cuda(self):
+        stack = ds.get_needle_data(True)
+        stack.test_align(thickness=200, cuda=False)
+        fig = matplotlib.pylab.gcf()
+        assert len(fig.axes) == 3
+
+
+class TestAlignOther:
+
+    def test_align_other_no_shifts(self):
+        stack = ds.get_needle_data(False)
+        stack2 = stack.deepcopy()
+        with pytest.raises(ValueError):
+            stack.align_other(stack2)
+
+    def test_align_other_with_shifts(self):
+        stack = ds.get_needle_data(True)
+        stack2 = stack.deepcopy()
+        stack3 = stack.align_other(stack2)
+        assert type(stack3) == TomoStack
+
+
+class TestStackRegister:
+
+    def test_stack_register_unknown_method(self):
+        stack = ds.get_needle_data(False).inav[0:5]
+        with pytest.raises(ValueError):
+            stack.stack_register('UNKNOWN')
+
+    def test_stack_register_pc(self):
+        stack = ds.get_needle_data(False).inav[0:5]
+        stack.metadata.Tomography.shifts = np.zeros([5, 2])
+        reg = stack.stack_register('PC')
+        assert type(reg) == TomoStack
+
+    def test_stack_register_com(self):
+        stack = ds.get_needle_data(False).inav[0:5]
+        stack.metadata.Tomography.shifts = np.zeros([5, 2])
+        stack.metadata.Tomography.tilts = stack.metadata.Tomography.tilts[0:5]
+        reg = stack.stack_register('COM')
+        assert type(reg) == TomoStack
+
+    def test_stack_register_stackreg(self):
+        stack = ds.get_needle_data(False).inav[0:5]
+        stack.metadata.Tomography.shifts = np.zeros([5, 2])
+        reg = stack.stack_register('COM-CL')
+        assert type(reg) == TomoStack
+
+    def test_stack_register_with_crop(self):
+        stack = ds.get_needle_data(False).inav[0:5]
+        stack.metadata.Tomography.shifts = np.zeros([5, 2])
+        reg = stack.stack_register('PC', crop=True)
+        assert type(reg) == TomoStack
+        assert np.sum(reg.data.shape) < np.sum(stack.data.shape)
+
+
+class TestSIRTError:
 
     def test_sirt_error(self):
         stack = ds.get_needle_data(True)
@@ -134,3 +216,50 @@ class TestTomoStack:
             (stack.data.shape[2], stack.data.shape[2])
         assert (1 - (3.8709e12 / error.data[0])) < 0.001
         assert (1 - (2.8624e12 / error.data[1])) < 0.001
+
+
+class TestTiltAlign:
+
+    def test_test_tilt_align_com_axis_zero(self):
+        stack = ds.get_needle_data(True)
+        ali = stack.tilt_align('CoM', axis=0, locs=[64, 100, 114])
+        assert type(ali) is TomoStack
+
+    def test_test_tilt_align_com_axis_one(self):
+        stack = ds.get_needle_data(True)
+        stack = stack.swap_axes(1, 2)
+        ali = stack.tilt_align('CoM', axis=1, locs=[64, 100, 114])
+        assert type(ali) is TomoStack
+
+    def test_test_tilt_align_maximage(self):
+        stack = ds.get_needle_data(True)
+        ali = stack.tilt_align('MaxImage')
+        assert type(ali) is TomoStack
+
+    def test_test_tilt_align_unknown_method(self):
+        stack = ds.get_needle_data(True)
+        with pytest.raises(ValueError):
+            stack.tilt_align('UNKNOWN')
+
+
+class TestTransStack:
+
+    def test_test_trans_stack_linear(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.trans_stack(1, 1, 1, 'linear')
+        assert type(shifted) is TomoStack
+
+    def test_test_trans_stack_nearest(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.trans_stack(1, 1, 1, 'nearest')
+        assert type(shifted) is TomoStack
+
+    def test_test_trans_stack_cubic(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.trans_stack(1, 1, 1, 'cubic')
+        assert type(shifted) is TomoStack
+
+    def test_test_trans_stack_unknown(self):
+        stack = ds.get_needle_data(True)
+        with pytest.raises(ValueError):
+            stack.trans_stack(1, 1, 1, 'UNKNOWN')

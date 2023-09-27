@@ -531,7 +531,7 @@ class TomoStack(Signal2D):
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh)
 
         """
-        if not cuda:
+        if cuda is None:
             if astra.use_cuda():
                 logger.info('CUDA detected with Astra')
                 cuda = True
@@ -595,7 +595,7 @@ class TomoStack(Signal2D):
         shifted.data = shifted.data[:, slices, :]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
-        if not cuda:
+        if cuda is None:
             if astra.use_cuda():
                 logger.info('CUDA detected with Astra')
                 cuda = True
