@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def run(stack, method, iterations=None, constrain=None,
-        thresh=None, cuda=True, thickness=None, **kwargs):
+def run(stack, method, iterations=20, constrain=None,
+        thresh=None, cuda=None, thickness=None, **kwargs):
     """
     Perform reconstruction of input tilt series.
 
@@ -50,9 +50,10 @@ def run(stack, method, iterations=None, constrain=None,
     if stack.metadata.Tomography.tilts is None:
         raise ValueError("Tilts not defined")
 
+    print(cuda)
     angles = stack.metadata.Tomography.tilts
     if method == 'FBP':
-        if not astra.astra.use_cuda() or not cuda:
+        if cuda is False:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
             logger.info('Reconstructing volume using FBP')
             logger.info('Reconstruction using %s cores' % ncpus)
@@ -69,7 +70,7 @@ def run(stack, method, iterations=None, constrain=None,
                     rec = np.vstack(rec)
                 else:
                     rec = rec[0]
-        elif astra.astra.use_cuda() or cuda:
+        elif cuda is True:
             '''ASTRA weighted-backprojection CUDA reconstruction of single
             slice'''
             logger.info('Reconstruction volume using FBP_CUDA')
@@ -78,8 +79,6 @@ def run(stack, method, iterations=None, constrain=None,
         else:
             raise Exception('Unable to determine CUDA capability')
     elif method == 'SIRT':
-        if not iterations:
-            iterations = 20
         if constrain:
             if not thresh:
                 thresh = 0
@@ -87,7 +86,7 @@ def run(stack, method, iterations=None, constrain=None,
                         "minimum constraint. Minimum value: %s" % thresh)
         else:
             logger.info("Reconstructing volume using SIRT")
-        if not astra.astra.use_cuda() or not cuda:
+        if cuda is False:
             '''ASTRA SIRT reconstruction'''
             logger.info('Reconstructing volume using %s SIRT iterations'
                         % iterations)
@@ -108,7 +107,7 @@ def run(stack, method, iterations=None, constrain=None,
                     rec = np.vstack(rec)
                 else:
                     rec = rec[0]
-        elif astra.astra.use_cuda() or cuda:
+        elif cuda is True:
             '''ASTRA CUDA-accelerated SIRT reconstruction'''
             rec = astra_sirt(stack.data, angles, iterations=iterations,
                              constrain=constrain, thresh=thresh, cuda=True,
@@ -235,7 +234,7 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
     return rec
 
 
-def astra_fbp(stack, angles, thickness=None, cuda=False):
+def astra_fbp(stack, angles, thickness=None, cuda=None):
     """
     Perform SIRT reconstruction using the Astra toolbox algorithms.
 
@@ -260,8 +259,10 @@ def astra_fbp(stack, angles, thickness=None, cuda=False):
 
     """
     thetas = angles * np.pi / 180
-
-    data = stack
+    if len(stack.shape) == 2:
+        data = np.expand_dims(stack, 1)
+    else:
+        data = stack
     data = np.rollaxis(data, 1)
     y_pix, n_angles, x_pix = data.shape
 
