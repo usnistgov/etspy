@@ -127,9 +127,6 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
     >>> s_new
     <TomoStack, title: test dataset, dimensions: (50|500, 500)>
     """
-    if isinstance(type(s), hspy.signals.BaseSignal):
-        s = s.as_signal2D((0, 1))
-
     s_new = s.deepcopy()
 
     if tilt_signal is not None:
@@ -159,8 +156,12 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
         s_new.axes_manager[0].offset = tilts[0]
 
     elif s.metadata.has_item("Tomography"):
-        if s.metadata.Tomography.tilts:
+        if type(s.metadata.Tomography.tilts) is np.ndarray:
             tilts = s_new.metadata.Tomography.tilts
+            s_new.axes_manager[0].name = 'Tilt'
+            s_new.axes_manager[0].units = 'degrees'
+            s_new.axes_manager[0].scale = tilts[1] - tilts[0]
+            s_new.axes_manager[0].offset = tilts[0]
             logger.info("Tilts found in TomoStack metadata")
 
     elif s.metadata.has_item('Acquisition_instrument.TEM.Stage.tilt_alpha'):
@@ -186,8 +187,7 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
             s_new.axes_manager[0].offset = tilts[0]
 
     elif s.metadata.General.has_item('original_filename'):
-        tiltfile = ('%s.rawtlt' % (os.path.split(os.path.splitext(
-            s.metadata.General.original_filename)[0])[1]))
+        tiltfile = ('%s.rawtlt' % os.path.splitext(s.metadata.General.original_filename)[0])
         if os.path.isfile(tiltfile):
             tilts = np.loadtxt(tiltfile)
             logger.info('.rawtlt file detected.')
