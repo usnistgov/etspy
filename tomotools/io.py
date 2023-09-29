@@ -128,11 +128,11 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
     <TomoStack, title: test dataset, dimensions: (50|500, 500)>
     """
     s_new = s.deepcopy()
+    if not s_new.metadata.has_item("Tomography"):
+        s_new.metadata.add_node("Tomography")
 
     if tilt_signal is not None:
         if type(tilt_signal) in [np.ndarray, list]:
-            if not s_new.metadata.has_item("Tomography"):
-                s_new.metadata.add_node("Tomography")
             s_new.metadata.Tomography.tilts = tilt_signal
             s_new.axes_manager[0].name = 'Tilt'
             s_new.axes_manager[0].units = 'degrees'
@@ -187,7 +187,8 @@ def signal_to_tomo_stack(s, tilt_signal=None, manual_tilts=False):
             s_new.axes_manager[0].offset = tilts[0]
 
     elif s.metadata.General.has_item('original_filename'):
-        tiltfile = ('%s.rawtlt' % os.path.splitext(s.metadata.General.original_filename)[0])
+        tiltfile = ('%s.rawtlt' % os.path.splitext(
+            s.metadata.General.original_filename)[0])
         if os.path.isfile(tiltfile):
             tilts = np.loadtxt(tiltfile)
             logger.info('.rawtlt file detected.')
