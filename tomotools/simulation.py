@@ -10,7 +10,7 @@ Simulation module for TomoTools package.
 import numpy as np
 from scipy import ndimage
 import astra
-from tomotools.io import numpy_to_tomo_stack
+from tomotools.io import convert_to_tomo_stack
 import hyperspy.api as hs
 
 
@@ -129,7 +129,7 @@ def create_model_tilt_series(model, angles=None):
         sino_id, proj_data[:, i, :] = astra.create_sino(model[:, i, :],
                                                         proj_id)
 
-    stack = numpy_to_tomo_stack(proj_data)
+    stack = convert_to_tomo_stack(proj_data)
     stack.axes_manager[0].offset = angles[0]
     stack.axes_manager[0].scale = np.abs(angles[1] - angles[0])
     return stack

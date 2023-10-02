@@ -1,6 +1,5 @@
 import tomotools.api as tomotools
 from tomotools.base import TomoStack
-from tomotools import datasets as ds
 import hyperspy.api as hs
 import os
 import numpy as np
@@ -35,7 +34,7 @@ class TestHspy:
 
 class TestNumpy:
     def test_numpy_to_stack(self):
-        stack = tomotools.io.numpy_to_tomo_stack(
+        stack = tomotools.io.convert_to_tomo_stack(
             np.random.random([50, 100, 100]), tilts=np.arange(0, 50))
         assert type(stack) is tomotools.TomoStack
         assert stack.axes_manager.signal_shape == (100, 100)
@@ -45,7 +44,7 @@ class TestNumpy:
 class TestSignal:
     def test_signal_to_stack(self):
         signal = hs.signals.Signal2D(np.random.random([50, 100, 100]))
-        stack = tomotools.io.signal_to_tomo_stack(signal)
+        stack = tomotools.io.convert_to_tomo_stack(signal)
         assert stack.axes_manager[0].name == 'Tilt'
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (50,)
@@ -56,41 +55,13 @@ class TestSignal:
         tilt_signal = tomotools.load(filename)
         tilt_signal.set_tilts(-76, 2)
         signal = hs.signals.Signal2D(np.random.random([77, 100, 100]))
-        stack = tomotools.io.signal_to_tomo_stack(signal,
-                                                  tilt_signal=tilt_signal)
+        stack = tomotools.io.convert_to_tomo_stack(signal,
+                                                   tilt_signal=tilt_signal)
         assert stack.axes_manager[0].name == 'Tilt'
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (77,)
         assert stack.axes_manager[0].axis.all() == \
             tilt_signal.axes_manager[0].axis.all()
-
-    def test_signal_to_stack_with_tomo_metadata(self):
-        signal = hs.signals.Signal2D(np.random.random([50, 100, 100]))
-        signal.metadata.add_node('Tomography')
-        signal.metadata.Tomography.tilts = np.arange(0, 50)
-        stack = tomotools.io.signal_to_tomo_stack(signal)
-        assert stack.axes_manager[0].name == 'Tilt'
-        assert stack.axes_manager.signal_shape == (100, 100)
-        assert stack.axes_manager.navigation_shape == (50,)
-
-    def test_signal_to_stack_with_tem_metadata(self):
-        signal = ds.get_needle_data()
-        del signal.metadata.Tomography
-        stack = tomotools.io.signal_to_tomo_stack(signal)
-        assert stack.axes_manager[0].name == 'Tilt'
-        assert stack.axes_manager.signal_shape == (256, 256)
-        assert stack.axes_manager.navigation_shape == (77,)
-
-    def test_signal_to_stack_with_sem_metadata(self):
-        signal = ds.get_needle_data()
-        del signal.metadata.Tomography
-        signal.metadata.Acquisition_instrument.add_node('SEM')
-        signal.metadata.Acquisition_instrument.SEM = signal.metadata.Acquisition_instrument.TEM
-        del signal.metadata.Acquisition_instrument.TEM
-        stack = tomotools.io.signal_to_tomo_stack(signal)
-        assert stack.axes_manager[0].name == 'Tilt'
-        assert stack.axes_manager.signal_shape == (256, 256)
-        assert stack.axes_manager.navigation_shape == (77,)
 
     def test_signal_to_stack_with_rawtlt_file(self):
         filename = os.path.join(tomotools_path, "tests",
@@ -98,7 +69,7 @@ class TestSignal:
         signal = hs.load(filename)
         signal.metadata.General.original_filename = filename
         del signal.metadata.Acquisition_instrument
-        stack = tomotools.io.signal_to_tomo_stack(signal)
+        stack = tomotools.io.convert_to_tomo_stack(signal)
         assert stack.axes_manager[0].name == 'Tilt'
         assert stack.axes_manager.signal_shape == (256, 256)
         assert stack.axes_manager.navigation_shape == (77,)

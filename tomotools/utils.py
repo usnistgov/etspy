@@ -9,7 +9,7 @@ Utility module for TomoTools package.
 """
 
 import numpy as np
-from tomotools.io import numpy_to_tomo_stack
+from tomotools.io import convert_to_tomo_stack
 from tomotools.base import TomoStack
 import logging
 import tqdm
@@ -42,6 +42,6 @@ def register_serialem_stack(stack, method='PC'):
     for i in tqdm.tqdm(range(0, stack.data.shape[0])):
         temp = TomoStack(np.float32(stack.data[i]))
         reg[i, :, :] = temp.stack_register(method=method).data.mean(0)
-    reg = numpy_to_tomo_stack(reg)
+    reg = convert_to_tomo_stack(reg)
     align_logger.setLevel(log_level)
     return reg
