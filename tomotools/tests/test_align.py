@@ -92,8 +92,6 @@ class TestAlignStackRegister:
 class TestTiltAlign:
     def test_tilt_align_com(self):
         stack = ds.get_needle_data()
-        stack.axes_manager[0].offset = -76
-        stack.axes_manager[0].scale = 2
         reg = stack.stack_register('PC')
         ali = reg.tilt_align(method='CoM', locs=[64, 128, 192])
         tilt_axis = ali.metadata.Tomography.tiltaxis
@@ -108,8 +106,6 @@ class TestTiltAlign:
 
     def test_tilt_align_maximage(self):
         stack = ds.get_needle_data()
-        stack.axes_manager[0].offset = -76
-        stack.axes_manager[0].scale = 2
         reg = stack.stack_register('PC')
         ali = reg.tilt_align(method='MaxImage')
         tilt_axis = ali.metadata.Tomography.tiltaxis
@@ -117,8 +113,6 @@ class TestTiltAlign:
 
     def test_tilt_align_maximage_nonsquare(self):
         stack = ds.get_needle_data()
-        stack.axes_manager[0].offset = -76
-        stack.axes_manager[0].scale = 2
         reg = stack.stack_register('PC')
         reg = reg.isig[:, 1:]
         with pytest.raises(ValueError):
