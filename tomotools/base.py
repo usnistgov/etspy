@@ -719,8 +719,8 @@ class TomoStack(Signal2D):
         transformed.metadata.Tomography.yshift =\
             self.metadata.Tomography.yshift + yshift
 
-        transformed.metadata.Tomography.rotation =\
-            self.metadata.Tomography.rotation + angle
+        transformed.metadata.Tomography.tiltaxis =\
+            self.metadata.Tomography.tiltaxis + angle
         return transformed
 
     # noinspection PyTypeChecker
