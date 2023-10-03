@@ -126,25 +126,27 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
     return stack
 
 
-def load_hspy(filename, tilts=None):
+def load_hspy(filename, tilts=None, reader=None):
     """
     Read an MRC file to a TomoStack object using the Hyperspy reader.
 
     Parameters
     ----------
     filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC,
-        .RAW/.RPL pair, .DM3, .DM4)
+        Name of file that contains data to be read.
 
     tilts : list or NumPy array
         List of floats indicating the specimen tilt at each projection
+
+    reader : str
+        Hyperspy file reader to use
 
     Returns
     ----------
     stack : TomoStack object
 
     """
-    stack = hspy.load(filename)
+    stack = hspy.load(filename, reader=reader)
     if not stack.metadata.has_item("Tomography"):
         stack.metadata.add_node("Tomography")
     ext = os.path.splitext(filename)[1]
@@ -518,7 +520,10 @@ def load(filename, tilts=None):
     if type(filename) is str:
         ext = os.path.splitext(filename)[1]
         if ext.lower() in hspy_file_types:
-            stack = load_hspy(filename, tilts)
+            if ext.lower() in ['.ali', '.rec']:
+                stack = load_hspy(filename, tilts, reader='mrc')
+            else:
+                stack = load_hspy(filename, tilts)
         if ext.lower() in dm_file_types:
             stack = load_dm(filename)
         else:
