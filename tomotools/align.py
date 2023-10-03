@@ -773,9 +773,6 @@ def align_to_other(stack, other):
         out = shift_crop(out)
 
     out = out.trans_stack(xshift, yshift, tiltaxis)
-    # if (tiltaxis != 0) or (xshift != 0):
-    #     out = out.trans_stack(yshift=xshift, angle=tiltaxis)
-    #     out = out.swap_axes(1, 2)
 
     logger.info('TomoStack alignment applied')
     logger.info('X-shift: %.1f' % xshift)
