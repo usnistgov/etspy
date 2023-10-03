@@ -513,7 +513,7 @@ def load(filename, tilts=None):
     stack : TomoStack object
 
     """
-    known_file_types = [".hdf5", ".mrc", ".ali", ".rec", ".hspy", ".dm3", ".dm4"]
+    known_file_types = ['.hdf5', '.mrc', '.ali', '.rec', '.hspy', '.dm3', '.dm4']
     hspy_file_types = ['.hdf5', '.h5', '.mrc', '.ali', '.rec', '.hspy']
     dm_file_types = ['.dm3', '.dm4']
 
@@ -524,7 +524,7 @@ def load(filename, tilts=None):
                 stack = load_hspy(filename, tilts, reader='mrc')
             else:
                 stack = load_hspy(filename, tilts)
-        if ext.lower() in dm_file_types:
+        elif ext.lower() in dm_file_types:
             stack = load_dm(filename)
         else:
             raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
@@ -537,5 +537,7 @@ def load(filename, tilts=None):
             mdocfiles = [i[:-3] + "mdoc" for i in filename]
             stack = load_serialem_series(filename, mdocfiles)
         else:
-            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
+            raise ValueError("Unknown file type %s. Must be one of %s " % (ext, [i for i in known_file_types]))
+    else:
+        raise ValueError("Unknown filename type %s.  Must be either a string or list of strings." % type(filename))
     return stack
