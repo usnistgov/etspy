@@ -52,7 +52,7 @@ class TomoStack(Signal2D):
 
         if not self.metadata.has_item("Tomography"):
             self.metadata.add_node("Tomography")
-            self.metadata.Tomography.set_item("tilts", None)
+            self.metadata.Tomography.set_item("tilts", np.zeros(self.data.shape[0]))
             self.metadata.Tomography.set_item("tiltaxis", 0)
             self.metadata.Tomography.set_item("xshift", 0)
             self.metadata.Tomography.set_item("yshift", 0)
@@ -61,7 +61,7 @@ class TomoStack(Signal2D):
             self.metadata.Tomography.set_item("cropped", False)
         else:
             if not self.metadata.Tomography.has_item("tilts"):
-                self.metadata.Tomography.set_item("tilts", None)
+                self.metadata.Tomography.set_item("tilts", np.zeros(self.data.shape[0]))
             if not self.metadata.Tomography.has_item("tiltaxis"):
                 self.metadata.Tomography.set_item("tiltaxis", 0)
             if not self.metadata.Tomography.has_item("xshift"):
@@ -863,8 +863,6 @@ class TomoStack(Signal2D):
                 output.data = output.data[:, :, :xshift]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :, :xshift]
                 output.data[nslice:, :, :] = self.data[nslice:, :, -xshift:]
-            else:
-                pass
 
         elif xshift == 0:
             if yshift > 0:
@@ -875,8 +873,6 @@ class TomoStack(Signal2D):
                 output.data = output.data[:, :yshift, :]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :]
                 output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :]
-            else:
-                pass
         else:
             if (xshift > 0) and (yshift > 0):
                 output.data = output.data[:, :-yshift, :-xshift]

@@ -5,6 +5,26 @@ import numpy as np
 import sys
 import io
 from tomotools.base import TomoStack
+import hyperspy.api as hs
+
+
+def _set_tomo_metadata(s):
+    tomo_metadata = {"cropped": False,
+                     "shifts": np.zeros([s.data.shape[0], 2]),
+                     "tiltaxis": 0,
+                     "tilts": np.zeros(s.data.shape[0]),
+                     "xshift": 0,
+                     "yshift": 0}
+    s.metadata.add_node("Tomography")
+    s.metadata.Tomography.add_dictionary(tomo_metadata)
+    return s
+
+
+class TestTomoStack:
+    def test_tomostack_create(self):
+        s = hs.signals.Signal2D(np.random.random([10, 100, 100]))
+        stack = TomoStack(s)
+        assert type(stack) is TomoStack
 
 
 class TestFiltering:
@@ -217,6 +237,16 @@ class TestSIRTError:
         assert (1 - (3.8709e12 / error.data[0])) < 0.001
         assert (1 - (2.8624e12 / error.data[1])) < 0.001
 
+    def test_sirt_error_no_slice(self):
+        stack = ds.get_needle_data(True)
+        rec_stack, error = stack.recon_error(None, iterations=50,
+                                             constrain=True, cuda=False)
+        assert error.data.shape[0] == rec_stack.data.shape[0]
+        assert rec_stack.data.shape[1:] ==\
+            (stack.data.shape[2], stack.data.shape[2])
+        assert (1 - (3.8709e12 / error.data[0])) < 0.001
+        assert (1 - (2.8624e12 / error.data[1])) < 0.001
+
 
 class TestTiltAlign:
 
@@ -263,3 +293,65 @@ class TestTransStack:
         stack = ds.get_needle_data(True)
         with pytest.raises(ValueError):
             stack.trans_stack(1, 1, 1, 'UNKNOWN')
+
+
+class TestReconstruct:
+    def test_cuda_detect(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[:, 120:121].deepcopy()
+        rec = slices.reconstruct('FBP', cuda=None)
+        assert type(rec) is TomoStack
+
+
+class TestManualAlign:
+    def test_manual_align_positive_x(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, xshift=10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_negative_x(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, xshift=-10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_positive_y(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, yshift=10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_negative_y(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, yshift=-10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_negative_y_positive_x(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, yshift=-10, xshift=10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_negative_x_positive_y(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, yshift=10, xshift=-10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_negative_y_negative_x(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, yshift=-10, xshift=-10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_positive_y_positive_x(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128, yshift=10, xshift=10)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_no_shifts(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(128)
+        assert type(shifted) is TomoStack
+
+
+class TestPlotSlices:
+    def test_plot_slices(self):
+        stack = ds.get_needle_data(True)
+        fig = stack.plot_slices()
+        assert type(fig) is matplotlib.figure.Figure
