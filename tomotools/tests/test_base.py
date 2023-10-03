@@ -262,8 +262,9 @@ class TestTiltAlign:
         assert type(ali) is TomoStack
 
     def test_tilt_align_maximage(self):
-        stack = ds.get_needle_data(True)
-        ali = stack.tilt_align('MaxImage')
+        stack = ds.get_needle_data()
+        reg = stack.stack_register('PC')
+        ali = reg.tilt_align('MaxImage')
         assert type(ali) is TomoStack
 
     def test_tilt_align_unknown_method(self):
