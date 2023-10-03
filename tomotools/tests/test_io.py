@@ -14,7 +14,7 @@ class TestHspy:
     def test_load_hspy_mrc(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")
-        stack = tomotools.io.loadhspy(filename)
+        stack = tomotools.io.load_hspy(filename)
         assert type(stack) is TomoStack
         assert stack.axes_manager.signal_shape == (256, 256)
         assert stack.axes_manager.navigation_shape == (77,)
@@ -23,7 +23,7 @@ class TestHspy:
     def test_load_hspy_hdf5(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF_Aligned.hdf5")
-        stack = tomotools.io.loadhspy(filename)
+        stack = tomotools.io.load_hspy(filename)
         with h5py.File(filename, 'r') as h5:
             h5_shape = h5['Experiments']['__unnamed__']['data'].shape
         assert type(stack) is TomoStack

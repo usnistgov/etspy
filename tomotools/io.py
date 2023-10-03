@@ -127,7 +127,7 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
     return stack
 
 
-def loadhspy(filename, tilts=None):
+def load_hspy(filename, tilts=None):
     """
     Read an MRC file to a TomoStack object using the Hyperspy reader.
 
@@ -229,7 +229,7 @@ def loadhspy(filename, tilts=None):
     return stack
 
 
-def loaddm(filename):
+def load_dm(filename):
     """
     Read DM image series.
 
@@ -274,19 +274,8 @@ def loaddm(filename):
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
 
-    s_new = TomoStack(s)
-    s_new.axes_manager[0].name = 'Tilt'
-    s_new.axes_manager[0].units = 'degrees'
-    s_new.axes_manager[0].offset = tilts[0]
-    s_new.axes_manager[0].scale = tilts[1] - tilts[0]
-    logger.info('Tilts found in metadata')
-
-    s_new.metadata.Tomography.tilts = tilts
-    s_new.metadata.Tomography.shifts = np.zeros([s_new.data.shape[0], 2])
-    s_new.metadata.Tomography.tiltaxis = 0.0
-    s_new.metadata.Tomography.xshift = 0.0
-
-    return s_new
+    s = convert_to_tomo_stack(s, tilts)
+    return s
 
 
 def load_dm_series(input_data):
@@ -328,14 +317,7 @@ def load_dm_series(input_data):
     files_sorted = list(np.array(files)[sorted_order])
     del s
     stack = hspy.load(files_sorted, stack=True, new_axis_name='tilt')
-    stack.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha\
-        = tilts_sorted
-    stack.axes_manager[0].scale = tilts_sorted[1] - tilts_sorted[0]
-    stack.axes_manager[0].units = 'degrees'
-    stack.axes_manager[0].offset = tilts_sorted[0]
-
-    stack = convert_to_tomo_stack(stack)
-    stack.metadata.Tomography.tilts = tilts_sorted
+    stack = convert_to_tomo_stack(stack, tilts_sorted)
     return stack
 
 
@@ -390,9 +372,9 @@ def load(filename, tilts=None):
     ext = os.path.splitext(filename)[1]
     if ext in ['.HDF5', '.hdf5', '.hd5', '.HD5', '.MRC', '.mrc', '.ALI',
                '.ali', '.REC', '.rec', '.hspy', '.HSPY']:
-        stack = loadhspy(filename, tilts)
+        stack = load_hspy(filename, tilts)
     elif ext in ['.dm3', '.DM3', '.dm4', '.DM4']:
-        stack = loaddm(filename)
+        stack = load_dm(filename)
     else:
         raise ValueError("Unknown file type")
     return stack
