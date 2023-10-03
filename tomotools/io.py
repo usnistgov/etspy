@@ -490,7 +490,8 @@ def load(filename, tilts=None):
         elif ext.lower() in dm_file_types:
             stack = load_dm(filename)
         else:
-            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
+            raise TypeError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
+
     elif type(filename) is list:
         ext = os.path.splitext(filename[0])[1]
         if ext.lower() in dm_file_types:
@@ -500,7 +501,7 @@ def load(filename, tilts=None):
             mdocfiles = [i[:-3] + "mdoc" for i in filename]
             stack = load_serialem_series(filename, mdocfiles)
         else:
-            raise ValueError("Unknown file type %s. Must be one of %s " % (ext, [i for i in known_file_types]))
+            raise TypeError("Unknown file type %s. Must be one of %s " % (ext, [i for i in known_file_types]))
     else:
-        raise ValueError("Unknown filename type %s.  Must be either a string or list of strings." % type(filename))
+        raise TypeError("Unknown filename type %s.  Must be either a string or list of strings." % type(filename))
     return stack

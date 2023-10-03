@@ -28,7 +28,7 @@ class TestHspy:
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")
         stack_orig = hs.load(filename)
-        stack = tomotools.io.load_hspy(filename)
+        stack = tomotools.io.load(filename)
 
         assert stack.axes_manager.signal_shape == (256, 256)
         assert stack.axes_manager.navigation_shape == (77,)
@@ -194,10 +194,22 @@ class TestSerialEM:
 
 
 class TestUnknown:
-    def test_load_unknown(self):
+    def test_load_unknown_string(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.NONE")
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
+            tomotools.load(filename)
+
+    def test_load_unknown_list(self):
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.NONE")
+        files = [filename, filename]
+        with pytest.raises(TypeError):
+            tomotools.load(files)
+
+    def test_load_unknown_type(self):
+        filename = np.zeros(10)
+        with pytest.raises(TypeError):
             tomotools.load(filename)
 
 
