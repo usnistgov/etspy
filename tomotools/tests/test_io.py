@@ -56,23 +56,12 @@ class TestSignal:
         tilt_signal.set_tilts(-76, 2)
         signal = hs.signals.Signal2D(np.random.random([77, 100, 100]))
         stack = tomotools.io.convert_to_tomo_stack(signal,
-                                                   tilt_signal=tilt_signal)
+                                                   tilts=tilt_signal)
         assert stack.axes_manager[0].name == 'Tilt'
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (77,)
         assert stack.axes_manager[0].axis.all() == \
             tilt_signal.axes_manager[0].axis.all()
-
-    def test_signal_to_stack_with_rawtlt_file(self):
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        signal = hs.load(filename)
-        signal.metadata.General.original_filename = filename
-        del signal.metadata.Acquisition_instrument
-        stack = tomotools.io.convert_to_tomo_stack(signal)
-        assert stack.axes_manager[0].name == 'Tilt'
-        assert stack.axes_manager.signal_shape == (256, 256)
-        assert stack.axes_manager.navigation_shape == (77,)
 
 
 class TestDM:

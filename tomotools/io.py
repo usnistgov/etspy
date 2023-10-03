@@ -94,7 +94,7 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
     elif type(data) is hspy.signals.Signal2D:
         stack = data.deepcopy()
     else:
-        raise (TypeError, "Unsupported data type. Must be either"
+        raise TypeError("Unsupported data type. Must be either"
               "NumPy Array or Hyperspy Signal")
 
     stack = _set_tomo_metadata(stack)
@@ -109,10 +109,11 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
         tilts = np.zeros(stack.data.shape[0])
         logger.info('Tilts are note defined. Please add tilts to Tomography metadata.')
 
-    if tilts.shape != stack.data.shape[0]:
-        raise (ValueError, "Number of tilts is not consistent with data shape."
-               "%s does not equal %s" % (tilts.shape, stack.data.shape))
+    if tilts.shape[0] != stack.data.shape[0]:
+        raise ValueError("Number of tilts is not consistent with data shape."
+                         "%s does not equal %s" % (tilts.shape[0], stack.data.shape[0]))
 
+    stack = _set_axes(stack)
     stack.metadata.Tomography.tilts = tilts
     stack.axes_manager[0].offset = tilts[0]
     stack.axes_manager[0].scale = tilts[1] - tilts[0]
