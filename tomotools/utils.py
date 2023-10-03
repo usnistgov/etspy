@@ -43,5 +43,8 @@ def register_serialem_stack(stack, method='PC'):
         temp = TomoStack(np.float32(stack.data[i]))
         reg[i, :, :] = temp.stack_register(method=method).data.mean(0)
     reg = convert_to_tomo_stack(reg)
+
+    if stack.metadata.has_item("Tomography"):
+        reg.metadata.Tomography.tilts = stack.metadata.Tomography.tilts
     align_logger.setLevel(log_level)
     return reg

@@ -79,7 +79,6 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
                          "yshift": 0}
         s.metadata.add_node("Tomography")
         s.metadata.Tomography.add_dictionary(tomo_metadata)
-        s.metadata.Tomography
         return s
 
     def _get_manual_tilts():
@@ -107,7 +106,7 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
         tilts = _get_manual_tilts()
     else:
         tilts = np.zeros(stack.data.shape[0])
-        logger.info('Tilts are note defined. Please add tilts to Tomography metadata.')
+        logger.info('Tilts are not defined. Please add tilts to Tomography metadata.')
 
     if tilts.shape[0] != stack.data.shape[0]:
         raise ValueError("Number of tilts is not consistent with data shape."
@@ -321,47 +320,6 @@ def load_dm_series(input_data):
     return stack
 
 
-def load(filename, tilts=None):
-    """
-    Create a TomoStack object using data from a file.
-
-    Parameters
-    ----------
-    filename : string
-        Name of file that contains data to be read.  Accepted formats (.MRC,
-        .RAW/.RPL pair, .DM3, .DM4)
-
-    tilts : list or NumPy array
-        List of floats indicating the specimen tilt at each projection
-
-    Returns
-    ----------
-    stack : TomoStack object
-
-    """
-    known_file_types = [".hdf5", ".mrc", ".ali", ".rec", ".hspy", ".dm3", ".dm4"]
-    hspy_file_types = ['.hdf5', '.h5', '.mrc', '.ali', '.rec', '.hspy']
-    dm_file_types = ['.dm3', '.dm4']
-
-    if type(filename) is str:
-        ext = os.path.splitext(filename)[1]
-        if ext.lower() in hspy_file_types:
-            stack = load_hspy(filename, tilts)
-        if ext.lower() in dm_file_types:
-            stack = load_dm(filename)
-        else:
-            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
-    elif type(filename) is list:
-        ext = os.path.splitext(filename[0])[1]
-        if ext.lower() in dm_file_types:
-            stack = load_dm_series(filename)
-        elif ext.lower() == '.mrc':
-            stack = load_serialem_series(filename)
-        else:
-            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
-    return stack
-
-
 def load_serialem_series(mrcfiles, mdocfiles):
     """
     Load a multi-frame series collected by SerialEM.
@@ -410,6 +368,34 @@ def load_serialem_series(mrcfiles, mdocfiles):
                             metadata[k] = float(line.split('=')[1].strip())
         return metadata
 
+    def _set_axes_serialem(s, tilts, meta):
+        s.axes_manager[0].scale = 1
+        s.axes_manager[0].offset = 0
+        s.axes_manager[0].name = 'multiframe'
+        s.axes_manager[0].units = 'scan'
+        s.axes_manager[1].scale = tilts[1] - tilts[0]
+        s.axes_manager[1].offset = tilts[0]
+        s.axes_manager[1].units = 'degrees'
+        s.axes_manager[1].units = 'Tilt'
+        s.axes_manager[2].scale = meta[0]['PixelSpacing'] / 10
+        s.axes_manager[3].scale = meta[0]['PixelSpacing'] / 10
+        s.axes_manager[2].units = 'nm'
+        s.axes_manager[3].units = 'nm'
+        s.axes_manager[2].name = 'y'
+        s.axes_manager[3].name = 'x'
+        return s
+
+    def _set_tomo_metadata_serialem(s):
+        tomo_metadata = {"cropped": False,
+                         "shifts": np.zeros([s.data.shape[0], 2]),
+                         "tiltaxis": 0,
+                         "tilts": np.zeros(s.data.shape[0]),
+                         "xshift": 0,
+                         "yshift": 0}
+        s.metadata.add_node("Tomography")
+        s.metadata.Tomography.add_dictionary(tomo_metadata)
+        return s
+
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
     mrc_logger.setLevel(logging.ERROR)
@@ -424,21 +410,12 @@ def load_serialem_series(mrcfiles, mdocfiles):
     tilts.sort()
 
     for i in range(0, len(mrcfiles)):
-        fn = mdocfiles[tilts_sort[i]][:-5]
+        fn = mdocfiles[tilts_sort[i]][:-4] + "mrc"
         stack[i] = hspy.load(fn)
 
     images_per_tilt = stack[0].data.shape[0]
     stack = hspy.stack(stack)
-    stack.axes_manager[1].scale = tilts[1] - tilts[0]
-    stack.axes_manager[1].offset = tilts[0]
-    stack.axes_manager[1].units = 'degrees'
-    stack.axes_manager[1].units = 'Tilt'
-    stack.axes_manager[2].scale = meta[0]['PixelSpacing'] / 10
-    stack.axes_manager[3].scale = meta[0]['PixelSpacing'] / 10
-    stack.axes_manager[2].units = 'nm'
-    stack.axes_manager[3].units = 'nm'
-    stack.axes_manager[2].name = 'y'
-    stack.axes_manager[3].name = 'x'
+    stack = _set_axes_serialem(stack, tilts, meta)
 
     if not stack.metadata.has_item('Acquisition_instrument.TEM'):
         stack.metadata.add_node('Acquisition_instrument.TEM')
@@ -449,9 +426,12 @@ def load_serialem_series(mrcfiles, mdocfiles):
     stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]['SpotSize']
     stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]['Defocus']
     stack.metadata.General.original_filename = meta[0]['ImageFile']
-
+    stack = _set_tomo_metadata_serialem(stack)
+    stack.metadata.Tomography.tilts = tilts
+    logger.info('SerialEM Multiframe stack successfully loaded. '
+                'Use tomotools.utils.register_serialem_stack to align frames.')
     mrc_logger.setLevel(log_level)
-    return stack, tilts
+    return stack
 
 
 def parse_mrc_header(filename):
@@ -511,3 +491,46 @@ def parse_mrc_header(filename):
         header['ext_header'] = np.fromfile(
             h, np.int16, int(header['nextra'] / 2))
     return header
+
+
+def load(filename, tilts=None):
+    """
+    Create a TomoStack object using data from a file.
+
+    Parameters
+    ----------
+    filename : string
+        Name of file that contains data to be read.  Accepted formats (.MRC,
+        .RAW/.RPL pair, .DM3, .DM4)
+
+    tilts : list or NumPy array
+        List of floats indicating the specimen tilt at each projection
+
+    Returns
+    ----------
+    stack : TomoStack object
+
+    """
+    known_file_types = [".hdf5", ".mrc", ".ali", ".rec", ".hspy", ".dm3", ".dm4"]
+    hspy_file_types = ['.hdf5', '.h5', '.mrc', '.ali', '.rec', '.hspy']
+    dm_file_types = ['.dm3', '.dm4']
+
+    if type(filename) is str:
+        ext = os.path.splitext(filename)[1]
+        if ext.lower() in hspy_file_types:
+            stack = load_hspy(filename, tilts)
+        if ext.lower() in dm_file_types:
+            stack = load_dm(filename)
+        else:
+            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
+    elif type(filename) is list:
+        ext = os.path.splitext(filename[0])[1]
+        if ext.lower() in dm_file_types:
+            stack = load_dm_series(filename)
+        elif ext.lower() == '.mrc':
+            logger.info('Data appears to be a SerialEM multiframe series.')
+            mdocfiles = [i[:-3] + "mdoc" for i in filename]
+            stack = load_serialem_series(filename, mdocfiles)
+        else:
+            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
+    return stack
