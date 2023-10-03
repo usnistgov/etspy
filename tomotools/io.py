@@ -316,39 +316,9 @@ def load_dm_series(input_data):
     tilts_sorted = np.sort(tilts)
     files_sorted = list(np.array(files)[sorted_order])
     del s
-    stack = hspy.load(files_sorted, stack=True, new_axis_name='tilt')
+    stack = hspy.load(files_sorted, stack=True)
     stack = convert_to_tomo_stack(stack, tilts_sorted)
     return stack
-
-
-def parse_mdoc(mdoc_file):
-    """
-    Parse a SerialEM mdoc file.
-
-    Args
-    ----------
-    mdoc_file : str
-        Name of the mdoc file to parse
-
-    Returns
-    ----------
-    metadata : dict
-        Dictionary with values parsed from mdoc file
-
-    """
-    keys = ['PixelSpacing', 'Voltage', 'ImageFile', 'Image Size', 'DataMode',
-            'TiltAngle', 'Magnification', 'ExposureTime', 'SpotSize', 'Defocus']
-    metadata = {}
-    with open(mdoc_file, 'r') as f:
-        for i in range(0, 35):
-            line = f.readline()
-            for k in keys:
-                if k in line:
-                    if k == 'ImageFile':
-                        metadata[k] = line.split('=')[1].strip()
-                    else:
-                        metadata[k] = float(line.split('=')[1].strip())
-    return metadata
 
 
 def load(filename, tilts=None):
@@ -369,18 +339,30 @@ def load(filename, tilts=None):
     stack : TomoStack object
 
     """
-    ext = os.path.splitext(filename)[1]
-    if ext in ['.HDF5', '.hdf5', '.hd5', '.HD5', '.MRC', '.mrc', '.ALI',
-               '.ali', '.REC', '.rec', '.hspy', '.HSPY']:
-        stack = load_hspy(filename, tilts)
-    elif ext in ['.dm3', '.DM3', '.dm4', '.DM4']:
-        stack = load_dm(filename)
-    else:
-        raise ValueError("Unknown file type")
+    known_file_types = [".hdf5", ".mrc", ".ali", ".rec", ".hspy", ".dm3", ".dm4"]
+    hspy_file_types = ['.hdf5', '.h5', '.mrc', '.ali', '.rec', '.hspy']
+    dm_file_types = ['.dm3', '.dm4']
+
+    if type(filename) is str:
+        ext = os.path.splitext(filename)[1]
+        if ext.lower() in hspy_file_types:
+            stack = load_hspy(filename, tilts)
+        if ext.lower() in dm_file_types:
+            stack = load_dm(filename)
+        else:
+            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
+    elif type(filename) is list:
+        ext = os.path.splitext(filename[0])[1]
+        if ext.lower() in dm_file_types:
+            stack = load_dm_series(filename)
+        elif ext.lower() == '.mrc':
+            stack = load_serialem_series(filename)
+        else:
+            raise ValueError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
     return stack
 
 
-def read_serialem_series(mrcfiles, mdocfiles):
+def load_serialem_series(mrcfiles, mdocfiles):
     """
     Load a multi-frame series collected by SerialEM.
 
@@ -398,6 +380,36 @@ def read_serialem_series(mrcfiles, mdocfiles):
         Tilt series resulting by averaging frames at each tilt
 
     """
+
+    def _parse_mdoc(mdoc_file):
+        """
+        Parse a SerialEM mdoc file.
+
+        Args
+        ----------
+        mdoc_file : str
+            Name of the mdoc file to parse
+
+        Returns
+        ----------
+        metadata : dict
+            Dictionary with values parsed from mdoc file
+
+        """
+        keys = ['PixelSpacing', 'Voltage', 'ImageFile', 'Image Size', 'DataMode',
+                'TiltAngle', 'Magnification', 'ExposureTime', 'SpotSize', 'Defocus']
+        metadata = {}
+        with open(mdoc_file, 'r') as f:
+            for i in range(0, 35):
+                line = f.readline()
+                for k in keys:
+                    if k in line:
+                        if k == 'ImageFile':
+                            metadata[k] = line.split('=')[1].strip()
+                        else:
+                            metadata[k] = float(line.split('=')[1].strip())
+        return metadata
+
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
     mrc_logger.setLevel(logging.ERROR)
@@ -405,7 +417,7 @@ def read_serialem_series(mrcfiles, mdocfiles):
     stack = [None] * len(mrcfiles)
     meta = [None] * len(mdocfiles)
     for i in range(0, len(mdocfiles)):
-        meta[i] = parse_mdoc(mdocfiles[i])
+        meta[i] = _parse_mdoc(mdocfiles[i])
 
     tilts = np.array([meta[i]['TiltAngle'] for i in range(0, len(meta))])
     tilts_sort = np.argsort(tilts)
