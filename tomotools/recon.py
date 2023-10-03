@@ -50,7 +50,6 @@ def run(stack, method, iterations=20, constrain=None,
     if stack.metadata.Tomography.tilts is None:
         raise ValueError("Tilts not defined")
 
-    print(cuda)
     angles = stack.metadata.Tomography.tilts
     if method == 'FBP':
         if cuda is False:
