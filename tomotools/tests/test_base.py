@@ -250,23 +250,23 @@ class TestSIRTError:
 
 class TestTiltAlign:
 
-    def test_test_tilt_align_com_axis_zero(self):
+    def test_tilt_align_com_axis_zero(self):
         stack = ds.get_needle_data(True)
         ali = stack.tilt_align('CoM', axis=0, locs=[64, 100, 114])
         assert type(ali) is TomoStack
 
-    def test_test_tilt_align_com_axis_one(self):
+    def test_tilt_align_com_axis_one(self):
         stack = ds.get_needle_data(True)
         stack = stack.swap_axes(1, 2)
         ali = stack.tilt_align('CoM', axis=1, locs=[64, 100, 114])
         assert type(ali) is TomoStack
 
-    def test_test_tilt_align_maximage(self):
+    def test_tilt_align_maximage(self):
         stack = ds.get_needle_data(True)
         ali = stack.tilt_align('MaxImage')
         assert type(ali) is TomoStack
 
-    def test_test_tilt_align_unknown_method(self):
+    def test_tilt_align_unknown_method(self):
         stack = ds.get_needle_data(True)
         with pytest.raises(ValueError):
             stack.tilt_align('UNKNOWN')
