@@ -54,7 +54,6 @@ class TomoStack(Signal2D):
             self.metadata.add_node("Tomography")
             self.metadata.Tomography.set_item("tilts", np.zeros(self.data.shape[0]))
             self.metadata.Tomography.set_item("tiltaxis", 0)
-            self.metadata.Tomography.set_item("rotation", 0)
             self.metadata.Tomography.set_item("xshift", 0)
             self.metadata.Tomography.set_item("yshift", 0)
             self.metadata.Tomography.set_item(
@@ -65,8 +64,6 @@ class TomoStack(Signal2D):
                 self.metadata.Tomography.set_item("tilts", np.zeros(self.data.shape[0]))
             if not self.metadata.Tomography.has_item("tiltaxis"):
                 self.metadata.Tomography.set_item("tiltaxis", 0)
-            if not self.metadata.Tomography.has_item("rotation"):
-                self.metadata.Tomography.set_item("rotation", 0)
             if not self.metadata.Tomography.has_item("xshift"):
                 self.metadata.Tomography.set_item("xshift", 0)
             if not self.metadata.Tomography.has_item("yshift"):
@@ -144,8 +141,8 @@ class TomoStack(Signal2D):
                 self.metadata.Tomography.xshift == 0.0]) and\
            any([self.metadata.Tomography.yshift is None,
                 self.metadata.Tomography.yshift == 0.0]) and\
-           any([self.metadata.Tomography.rotation is None,
-                self.metadata.Tomography.rotation == 0.0]):
+           any([self.metadata.Tomography.tiltaxis is None,
+                self.metadata.Tomography.tiltaxis == 0.0]):
             raise ValueError('No transformation have been applied '
                              'to this stack')
 
@@ -830,7 +827,6 @@ class TomoStack(Signal2D):
             self.metadata.add_node("Tomography")
             self.metadata.Tomography.set_item("tilts", tilts)
             self.metadata.Tomography.set_item("tiltaxis", 0)
-            self.metadata.Tomography.set_item("rotation", 0)
             self.metadata.Tomography.set_item("xshift", 0)
             self.metadata.Tomography.set_item("yshift", 0)
             self.metadata.Tomography.set_item("shifts", None)
