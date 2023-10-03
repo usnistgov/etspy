@@ -48,7 +48,7 @@ class TomoStack(Signal2D):
 
     def __init__(self, *args, **kwargs):
         """Initialize TomoStack class."""
-        super(Signal2D, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if not self.metadata.has_item("Tomography"):
             self.metadata.add_node("Tomography")
@@ -74,9 +74,9 @@ class TomoStack(Signal2D):
             if not self.metadata.Tomography.has_item("cropped"):
                 self.metadata.Tomography.set_item("cropped", False)
 
-    def plot(self, *args, **kwargs):
+    def plot(self, navigator='slider', *args, **kwargs):
         """Plot function to set default navigator to 'slider'."""
-        super().plot(navigator='slider', *args, **kwargs)
+        super().plot(navigator, *args, **kwargs)
 
     def test_correlation(self, images=None):
         """
