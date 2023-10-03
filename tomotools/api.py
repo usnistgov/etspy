@@ -8,6 +8,7 @@ from tomotools.io import load
 from tomotools.base import TomoStack
 from tomotools import io
 from tomotools import utils
+from tomotools import align
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

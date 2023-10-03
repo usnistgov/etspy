@@ -540,10 +540,7 @@ def tilt_com(stack, locs=None, interactive=False):
 
     def calc_shifts(stack, nslice):
         # Convert tilts to rads
-        if stack.metadata.Tomography.tilts is None:
-            thetas = np.pi * stack.axes_manager[0].axis / 180.
-        else:
-            thetas = np.pi * stack.metadata.Tomography.tilts / 180.
+        thetas = np.pi * stack.metadata.Tomography.tilts / 180.
 
         # Calculate centers of mass for for each row of the sinogram
         coms = get_coms(stack, nslice)
@@ -559,10 +556,7 @@ def tilt_com(stack, locs=None, interactive=False):
 
     def tilt_analyze(stack, slices):
         # Convert tilts to rads
-        if stack.metadata.Tomography.tilts is None:
-            thetas = np.pi * stack.axes_manager[0].axis / 180.
-        else:
-            thetas = np.pi * stack.metadata.Tomography.tilts / 180.
+        thetas = np.pi * stack.metadata.Tomography.tilts / 180.
         r = np.zeros(len(slices))
         x0 = np.zeros(len(slices))
         z0 = np.zeros(len(slices))
@@ -604,6 +598,9 @@ def tilt_com(stack, locs=None, interactive=False):
                         % (locs[0], locs[1], locs[2]))
     else:
         locs = np.int16(np.sort(locs))
+
+    if stack.metadata.Tomography.tilts is None:
+        raise ValueError("No tilts in stack.metadata.Tomography.")
 
     shifts, coms = calc_shifts(stack, locs[1])
     shifted = shift_stack(stack, shifts)
@@ -661,23 +658,23 @@ def tilt_maximage(data, limit=10, delta=0.3, show_progressbar=False):
             Filtered image
 
         """
-        if img.shape[0] < img.shape[1]:
-            center_loc = np.int32((img.shape[1] - img.shape[0]) / 2)
-            img = img[:, center_loc:-center_loc]
-            if img.shape[0] != img.shape[1]:
-                img = img[:, 0:-1]
-            h = np.hamming(img.shape[0])
-            ham2d = np.sqrt(np.outer(h, h))
-        elif img.shape[1] < img.shape[0]:
-            center_loc = np.int32((img.shape[0] - img.shape[1]) / 2)
-            img = img[center_loc:-center_loc, :]
-            if img.shape[0] != img.shape[1]:
-                img = img[0:-1, :]
-            h = np.hamming(img.shape[1])
-            ham2d = np.sqrt(np.outer(h, h))
-        else:
-            h = np.hamming(img.shape[0])
-            ham2d = np.sqrt(np.outer(h, h))
+        # if img.shape[0] < img.shape[1]:
+        #     center_loc = np.int32((img.shape[1] - img.shape[0]) / 2)
+        #     img = img[:, center_loc:-center_loc]
+        #     if img.shape[0] != img.shape[1]:
+        #         img = img[:, 0:-1]
+        #     h = np.hamming(img.shape[0])
+        #     ham2d = np.sqrt(np.outer(h, h))
+        # elif img.shape[1] < img.shape[0]:
+        #     center_loc = np.int32((img.shape[0] - img.shape[1]) / 2)
+        #     img = img[center_loc:-center_loc, :]
+        #     if img.shape[0] != img.shape[1]:
+        #         img = img[0:-1, :]
+        #     h = np.hamming(img.shape[1])
+        #     ham2d = np.sqrt(np.outer(h, h))
+        # else:
+        h = np.hamming(img.shape[0])
+        ham2d = np.sqrt(np.outer(h, h))
         out = ham2d * img
         return out
 
@@ -706,6 +703,9 @@ def tilt_maximage(data, limit=10, delta=0.3, show_progressbar=False):
         return hist, score
 
     image = np.max(data.data, 0)
+
+    if image.shape[0] != image.shape[1]:
+        raise ValueError("Invalid data shape. Currently only square signal dimensions are supported.")
     rot_pos = ndimage.rotate(hamming(image), -limit / 2,
                              reshape=False, order=3)
     rot_neg = ndimage.rotate(hamming(image), limit / 2,
@@ -767,18 +767,15 @@ def align_to_other(stack, other):
     yshift = stack.metadata.Tomography.yshift
     out.metadata.Tomography.yshift = stack.metadata.Tomography.yshift
 
-    if type(shifts) is np.ndarray:
-        out = apply_shifts(out, shifts)
-    else:
-        raise TypeError("Shifts found in metadata are of type %s. "
-                        "Expected NumPy array" % (type(shifts)))
+    out = apply_shifts(out, shifts)
 
     if stack.metadata.Tomography.cropped:
         out = shift_crop(out)
 
-    if (tiltaxis != 0) or (xshift != 0):
-        out = out.trans_stack(yshift=xshift, angle=tiltaxis)
-        out = out.swap_axes(1, 2)
+    out = out.trans_stack(xshift, yshift, tiltaxis)
+    # if (tiltaxis != 0) or (xshift != 0):
+    #     out = out.trans_stack(yshift=xshift, angle=tiltaxis)
+    #     out = out.swap_axes(1, 2)
 
     logger.info('TomoStack alignment applied')
     logger.info('X-shift: %.1f' % xshift)
