@@ -13,7 +13,6 @@ import os
 import hyperspy.api as hspy
 from tomotools.base import TomoStack
 import logging
-import glob
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -94,7 +93,7 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
         stack = data.deepcopy()
     else:
         raise TypeError("Unsupported data type. Must be either"
-              "NumPy Array or Hyperspy Signal")
+              "NumPy Array or Hyperspy Signal2D")
 
     stack = _set_tomo_metadata(stack)
 
@@ -261,7 +260,7 @@ def load_dm(filename):
     return s
 
 
-def load_dm_series(input_data):
+def load_dm_series(files):
     """
     Load a series of individual DM3/DM4 files as a TomoStack object.
 
@@ -275,24 +274,6 @@ def load_dm_series(input_data):
     stack : TomoStack object
 
     """
-    if type(input_data) is str:
-        dirname = input_data
-        if dirname[-1] != "/":
-            dirname = dirname + "/"
-        dm3files, dm4files = [
-            glob.glob(i) for i in [dirname + "*.dm3", dirname + "*.dm4"]]
-        if len(dm3files) == 0 and len(dm4files) == 0:
-            raise ValueError("No DM files found in path")
-        elif len(dm3files) > 0 and len(dm4files) > 0:
-            raise ValueError("Multipe DM formats found in path")
-        elif len(dm3files) > 0:
-            files = dm3files
-        else:
-            files = dm4files
-    elif type(input_data) is list:
-        files = input_data
-    else:
-        raise ValueError("Unknown input data type.")
     s = hspy.load(files)
     tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
     sorted_order = np.argsort(tilts)
