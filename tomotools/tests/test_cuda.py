@@ -10,33 +10,33 @@ import pytest
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestAlignCUDA:
     def test_test_align_cuda(self):
-            stack = ds.get_needle_data(True)
-            stack.test_align(thickness=200, cuda=True)
-            fig = matplotlib.pylab.gcf()
-            assert len(fig.axes) == 3
+        stack = ds.get_needle_data(True)
+        stack.test_align(thickness=200, cuda=True)
+        fig = matplotlib.pylab.gcf()
+        assert len(fig.axes) == 3
 
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestReconCUDA:
     def test_recon_fbp_gpu(self):
-            stack = ds.get_needle_data(True)
-            slices = stack.isig[:, 120:121].deepcopy()
-            rec = slices.reconstruct('FBP', cuda=True)
-            assert type(stack) is tomotools.base.TomoStack
-            assert type(rec) is tomotools.base.TomoStack
-            assert rec.data.shape[1] == slices.data.shape[2]
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[:, 120:121].deepcopy()
+        rec = slices.reconstruct('FBP', cuda=True)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.TomoStack
+        assert rec.data.shape[1] == slices.data.shape[2]
 
     def test_recon_sirt_gpu(self):
-            stack = ds.get_needle_data(True)
-            slices = stack.isig[:, 120:121].deepcopy()
-            rec = slices.reconstruct('SIRT',
-                                    constrain=True,
-                                    iterations=2,
-                                    thresh=0,
-                                    cuda=True)
-            assert type(stack) is tomotools.base.TomoStack
-            assert type(rec) is tomotools.base.TomoStack
-            assert rec.data.shape[1] == slices.data.shape[2]
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[:, 120:121].deepcopy()
+        rec = slices.reconstruct('SIRT',
+                                 constrain=True,
+                                 iterations=2,
+                                 thresh=0,
+                                 cuda=True)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.TomoStack
+        assert rec.data.shape[1] == slices.data.shape[2]
 
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
