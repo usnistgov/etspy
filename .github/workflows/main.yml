@@ -17,7 +17,7 @@ jobs:
       image: aaherzing/tomotools:latest
     steps:
     - uses: actions/checkout@v3
-    - run: $CONDA/bin/activate tomo
+    - run: source /opt/conda/bin/activate tomo
     - run: pip install -e ./
     - run: pytest --doctest-modules --ignore=tomotools/tests/test_datasets.py tomotools/ 
     - if: always()
