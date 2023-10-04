@@ -7,5 +7,5 @@ jobs:
         image: aaherzing/tomotools:latest
       steps:
       - uses: actions/checkout@v3
-      - run: . conda info --envs
-      - run: . activate tomo
+      - run: conda info --envs
+      - run: activate tomo
