@@ -246,13 +246,7 @@ class TestTiltAlign:
 
     def test_tilt_align_com_axis_zero(self):
         stack = ds.get_needle_data(True)
-        ali = stack.tilt_align('CoM', axis=0, locs=[64, 100, 114])
-        assert type(ali) is TomoStack
-
-    def test_tilt_align_com_axis_one(self):
-        stack = ds.get_needle_data(True)
-        stack = stack.swap_axes(1, 2)
-        ali = stack.tilt_align('CoM', axis=1, locs=[64, 100, 114])
+        ali = stack.tilt_align('CoM', locs=[64, 100, 114])
         assert type(ali) is TomoStack
 
     def test_tilt_align_maximage(self):

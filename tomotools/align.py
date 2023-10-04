@@ -608,8 +608,7 @@ def tilt_com(stack, locs=None, interactive=False):
         shifted.metadata.Tomography.shifts[:, 0] - shifts
     tilt_shift, tilt_rotation, r = tilt_analyze(stack, locs)
 
-    final = shifted.swap_axes(1, 2)
-    final = final.trans_stack(xshift=-tilt_shift, angle=-tilt_rotation)
+    final = shifted.trans_stack(yshift=tilt_shift, angle=tilt_rotation)
 
     logger.info("Calculated tilt-axis shift %.2f" % tilt_shift)
     logger.info("Calculated tilt-axis rotation %.2f" % tilt_rotation)

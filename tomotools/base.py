@@ -374,7 +374,7 @@ class TomoStack(Signal2D):
         return out
 
     def tilt_align(self, method, limit=10, delta=0.3, locs=None,
-                   axis=0, show_progressbar=False):
+                   show_progressbar=False):
         """
         Align the tilt axis of a TomoStack.
 
@@ -440,8 +440,7 @@ class TomoStack(Signal2D):
 
         """
         method = method.lower()
-        if axis == 1:
-            self = self.swap_axes(1, 2)
+
         if method == 'com':
             out = align.tilt_com(self, locs)
         elif method == 'maximage':
@@ -450,9 +449,6 @@ class TomoStack(Signal2D):
             raise ValueError(
                 "Invalid alignment method: %s."
                 "Must be 'CoM', 'MaxImage', or 'Minimize'" % method)
-
-        if axis == 1:
-            self = self.swap_axes(2, 1)
         return out
 
     def reconstruct(self, method='FBP', iterations=None, constrain=False,
