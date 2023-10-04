@@ -971,7 +971,7 @@ class TomoStack(Signal2D):
 
         """
         if not nslice:
-            nslice = np.int32(self.data.shape[1] / 2)
+            nslice = np.int32(self.data.shape[2] / 2)
 
         if not cuda:
             if astra.use_cuda():
@@ -980,7 +980,7 @@ class TomoStack(Signal2D):
             else:
                 cuda = False
                 logger.info('CUDA not detected with Astra')
-        sinogram = self.isig[:, nslice:nslice + 1].deepcopy()
+        sinogram = self.isig[nslice:nslice + 1, :].deepcopy()
         angles = self.metadata.Tomography.tilts
         rec_stack, error = recon.astra_sirt_error(sinogram, angles,
                                                   iterations=iterations,
