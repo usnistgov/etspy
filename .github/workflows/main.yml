@@ -18,7 +18,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - run: . /opt/conda/bin/activate tomo
-    - run: . /opt/conda/bin/conda list
+    - run: pip install pytest
     - run: pip install -e ./
     - run: pytest --doctest-modules --ignore=tomotools/tests/test_datasets.py tomotools/ 
     - if: always()
