@@ -8,6 +8,5 @@ RUN conda create --name tomo -c astra-toolbox astra-toolbox
 RUN conda install --name tomo pytest flake8 pydocstyle
 RUN conda install --name tomo hyperspy -c conda-forge
 
-SHELL ["conda", "run", "-n", "tomo", "/bin/bash", "-c"]
-
+RUN . /opt/conda/bin/activate tomo
 RUN pip install pystackreg
