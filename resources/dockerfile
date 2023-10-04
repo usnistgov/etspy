@@ -1,13 +1,29 @@
-FROM continuumio/miniconda3:latest
+FROM ubuntu:20.04
+FROM condaforge/miniforge3:latest
+ENV DEBIAN_FRONTEND noninteractive
+# ENV PATH="/root/miniconda3/bin:${PATH}"
+# ARG PATH="/root/miniconda3/bin:${PATH}"
 
-RUN conda update conda
-
-RUN conda install python=3.7
-RUN conda install pytest flake8 pydocstyle -c defaults
-RUN conda install hyperspy -c conda-forge
-RUN conda install astra-toolbox -c astra-toolbox/label/dev
-RUN conda install opencv -c conda-forge
-
-RUN apt-get update -q
+RUN apt-get update -qq -y
 RUN apt-get install ffmpeg libsm6 libxext6 g++ -y
+# RUN apt-get install -y wget 
+# # && rm -rf /var/lib/apt/lists/
+
+# RUN wget \
+#     https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+#     && mkdir /root/.conda \
+#     && bash Miniconda3-latest-Linux-x86_64.sh -b \
+#     && rm -f Miniconda3-latest-Linux-x86_64.sh 
+RUN conda update -n base -c defaults -c conda-forge conda
+RUN conda update --all -y
+
+# RUN conda install python=3.7
+# RUN conda install hyperspy -c conda-forge -y
+RUN conda install -c conda-forge hyperspy-base -y
+RUN conda install astra-toolbox -c astra-toolbox -y
+RUN conda install pytest flake8 pydocstyle -y
+# RUN conda install opencv -c conda-forge
+
 RUN pip install pystackreg
+
+
