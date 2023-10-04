@@ -564,14 +564,14 @@ class TomoStack(Signal2D):
             CUDA if astra.use_cuda() is True.
         """
         if slices is None:
-            mid = np.int32(self.data.shape[1] / 2)
+            mid = np.int32(self.data.shape[2] / 2)
             slices = np.int32([mid / 2, mid, mid + mid / 2])
 
         if (xshift != 0.0) or (angle != 0.0):
-            shifted = self.trans_stack(xshift=xshift, yshift=0, angle=angle)
+            shifted = self.trans_stack(xshift=0, yshift=xshift, angle=angle)
         else:
             shifted = self.deepcopy()
-        shifted.data = shifted.data[:, slices, :]
+        shifted.data = shifted.data[:, :, slices]
 
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
         if cuda is None:
