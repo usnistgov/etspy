@@ -182,7 +182,7 @@ class TestAlignOther:
         stack = ds.get_needle_data(True)
         stack2 = stack.deepcopy()
         stack3 = stack.align_other(stack2)
-        assert type(stack3) == TomoStack
+        assert type(stack3) is TomoStack
 
 
 class TestStackRegister:
@@ -196,26 +196,26 @@ class TestStackRegister:
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
         reg = stack.stack_register('PC')
-        assert type(reg) == TomoStack
+        assert type(reg) is TomoStack
 
     def test_stack_register_com(self):
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
         stack.metadata.Tomography.tilts = stack.metadata.Tomography.tilts[0:5]
         reg = stack.stack_register('COM')
-        assert type(reg) == TomoStack
+        assert type(reg) is TomoStack
 
     def test_stack_register_stackreg(self):
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
         reg = stack.stack_register('COM-CL')
-        assert type(reg) == TomoStack
+        assert type(reg) is TomoStack
 
     def test_stack_register_with_crop(self):
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
         reg = stack.stack_register('PC', crop=True)
-        assert type(reg) == TomoStack
+        assert type(reg) is TomoStack
         assert np.sum(reg.data.shape) < np.sum(stack.data.shape)
 
 
