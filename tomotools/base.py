@@ -50,30 +50,6 @@ class TomoStack(Signal2D):
         """Initialize TomoStack class."""
         super().__init__(*args, **kwargs)
 
-        if not self.metadata.has_item("Tomography"):
-            self.metadata.add_node("Tomography")
-            self.metadata.Tomography.set_item("tilts", np.zeros(self.data.shape[0]))
-            self.metadata.Tomography.set_item("tiltaxis", 0)
-            self.metadata.Tomography.set_item("xshift", 0)
-            self.metadata.Tomography.set_item("yshift", 0)
-            self.metadata.Tomography.set_item(
-                "shifts", np.zeros([self.data.shape[0], 2]))
-            self.metadata.Tomography.set_item("cropped", False)
-        else:
-            if not self.metadata.Tomography.has_item("tilts"):
-                self.metadata.Tomography.set_item("tilts", np.zeros(self.data.shape[0]))
-            if not self.metadata.Tomography.has_item("tiltaxis"):
-                self.metadata.Tomography.set_item("tiltaxis", 0)
-            if not self.metadata.Tomography.has_item("xshift"):
-                self.metadata.Tomography.set_item("xshift", 0)
-            if not self.metadata.Tomography.has_item("yshift"):
-                self.metadata.Tomography.set_item("yshift", 0)
-            if not self.metadata.Tomography.has_item("shifts"):
-                self.metadata.Tomography.set_item(
-                    "shifts", np.zeros([self.data.shape[0], 2]))
-            if not self.metadata.Tomography.has_item("cropped"):
-                self.metadata.Tomography.set_item("cropped", False)
-
     def plot(self, navigator='slider', *args, **kwargs):
         """Plot function to set default navigator to 'slider'."""
         super().plot(navigator, *args, **kwargs)
