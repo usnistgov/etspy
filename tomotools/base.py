@@ -74,6 +74,10 @@ class TomoStack(Signal2D):
             if not self.metadata.Tomography.has_item("cropped"):
                 self.metadata.Tomography.set_item("cropped", False)
 
+    def plot(self, navigator='slider', *args, **kwargs):
+        """Plot function to set default navigator to 'slider'."""
+        super().plot(navigator, *args, **kwargs)
+
     def test_correlation(self, images=None):
         """
         Test output of cross-correlation prior to alignment.
