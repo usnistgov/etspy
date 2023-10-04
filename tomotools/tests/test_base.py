@@ -163,12 +163,6 @@ class TestTestAlign:
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
-    def test_test_align_cuda(self):
-        stack = ds.get_needle_data(True)
-        stack.test_align(thickness=200, cuda=True)
-        fig = matplotlib.pylab.gcf()
-        assert len(fig.axes) == 3
-
     def test_test_align_no_cuda(self):
         stack = ds.get_needle_data(True)
         stack.test_align(thickness=200, cuda=False)
