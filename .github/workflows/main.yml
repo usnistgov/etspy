@@ -19,6 +19,6 @@ jobs:
     - uses: actions/checkout@v3
     - run: . activate tomo
     - run: pip install -e ./
-    - run: pytest --doctest-modules --ignore=tomotools/tests/test_datasets.py tomotools/ 
+    - run: . conda run --name tomo "pytest --doctest-modules --ignore=tomotools/tests/test_datasets.py tomotools/"
     - if: always()
-      run: pytest --ignore=tomotools/tests/test_datasets.py tomotools/tests/
+      run: . conda run --name tomo "pytest --ignore=tomotools/tests/test_datasets.py tomotools/tests/"
