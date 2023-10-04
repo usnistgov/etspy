@@ -58,10 +58,10 @@ def run(stack, method, iterations=20, constrain=None,
             logger.info('Reconstruction using %s cores' % ncpus)
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_fbp,
-                               [(stack.data[:, i, :],
+                               [(stack.data[:, :, i],
                                  angles,
                                  thickness)
-                                for i in range(0, stack.data.shape[1])])
+                                for i in range(0, stack.data.shape[2])])
             pool.close()
             logger.info('Reconstruction complete')
             if type(rec) is list:
@@ -92,13 +92,13 @@ def run(stack, method, iterations=20, constrain=None,
             logger.info('Reconstruction using %s cores' % ncpus)
             pool = mp.Pool(ncpus)
             rec = pool.starmap(astra_sirt,
-                               [(stack.data[:, i, :],
+                               [(stack.data[:, :, i],
                                  angles,
                                  thickness,
                                  iterations,
                                  constrain,
                                  thresh)
-                                for i in range(0, stack.data.shape[1])])
+                                for i in range(0, stack.data.shape[2])])
             pool.close()
             logger.info('Reconstruction complete')
             if type(rec) is list:
@@ -155,10 +155,10 @@ def astra_sirt(stack, angles, thickness=None, iterations=50,
     thetas = angles * np.pi / 180
 
     if len(stack.shape) == 2:
-        data = np.expand_dims(stack, 1)
+        data = np.expand_dims(stack, 2)
     else:
         data = stack
-    data = np.rollaxis(data, 1)
+    data = np.rollaxis(data, 2)
     y_pix, n_angles, x_pix = data.shape
 
     if thickness is None:
@@ -259,10 +259,10 @@ def astra_fbp(stack, angles, thickness=None, cuda=None):
     """
     thetas = angles * np.pi / 180
     if len(stack.shape) == 2:
-        data = np.expand_dims(stack, 1)
+        data = np.expand_dims(stack, 2)
     else:
         data = stack
-    data = np.rollaxis(data, 1)
+    data = np.rollaxis(data, 2)
     y_pix, n_angles, x_pix = data.shape
 
     if thickness is None:
@@ -405,7 +405,10 @@ def astra_sirt_error(sinogram, angles, iterations=50,
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-    sino = sinogram.data[:, 0, :]
+    if len(sinogram.data.shape) == 3:
+        sino = sinogram.data[:, :, 0]
+    else:
+        sino = sinogram.data
     thetas = angles * np.pi / 180
 
     n_angles, x_pix = sino.shape
@@ -440,7 +443,7 @@ def astra_sirt_error(sinogram, angles, iterations=50,
         rec = astra.data2d.get(rec_id)
         rec_stack[i] = rec
 
-        forward_project = astra_project(rec, angles=angles, cuda=cuda)[:, 0, :]
+        forward_project = astra_project(rec, angles=angles, cuda=cuda)[:, :, 0]
         residual_error[i] = np.sqrt(np.square(forward_project - sino).sum())
 
     astra.clear()
