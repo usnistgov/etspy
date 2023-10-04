@@ -1,12 +1,10 @@
-FROM continuumio/miniconda3:latest
+FROM continuumio/anaconda3:latest
 
-RUN apt-get update -q
+RUN apt-get update -q --fix-missing
 RUN apt-get install ffmpeg libsm6 libxext6 g++ -y
-
-RUN conda update conda
-RUN conda create --name tomo -c astra-toolbox astra-toolbox 
+RUN conda update --all
+RUN conda create --name tomo -c astra-toolbox
 RUN conda install --name tomo pytest flake8 pydocstyle
 RUN conda install --name tomo hyperspy -c conda-forge
-
-RUN . /opt/conda/bin/activate tomo
+RUN activate tomo
 RUN pip install pystackreg
