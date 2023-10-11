@@ -18,7 +18,7 @@ def create_catalyst_model(nparticles=15, particle_density=255,
                           support_density=100, volsize=[600, 600, 600],
                           support_radius=200, size_interval=[5, 12]):
     """
-    Create a model tilt series that mimics a hetergeneous catalyst.
+    Create a model data array that mimics a hetergeneous catalyst.
 
     Args
     ----------
@@ -37,8 +37,8 @@ def create_catalyst_model(nparticles=15, particle_density=255,
 
     Returns
     ----------
-    catalyst : TomoStack object
-        Simulated tilt series
+    catalyst : Hyperspy Signal2D
+        Simulated model
 
     """
     volsize = np.array(volsize)
@@ -92,14 +92,35 @@ def create_catalyst_model(nparticles=15, particle_density=255,
     return catalyst
 
 
-def create_model_tilt_series(model, angles=None):
+def create_needle_model():
+    """
+    Create a model data array that mimics a needle shaped sample.
+
+    Args
+    ----------
+
+    Returns
+    ----------
+    model : TomoStack object
+        Simulated tilt series
+
+    """
+    model = np.zeros([256, 256, 256])
+    xx, yy = np.mgrid[:256, :256]
+    for i in range(0, 200):
+        idx = (xx - 128) ** 2 + (yy - 128) ** 2
+        model[i, :, :] = idx < 1300 - i * 9
+    return model
+
+
+def create_model_tilt_series(model, angles=None, cuda=None):
     """
     Create a tilt series from a 3D volume.
 
     Args
     ----------
-    model : NumPy array
-        3D array containing the model volume to project to a tilt series
+    model : NumPy array or Hyperspy Signal2D
+        3D array or signal containing the model volume to project to a tilt series
     angles : NumPy array
         Projection angles for tilt series
 
@@ -109,6 +130,9 @@ def create_model_tilt_series(model, angles=None):
         Tilt series of the model data
 
     """
+    if not cuda:
+        cuda = astra.use_cuda()
+
     if type(angles) is not np.ndarray:
         angles = np.arange(0, 180, 2)
 
@@ -122,16 +146,20 @@ def create_model_tilt_series(model, angles=None):
     proj_data = np.zeros([len(angles), ydim, xdim])
     vol_geom = astra.create_vol_geom(thickness, xdim, ydim)
     tilts = angles * np.pi / 180
-    proj_geom = astra.create_proj_geom('parallel', 1, xdim, tilts)
-    proj_id = astra.create_projector('strip', proj_geom, vol_geom)
 
-    for i in range(0, model.shape[1]):
-        sino_id, proj_data[:, i, :] = astra.create_sino(model[:, i, :],
-                                                        proj_id)
+    if cuda is False:
+        proj_geom = astra.create_proj_geom('parallel', 1, xdim, tilts)
+        proj_id = astra.create_projector('strip', proj_geom, vol_geom)
 
-    stack = convert_to_tomo_stack(proj_data)
-    stack.axes_manager[0].offset = angles[0]
-    stack.axes_manager[0].scale = np.abs(angles[1] - angles[0])
+        for i in range(0, model.shape[1]):
+            sino_id, proj_data[:, i, :] = astra.create_sino(model[:, i, :],
+                                                            proj_id)
+    else:
+        proj_geom = astra.create_proj_geom('parallel3d', 1, 1, xdim, ydim, tilts)
+        proj_id, proj_data = astra.create_sino3d_gpu(model, proj_geom, vol_geom)
+        proj_data = np.transpose(proj_data, [1, 2, 0])
+
+    stack = convert_to_tomo_stack(proj_data, angles)
     return stack
 
 
