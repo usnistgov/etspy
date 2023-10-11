@@ -213,6 +213,7 @@ def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0,
                 ndimage.shift(misaligned.data[i, :, :],
                               shift=[jitter[i, 0], jitter[i, 1]],
                               order=0)
+    misaligned.metadata.Tomography.shifts = jitter
     return misaligned
 
 
