@@ -436,7 +436,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
         2.) Center of mass (COM) tracking.  A Python implementation of
             algorithms described in:
             T. Sanders. Physically motivated global alignment method for electron
-            tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11. 
+            tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
             https://doi.org/10.1186/s40679-015-0005-7
         3.) Rigid translation using PyStackReg for shift calculation.
             PyStackReg is a Python port of the StackReg plugin for ImageJ
