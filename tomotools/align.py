@@ -546,7 +546,7 @@ def tilt_com(stack, slices=None, nslices=None):
     if slices is None:
         if nslices is None:
             nx = stack.data.shape[2]
-            nslices = 0.1 * nx
+            nslices = int(0.1 * nx)
             if nslices < 3:
                 nslices = 3
             elif nslices > 50:
@@ -557,6 +557,7 @@ def tilt_com(stack, slices=None, nslices=None):
             if nslices > 0.3 * nx:
                 nslices = int(0.3 * nx)
                 logger.warning("nslices is greater than 30%% of number of x pixels. Using %s slices instead." % nslices)
+
         slices = get_best_slices(stack, nslices)
         logger.info("Performing alignments using best %s slices" % nslices)
     else:
