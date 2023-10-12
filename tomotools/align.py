@@ -272,13 +272,11 @@ def calculate_shifts_com(stack, nslice, ratio):
         num = 1
     usables = np.zeros([num, 1])
     t_select = np.zeros([ntilts * num, 1])
-    disp_mat = np.zeros([ydim, 1])
 
     s3 = np.argsort(ss2[0, :])
     usables = np.reshape(s3[0:num], [num, 1])
     t_select[:, 0] = np.reshape(t[:, 0, np.int32(usables[:, 0])],
                                 [ntilts * num])
-    disp_mat[np.int32(usables[:, 0]), 0] = 1
 
     I_tilts = np.eye(ntilts)
     A = np.zeros([ntilts * num, ntilts])
