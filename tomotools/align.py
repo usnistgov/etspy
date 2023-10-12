@@ -310,7 +310,7 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
             if resid < s or j == -p:
                 s = resid
                 xshifts[i] = -j
-    return xshifts
+    return xshifts[:, 0]
 
 
 def calculate_shifts_com(stack, nslices):
@@ -339,10 +339,10 @@ def calculate_shifts_com(stack, nslices):
 
     """
     logger.info("Refinining Y-shifts using center of mass method")
-    sinos, slices = get_best_slices(stack, nslices)
+    slices = get_best_slices(stack, nslices)
 
     angles = stack.metadata.Tomography.tilts
-    [ntilts, ydim, xdim] = sinos.shape
+    [ntilts, ydim, xdim] = stack.data.shape
     thetas = angles * np.pi / 180
 
     coms = get_coms(stack, slices)
@@ -352,6 +352,7 @@ def calculate_shifts_com(stack, nslices):
     b = np.dot(Gam, coms)
 
     cx = np.linalg.lstsq(Gam, b, rcond=-1)[0]
+
     yshifts = -cx[:, 0]
     return yshifts
 
@@ -477,7 +478,7 @@ def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution,
     return shifts
 
 
-def align_stack(stack, method, start, show_progressbar, nslice, ratio,
+def align_stack(stack, method, start, show_progressbar, nslices,
                 cl_ref_index, com_ref_index, cl_resolution, cl_div_factor,
                 xrange, p):
     """
@@ -537,7 +538,7 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
     if method == 'com':
         shifts = np.zeros([stack.data.shape[0], 2])
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
-        shifts[:, 0] = calculate_shifts_com(stack, nslice, ratio)
+        shifts[:, 0] = calculate_shifts_com(stack, nslices)
     elif method == 'pc':
         logger.info("Performing stack registration using "
                     "phase correlation method")
@@ -589,9 +590,9 @@ def tilt_com(stack, slices=None, nslices=None):
     if stack.data.shape[2] < 3:
         raise ValueError("Dataset is only %s pixels in x dimension. This method cannot be used.")
 
+    nx = stack.data.shape[2]
     if slices is None:
         if nslices is None:
-            nx = stack.data.shape[2]
             nslices = 0.1 * nx
             if nslices < 3:
                 nslices = 3
