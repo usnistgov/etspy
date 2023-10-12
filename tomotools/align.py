@@ -22,6 +22,25 @@ logger.setLevel(logging.INFO)
 
 
 def get_best_slices(stack, nslices):
+    """
+    Get best nslices for center of mass analysis.
+
+    Slices which have the highest ratio of total mass to mass variance
+    and their location are returned.
+
+    Args
+    ----------
+    stack : TomoStack object
+        Tilt series from which to select the best slices.
+    nslices : integer
+        Number of slices to return.
+
+    Returns
+    ----------
+    locs : NumPy array
+        Location along the x-axis of the best slices
+
+    """
     total_mass = stack.data.sum((0, 1))
     mass_var = stack.data.sum(1).std(0)
     mass_var[mass_var == 0] = 1e-5
@@ -31,6 +50,22 @@ def get_best_slices(stack, nslices):
 
 
 def get_coms(stack, slices):
+    """
+    Calculate the center of mass for indicated slices.
+
+    Args
+    ----------
+    stack : TomoStack object
+        Tilt series from which to calculate the centers of mass.
+    slices : NumPy array
+        Location of slices to use for center of mass calculation.
+
+    Returns
+    ----------
+    coms : NumPy array
+        Center of mass as a function of tilt for each slice [ntilts, nslices].
+
+    """
     sinos = stack.data[:, :, slices]
     y = np.linspace(-int(sinos.shape[1] / 2), int(sinos.shape[1] / 2), sinos.shape[1], dtype='int')
     total_mass = sinos.sum(1)
@@ -232,6 +267,27 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
 
 
 def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
+    """
+    Calculate shifts parallel to the tilt axis using conservation of mass.
+
+    Slices which have the highest ratio of total mass to mass variance
+    and their location are returned.
+
+    Args
+    ----------
+    stack : TomoStack object
+        Tilt series to be aligned.
+    xrange : tuple
+        Defines range for performing alignment.
+    p : int
+        Padding element
+
+    Returns
+    ----------
+    xshifts : NumPy array
+        Calculated shifts parallel to tilt axis.
+
+    """
     logger.info("Refinining X-shifts using conservation of mass method")
     [ntilts, ny, nx] = stack.data.shape
 
