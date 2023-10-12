@@ -242,14 +242,14 @@ def calculate_shifts_com(stack, nslice, ratio):
     if not nslice:
         nslice = np.int32(stack.data.shape[2] / 2)
 
-    stack = stack.stack_register('StackReg')
-    logger.info("Refinining X-shifts using center of mass method")
+    # stack = stack.stack_register('StackReg')
+    logger.info("Refinining Y-shifts using center of mass method")
     sino = np.transpose(stack.isig[nslice:nslice + 1, :].data,
                         axes=[0, 2, 1])
 
     angles = stack.metadata.Tomography.tilts
     [ntilts, ydim, xdim] = sino.shape
-    angles = angles * np.pi / 180
+    thetas = angles * np.pi / 180
 
     t = np.zeros([ntilts, 1, ydim])
     ss = np.zeros([ntilts, 1, ydim])
@@ -283,8 +283,7 @@ def calculate_shifts_com(stack, nslice, ratio):
     I_tilts = np.eye(ntilts)
     A = np.zeros([ntilts * num, ntilts])
 
-    theta = angles
-    Gam = (np.array([np.cos(theta), np.sin(theta)])).T
+    Gam = (np.array([np.cos(thetas), np.sin(thetas)])).T
     Gam = np.dot(Gam, np.linalg.pinv(Gam)) - I_tilts
     for j in range(0, num):
         t_select[ntilts * j:ntilts * (j + 1), 0] =\
