@@ -428,17 +428,16 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
     Compute the shifts for spatial registration.
 
     Shifts are determined by one of three methods:
-        1.) Phase correlation (PC) as implemented in OpenCV. OpenCV is
-            described in:
-            G. Bradski. The OpenCV Library, Dr. Dobb’s Journal of Software
-            Tools vol. 120, pp. 122-125, 2000.
-            https://docs.opencv.org/
+        1.) Phase correlation (PC) as implemented in scikit-image. Based on:
+            Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup.
+            Efficient subpixel image registration algorithms, Optics Letters vol. 33
+            (2008) pp. 156-158.
+            https://doi.org/10.1364/OL.33.000156
         2.) Center of mass (COM) tracking.  A Python implementation of
-            Matlab code described in:
-            T. Sanders. Matlab imaging algorithms: Image reconstruction,
-            restoration, and alignment, with a focus in tomography.
-            http://www.toby-sanders.com/software ,
-            https://doi.org/10.13140/RG.2.2.33492.60801
+            algorithms described in:
+            T. Sanders. Physically motivated global alignment method for electron
+            tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11. 
+            https://doi.org/10.1186/s40679-015-0005-7
         3.) Rigid translation using PyStackReg for shift calculation.
             PyStackReg is a Python port of the StackReg plugin for ImageJ
             which uses a pyramidal approach to minimize the least-squares
