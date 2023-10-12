@@ -129,7 +129,7 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
 
     Calculate shifts using the common line method.
 
-    Used to align stack in dimension perpendicular to the tilt axis
+    Used to align stack in dimension parallel to the tilt axis
 
     Args
     ----------
@@ -146,7 +146,7 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
     Returns
     ----------
     yshifts : NumPy array
-        Shifts perpendicular to tilt axis for each projection
+        Shifts parallel to tilt axis for each projection
 
     """
     def align_line(ref_line, line, cl_resolution, cl_div_factor):
