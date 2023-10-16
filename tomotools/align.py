@@ -291,22 +291,23 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
     logger.info("Refinining X-shifts using conservation of mass method")
     [ntilts, ny, nx] = stack.data.shape
 
-    if not xrange:
+    if xrange is None:
         xrange = [round(nx / 5), round(4 / 5 * nx)]
     else:
         xrange = [round(xrange[0]) + p, round(xrange[1]) - p]
 
     xshifts = np.zeros([ntilts, 1])
-    total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p])
+    # total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p])
+    total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
     for i in range(0, ntilts):
-        total_mass[i, :] = np.sum(stack.data[i, :, xrange[0] - p:xrange[1] + p], 0)
+        total_mass[i, :] = np.sum(stack.data[i, :, xrange[0] - p - 1:xrange[1] + p], 0)
 
-    mean_mass = np.mean(total_mass[:, p + 1:-p])
+    mean_mass = np.mean(total_mass[:, p: -p], 0)
 
     for i in range(0, ntilts):
         s = 0
         for j in range(-p, p):
-            resid = np.linalg.norm(mean_mass - total_mass[i, p + j + 1:-p + j])
+            resid = np.linalg.norm(mean_mass - total_mass[i, p + j:-p + j])
             if resid < s or j == -p:
                 s = resid
                 xshifts[i] = -j
