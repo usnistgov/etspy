@@ -20,26 +20,31 @@ class TestModels:
 
 class TestModifications:
     def test_misalign_stack(self):
-        stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        stack = sim.create_model_tilt_series(model)
         shifted = sim.misalign_stack(stack)
-        assert shifted.data.shape == (10, 10, 10)
+        assert shifted.data.shape == (90, 10, 10)
 
     def test_misalign_stack_with_shift(self):
-        stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        stack = sim.create_model_tilt_series(model)
         shifted = sim.misalign_stack(stack, tilt_shift=2)
-        assert shifted.data.shape == (10, 10, 10)
+        assert shifted.data.shape == (90, 10, 10)
 
     def test_misalign_stack_with_xonly(self):
-        stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        stack = sim.create_model_tilt_series(model)
         shifted = sim.misalign_stack(stack, x_only=True)
-        assert shifted.data.shape == (10, 10, 10)
+        assert shifted.data.shape == (90, 10, 10)
 
     def test_misalign_stack_with_rotation(self):
-        stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        stack = sim.create_model_tilt_series(model)
         shifted = sim.misalign_stack(stack, tilt_rotate=2)
-        assert shifted.data.shape == (10, 10, 10)
+        assert shifted.data.shape == (90, 10, 10)
 
     def test_add_noise(self):
-        stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        stack = sim.create_model_tilt_series(model)
         noisy = sim.add_gaussian_noise(stack)
-        assert noisy.data.shape == (10, 10, 10)
+        assert noisy.data.shape == (90, 10, 10)
