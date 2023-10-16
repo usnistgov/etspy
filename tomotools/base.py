@@ -285,9 +285,9 @@ class TomoStack(Signal2D):
         return
 
     def stack_register(self, method='PC', start=None, crop=False,
-                       show_progressbar=False, nslice=None, ratio=0.5,
+                       show_progressbar=False, nslices=20,
                        cl_resolution=0.05, cl_div_factor=8, com_ref_index=None,
-                       cl_ref_index=None):
+                       cl_ref_index=None, xrange=None, p=20):
         """
         Register stack spatially.
 
@@ -359,11 +359,13 @@ class TomoStack(Signal2D):
         method = method.lower()
         if method in ['pc', 'com', 'stackreg', 'com-cl']:
             out = align.align_stack(self, method, start, show_progressbar,
-                                    ratio=ratio, nslice=nslice,
+                                    nslices=nslices,
                                     cl_resolution=cl_resolution,
                                     cl_div_factor=cl_div_factor,
                                     com_ref_index=com_ref_index,
-                                    cl_ref_index=cl_ref_index)
+                                    cl_ref_index=cl_ref_index,
+                                    xrange=xrange,
+                                    p=p)
         else:
             raise ValueError(
                 "Unknown registration method: "
@@ -373,7 +375,7 @@ class TomoStack(Signal2D):
             out = align.shift_crop(out)
         return out
 
-    def tilt_align(self, method, limit=10, delta=0.3, locs=None,
+    def tilt_align(self, method, limit=10, delta=0.3, locs=None, nslices=20,
                    show_progressbar=False):
         """
         Align the tilt axis of a TomoStack.
@@ -442,7 +444,7 @@ class TomoStack(Signal2D):
         method = method.lower()
 
         if method == 'com':
-            out = align.tilt_com(self, locs)
+            out = align.tilt_com(self, locs, nslices)
         elif method == 'maximage':
             out = align.tilt_maximage(self, limit, delta, show_progressbar)
         else:

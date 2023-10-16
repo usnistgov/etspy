@@ -21,6 +21,58 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def get_best_slices(stack, nslices):
+    """
+    Get best nslices for center of mass analysis.
+
+    Slices which have the highest ratio of total mass to mass variance
+    and their location are returned.
+
+    Args
+    ----------
+    stack : TomoStack object
+        Tilt series from which to select the best slices.
+    nslices : integer
+        Number of slices to return.
+
+    Returns
+    ----------
+    locs : NumPy array
+        Location along the x-axis of the best slices
+
+    """
+    total_mass = stack.data.sum((0, 1))
+    mass_var = stack.data.sum(1).std(0)
+    mass_var[mass_var == 0] = 1e-5
+    ratio = (total_mass / mass_var)
+    locs = ratio.argsort()[::-1][0:nslices]
+    return locs
+
+
+def get_coms(stack, slices):
+    """
+    Calculate the center of mass for indicated slices.
+
+    Args
+    ----------
+    stack : TomoStack object
+        Tilt series from which to calculate the centers of mass.
+    slices : NumPy array
+        Location of slices to use for center of mass calculation.
+
+    Returns
+    ----------
+    coms : NumPy array
+        Center of mass as a function of tilt for each slice [ntilts, nslices].
+
+    """
+    sinos = stack.data[:, :, slices]
+    y = np.linspace(-int(sinos.shape[1] / 2), int(sinos.shape[1] / 2), sinos.shape[1], dtype='int')
+    total_mass = sinos.sum(1)
+    coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y, 2) / total_mass
+    return coms
+
+
 def apply_shifts(stack, shifts):
     """
 
@@ -214,7 +266,55 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
     return yshifts
 
 
-def calculate_shifts_com(stack, nslice, ratio):
+def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
+    """
+    Calculate shifts parallel to the tilt axis using conservation of mass.
+
+    Slices which have the highest ratio of total mass to mass variance
+    and their location are returned.
+
+    Args
+    ----------
+    stack : TomoStack object
+        Tilt series to be aligned.
+    xrange : tuple
+        Defines range for performing alignment.
+    p : int
+        Padding element
+
+    Returns
+    ----------
+    xshifts : NumPy array
+        Calculated shifts parallel to tilt axis.
+
+    """
+    logger.info("Refinining X-shifts using conservation of mass method")
+    [ntilts, ny, nx] = stack.data.shape
+
+    if xrange is None:
+        xrange = [round(nx / 5), round(4 / 5 * nx)]
+    else:
+        xrange = [round(xrange[0]) + p, round(xrange[1]) - p]
+
+    xshifts = np.zeros([ntilts, 1])
+    # total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p])
+    total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
+    for i in range(0, ntilts):
+        total_mass[i, :] = np.sum(stack.data[i, :, xrange[0] - p - 1:xrange[1] + p], 0)
+
+    mean_mass = np.mean(total_mass[:, p: -p], 0)
+
+    for i in range(0, ntilts):
+        s = 0
+        for j in range(-p, p):
+            resid = np.linalg.norm(mean_mass - total_mass[i, p + j:-p + j])
+            if resid < s or j == -p:
+                s = resid
+                xshifts[i] = -j
+    return xshifts[:, 0]
+
+
+def calculate_shifts_com(stack, nslices):
     """
     Align stack using a center of mass method.
 
@@ -239,63 +339,23 @@ def calculate_shifts_com(stack, nslice, ratio):
         The X- and Y-shifts to be applied to each image
 
     """
-    if not nslice:
-        nslice = np.int32(stack.data.shape[2] / 2)
-
-    stack = stack.stack_register('StackReg')
-    logger.info("Refinining X-shifts using center of mass method")
-    sino = np.transpose(stack.isig[nslice:nslice + 1, :].data,
-                        axes=[0, 2, 1])
+    logger.info("Refinining Y-shifts using center of mass method")
+    slices = get_best_slices(stack, nslices)
 
     angles = stack.metadata.Tomography.tilts
-    [ntilts, ydim, xdim] = sino.shape
-    angles = angles * np.pi / 180
+    [ntilts, ydim, xdim] = stack.data.shape
+    thetas = angles * np.pi / 180
 
-    t = np.zeros([ntilts, 1, ydim])
-    ss = np.zeros([ntilts, 1, ydim])
-    w = np.arange(1, xdim + 1).T
-
-    for i in range(0, ydim):
-        for k in range(0, ntilts):
-            ss[k, 0, i] = np.sum(sino[k, i, :])
-            t[k, 0, i] = np.sum(sino[k, i, :] * w) / ss[k, 0, i]
-
-    t = t - (xdim + 1) / 2
-    ss2 = np.median(ss)
-
-    for k in range(0, ntilts):
-        ss[k, :, :] = np.abs((ss[k, :, :] - ss2) / ss2)
-    ss2 = np.mean(ss, 0)
-
-    num = round(ratio * ydim)
-    if num == 0:
-        num = 1
-    usables = np.zeros([num, 1])
-    t_select = np.zeros([ntilts * num, 1])
-    disp_mat = np.zeros([ydim, 1])
-
-    s3 = np.argsort(ss2[0, :])
-    usables = np.reshape(s3[0:num], [num, 1])
-    t_select[:, 0] = np.reshape(t[:, 0, np.int32(usables[:, 0])],
-                                [ntilts * num])
-    disp_mat[np.int32(usables[:, 0]), 0] = 1
-
+    coms = get_coms(stack, slices)
     I_tilts = np.eye(ntilts)
-    A = np.zeros([ntilts * num, ntilts])
-
-    theta = angles
-    Gam = (np.array([np.cos(theta), np.sin(theta)])).T
+    Gam = np.array([np.cos(thetas), np.sin(thetas)]).T
     Gam = np.dot(Gam, np.linalg.pinv(Gam)) - I_tilts
-    for j in range(0, num):
-        t_select[ntilts * j:ntilts * (j + 1), 0] =\
-            np.dot(-Gam, t_select[ntilts * j:ntilts * (j + 1), 0])
-        A[ntilts * j:ntilts * (j + 1), 0:ntilts] = Gam
+    b = np.dot(Gam, coms)
 
-    shifts = np.zeros([stack.data.shape[0], 2])
-    shifts[:, 0] = np.dot(np.linalg.pinv(A), t_select)[:, 0]
+    cx = np.linalg.lstsq(Gam, b, rcond=-1)[0]
 
-    shifts = stack.metadata.Tomography.shifts + shifts
-    return shifts
+    yshifts = -cx[:, 0]
+    return yshifts
 
 
 def calculate_shifts_pc(stack, start, show_progressbar):
@@ -419,8 +479,9 @@ def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution,
     return shifts
 
 
-def align_stack(stack, method, start, show_progressbar, nslice, ratio,
-                cl_ref_index, com_ref_index, cl_resolution, cl_div_factor):
+def align_stack(stack, method, start, show_progressbar, nslices,
+                cl_ref_index, com_ref_index, cl_resolution, cl_div_factor,
+                xrange, p):
     """
     Compute the shifts for spatial registration.
 
@@ -476,7 +537,9 @@ def align_stack(stack, method, start, show_progressbar, nslice, ratio,
     """
     method = method.lower()
     if method == 'com':
-        shifts = calculate_shifts_com(stack, nslice, ratio)
+        shifts = np.zeros([stack.data.shape[0], 2])
+        shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
+        shifts[:, 0] = calculate_shifts_com(stack, nslices)
     elif method == 'pc':
         logger.info("Performing stack registration using "
                     "phase correlation method")
@@ -519,21 +582,6 @@ def tilt_com(stack, slices=None, nslices=None):
     def com_motion(theta, r, x0, z0):
         return r - x0 * np.cos(theta) - z0 * np.sin(theta)
 
-    def get_best_slices(stack, nslices):
-        total_mass = stack.data.sum((0, 1))
-        mass_var = stack.data.sum(1).std(0)
-        mass_var[mass_var == 0] = 1e-5
-        ratio = (total_mass / mass_var)
-        locs = ratio.argsort()[::-1][0:nslices]
-        return locs
-
-    def get_coms(stack, slices):
-        sinos = stack.data[:, :, slices]
-        y = np.linspace(-int(sinos.shape[1] / 2), int(sinos.shape[1] / 2), sinos.shape[1], dtype='int')
-        total_mass = sinos.sum(1)
-        coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y, 2) / total_mass
-        return coms
-
     def fit_line(x, m, b):
         return m * x + b
 
@@ -543,6 +591,7 @@ def tilt_com(stack, slices=None, nslices=None):
     if stack.data.shape[2] < 3:
         raise ValueError("Dataset is only %s pixels in x dimension. This method cannot be used.")
 
+    nx = stack.data.shape[2]
     if slices is None:
         if nslices is None:
             nx = stack.data.shape[2]
