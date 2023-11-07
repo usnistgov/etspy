@@ -10,12 +10,13 @@ Utility module for TomoTools package.
 
 import numpy as np
 from tomotools.io import convert_to_tomo_stack
-from tomotools.base import TomoStack
 import logging
 import tqdm
+from scipy import ndimage
+from tomotools.align import calculate_shifts_stackreg
 
 
-def register_serialem_stack(stack, method='PC'):
+def register_serialem_stack(stack):
     """
     Register a multi-frame series collected by SerialEM.
 
@@ -23,9 +24,6 @@ def register_serialem_stack(stack, method='PC'):
     ----------
     stack : Hyperspy Signal2D
         Signal of shape [ntilts, nframes, ny, nx].
-
-    method : string
-        Stack registration method to use.
 
     Returns
     ----------
@@ -36,12 +34,14 @@ def register_serialem_stack(stack, method='PC'):
     align_logger = logging.getLogger("tomotools.align")
     log_level = align_logger.getEffectiveLevel()
     align_logger.setLevel(logging.ERROR)
-
-    reg = np.zeros([stack.data.shape[0], stack.data.shape[2],
-                   stack.data.shape[3]], stack.data.dtype)
-    for i in tqdm.tqdm(range(0, stack.data.shape[0])):
-        temp = TomoStack(np.float32(stack.data[i]))
-        reg[i, :, :] = temp.stack_register(method=method).data.mean(0)
+    ntilts, nframes, ny, nx = stack.data.shape
+    reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
+    for i in tqdm.tqdm(range(0, ntilts)):
+        shifted = np.zeros([nframes, ny, nx])
+        shifts = calculate_shifts_stackreg(stack.inav[:, i])
+        for k in range(0, nframes):
+            shifted[k, :, :] = ndimage.shift(stack.data[i, k, :, :], shift=[shifts[k, 0], shifts[k, 1]])
+        reg[i, :, :] = shifted.mean(0)
     reg = convert_to_tomo_stack(reg)
 
     if stack.metadata.has_item("Tomography"):

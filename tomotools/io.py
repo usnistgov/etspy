@@ -375,7 +375,9 @@ def load_serialem_series(mrcfiles, mdocfiles):
     tilts.sort()
 
     for i in range(0, len(mrcfiles)):
-        fn = mdocfiles[tilts_sort[i]][:-4] + "mrc"
+        fn = mdocfiles[tilts_sort[i]][:-5]
+        if fn[-3:].lower() != 'mrc':
+            fn = fn + 'mrc'
         stack[i] = hspy.load(fn)
 
     images_per_tilt = stack[0].data.shape[0]
