@@ -539,7 +539,7 @@ class TomoStack(Signal2D):
         out.axes_manager[1].units = self.axes_manager['x'].units
         return out
 
-    def test_align(self, xshift=0.0, angle=0.0, slices=None, thickness=None,
+    def test_align(self, tilt_shift=0.0, tilt_rotation=0.0, slices=None, thickness=None,
                    method='FBP', iterations=50, constrain=True, cuda=None,
                    thresh=0, vmin_std=0.1, vmax_std=10):
         """
@@ -565,8 +565,8 @@ class TomoStack(Signal2D):
             mid = np.int32(self.data.shape[2] / 2)
             slices = np.int32([mid / 2, mid, mid + mid / 2])
 
-        if (xshift != 0.0) or (angle != 0.0):
-            shifted = self.trans_stack(xshift=0, yshift=xshift, angle=angle)
+        if (tilt_shift != 0.0) or (tilt_rotation != 0.0):
+            shifted = self.trans_stack(xshift=0, yshift=tilt_shift, angle=tilt_rotation)
         else:
             shifted = self.deepcopy()
         shifted.data = shifted.data[:, :, slices]
