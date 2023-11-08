@@ -87,6 +87,17 @@ def register_serialem_stack(stack, ncpus=1):
         reg = np.array(reg)
 
     reg = convert_to_tomo_stack(reg)
+    reg.axes_manager[0].scale = stack.axes_manager[1].scale
+    reg.axes_manager[0].offset = stack.axes_manager[1].offset
+    reg.axes_manager[0].units = stack.axes_manager[1].units
+
+    reg.axes_manager[1].scale = stack.axes_manager[2].scale
+    reg.axes_manager[1].offset = stack.axes_manager[2].offset
+    reg.axes_manager[1].units = stack.axes_manager[2].units
+
+    reg.axes_manager[2].scale = stack.axes_manager[3].scale
+    reg.axes_manager[2].offset = stack.axes_manager[3].offset
+    reg.axes_manager[2].units = stack.axes_manager[3].units
 
     if stack.metadata.has_item("Tomography"):
         reg.metadata.Tomography = stack.metadata.Tomography
