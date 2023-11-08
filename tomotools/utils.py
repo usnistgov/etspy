@@ -99,6 +99,8 @@ def register_serialem_stack(stack, ncpus=1):
     reg.axes_manager[2].offset = stack.axes_manager[3].offset
     reg.axes_manager[2].units = stack.axes_manager[3].units
 
+    if stack.metadata.has_item("Acquisition_instrument"):
+        reg.metadata.Acquisition_instrument = stack.metadata.Acquisition_instrument
     if stack.metadata.has_item("Tomography"):
         reg.metadata.Tomography = stack.metadata.Tomography
     align_logger.setLevel(log_level)
