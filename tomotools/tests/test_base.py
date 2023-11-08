@@ -147,13 +147,13 @@ class TestTestAlign:
 
     def test_test_align_with_angle(self):
         stack = ds.get_needle_data(True)
-        stack.test_align(angle=3.0)
+        stack.test_align(tilt_rotation=3.0)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
     def test_test_align_with_xshift(self):
         stack = ds.get_needle_data(True)
-        stack.test_align(xshift=3.0)
+        stack.test_align(tilt_shift=3.0)
         fig = matplotlib.pylab.gcf()
         assert len(fig.axes) == 3
 
