@@ -341,7 +341,7 @@ def load_serialem_series(mrcfiles, mdocfiles):
         s.axes_manager[1].scale = tilts[1] - tilts[0]
         s.axes_manager[1].offset = tilts[0]
         s.axes_manager[1].units = 'degrees'
-        s.axes_manager[1].units = 'Tilt'
+        s.axes_manager[1].name = 'Tilt'
         s.axes_manager[2].scale = meta[0]['PixelSpacing'] / 10
         s.axes_manager[3].scale = meta[0]['PixelSpacing'] / 10
         s.axes_manager[2].units = 'nm'
