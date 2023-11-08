@@ -14,9 +14,45 @@ import logging
 import tqdm
 from scipy import ndimage
 from tomotools.align import calculate_shifts_stackreg
+from pystackreg import StackReg
+from multiprocessing import Pool
 
 
-def register_serialem_stack(stack):
+def multiaverage(stack, nframes, ny, nx):
+    """
+    Register a multi-frame series collected by SerialEM.
+
+    Parameters
+    ----------
+    stack : NumPy array
+        Array of shape [nframes, ny, nx].
+    nframes : int
+        Number of frames per tilt.
+    ny : int
+        Pixels in y-dimension.
+    nx : int
+        Pixels in x-dimension.
+
+    Returns
+    ----------
+    average : NumPy array
+        Average of all frames at given tilt
+    """
+    def _calc_sr_shifts(stack):
+        sr = StackReg(StackReg.TRANSLATION)
+        shifts = sr.register_stack(stack, reference='previous')
+        shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
+        return shifts
+
+    shifted = np.zeros([nframes, ny, nx])
+    shifts = _calc_sr_shifts(stack)
+    for k in range(0, nframes):
+        shifted[k, :, :] = ndimage.shift(stack[k, :, :], shift=[shifts[k, 0], shifts[k, 1]])
+    average = shifted.mean(0)
+    return average
+
+
+def register_serialem_stack(stack, ncpus=1):
     """
     Register a multi-frame series collected by SerialEM.
 
@@ -35,17 +71,25 @@ def register_serialem_stack(stack):
     log_level = align_logger.getEffectiveLevel()
     align_logger.setLevel(logging.ERROR)
     ntilts, nframes, ny, nx = stack.data.shape
-    reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
-    for i in tqdm.tqdm(range(0, ntilts)):
-        shifted = np.zeros([nframes, ny, nx])
-        shifts = calculate_shifts_stackreg(stack.inav[:, i])
-        for k in range(0, nframes):
-            shifted[k, :, :] = ndimage.shift(stack.data[i, k, :, :], shift=[shifts[k, 0], shifts[k, 1]])
-        reg[i, :, :] = shifted.mean(0)
+
+    if ncpus == 1:
+        reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
+        for i in tqdm.tqdm(range(0, ntilts)):
+            shifted = np.zeros([nframes, ny, nx])
+            shifts = calculate_shifts_stackreg(stack.inav[:, i])
+            for k in range(0, nframes):
+                shifted[k, :, :] = ndimage.shift(stack.data[i, k, :, :], shift=[shifts[k, 0], shifts[k, 1]])
+            reg[i, :, :] = shifted.mean(0)
+    else:
+        with Pool(ncpus) as pool:
+            reg = pool.starmap(multiaverage,
+                               [(stack.inav[:, i].data, nframes, ny, nx) for i in range(0, ntilts)])
+        reg = np.array(reg)
+
     reg = convert_to_tomo_stack(reg)
 
     if stack.metadata.has_item("Tomography"):
-        reg.metadata.Tomography.tilts = stack.metadata.Tomography.tilts
+        reg.metadata.Tomography = stack.metadata.Tomography
     align_logger.setLevel(log_level)
     return reg
 
