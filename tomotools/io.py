@@ -285,6 +285,92 @@ def load_dm_series(files):
     return stack
 
 
+def load_serialem(mrcfile, mdocfile):
+    """
+    Load a multi-frame series collected by SerialEM.
+
+    Parameters
+    ----------
+    mrc_files : str
+        MRC file containing tilt series data.
+
+    mdoc_files : str
+        SerialEM metadata file for tilt series data.
+
+    Returns
+    ----------
+    stack : TomoStack object
+        Tilt series
+
+    """
+
+    def _parse_mdoc(mdoc_file):
+        keys = ['PixelSpacing', 'Voltage', 'ImageFile', 'Image Size', 'DataMode',
+                'Magnification', 'ExposureTime', 'SpotSize', 'Defocus']
+        metadata = {}
+        with open(mdoc_file, 'r') as f:
+            lines = f.readlines()
+        for i in range(0, 35):
+            for k in keys:
+                if k in lines[i]:
+                    if k == 'ImageFile':
+                        metadata[k] = lines[i].split('=')[1].strip()
+                    else:
+                        metadata[k] = float(lines[i].split('=')[1].strip())
+        tilts = []
+        for i in lines:
+            if 'TiltAngle' in i:
+                tilts.append(float(i.split('=')[1].strip()))
+        tilts = np.array(tilts)
+        return metadata, tilts
+
+    def _set_axes_serialem(s, tilts, meta):
+        s.axes_manager[0].scale = tilts[1] - tilts[0]
+        s.axes_manager[0].offset = tilts[0]
+        s.axes_manager[0].units = 'degrees'
+        s.axes_manager[0].name = 'Tilt'
+        s.axes_manager[1].scale = meta['PixelSpacing'] / 10
+        s.axes_manager[2].scale = meta['PixelSpacing'] / 10
+        s.axes_manager[1].units = 'nm'
+        s.axes_manager[2].units = 'nm'
+        s.axes_manager[1].name = 'y'
+        s.axes_manager[2].name = 'x'
+        return s
+
+    def _set_tomo_metadata_serialem(s):
+        tomo_metadata = {"cropped": False,
+                         "shifts": np.zeros([s.data.shape[0], 2]),
+                         "tiltaxis": 0,
+                         "tilts": np.zeros(s.data.shape[0]),
+                         "xshift": 0,
+                         "yshift": 0}
+        s.metadata.add_node("Tomography")
+        s.metadata.Tomography.add_dictionary(tomo_metadata)
+        return s
+
+    mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
+    log_level = mrc_logger.getEffectiveLevel()
+    mrc_logger.setLevel(logging.ERROR)
+
+    meta, tilts = _parse_mdoc(mdocfile)
+    stack = hspy.load(mrcfile)
+
+    stack = _set_axes_serialem(stack, tilts, meta)
+
+    if not stack.metadata.has_item('Acquisition_instrument.TEM'):
+        stack.metadata.add_node('Acquisition_instrument.TEM')
+    stack.metadata.Acquisition_instrument.TEM.magnification = meta['Magnification']
+    stack.metadata.Acquisition_instrument.TEM.beam_energy = meta['Voltage']
+    stack.metadata.Acquisition_instrument.TEM.dwell_time = meta['ExposureTime'] / (stack.data.shape[1] * stack.data.shape[2])
+    stack.metadata.Acquisition_instrument.TEM.spot_size = meta['SpotSize']
+    stack.metadata.Acquisition_instrument.TEM.defocus = meta['Defocus']
+    stack.metadata.General.original_filename = meta['ImageFile']
+    stack = convert_to_tomo_stack(stack, tilts)
+    logger.info('SerialEM stack successfully loaded. ')
+    mrc_logger.setLevel(log_level)
+    return stack
+
+
 def load_serialem_series(mrcfiles, mdocfiles):
     """
     Load a multi-frame series collected by SerialEM.
