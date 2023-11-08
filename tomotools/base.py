@@ -54,6 +54,16 @@ class TomoStack(Signal2D):
         """Plot function to set default navigator to 'slider'."""
         super().plot(navigator, *args, **kwargs)
 
+    def change_data_type(self, dtype):
+        """
+        Change data type.
+
+        Use instead of the inherited change_dtype function of Hyperspy which results in
+        conversion of the TomoStack to a Signal2D.
+
+        """
+        self.data = self.data.astype(dtype)
+
     def test_correlation(self, images=None):
         """
         Test output of cross-correlation prior to alignment.
