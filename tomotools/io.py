@@ -389,7 +389,7 @@ def load_serialem_series(mrcfiles, mdocfiles):
     stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]['Magnification']
     stack.metadata.Acquisition_instrument.TEM.beam_energy = meta[0]['Voltage']
     stack.metadata.Acquisition_instrument.TEM.dwell_time = meta[
-        0]['ExposureTime'] * images_per_tilt * 1e-6
+        0]['ExposureTime'] * images_per_tilt / (stack.data.shape[2] * stack.data.shape[3])
     stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]['SpotSize']
     stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]['Defocus']
     stack.metadata.General.original_filename = meta[0]['ImageFile']
