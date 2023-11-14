@@ -186,6 +186,9 @@ def load_hspy(filename, tilts=None, reader=None):
         elif stack.original_metadata.has_item('std_header'):
             # serialem_format = True
             logger.info('SerialEM generated MRC file detected')
+            ext_header = parse_mrc_header(filename)['ext_header']
+            tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][0:stack.data.shape[0]]
+            tilts = tilts / 100
         else:
             tilts = np.zeros(stack.data.shape[0])
             logger.info('Unable to find tilt angles. Calibrate axis 0.')
