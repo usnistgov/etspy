@@ -465,12 +465,12 @@ def load_serialem_series(mrcfiles, mdocfiles):
 
     for i in range(0, len(mrcfiles)):
         fn = mdocfiles[tilts_sort[i]][:-5]
-        if fn[-3:].lower() != 'mrc':
-            fn = fn + 'mrc'
+        if fn[-4:].lower() != '.mrc':
+            fn = fn + '.mrc'
         stack[i] = hspy.load(fn)
 
     images_per_tilt = stack[0].data.shape[0]
-    stack = hspy.stack(stack)
+    stack = hspy.stack(stack, show_progressbar=False)
     stack = _set_axes_serialem(stack, tilts, meta)
 
     if not stack.metadata.has_item('Acquisition_instrument.TEM'):
