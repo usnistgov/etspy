@@ -124,7 +124,7 @@ def weight_stack(stack, accuracy='medium'):
         Stack to be weighted.
 
     accuracy : string
-        Level of accuracy for determining the weighting.  Acceptable values are 'good', 'medium', 'super', and 'unbelievable'.
+        Level of accuracy for determining the weighting.  Acceptable values are 'low', 'medium', and 'high'.
 
     Returns
     ----------
@@ -201,7 +201,6 @@ def calc_EST_angles(N):
     Caculate angles used for equally sloped tomography (EST).
 
     See:
-
             J. Miao, F. Forster, and O. Levi. Equally sloped tomography with oversampling reconstruction.
             Phys. Rev. B, 72 (2005) 052103.
             https://doi.org/10.1103/PhysRevB.72.052103
@@ -209,21 +208,18 @@ def calc_EST_angles(N):
     Parameters
     ----------
     N : integer
-        Stack to be weighted.
-
-    accuracy : string
-        Level of accuracy for determining the weighting.  Acceptable values are 'good', 'medium', 'super', and 'unbelievable'.
+        Number of points in scan.
 
     Returns
     ----------
-    reg : TomoStack object
-        Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
+    angles : Numpy array
+        Angles in degrees for equally sloped tomography.
 
     """
     if np.mod(N, 2) != 0:
         raise ValueError("N must be an even number")
 
-    ang = np.zeros(2 * N)
+    angles = np.zeros(2 * N)
 
     n = np.arange(N / 2 + 1, N + 1, dtype='int')
     theta1 = -np.arctan((N + 2 - 2 * n) / N)
@@ -235,7 +231,37 @@ def calc_EST_angles(N):
     n = np.arange(1, N / 2 + 1, dtype='int')
     theta3 = -np.pi / 2 + np.arctan((N + 2 - 2 * n) / N)
 
-    ang = np.concatenate([theta1, theta2, theta3], axis=0)
-    ang = ang * 180 / np.pi
-    ang.sort()
-    return ang
+    angles = np.concatenate([theta1, theta2, theta3], axis=0)
+    angles = angles * 180 / np.pi
+    angles.sort()
+    return angles
+
+
+def calc_golden_ratio_angles(tilt_range, nangles):
+    """
+    Calculate golden ratio angles for a given tilt range.
+
+    See:
+
+            A. P. Kaestner, B. Munch and P. Trtik, Opt. Eng., 2011, 50, 123201.
+            https://doi.org/10.1117/1.3660298
+
+    Parameters
+    ----------
+    tilt_range : integer
+        Tilt range in degrees.
+
+    nangles : integer
+        Number of angles to calculate.
+
+    Returns
+    ----------
+    thetas : Numpy Array
+        Angles in degrees for golden ratio sampling over the provided tilt range.
+
+    """
+    alpha = tilt_range / 180 * np.pi
+    i = np.arange(nangles) + 1
+    thetas = np.mod(i * alpha * ((1 + np.sqrt(5)) / 2), alpha) - alpha / 2
+    thetas = thetas * 180 / np.pi
+    return thetas
