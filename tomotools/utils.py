@@ -194,3 +194,48 @@ def weight_stack(stack, accuracy='medium'):
             wg[:, x] = r**(s[i] * delta)
         stackw.data[i, :, :] = stack.data[i, :, :] * wg
     return stackw
+
+
+def calc_EST_angles(N):
+    """
+    Caculate angles used for equally sloped tomography (EST).
+
+    See:
+
+            J. Miao, F. Forster, and O. Levi. Equally sloped tomography with oversampling reconstruction.
+            Phys. Rev. B, 72 (2005) 052103.
+            https://doi.org/10.1103/PhysRevB.72.052103
+
+    Parameters
+    ----------
+    N : integer
+        Stack to be weighted.
+
+    accuracy : string
+        Level of accuracy for determining the weighting.  Acceptable values are 'good', 'medium', 'super', and 'unbelievable'.
+
+    Returns
+    ----------
+    reg : TomoStack object
+        Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
+
+    """
+    if np.mod(N, 2) != 0:
+        raise ValueError("N must be an even number")
+
+    ang = np.zeros(2 * N)
+
+    n = np.arange(N / 2 + 1, N + 1, dtype='int')
+    theta1 = -np.arctan((N + 2 - 2 * n) / N)
+    theta1 = np.pi / 2 - theta1
+
+    n = np.arange(1, N + 1, dtype='int')
+    theta2 = np.arctan((N + 2 - 2 * n) / N)
+
+    n = np.arange(1, N / 2 + 1, dtype='int')
+    theta3 = -np.pi / 2 + np.arctan((N + 2 - 2 * n) / N)
+
+    ang = np.concatenate([theta1, theta2, theta3], axis=0)
+    ang = ang * 180 / np.pi
+    ang.sort()
+    return ang
