@@ -12,6 +12,18 @@ import astra
 import logging
 import multiprocessing as mp
 
+
+try:
+    import genfire
+except ImportError:
+    genfire_installed = False
+else:
+    genfire_installed = True
+
+if genfire_installed:
+    import genfire as gf
+
+
 ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -27,8 +39,8 @@ def run(stack, method, iterations=20, constrain=None,
     stack :TomoStack object
        TomoStack containing the input tilt series
     method : string
-        Reconstruction algorithm to use.  Must be either 'FBP' (default) or
-        'SIRT'
+        Reconstruction algorithm to use.  Must be 'FBP' (default), 'SIRT',
+        or 'GENFIRE'
     iterations : integer (only required for SIRT)
         Number of iterations for the SIRT reconstruction (for SIRT methods
         only)
@@ -48,10 +60,45 @@ def run(stack, method, iterations=20, constrain=None,
 
     """
     if stack.metadata.Tomography.tilts is None:
-        raise ValueError("Tilts not defined")
+        raise ImportError("Tilts not defined")
 
     angles = stack.metadata.Tomography.tilts
-    if method == 'FBP':
+
+    if method.lower() == 'genfire':
+        print(True)
+        if genfire_installed is False:
+            raise ValueError('GENFIRE is not installed.')
+        padded, npad = pad_square(stack)
+        proj = np.transpose(padded.data, [2, 1, 0])
+
+        tiltSeries = np.roll(np.rot90(proj, k=1, axes=(0, 1)), shift=1, axis=0)
+        kwargs = {'griddingMethod': 0}
+        tiltAngles = stack.metadata.Tomography.tilts
+        # Convert to Euler representation assuming single-tilt axis
+        eulerAngles = np.zeros((len(tiltAngles), 3))
+        eulerAngles[:, 1] = tiltAngles
+
+        # Convert enumerated type to that used by GENFIRE
+        gridMap = {0: "FFT", 1: "DFT"}
+        kwargs['griddingMethod'] = gridMap[kwargs['griddingMethod']]
+
+        # Assemble rest of parameters
+        pars = dict(projections=tiltSeries,
+                    eulerAngles=eulerAngles,
+                    resultsFilename="recon.mrc",
+                    numIterations=10,
+                    oversamplingRatio=1,
+                    **kwargs)
+
+        # Run the reconstruction
+        GF = gf.reconstruct.GenfireReconstructor(**pars)
+        results = GF.reconstruct()
+
+        rec = np.rollaxis(results['reconstruction'], 1)
+        rec = rec[npad:-npad, :, :]
+        return rec
+
+    elif method == 'FBP':
         if cuda is False:
             '''ASTRA weighted-backprojection reconstruction of single slice'''
             logger.info('Reconstructing volume using FBP')
@@ -448,3 +495,43 @@ def astra_sirt_error(sinogram, angles, iterations=50,
 
     astra.clear()
     return rec_stack, residual_error
+
+
+def pad_square(stack):
+    """
+    Pad a tilt series to square dimensions for GENFIRE reconstruction.
+
+    Args
+    ----------
+    stack : TomoStack
+       Tilt series to be padded.
+
+    Returns
+    ----------
+    padded : TomoStack
+        Padded version of tilt series.
+
+    row_pad : int
+        Number of pixels added to each side of the stack.
+
+    """
+    padded = stack.deepcopy()
+    ntilts, nrows, ncols = stack.data.shape
+    if nrows > ncols:
+        if np.mod(nrows, 2) != 0:
+            row_pad = 1
+            nrows += 1
+        else:
+            row_pad = 0
+        col_pad = round((nrows - ncols) / 2)
+        padded.data = np.pad(padded.data, [[0, 0], [row_pad, 0], [col_pad, col_pad]])
+        return padded, col_pad
+    elif ncols > ncols:
+        if np.mod(ncols, 2) != 0:
+            col_pad = 1
+            ncols += 1
+        else:
+            col_pad = 0
+        row_pad = round((ncols - nrows) / 2)
+        padded.data = np.pad(padded.data, [[0, 0], [row_pad, row_pad], [col_pad, 0]])
+        return padded, row_pad
