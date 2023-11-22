@@ -30,6 +30,13 @@ Installation
     pip install git+https://github.com/usnistgov/tomotools.git
     ```
 
+  * OPTIONAL: Install GENFIRE and PyFFTW:
+    # NOTE: Use of GENFIRE requires a headless implementation currently located on GitHub.
+    ```bash
+    pip install git+https://github.com/AndrewHerzing/GENFIRE-Python@Headless
+    conda install -c conda-forge pyfftw
+    ```
+
 Removal
 -------
 The package can be removed with:
