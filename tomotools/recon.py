@@ -60,7 +60,7 @@ def run(stack, method, iterations=20, constrain=None,
 
     """
     if stack.metadata.Tomography.tilts is None:
-        raise ImportError("Tilts not defined")
+        raise ValueError("Tilts not defined")
 
     angles = stack.metadata.Tomography.tilts
 
