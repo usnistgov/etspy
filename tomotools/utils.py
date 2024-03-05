@@ -265,3 +265,30 @@ def calc_golden_ratio_angles(tilt_range, nangles):
     thetas = np.mod(i * alpha * ((1 + np.sqrt(5)) / 2), alpha) - alpha / 2
     thetas = thetas * 180 / np.pi
     return thetas
+
+
+def get_radial_mask(mask_shape, center=None):
+    """
+    Calculate a radial mask given a shape and center position.
+
+    Parameters
+    ----------
+    mask_shape : list
+        Shape (rows, cols) of the resulting mask.
+
+    center : list
+        Location of mask center (x,y).
+
+    Returns
+    ----------
+    mask : Numpy Array
+        Logical array that is True in the masked region and False outside of it.
+
+    """
+    if center is None:
+        center = [int(i / 2) for i in mask_shape]
+    radius = min(center[0], center[1], mask_shape[1] - center[0], mask_shape[0] - center[1])
+    yy, xx = np.ogrid[0:mask_shape[0], 0:mask_shape[1]]
+    mask = np.sqrt((xx - center[0])**2 + (yy - center[1])**2)
+    mask = mask < radius
+    return mask
