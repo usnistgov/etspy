@@ -294,7 +294,7 @@ def get_radial_mask(mask_shape, center=None):
     return mask
 
 
-def filter_sinogram(stack, filter_name='shepp-logan', cutoff=0.5):
+def filter_stack(stack, filter_name='shepp-logan', cutoff=0.5):
     """
     Apply a Fourier filter to a sinogram or series of sinograms.
 
