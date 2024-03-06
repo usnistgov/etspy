@@ -316,19 +316,21 @@ def filter_stack(stack, filter_name='shepp-logan', cutoff=0.5):
     """
     nangles, ny = stack.data.shape[0:2]
 
-    order = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
-    n = np.arange(order // 2 + 1)
-    filter = np.linspace(cutoff / order, 1 - cutoff / order, len(n))
-    w = 2 * np.pi * n / order
+    filter_length = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
+    freq_indices = np.arange(filter_length // 2 + 1)
+    filter = np.linspace(cutoff / filter_length, 1 - cutoff / filter_length, len(freq_indices))
+    omega = 2 * np.pi * freq_indices / filter_length
 
     if filter_name == 'ram-lak':
         pass
     elif filter_name == 'shepp-logan':
-        filter[1:] = filter[1:] * np.sinc(w[1:] / (2 * np.pi))
+        filter[1:] = filter[1:] * np.sinc(omega[1:] / (2 * np.pi))
     elif filter_name in ['hanning', 'hann',]:
-        filter[1:] = filter[1:] * (1 + np.cos(w[1:])) / 2
+        filter[1:] = filter[1:] * (1 + np.cos(omega[1:])) / 2
     elif filter_name in ['cosine', 'cos',]:
-        filter[1:] = filter[1:] * np.cos(w[1:] / 2)
+        filter[1:] = filter[1:] * np.cos(omega[1:] / 2)
+    else:
+        raise ValueError('Invalid filter type: %s.' % filter_name)
 
     filter = np.concatenate((filter, filter[-2:0:-1]))
 
