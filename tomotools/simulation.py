@@ -217,7 +217,7 @@ def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0,
     return misaligned
 
 
-def add_gaussian_noise(stack, factor=0.2):
+def add_noise(stack, noise_type='gaussian', factor=0.2):
     """
     Apply misalignment to a model tilt series.
 
@@ -225,6 +225,8 @@ def add_gaussian_noise(stack, factor=0.2):
     ----------
     stack : TomoStack object
         TomoStack simluation
+    noise_type : str
+        Type of noise. Must be gaussian or poissonian/shot
     factor : float
         Amount of noise to add
 
@@ -235,12 +237,19 @@ def add_gaussian_noise(stack, factor=0.2):
 
     """
     noisy = stack.deepcopy()
-    noise = np.random.normal(stack.data.mean(),
-                             factor * stack.data.mean(),
-                             stack.data.shape)
-    noisy.data = noisy.data + noise
-    if noisy.data.min() < 0:
-        noisy.data -= noisy.data.min()
-    scale_factor = noisy.data.max() / stack.data.max()
-    noisy.data = noisy.data / scale_factor
+
+    if noise_type == 'gaussian':
+        noise = np.random.normal(stack.data.mean(),
+                                 factor * stack.data.mean(),
+                                 stack.data.shape)
+        noisy.data = noisy.data + noise
+        if noisy.data.min() < 0:
+            noisy.data -= noisy.data.min()
+        scale_factor = noisy.data.max() / stack.data.max()
+        noisy.data = noisy.data / scale_factor
+
+    elif noise_type in ['poissonian', 'shot']:
+        noise = np.random.poisson(stack.data * scale_factor) / scale_factor
+        noisy.data = noisy.data + noise
+
     return noisy
