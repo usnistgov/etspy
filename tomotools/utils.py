@@ -292,3 +292,60 @@ def get_radial_mask(mask_shape, center=None):
     mask = np.sqrt((xx - center[0])**2 + (yy - center[1])**2)
     mask = mask < radius
     return mask
+
+
+def filter_sinogram(stack, filter_name='shepp-logan', cutoff=0.5):
+    """
+    Apply a Fourier filter to a sinogram or series of sinograms.
+
+    Parameters
+    ----------
+    stack : TomoStack
+        TomoStack with projection data
+    filter_name : string
+        Type of filter to apply.
+    cutoff : float
+        Factor of sampling rate to use as the cutoff.  Default is 0.5 which
+        corresponds to the Nyquist frequency.
+
+    Returns
+    ----------
+    result : TomoStack
+        Filtered version of the input TomoStack.
+
+    """
+    nangles, ny = stack.data.shape[0:2]
+
+    order = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
+    n = np.arange(order // 2 + 1)
+    filter = np.linspace(cutoff / order, 1 - cutoff / order, len(n))
+    w = 2 * np.pi * n / order
+
+    if filter_name == 'ram-lak':
+        pass
+    elif filter_name == 'shepp-logan':
+        filter[1:] = filter[1:] * np.sinc(w[1:] / (2 * np.pi))
+    elif filter_name in ['hanning', 'hann',]:
+        filter[1:] = filter[1:] * (1 + np.cos(w[1:])) / 2
+    elif filter_name in ['cosine', 'cos',]:
+        filter[1:] = filter[1:] * np.cos(w[1:] / 2)
+
+    filter = np.concatenate((filter, filter[-2:0:-1]))
+
+    nfilter = filter.shape[0]
+    pad_length = int((nfilter - ny) / 2)
+
+    if len(stack.data.shape) == 2:
+        padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length]])
+        proj_fft = np.fft.fft(padded, axis=1)
+        filtered = np.fft.ifft(proj_fft * filter, axis=1).real
+        filtered = filtered[:, pad_length:-pad_length]
+
+    elif len(stack.data.shape) == 3:
+        padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length], [0, 0]])
+        proj_fft = np.fft.fft(padded, axis=1)
+        filtered = np.fft.ifft(proj_fft * filter[:, np.newaxis], axis=1).real
+        filtered = filtered[:, pad_length:-pad_length, :]
+    result = stack.deepcopy()
+    result.data = filtered
+    return result
