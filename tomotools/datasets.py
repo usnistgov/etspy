@@ -9,7 +9,7 @@ Test dataset handling module for TomoTools package.
 """
 
 import tomotools.api as tomotools
-from tomotools.simulation import misalign_stack, add_gaussian_noise
+from tomotools.simulation import misalign_stack, add_noise
 import os
 
 tomotools_path = os.path.dirname(tomotools.__file__)
@@ -80,5 +80,5 @@ def get_catalyst_tilt_series(misalign=False, minshift=-5, maxshift=5,
                                   max_shift=maxshift, tilt_shift=tiltshift,
                                   tilt_rotate=tiltrotate, x_only=xonly)
     if noise:
-        catalyst = add_gaussian_noise(catalyst, noise_factor)
+        catalyst = add_noise(catalyst, 'gaussian', noise_factor)
     return catalyst
