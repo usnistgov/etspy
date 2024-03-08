@@ -518,6 +518,8 @@ class TomoStack(Signal2D):
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh)
 
         """
+        if method.lower() not in ['fbp', 'sirt',]:
+            raise ValueError('Unknown reconstruction algorithm: %s' % method)
         if cuda is None:
             if astra.use_cuda():
                 logger.info('CUDA detected with Astra')
@@ -978,6 +980,9 @@ class TomoStack(Signal2D):
         >>> rec_stack, error = stack.recon_error(iterations=5)
 
         """
+        if self.metadata.Tomography.tilts is None:
+            raise ValueError("Tilt angles not defined")
+
         if not nslice:
             nslice = np.int32(self.data.shape[2] / 2)
 
