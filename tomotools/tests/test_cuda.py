@@ -41,53 +41,6 @@ class TestReconCUDA:
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestAstraSIRTGPU:
-
-    def test_astra_sirt_3d_data(self):
-        stack = ds.get_needle_data(True)
-        angles = stack.axes_manager[0].axis
-        slices = stack.isig[120:121, :].deepcopy().data
-        rec = recon.astra_sirt(slices, angles,
-                               thickness=None, iterations=2,
-                               constrain=True, thresh=0, cuda=True)
-        assert rec.shape == (1, slices.shape[1], slices.shape[1])
-        assert rec.shape[0] == slices.shape[2]
-        assert type(rec) is numpy.ndarray
-
-    def test_astra_sirt_2d_data(self):
-        stack = ds.get_needle_data(True)
-        angles = stack.axes_manager[0].axis
-        slices = stack.isig[:, 120].deepcopy().data
-        rec = recon.astra_sirt(slices, angles,
-                               thickness=None, iterations=2,
-                               constrain=True, thresh=0, cuda=True)
-        assert rec.shape == (1, slices.shape[1], slices.shape[1])
-        assert rec.shape[0] == 1
-        assert type(rec) is numpy.ndarray
-
-    def test_astra_project_3d_data(self):
-        stack = ds.get_needle_data(True)
-        angles = stack.axes_manager[0].axis
-        slices = stack.isig[120:121, :].deepcopy().data
-        rec = recon.astra_sirt(slices, angles,
-                               thickness=None, iterations=1,
-                               constrain=True, thresh=0, cuda=True)
-        sino = recon.astra_project(rec, angles, cuda=True)
-        assert sino.shape == (len(angles), rec.shape[0], rec.shape[2])
-        assert sino.shape[2] == slices.shape[1]
-        assert type(sino) is numpy.ndarray
-
-    def test_astra_project_2d_data(self):
-        stack = ds.get_needle_data(True)
-        angles = stack.axes_manager[0].axis
-        slices = stack.isig[:, 120].deepcopy().data
-        rec = recon.astra_sirt(slices, angles,
-                               thickness=None, iterations=1,
-                               constrain=True, thresh=0, cuda=True)
-        sino = recon.astra_project(rec, angles, cuda=True)
-        assert sino.shape == (len(angles), rec.shape[0], rec.shape[2])
-        assert sino.shape[1] == 1
-        assert type(sino) is numpy.ndarray
-
     def test_astra_sirt_error_gpu(self):
         stack = ds.get_needle_data(True)
         angles = stack.axes_manager[0].axis

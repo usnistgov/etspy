@@ -151,9 +151,9 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
         alg = astra.algorithm.create(cfg)
 
-        if nx == 1:
-            rec = run_alg(stack.data[:, :], niterations, sino_id, alg, rec_id)
-        elif ncores == 1:
+        # if nx == 1:
+        #     rec = run_alg(stack.data[:, :], niterations, sino_id, alg, rec_id)
+        if ncores == 1:
             for i in tqdm.tqdm(range(0, nx)):
                 rec[i] = run_alg(stack.data[:, :, i], niterations, sino_id, alg, rec_id)
         else:

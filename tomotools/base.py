@@ -464,7 +464,7 @@ class TomoStack(Signal2D):
         return out
 
     def reconstruct(self, method='FBP', iterations=None, constrain=False,
-                    thresh=0, cuda=None, thickness=None):
+                    thresh=0, cuda=None, thickness=None, ncores=None, sino_filter='shepp-logan'):
         """
         Reconstruct a TomoStack series using one of the available methods.
 
@@ -530,7 +530,7 @@ class TomoStack(Signal2D):
 
         out = copy.deepcopy(self)
         out.data = recon.run(self, method, iterations, constrain, thresh,
-                             cuda, thickness)
+                             cuda, thickness, ncores, sino_filter)
 
         out.axes_manager[0].name = 'y'
         out.axes_manager[0].size = out.data.shape[0]
