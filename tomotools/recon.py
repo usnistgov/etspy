@@ -117,10 +117,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
         alg = astra.algorithm.create(cfg)
 
         for i in tqdm.tqdm(range(0, nx)):
-            if nx > 1:
-                astra.data2d.store(sino_id, stack.data[:, :, i])
-            else:
-                astra.data2d.store(sino_id, stack.data)
+            astra.data2d.store(sino_id, stack.data[:, :, i])
             astra.algorithm.run(alg, niterations)
             rec[i, :, :] = astra.data2d.get(rec_id)
 
