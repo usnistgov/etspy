@@ -986,7 +986,7 @@ class TomoStack(Signal2D):
         if not nslice:
             nslice = int(self.data.shape[2] / 2)
 
-        if not cuda:
+        if cuda is None:
             if astra.use_cuda():
                 logger.info('CUDA detected with Astra')
                 cuda = True
