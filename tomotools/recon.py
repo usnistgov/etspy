@@ -217,15 +217,11 @@ def astra_sirt_error(sinogram, angles, iterations=50,
 
     Args
     ----------
-    stack : NumPy array
+    sinogram : NumPy array
        Tilt series data either of the form [angles, x] or [angles, y, x] where
        y is the tilt axis and x is the projection axis.
     angles : list or NumPy array
         Projection angles in degrees.
-    thickness : int or float
-        Number of pixels in the projection (through-thickness) direction
-        for the reconstructed volume.  If None, thickness is set to be the
-        same as that in the x-direction of the sinogram.
     iterations : integer
         Number of iterations for the SIRT reconstruction.
     constrain : boolean
@@ -243,46 +239,44 @@ def astra_sirt_error(sinogram, angles, iterations=50,
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-    if len(sinogram.data.shape) == 3:
-        sino = sinogram.data[:, :, 0]
-    else:
-        sino = sinogram.data
     thetas = angles * np.pi / 180
 
-    n_angles, x_pix = sino.shape
+    nangles, ny = sinogram.shape
 
-    thickness = x_pix
-
-    rec = np.zeros([thickness, x_pix], sino.dtype)
-    vol_geom = astra.create_vol_geom(thickness, x_pix)
-    proj_geom = astra.create_proj_geom('parallel', 1, x_pix, thetas)
-    data_id = astra.data2d.create('-sino', proj_geom, sino)
+    proj_geom = astra.create_proj_geom('parallel', 1.0, ny, thetas)
+    vol_geom = astra.create_vol_geom((ny, ny))
     rec_id = astra.data2d.create('-vol', vol_geom)
+    sino_id = astra.data2d.create('-sino', proj_geom, np.zeros([nangles, ny]))
 
     if cuda:
-        cfg = astra.astra_dict('SIRT_CUDA')
+        alg_name = 'SIRT_CUDA'
+        proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
     else:
-        proj_id = astra.create_projector('strip', proj_geom, vol_geom)
-        cfg = astra.astra_dict('SIRT')
-        cfg['ProjectorId'] = proj_id
+        alg_name = 'SIRT'
+        proj_id = astra.create_projector('linear', proj_geom, vol_geom)
 
+    astra.data2d.store(sino_id, sinogram)
+
+    cfg = astra.astra_dict(alg_name)
+    cfg['ProjectionDataId'] = sino_id
+    cfg['ProjectorId'] = proj_id
     cfg['ReconstructionDataId'] = rec_id
-    cfg['ProjectionDataId'] = data_id
     if constrain:
         cfg['option'] = {}
         cfg['option']['MinConstraint'] = thresh
 
-    alg_id = astra.algorithm.create(cfg)
+    alg = astra.algorithm.create(cfg)
+
+    rec = np.zeros([iterations, ny, ny], np.float32)
     residual_error = np.zeros(iterations)
-    rec_stack = np.zeros([iterations, thickness, x_pix])
 
-    for i in range(iterations):
-        astra.algorithm.run(alg_id, 1)
-        rec = astra.data2d.get(rec_id)
-        rec_stack[i] = rec
-
-        forward_project = astra_project(rec, angles=angles, cuda=cuda)[:, :, 0]
-        residual_error[i] = np.sqrt(np.square(forward_project - sino).sum())
-
+    for i in tqdm.tqdm(range(iterations)):
+        astra.algorithm.run(alg, 1)
+        rec[i] = astra.data2d.get(rec_id)
+        if cuda:
+            residual_error[i] = astra.algorithm.get_res_norm(alg)
+        else:
+            curr_id, curr = astra.create_sino(rec[i], proj_id)
+            residual_error[i] = np.linalg.norm((sinogram - curr))
     astra.clear()
-    return rec_stack, residual_error
+    return rec, residual_error

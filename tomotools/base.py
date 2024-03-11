@@ -984,7 +984,7 @@ class TomoStack(Signal2D):
             raise ValueError("Tilt angles not defined")
 
         if not nslice:
-            nslice = np.int32(self.data.shape[2] / 2)
+            nslice = int(self.data.shape[2] / 2)
 
         if not cuda:
             if astra.use_cuda():
@@ -993,19 +993,22 @@ class TomoStack(Signal2D):
             else:
                 cuda = False
                 logger.info('CUDA not detected with Astra')
-        sinogram = self.isig[nslice:nslice + 1, :].deepcopy()
+        sinogram = self.isig[nslice, :].data
         angles = self.metadata.Tomography.tilts
         rec_stack, error = recon.astra_sirt_error(sinogram, angles,
                                                   iterations=iterations,
                                                   constrain=constrain,
                                                   thresh=thresh, cuda=cuda)
         rec_stack = Signal2D(rec_stack)
-        rec_stack.axes_manager[0].name = 'z'
-        rec_stack.axes_manager[0].scale = self.axes_manager[1].scale
-        rec_stack.axes_manager[0].scale = self.axes_manager[1].scale
-        rec_stack.axes_manager[1].name = 'x'
-        rec_stack.axes_manager[1].scale = self.axes_manager[1].scale
-        rec_stack.axes_manager[1].scale = self.axes_manager[1].scale
+        rec_stack.axes_manager[0].name = 'SIRT iteration'
+        rec_stack.axes_manager[0].scale = 1
+        rec_stack.axes_manager[1].name = self.axes_manager[2].name
+        rec_stack.axes_manager[1].scale = self.axes_manager[2].scale
+        rec_stack.axes_manager[1].units = self.axes_manager[2].units
+        rec_stack.axes_manager[2].name = 'z'
+        rec_stack.axes_manager[2].scale = self.axes_manager[2].scale
+        rec_stack.axes_manager[2].units = self.axes_manager[2].units
+        rec_stack.navigator = 'slider'
 
         error = Signal1D(error)
         error.axes_manager[0].name = 'SIRT Iteration'

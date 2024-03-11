@@ -62,8 +62,10 @@ class TestReconRun:
 class TestAstraSIRTError:
     def test_astra_sirt_error_cpu(self):
         stack = ds.get_needle_data(True)
-        angles = stack.axes_manager[0].axis
-        slices = stack.isig[120:121, :].deepcopy()
-        rec_stack, error = recon.astra_sirt_error(slices, angles, iterations=10,
+        [ntilts, ny, nx] = stack.data.shape
+        angles = stack.metadata.Tomography.tilts
+        sino = stack.isig[120, :].data
+        rec_stack, error = recon.astra_sirt_error(sino, angles, iterations=2,
                                                   constrain=True, thresh=0, cuda=False)
         assert type(error) is numpy.ndarray
+        assert rec_stack.shape == (2, ny, ny)
