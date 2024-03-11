@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import sys
 import io
-from tomotools.base import TomoStack
+from tomotools.base import TomoStack, RecStack
 import hyperspy.api as hs
 
 
@@ -341,6 +341,6 @@ class TestManualAlign:
 
 class TestPlotSlices:
     def test_plot_slices(self):
-        stack = ds.get_needle_data(True)
-        fig = stack.plot_slices()
+        rec = RecStack(np.zeros([10, 10, 10]))
+        fig = rec.plot_slices()
         assert type(fig) is matplotlib.figure.Figure

@@ -27,23 +27,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class TomoStack(Signal2D):
+class Stack(Signal2D):
     """
-    Create a TomoStack object for tomography data.
+    Create a Stack object for tomography data.
 
     Note: All attributes are initialized with values of None or 0.0
     in __init__ unless they are already defined
-
-    # Attributes
-    # ----------
-    # shifts : numpy array
-    #     X,Y shifts calculated for each image for stack registration
-    # tiltaxis : float
-    #      Angular orientation (in degrees) by which data is rotated to
-           orient the
-    #      stack so that the tilt axis is vertical
-    # xshift : float
-    #     Lateral shift of the tilt axis from the center of the stack.
     """
 
     def __init__(self, *args, **kwargs):
@@ -63,6 +52,44 @@ class TomoStack(Signal2D):
 
         """
         self.data = self.data.astype(dtype)
+
+
+class TomoStack(Stack):
+    """
+    Create a TomoStack object for tomography data.
+
+    Note: All attributes are initialized with values of None or 0.0
+    in __init__ unless they are already defined
+
+    # Attributes
+    # ----------
+    # shifts : numpy array
+    #     X,Y shifts calculated for each image for stack registration
+    # tiltaxis : float
+    #      Angular orientation (in degrees) by which data is rotated to
+           orient the
+    #      stack so that the tilt axis is vertical
+    # xshift : float
+    #     Lateral shift of the tilt axis from the center of the stack.
+    """
+
+    # def __init__(self, *args, **kwargs):
+    #     """Initialize TomoStack class."""
+    #     super().__init__(*args, **kwargs)
+
+    # def plot(self, navigator='slider', *args, **kwargs):
+    #     """Plot function to set default navigator to 'slider'."""
+    #     super().plot(navigator, *args, **kwargs)
+
+    # def change_data_type(self, dtype):
+    #     """
+    #     Change data type.
+
+    #     Use instead of the inherited change_dtype function of Hyperspy which results in
+    #     conversion of the TomoStack to a Signal2D.
+
+    #     """
+    #     self.data = self.data.astype(dtype)
 
     def test_correlation(self, images=None):
         """
@@ -1015,9 +1042,47 @@ class TomoStack(Signal2D):
         error.metadata.Signal.quantity = 'Sum of Squared Difference'
         return rec_stack, error
 
+
+class RecStack(Stack):
+    """
+    Create a RecStack object for tomography data.
+
+    Note: All attributes are initialized with values of None or 0.0
+    in __init__ unless they are already defined
+
+    # Attributes
+    # ----------
+    # shifts : numpy array
+    #     X,Y shifts calculated for each image for stack registration
+    # tiltaxis : float
+    #      Angular orientation (in degrees) by which data is rotated to
+           orient the
+    #      stack so that the tilt axis is vertical
+    # xshift : float
+    #     Lateral shift of the tilt axis from the center of the stack.
+    """
+
+    # def __init__(self, *args, **kwargs):
+    #     """Initialize TomoStack class."""
+    #     super().__init__(*args, **kwargs)
+
+    # def plot(self, navigator='slider', *args, **kwargs):
+    #     """Plot function to set default navigator to 'slider'."""
+    #     super().plot(navigator, *args, **kwargs)
+
+    # def change_data_type(self, dtype):
+    #     """
+    #     Change data type.
+
+    #     Use instead of the inherited change_dtype function of Hyperspy which results in
+    #     conversion of the RecStack to a Signal2D.
+
+    #     """
+    #     self.data = self.data.astype(dtype)
+
     def plot_slices(self, yslice=None, zslice=None, xslice=None):
         """
-        Plot slices along all three axes of stack.
+        Plot slices along all three axes of a reconstruction stack.
 
         Args
         ----------
@@ -1063,40 +1128,27 @@ class TomoStack(Signal2D):
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
         return fig
 
-
-class RecStack(Signal2D):
-    """
-    Create a RecStack object for tomography data.
-
-    Note: All attributes are initialized with values of None or 0.0
-    in __init__ unless they are already defined
-
-    # Attributes
-    # ----------
-    # shifts : numpy array
-    #     X,Y shifts calculated for each image for stack registration
-    # tiltaxis : float
-    #      Angular orientation (in degrees) by which data is rotated to
-           orient the
-    #      stack so that the tilt axis is vertical
-    # xshift : float
-    #     Lateral shift of the tilt axis from the center of the stack.
-    """
-
-    def __init__(self, *args, **kwargs):
-        """Initialize TomoStack class."""
-        super().__init__(*args, **kwargs)
-
-    def plot(self, navigator='slider', *args, **kwargs):
-        """Plot function to set default navigator to 'slider'."""
-        super().plot(navigator, *args, **kwargs)
-
-    def change_data_type(self, dtype):
+    def save_raw(self, filename=None):
         """
-        Change data type.
+        Save RecStack data as a .raw/.rpl file pair.
 
-        Use instead of the inherited change_dtype function of Hyperspy which results in
-        conversion of the RecStack to a Signal2D.
+        Args
+        ----------
+        filname : string (optional)
+            Name of file to receive data. If not specified, the metadata will
+            be used. Data dimensions and data type will be appended.
 
         """
-        self.data = self.data.astype(dtype)
+        datashape = self.data.shape
+
+        if filename is None:
+            filename = self.metadata.General.title
+        else:
+            filename, ext = os.path.splitext(filename)
+
+        filename = filename + '_%sx%sx%s_%s.rpl' % (str(datashape[0]),
+                                                    str(datashape[1]),
+                                                    str(datashape[2]),
+                                                    self.data.dtype.name)
+        self.save(filename)
+        return
