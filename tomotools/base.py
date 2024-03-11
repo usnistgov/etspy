@@ -532,11 +532,11 @@ class TomoStack(Signal2D):
         out.data = recon.run(self, method, iterations, constrain, thresh,
                              cuda, thickness, ncores, sino_filter)
 
-        out.axes_manager[0].name = 'y'
+        out.axes_manager[0].name = 'x'
         out.axes_manager[0].size = out.data.shape[0]
-        out.axes_manager[0].offset = self.axes_manager['y'].offset
-        out.axes_manager[0].scale = self.axes_manager['y'].scale
-        out.axes_manager[0].units = self.axes_manager['y'].units
+        out.axes_manager[0].offset = self.axes_manager['x'].offset
+        out.axes_manager[0].scale = self.axes_manager['x'].scale
+        out.axes_manager[0].units = self.axes_manager['x'].units
 
         out.axes_manager[2].name = 'z'
         out.axes_manager[2].size = out.data.shape[1]
@@ -544,11 +544,11 @@ class TomoStack(Signal2D):
         out.axes_manager[2].scale = self.axes_manager['x'].scale
         out.axes_manager[2].units = self.axes_manager['x'].units
 
-        out.axes_manager[1].name = 'x'
+        out.axes_manager[1].name = 'y'
         out.axes_manager[1].size = out.data.shape[2]
-        out.axes_manager[1].offset = self.axes_manager['x'].offset
-        out.axes_manager[1].scale = self.axes_manager['x'].scale
-        out.axes_manager[1].units = self.axes_manager['x'].units
+        out.axes_manager[1].offset = self.axes_manager['y'].offset
+        out.axes_manager[1].scale = self.axes_manager['y'].scale
+        out.axes_manager[1].units = self.axes_manager['y'].units
         return out
 
     def test_align(self, tilt_shift=0.0, tilt_rotation=0.0, slices=None, thickness=None,
@@ -1062,3 +1062,41 @@ class TomoStack(Signal2D):
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
         return fig
+
+
+class RecStack(Signal2D):
+    """
+    Create a RecStack object for tomography data.
+
+    Note: All attributes are initialized with values of None or 0.0
+    in __init__ unless they are already defined
+
+    # Attributes
+    # ----------
+    # shifts : numpy array
+    #     X,Y shifts calculated for each image for stack registration
+    # tiltaxis : float
+    #      Angular orientation (in degrees) by which data is rotated to
+           orient the
+    #      stack so that the tilt axis is vertical
+    # xshift : float
+    #     Lateral shift of the tilt axis from the center of the stack.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize TomoStack class."""
+        super().__init__(*args, **kwargs)
+
+    def plot(self, navigator='slider', *args, **kwargs):
+        """Plot function to set default navigator to 'slider'."""
+        super().plot(navigator, *args, **kwargs)
+
+    def change_data_type(self, dtype):
+        """
+        Change data type.
+
+        Use instead of the inherited change_dtype function of Hyperspy which results in
+        conversion of the RecStack to a Signal2D.
+
+        """
+        self.data = self.data.astype(dtype)
