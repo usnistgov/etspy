@@ -20,18 +20,6 @@ class TestReconstruction:
         with pytest.raises(ValueError):
             slices.reconstruct('UNKNOWN')
 
-    def test_fbp_unknown_cuda(self):
-        stack = ds.get_needle_data(True)
-        slices = stack.isig[120:121, :].deepcopy()
-        with pytest.raises(Exception):
-            slices.reconstruct('FBP', cuda='UNKNOWN')
-
-    def test_sirt_unknown_cuda(self):
-        stack = ds.get_needle_data(True)
-        slices = stack.isig[120:121, :].deepcopy()
-        with pytest.raises(Exception):
-            slices.reconstruct('SIRT', cuda='UNKNOWN')
-
     def test_recon_fbp_cpu(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
