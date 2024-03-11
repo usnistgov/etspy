@@ -46,5 +46,5 @@ class TestModifications:
     def test_add_noise(self):
         model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
         stack = sim.create_model_tilt_series(model)
-        noisy = sim.add_gaussian_noise(stack)
+        noisy = sim.add_noise(stack)
         assert noisy.data.shape == (90, 10, 10)
