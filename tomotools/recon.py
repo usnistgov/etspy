@@ -160,56 +160,6 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
     return rec
 
 
-def astra_project(obj, angles, cuda=False):
-    """
-    Calculate projection of a 3D object using Astra-toolbox.
-
-    Args
-    ----------
-    obj : NumPy array
-        Either a 2D or 3D array containing the object to project.
-        If 2D, the structure is of the form [z, x] where z is the
-        projection axis.  If 3D, the strucutre is [y, z, x] where y is
-        the tilt axis.
-    angles : list or NumPy array
-        The projection angles in degrees
-    cuda : boolean
-        If True, perform reconstruction using the GPU-accelerated algorithm.
-
-    Returns
-    ----------
-    sino : Numpy array
-        3D array of the form [y, angle, x] containing the projection of
-        the input object
-
-    """
-    if len(obj.shape) == 2:
-        obj = np.expand_dims(obj, 0)
-    thetas = np.pi * angles / 180.
-    y_pix, thickness, x_pix = obj.shape
-    if cuda:
-        vol_geom = astra.create_vol_geom(thickness, x_pix, y_pix)
-        proj_geom = astra.create_proj_geom('parallel3d', 1.0, 1.0,
-                                           y_pix, x_pix, thetas)
-        sino_id, sino = astra.create_sino3d_gpu(obj,
-                                                proj_geom,
-                                                vol_geom)
-        astra.data3d.delete(sino_id)
-    else:
-        sino = np.zeros([y_pix, len(angles), x_pix], np.float32)
-        vol_geom = astra.create_vol_geom(thickness, x_pix)
-        proj_geom = astra.create_proj_geom('parallel', 1.0, x_pix, thetas)
-        proj_id = astra.create_projector('strip', proj_geom, vol_geom)
-        for i in range(0, y_pix):
-            sino_id, sino[i, :, :] = astra.create_sino(obj[i, :, :],
-                                                       proj_id,
-                                                       vol_geom)
-        astra.data2d.delete(sino_id)
-
-    sino = np.rollaxis(sino, 1)
-    return sino
-
-
 def astra_sirt_error(sinogram, angles, iterations=50,
                      constrain=True, thresh=0, cuda=False):
     """
