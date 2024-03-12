@@ -72,24 +72,6 @@ class TomoStack(Stack):
     #     Lateral shift of the tilt axis from the center of the stack.
     """
 
-    # def __init__(self, *args, **kwargs):
-    #     """Initialize TomoStack class."""
-    #     super().__init__(*args, **kwargs)
-
-    # def plot(self, navigator='slider', *args, **kwargs):
-    #     """Plot function to set default navigator to 'slider'."""
-    #     super().plot(navigator, *args, **kwargs)
-
-    # def change_data_type(self, dtype):
-    #     """
-    #     Change data type.
-
-    #     Use instead of the inherited change_dtype function of Hyperspy which results in
-    #     conversion of the TomoStack to a Signal2D.
-
-    #     """
-    #     self.data = self.data.astype(dtype)
-
     def test_correlation(self, images=None):
         """
         Test output of cross-correlation prior to alignment.
@@ -558,13 +540,13 @@ class TomoStack(Stack):
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> rec = slices.reconstruct('FBP')
+        >>> rec = slices.reconstruct('FBP', cuda=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> rec = slices.reconstruct('SIRT',iterations=5)
+        >>> rec = slices.reconstruct('SIRT',iterations=5, cuda=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
@@ -574,7 +556,7 @@ class TomoStack(Stack):
         >>> iterations = 5
         >>> constrain = True
         >>> thresh = 0
-        >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh)
+        >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh, cuda=False)
 
         """
         if method.lower() not in [

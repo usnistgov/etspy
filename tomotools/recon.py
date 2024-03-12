@@ -108,7 +108,7 @@ def run(
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
 
         if method.lower() == "fbp":
-            print("Reconstructing with CUDA-accelerated FBP algorithm")
+            logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
             cfg = astra.astra_dict("FBP_CUDA")
             cfg["ProjectionDataId"] = sino_id
             cfg["ReconstructionDataId"] = rec_id
