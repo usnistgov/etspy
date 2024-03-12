@@ -14,9 +14,14 @@ from tomotools.io import convert_to_tomo_stack
 import hyperspy.api as hs
 
 
-def create_catalyst_model(nparticles=15, particle_density=255,
-                          support_density=100, volsize=[600, 600, 600],
-                          support_radius=200, size_interval=[5, 12]):
+def create_catalyst_model(
+    nparticles=15,
+    particle_density=255,
+    support_density=100,
+    volsize=[600, 600, 600],
+    support_radius=200,
+    size_interval=[5, 12],
+):
     """
     Create a model data array that mimics a hetergeneous catalyst.
 
@@ -55,14 +60,16 @@ def create_catalyst_model(nparticles=15, particle_density=255,
         while r > support_radius or overlap:
             x = np.random.randint(0, volsize[0])
             y = np.random.randint(0, volsize[1])
-            r = np.sqrt((x - center[0])**2 + (y - center[1])**2)
+            r = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
             distance = np.abs(coords[:, 0:2] - np.array([x, y]))
             if np.min(distance) < size_interval[1]:
                 overlap = True
             else:
                 overlap = False
 
-        z_exact = np.int32(np.sqrt(support_radius**2 - (x - center[0])**2 - (y - center[1])**2) + center[2])
+        z_exact = np.int32(
+            np.sqrt(support_radius**2 - (x - center[0]) ** 2 - (y - center[1]) ** 2) + center[2]
+        )
         zmin = z_exact - np.int32(size / 2)
         zmax = z_exact + np.int32(size / 2)
         z_rand = np.random.randint(zmin, zmax)
@@ -73,10 +80,9 @@ def create_catalyst_model(nparticles=15, particle_density=255,
             z = z_rand
         coords[i, :] = [x, y, z, size]
 
-    xx, yy, zz = np.mgrid[:volsize[0], :volsize[1], :volsize[2]]
+    xx, yy, zz = np.mgrid[: volsize[0], : volsize[1], : volsize[2]]
 
-    support = (xx - center[0]) ** 2 +\
-        (yy - center[1]) ** 2 + (zz - center[2]) ** 2
+    support = (xx - center[0]) ** 2 + (yy - center[1]) ** 2 + (zz - center[2]) ** 2
 
     catalyst[support < support_radius**2] = support_density
 
@@ -86,9 +92,9 @@ def create_catalyst_model(nparticles=15, particle_density=255,
         catalyst[particle < particle_radius**2] = particle_density
 
     catalyst = hs.signals.Signal2D(catalyst)
-    catalyst.axes_manager[0].name = 'Z'
-    catalyst.axes_manager[1].name = 'X'
-    catalyst.axes_manager[2].name = 'Y'
+    catalyst.axes_manager[0].name = "Z"
+    catalyst.axes_manager[1].name = "X"
+    catalyst.axes_manager[2].name = "Y"
     return catalyst
 
 
@@ -148,14 +154,13 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     tilts = angles * np.pi / 180
 
     if cuda is False:
-        proj_geom = astra.create_proj_geom('parallel', 1, xdim, tilts)
-        proj_id = astra.create_projector('strip', proj_geom, vol_geom)
+        proj_geom = astra.create_proj_geom("parallel", 1, xdim, tilts)
+        proj_id = astra.create_projector("strip", proj_geom, vol_geom)
 
         for i in range(0, model.shape[1]):
-            sino_id, proj_data[:, i, :] = astra.create_sino(model[:, i, :],
-                                                            proj_id)
+            sino_id, proj_data[:, i, :] = astra.create_sino(model[:, i, :], proj_id)
     else:
-        proj_geom = astra.create_proj_geom('parallel3d', 1, 1, xdim, ydim, tilts)
+        proj_geom = astra.create_proj_geom("parallel3d", 1, 1, xdim, ydim, tilts)
         proj_id, proj_data = astra.create_sino3d_gpu(model, proj_geom, vol_geom)
         proj_data = np.transpose(proj_data, [1, 2, 0])
 
@@ -163,8 +168,9 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     return stack
 
 
-def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0,
-                   tilt_rotate=0, x_only=False):
+def misalign_stack(
+    stack, min_shift=-5, max_shift=5, tilt_shift=0, tilt_rotate=0, x_only=False
+):
     """
     Apply misalignment to a model tilt series.
 
@@ -193,31 +199,28 @@ def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0,
     misaligned = stack.deepcopy()
 
     if tilt_shift != 0:
-        misaligned.data = ndimage.shift(misaligned.data,
-                                        shift=[0, 0, tilt_shift],
-                                        order=0)
+        misaligned.data = ndimage.shift(
+            misaligned.data, shift=[0, 0, tilt_shift], order=0
+        )
     if tilt_rotate != 0:
-        misaligned.data = ndimage.rotate(misaligned.data, axes=(1, 2),
-                                         angle=-tilt_rotate, order=0,
-                                         reshape=False)
+        misaligned.data = ndimage.rotate(
+            misaligned.data, axes=(1, 2), angle=-tilt_rotate, order=0, reshape=False
+        )
 
     if (min_shift != 0) or (max_shift != 0):
-        jitter = np.random.uniform(min_shift,
-                                   max_shift,
-                                   size=(stack.data.shape[0], 2))
+        jitter = np.random.uniform(min_shift, max_shift, size=(stack.data.shape[0], 2))
         for i in range(stack.data.shape[0]):
             if x_only:
                 jitter[i, 0] = 0
 
-            misaligned.data[i, :, :] =\
-                ndimage.shift(misaligned.data[i, :, :],
-                              shift=[jitter[i, 0], jitter[i, 1]],
-                              order=0)
+            misaligned.data[i, :, :] = ndimage.shift(
+                misaligned.data[i, :, :], shift=[jitter[i, 0], jitter[i, 1]], order=0
+            )
     misaligned.metadata.Tomography.shifts = jitter
     return misaligned
 
 
-def add_noise(stack, noise_type='gaussian', factor=0.2):
+def add_noise(stack, noise_type="gaussian", factor=0.2):
     """
     Apply misalignment to a model tilt series.
 
@@ -238,17 +241,17 @@ def add_noise(stack, noise_type='gaussian', factor=0.2):
     """
     noisy = stack.deepcopy()
 
-    if noise_type == 'gaussian':
-        noise = np.random.normal(stack.data.mean(),
-                                 factor * stack.data.mean(),
-                                 stack.data.shape)
+    if noise_type == "gaussian":
+        noise = np.random.normal(
+            stack.data.mean(), factor * stack.data.mean(), stack.data.shape
+        )
         noisy.data = noisy.data + noise
         if noisy.data.min() < 0:
             noisy.data -= noisy.data.min()
         scale_factor = noisy.data.max() / stack.data.max()
         noisy.data = noisy.data / scale_factor
 
-    elif noise_type in ['poissonian', 'shot']:
+    elif noise_type in ["poissonian", "shot"]:
         noise = np.random.poisson(stack.data * scale_factor) / scale_factor
         noisy.data = noisy.data + noise
 

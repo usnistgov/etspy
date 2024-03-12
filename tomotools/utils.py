@@ -38,16 +38,19 @@ def multiaverage(stack, nframes, ny, nx):
     average : NumPy array
         Average of all frames at given tilt
     """
+
     def _calc_sr_shifts(stack):
         sr = StackReg(StackReg.TRANSLATION)
-        shifts = sr.register_stack(stack, reference='previous')
+        shifts = sr.register_stack(stack, reference="previous")
         shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
         return shifts
 
     shifted = np.zeros([nframes, ny, nx])
     shifts = _calc_sr_shifts(stack)
     for k in range(0, nframes):
-        shifted[k, :, :] = ndimage.shift(stack[k, :, :], shift=[shifts[k, 0], shifts[k, 1]])
+        shifted[k, :, :] = ndimage.shift(
+            stack[k, :, :], shift=[shifts[k, 0], shifts[k, 1]]
+        )
     average = shifted.mean(0)
     return average
 
@@ -78,12 +81,17 @@ def register_serialem_stack(stack, ncpus=1):
             shifted = np.zeros([nframes, ny, nx])
             shifts = calculate_shifts_stackreg(stack.inav[:, i])
             for k in range(0, nframes):
-                shifted[k, :, :] = ndimage.shift(stack.data[i, k, :, :], shift=[shifts[k, 0], shifts[k, 1]])
+                shifted[k, :, :] = ndimage.shift(
+                    stack.data[i, k, :, :], shift=[shifts[k, 0], shifts[k, 1]]
+                )
             reg[i, :, :] = shifted.mean(0)
     else:
         with Pool(ncpus) as pool:
-            reg = pool.starmap(multiaverage,
-                               [(stack.inav[:, i].data, nframes, ny, nx) for i in range(0, ntilts)])
+            reg = pool.starmap(
+                multiaverage,
+                [(stack.inav[:, i].data, nframes, ny, nx)
+                 for i in range(0, ntilts)],
+            )
         reg = np.array(reg)
 
     reg = convert_to_tomo_stack(reg)
@@ -107,7 +115,7 @@ def register_serialem_stack(stack, ncpus=1):
     return reg
 
 
-def weight_stack(stack, accuracy='medium'):
+def weight_stack(stack, accuracy="medium"):
     """
     Apply a weighting window to a stack along the direction perpendicular to the tilt axis.
 
@@ -142,24 +150,25 @@ def weight_stack(stack, accuracy='medium'):
 
     wg = np.zeros([ny, nx])
 
-    if accuracy.lower() == 'low':
+    if accuracy.lower() == "low":
         num = 800
-        delta = .025
-    elif accuracy.lower() == 'medium':
+        delta = 0.025
+    elif accuracy.lower() == "medium":
         num = 2000
-        delta = .01
-    elif accuracy.lower() == 'high':
+        delta = 0.01
+    elif accuracy.lower() == "high":
         num = 20000
-        delta = .001
+        delta = 0.001
     else:
-        raise ValueError("Unknown accuracy level.  Must be 'low', 'medium', or 'high'.")
+        raise ValueError(
+            "Unknown accuracy level.  Must be 'low', 'medium', or 'high'.")
 
     r = np.arange(1, ny + 1)
     r = 2 / (ny - 1) * (r - 1) - 1
     r = np.cos(np.pi * r**2) / 2 + 1 / 2
     s = np.zeros(ntilts)
     for p in range(1, int(num / 10) + 1):
-        rp = r**(p * delta * 10)
+        rp = r ** (p * delta * 10)
         for x in range(0, nx):
             wg[:, x] = rp
         for i in range(0, ntilts):
@@ -178,7 +187,7 @@ def weight_stack(stack, accuracy='medium'):
     for j in range(0, ntilts):
         if j != beta:
             for p in range(1, 10):
-                rp = r**((p + s[j]) * delta)
+                rp = r ** ((p + s[j]) * delta)
                 for x in range(0, nx):
                     wg[:, x] = rp
                     if np.sum(stack.data[i, :, :] * wg) < alpha:
@@ -191,7 +200,7 @@ def weight_stack(stack, accuracy='medium'):
 
     for i in range(0, ntilts):
         for x in range(0, nx):
-            wg[:, x] = r**(s[i] * delta)
+            wg[:, x] = r ** (s[i] * delta)
         stackw.data[i, :, :] = stack.data[i, :, :] * wg
     return stackw
 
@@ -221,14 +230,14 @@ def calc_EST_angles(N):
 
     angles = np.zeros(2 * N)
 
-    n = np.arange(N / 2 + 1, N + 1, dtype='int')
+    n = np.arange(N / 2 + 1, N + 1, dtype="int")
     theta1 = -np.arctan((N + 2 - 2 * n) / N)
     theta1 = np.pi / 2 - theta1
 
-    n = np.arange(1, N + 1, dtype='int')
+    n = np.arange(1, N + 1, dtype="int")
     theta2 = np.arctan((N + 2 - 2 * n) / N)
 
-    n = np.arange(1, N / 2 + 1, dtype='int')
+    n = np.arange(1, N / 2 + 1, dtype="int")
     theta3 = -np.pi / 2 + np.arctan((N + 2 - 2 * n) / N)
 
     angles = np.concatenate([theta1, theta2, theta3], axis=0)
@@ -288,13 +297,13 @@ def get_radial_mask(mask_shape, center=None):
     if center is None:
         center = [int(i / 2) for i in mask_shape]
     radius = min(center[0], center[1], mask_shape[1] - center[0], mask_shape[0] - center[1])
-    yy, xx = np.ogrid[0:mask_shape[0], 0:mask_shape[1]]
-    mask = np.sqrt((xx - center[0])**2 + (yy - center[1])**2)
+    yy, xx = np.ogrid[0: mask_shape[0], 0: mask_shape[1]]
+    mask = np.sqrt((xx - center[0]) ** 2 + (yy - center[1]) ** 2)
     mask = mask < radius
     return mask
 
 
-def filter_stack(stack, filter_name='shepp-logan', cutoff=0.5):
+def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
     """
     Apply a Fourier filter to a sinogram or series of sinograms.
 
@@ -318,19 +327,27 @@ def filter_stack(stack, filter_name='shepp-logan', cutoff=0.5):
 
     filter_length = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
     freq_indices = np.arange(filter_length // 2 + 1)
-    filter = np.linspace(cutoff / filter_length, 1 - cutoff / filter_length, len(freq_indices))
+    filter = np.linspace(
+        cutoff / filter_length, 1 - cutoff / filter_length, len(freq_indices)
+    )
     omega = 2 * np.pi * freq_indices / filter_length
 
-    if filter_name == 'ram-lak':
+    if filter_name == "ram-lak":
         pass
-    elif filter_name == 'shepp-logan':
+    elif filter_name == "shepp-logan":
         filter[1:] = filter[1:] * np.sinc(omega[1:] / (2 * np.pi))
-    elif filter_name in ['hanning', 'hann',]:
+    elif filter_name in [
+        "hanning",
+        "hann",
+    ]:
         filter[1:] = filter[1:] * (1 + np.cos(omega[1:])) / 2
-    elif filter_name in ['cosine', 'cos',]:
+    elif filter_name in [
+        "cosine",
+        "cos",
+    ]:
         filter[1:] = filter[1:] * np.cos(omega[1:] / 2)
     else:
-        raise ValueError('Invalid filter type: %s.' % filter_name)
+        raise ValueError("Invalid filter type: %s." % filter_name)
 
     filter = np.concatenate((filter, filter[-2:0:-1]))
 

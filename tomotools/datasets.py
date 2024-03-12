@@ -26,21 +26,26 @@ def get_needle_data(aligned=False):
 
     """
     if aligned:
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF_Aligned.hdf5")
-        needle =\
-            tomotools.load(filename)
+        filename = os.path.join(
+            tomotools_path, "tests", "test_data", "HAADF_Aligned.hdf5"
+        )
+        needle = tomotools.load(filename)
     else:
-        filename = os.path.join(tomotools_path, "tests",
-                                "test_data", "HAADF.mrc")
-        needle =\
-            tomotools.load(filename)
+        filename = os.path.join(tomotools_path, "tests", "test_data", "HAADF.mrc")
+        needle = tomotools.load(filename)
     return needle
 
 
-def get_catalyst_tilt_series(misalign=False, minshift=-5, maxshift=5,
-                             tiltshift=0, tiltrotate=0, xonly=False,
-                             noise=False, noise_factor=0.2):
+def get_catalyst_tilt_series(
+    misalign=False,
+    minshift=-5,
+    maxshift=5,
+    tiltshift=0,
+    tiltrotate=0,
+    xonly=False,
+    noise=False,
+    noise_factor=0.2,
+):
     """
     Retrieve model catalyst tilt series.
 
@@ -71,14 +76,19 @@ def get_catalyst_tilt_series(misalign=False, minshift=-5, maxshift=5,
         TomoStack containing the simulated catalyst tilt series
 
     """
-    filename = os.path.join(tomotools_path, "tests", "test_data",
-                            "Catalyst3DModel_TiltSeries180.hdf5")
-    catalyst =\
-        tomotools.load(filename)
+    filename = os.path.join(
+        tomotools_path, "tests", "test_data", "Catalyst3DModel_TiltSeries180.hdf5"
+    )
+    catalyst = tomotools.load(filename)
     if misalign:
-        catalyst = misalign_stack(catalyst, min_shift=minshift,
-                                  max_shift=maxshift, tilt_shift=tiltshift,
-                                  tilt_rotate=tiltrotate, x_only=xonly)
+        catalyst = misalign_stack(
+            catalyst,
+            min_shift=minshift,
+            max_shift=maxshift,
+            tilt_shift=tiltshift,
+            tilt_rotate=tiltrotate,
+            x_only=xonly,
+        )
     if noise:
-        catalyst = add_noise(catalyst, 'gaussian', noise_factor)
+        catalyst = add_noise(catalyst, "gaussian", noise_factor)
     return catalyst

@@ -62,28 +62,31 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
     <TomoStack, title: , dimensions: (50|500, 500)>
 
     """
+
     def _set_axes(s):
-        s.axes_manager[0].name = 'Tilt'
-        s.axes_manager[0].units = 'degrees'
-        s.axes_manager[1].name = 'x'
-        s.axes_manager[2].name = 'y'
+        s.axes_manager[0].name = "Tilt"
+        s.axes_manager[0].units = "degrees"
+        s.axes_manager[1].name = "x"
+        s.axes_manager[2].name = "y"
         return s
 
     def _set_tomo_metadata(s):
-        tomo_metadata = {"cropped": False,
-                         "shifts": np.zeros([s.data.shape[0], 2]),
-                         "tiltaxis": 0,
-                         "tilts": np.zeros(s.data.shape[0]),
-                         "xshift": 0,
-                         "yshift": 0}
+        tomo_metadata = {
+            "cropped": False,
+            "shifts": np.zeros([s.data.shape[0], 2]),
+            "tiltaxis": 0,
+            "tilts": np.zeros(s.data.shape[0]),
+            "xshift": 0,
+            "yshift": 0,
+        }
         s.metadata.add_node("Tomography")
         s.metadata.Tomography.add_dictionary(tomo_metadata)
         return s
 
     def _get_manual_tilts():
-        negtilt = eval(input('Enter maximum negative tilt: '))
-        postilt = eval(input('Enter maximum positive tilt: '))
-        tiltstep = eval(input('Enter tilt step: '))
+        negtilt = eval(input("Enter maximum negative tilt: "))
+        postilt = eval(input("Enter maximum positive tilt: "))
+        tiltstep = eval(input("Enter tilt step: "))
         tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
         return tilts
 
@@ -92,8 +95,9 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
     elif type(data) is hspy.signals.Signal2D:
         stack = data.deepcopy()
     else:
-        raise TypeError("Unsupported data type. Must be either"
-              "NumPy Array or Hyperspy Signal2D")
+        raise TypeError(
+            "Unsupported data type. Must be either" "NumPy Array or Hyperspy Signal2D"
+        )
 
     stack = _set_tomo_metadata(stack)
 
@@ -105,23 +109,30 @@ def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
         tilts = _get_manual_tilts()
     else:
         tilts = np.zeros(stack.data.shape[0])
-        logger.info('Tilts are not defined. Please add tilts to Tomography metadata.')
+        logger.info(
+            "Tilts are not defined. Please add tilts to Tomography metadata.")
 
     if tilts.shape[0] != stack.data.shape[0]:
-        raise ValueError("Number of tilts is not consistent with data shape."
-                         "%s does not equal %s" % (tilts.shape[0], stack.data.shape[0]))
+        raise ValueError(
+            "Number of tilts is not consistent with data shape."
+            "%s does not equal %s" % (tilts.shape[0], stack.data.shape[0])
+        )
 
     stack = _set_axes(stack)
     stack.metadata.Tomography.tilts = tilts
     stack.axes_manager[0].offset = tilts[0]
     stack.axes_manager[0].scale = tilts[1] - tilts[0]
 
-    axes_list = [x for _,
-                 x in sorted(stack.axes_manager.as_dictionary().items())]
+    axes_list = [x for _, x in sorted(
+        stack.axes_manager.as_dictionary().items())]
     metadata_dict = stack.metadata.as_dictionary()
     original_metadata_dict = stack.original_metadata.as_dictionary()
-    stack = TomoStack(stack, axes=axes_list, metadata=metadata_dict,
-                      original_metadata=original_metadata_dict)
+    stack = TomoStack(
+        stack,
+        axes=axes_list,
+        metadata=metadata_dict,
+        original_metadata=original_metadata_dict,
+    )
     return stack
 
 
@@ -145,20 +156,23 @@ def load_hspy(filename, tilts=None, reader=None):
     stack : TomoStack object
 
     """
+
     def _set_axes(s):
-        s.axes_manager[0].name = 'Tilt'
-        s.axes_manager[0].units = 'degrees'
-        s.axes_manager[1].name = 'x'
-        s.axes_manager[2].name = 'y'
+        s.axes_manager[0].name = "Tilt"
+        s.axes_manager[0].units = "degrees"
+        s.axes_manager[1].name = "x"
+        s.axes_manager[2].name = "y"
         return s
 
     def _set_tomo_metadata(s):
-        tomo_metadata = {"cropped": False,
-                         "shifts": np.zeros([s.data.shape[0], 2]),
-                         "tiltaxis": 0,
-                         "tilts": np.zeros(s.data.shape[0]),
-                         "xshift": 0,
-                         "yshift": 0}
+        tomo_metadata = {
+            "cropped": False,
+            "shifts": np.zeros([s.data.shape[0], 2]),
+            "tiltaxis": 0,
+            "tilts": np.zeros(s.data.shape[0]),
+            "xshift": 0,
+            "yshift": 0,
+        }
         s.metadata.add_node("Tomography")
         s.metadata.Tomography.add_dictionary(tomo_metadata)
         return s
@@ -169,33 +183,39 @@ def load_hspy(filename, tilts=None, reader=None):
     if not stack.metadata.has_item("Tomography"):
         stack = _set_tomo_metadata(stack)
     ext = os.path.splitext(filename)[1]
-    if ext.lower() in ['.mrc', '.ali', '.rec']:
-        tiltfile = os.path.splitext(filename)[0] + '.rawtlt'
-        if stack.original_metadata.has_item('fei_header'):
-            if stack.original_metadata.fei_header.has_item('a_tilt'):
-                tilts = stack.original_metadata.fei_header['a_tilt'][0:stack.data.shape[0]]
-                logger.info('Tilts found in MRC file header')
+    if ext.lower() in [".mrc", ".ali", ".rec"]:
+        tiltfile = os.path.splitext(filename)[0] + ".rawtlt"
+        if stack.original_metadata.has_item("fei_header"):
+            if stack.original_metadata.fei_header.has_item("a_tilt"):
+                tilts = stack.original_metadata.fei_header["a_tilt"][
+                    0: stack.data.shape[0]
+                ]
+                logger.info("Tilts found in MRC file header")
             elif os.path.isfile(tiltfile):
                 tilts = np.loadtxt(tiltfile)
-                logger.info('.rawtlt file detected.')
+                logger.info(".rawtlt file detected.")
                 if len(tilts) == stack.data.shape[0]:
-                    logger.info('Tilts loaded from .rawtlt file')
+                    logger.info("Tilts loaded from .rawtlt file")
                 else:
-                    logger.info('Number of tilts in .rawtlt file inconsistent'
-                                ' with data shape')
-        elif stack.original_metadata.has_item('std_header'):
+                    logger.info(
+                        "Number of tilts in .rawtlt file inconsistent"
+                        " with data shape"
+                    )
+        elif stack.original_metadata.has_item("std_header"):
             # serialem_format = True
-            logger.info('SerialEM generated MRC file detected')
-            ext_header = parse_mrc_header(filename)['ext_header']
-            tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][0:stack.data.shape[0]]
+            logger.info("SerialEM generated MRC file detected")
+            ext_header = parse_mrc_header(filename)["ext_header"]
+            tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][
+                0: stack.data.shape[0]
+            ]
             tilts = tilts / 100
         else:
             tilts = np.zeros(stack.data.shape[0])
-            logger.info('Unable to find tilt angles. Calibrate axis 0.')
-    elif ext.lower() in ['.hdf5', '.hd5', '.hspy']:
+            logger.info("Unable to find tilt angles. Calibrate axis 0.")
+    elif ext.lower() in [".hdf5", ".hd5", ".hspy"]:
         tilts = stack.metadata.Tomography.tilts
     else:
-        raise ValueError('Cannot read file type: %s' % ext)
+        raise ValueError("Cannot read file type: %s" % ext)
 
     stack.axes_manager[0].scale = tilts[1] - tilts[0]
     stack.axes_manager[0].offset = tilts[0]
@@ -205,12 +225,16 @@ def load_hspy(filename, tilts=None, reader=None):
         stack.data = np.float32(stack.data)
         stack.data += np.abs(stack.data.min())
 
-    axes_list = [x for _,
-                 x in sorted(stack.axes_manager.as_dictionary().items())]
+    axes_list = [x for _, x in sorted(
+        stack.axes_manager.as_dictionary().items())]
     metadata_dict = stack.metadata.as_dictionary()
     original_metadata_dict = stack.original_metadata.as_dictionary()
-    stack = TomoStack(stack, axes=axes_list, metadata=metadata_dict,
-                      original_metadata=original_metadata_dict)
+    stack = TomoStack(
+        stack,
+        axes=axes_list,
+        metadata=metadata_dict,
+        original_metadata=original_metadata_dict,
+    )
     return stack
 
 
@@ -233,29 +257,17 @@ def load_dm(filename):
     """
     s = hspy.load(filename)
     s.change_dtype(np.float32)
-    maxtilt = (s.original_metadata['ImageList']
-               ['TagGroup0']
-               ['ImageTags']
-               ['Tomography']
-               ['Tomography_setup']
-               ['Tilt_angles']
-               ['Maximum_tilt_angle_deg'])
+    maxtilt = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
+        "Tomography_setup"
+    ]["Tilt_angles"]["Maximum_tilt_angle_deg"]
 
-    mintilt = (s.original_metadata['ImageList']
-               ['TagGroup0']
-               ['ImageTags']
-               ['Tomography']
-               ['Tomography_setup']
-               ['Tilt_angles']
-               ['Minimum_tilt_angle_deg'])
+    mintilt = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
+        "Tomography_setup"
+    ]["Tilt_angles"]["Minimum_tilt_angle_deg"]
 
-    tiltstep = (s.original_metadata['ImageList']
-                ['TagGroup0']
-                ['ImageTags']
-                ['Tomography']
-                ['Tomography_setup']
-                ['Tilt_angles']
-                ['Tilt_angle_step_deg'])
+    tiltstep = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
+        "Tomography_setup"
+    ]["Tilt_angles"]["Tilt_angle_step_deg"]
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
 
@@ -308,45 +320,56 @@ def load_serialem(mrcfile, mdocfile):
     """
 
     def _parse_mdoc(mdoc_file):
-        keys = ['PixelSpacing', 'Voltage', 'ImageFile', 'Image Size', 'DataMode',
-                'Magnification', 'ExposureTime', 'SpotSize', 'Defocus']
+        keys = [
+            "PixelSpacing",
+            "Voltage",
+            "ImageFile",
+            "Image Size",
+            "DataMode",
+            "Magnification",
+            "ExposureTime",
+            "SpotSize",
+            "Defocus",
+        ]
         metadata = {}
-        with open(mdoc_file, 'r') as f:
+        with open(mdoc_file, "r") as f:
             lines = f.readlines()
         for i in range(0, 35):
             for k in keys:
                 if k in lines[i]:
-                    if k == 'ImageFile':
-                        metadata[k] = lines[i].split('=')[1].strip()
+                    if k == "ImageFile":
+                        metadata[k] = lines[i].split("=")[1].strip()
                     else:
-                        metadata[k] = float(lines[i].split('=')[1].strip())
+                        metadata[k] = float(lines[i].split("=")[1].strip())
         tilts = []
         for i in lines:
-            if 'TiltAngle' in i:
-                tilts.append(float(i.split('=')[1].strip()))
+            if "TiltAngle" in i:
+                tilts.append(float(i.split("=")[1].strip()))
         tilts = np.array(tilts)
         return metadata, tilts
 
     def _set_axes_serialem(s, tilts, meta):
         s.axes_manager[0].scale = tilts[1] - tilts[0]
         s.axes_manager[0].offset = tilts[0]
-        s.axes_manager[0].units = 'degrees'
-        s.axes_manager[0].name = 'Tilt'
-        s.axes_manager[1].scale = meta['PixelSpacing'] / 10
-        s.axes_manager[2].scale = meta['PixelSpacing'] / 10
-        s.axes_manager[1].units = 'nm'
-        s.axes_manager[2].units = 'nm'
-        s.axes_manager[1].name = 'y'
-        s.axes_manager[2].name = 'x'
+        s.axes_manager[0].units = "degrees"
+        s.axes_manager[0].name = "Tilt"
+        s.axes_manager[1].scale = meta["PixelSpacing"] / 10
+        s.axes_manager[2].scale = meta["PixelSpacing"] / 10
+        s.axes_manager[1].units = "nm"
+        s.axes_manager[2].units = "nm"
+        s.axes_manager[1].name = "y"
+        s.axes_manager[2].name = "x"
         return s
 
     def _set_tomo_metadata_serialem(s):
-        tomo_metadata = {"cropped": False,
-                         "shifts": np.zeros([s.data.shape[0], 2]),
-                         "tiltaxis": 0,
-                         "tilts": np.zeros(s.data.shape[0]),
-                         "xshift": 0,
-                         "yshift": 0}
+        tomo_metadata = {
+            "cropped": False,
+            "shifts": np.zeros([s.data.shape[0], 2]),
+            "tiltaxis": 0,
+            "tilts": np.zeros(s.data.shape[0]),
+            "xshift": 0,
+            "yshift": 0,
+        }
         s.metadata.add_node("Tomography")
         s.metadata.Tomography.add_dictionary(tomo_metadata)
         return s
@@ -360,16 +383,18 @@ def load_serialem(mrcfile, mdocfile):
 
     stack = _set_axes_serialem(stack, tilts, meta)
 
-    if not stack.metadata.has_item('Acquisition_instrument.TEM'):
-        stack.metadata.add_node('Acquisition_instrument.TEM')
-    stack.metadata.Acquisition_instrument.TEM.magnification = meta['Magnification']
-    stack.metadata.Acquisition_instrument.TEM.beam_energy = meta['Voltage']
-    stack.metadata.Acquisition_instrument.TEM.dwell_time = meta['ExposureTime'] / (stack.data.shape[1] * stack.data.shape[2])
-    stack.metadata.Acquisition_instrument.TEM.spot_size = meta['SpotSize']
-    stack.metadata.Acquisition_instrument.TEM.defocus = meta['Defocus']
-    stack.metadata.General.original_filename = meta['ImageFile']
+    if not stack.metadata.has_item("Acquisition_instrument.TEM"):
+        stack.metadata.add_node("Acquisition_instrument.TEM")
+    stack.metadata.Acquisition_instrument.TEM.magnification = meta["Magnification"]
+    stack.metadata.Acquisition_instrument.TEM.beam_energy = meta["Voltage"]
+    stack.metadata.Acquisition_instrument.TEM.dwell_time = meta["ExposureTime"] / (
+        stack.data.shape[1] * stack.data.shape[2]
+    )
+    stack.metadata.Acquisition_instrument.TEM.spot_size = meta["SpotSize"]
+    stack.metadata.Acquisition_instrument.TEM.defocus = meta["Defocus"]
+    stack.metadata.General.original_filename = meta["ImageFile"]
     stack = convert_to_tomo_stack(stack, tilts)
-    logger.info('SerialEM stack successfully loaded. ')
+    logger.info("SerialEM stack successfully loaded. ")
     mrc_logger.setLevel(log_level)
     return stack
 
@@ -408,44 +433,56 @@ def load_serialem_series(mrcfiles, mdocfiles):
             Dictionary with values parsed from mdoc file
 
         """
-        keys = ['PixelSpacing', 'Voltage', 'ImageFile', 'Image Size', 'DataMode',
-                'TiltAngle', 'Magnification', 'ExposureTime', 'SpotSize', 'Defocus']
+        keys = [
+            "PixelSpacing",
+            "Voltage",
+            "ImageFile",
+            "Image Size",
+            "DataMode",
+            "TiltAngle",
+            "Magnification",
+            "ExposureTime",
+            "SpotSize",
+            "Defocus",
+        ]
         metadata = {}
-        with open(mdoc_file, 'r') as f:
+        with open(mdoc_file, "r") as f:
             for i in range(0, 35):
                 line = f.readline()
                 for k in keys:
                     if k in line:
-                        if k == 'ImageFile':
-                            metadata[k] = line.split('=')[1].strip()
+                        if k == "ImageFile":
+                            metadata[k] = line.split("=")[1].strip()
                         else:
-                            metadata[k] = float(line.split('=')[1].strip())
+                            metadata[k] = float(line.split("=")[1].strip())
         return metadata
 
     def _set_axes_serialem(s, tilts, meta):
         s.axes_manager[0].scale = 1
         s.axes_manager[0].offset = 0
-        s.axes_manager[0].name = 'multiframe'
-        s.axes_manager[0].units = 'scan'
+        s.axes_manager[0].name = "multiframe"
+        s.axes_manager[0].units = "scan"
         s.axes_manager[1].scale = tilts[1] - tilts[0]
         s.axes_manager[1].offset = tilts[0]
-        s.axes_manager[1].units = 'degrees'
-        s.axes_manager[1].name = 'Tilt'
-        s.axes_manager[2].scale = meta[0]['PixelSpacing'] / 10
-        s.axes_manager[3].scale = meta[0]['PixelSpacing'] / 10
-        s.axes_manager[2].units = 'nm'
-        s.axes_manager[3].units = 'nm'
-        s.axes_manager[2].name = 'y'
-        s.axes_manager[3].name = 'x'
+        s.axes_manager[1].units = "degrees"
+        s.axes_manager[1].name = "Tilt"
+        s.axes_manager[2].scale = meta[0]["PixelSpacing"] / 10
+        s.axes_manager[3].scale = meta[0]["PixelSpacing"] / 10
+        s.axes_manager[2].units = "nm"
+        s.axes_manager[3].units = "nm"
+        s.axes_manager[2].name = "y"
+        s.axes_manager[3].name = "x"
         return s
 
     def _set_tomo_metadata_serialem(s):
-        tomo_metadata = {"cropped": False,
-                         "shifts": np.zeros([s.data.shape[0], 2]),
-                         "tiltaxis": 0,
-                         "tilts": np.zeros(s.data.shape[0]),
-                         "xshift": 0,
-                         "yshift": 0}
+        tomo_metadata = {
+            "cropped": False,
+            "shifts": np.zeros([s.data.shape[0], 2]),
+            "tiltaxis": 0,
+            "tilts": np.zeros(s.data.shape[0]),
+            "xshift": 0,
+            "yshift": 0,
+        }
         s.metadata.add_node("Tomography")
         s.metadata.Tomography.add_dictionary(tomo_metadata)
         return s
@@ -459,33 +496,36 @@ def load_serialem_series(mrcfiles, mdocfiles):
     for i in range(0, len(mdocfiles)):
         meta[i] = _parse_mdoc(mdocfiles[i])
 
-    tilts = np.array([meta[i]['TiltAngle'] for i in range(0, len(meta))])
+    tilts = np.array([meta[i]["TiltAngle"] for i in range(0, len(meta))])
     tilts_sort = np.argsort(tilts)
     tilts.sort()
 
     for i in range(0, len(mrcfiles)):
         fn = mdocfiles[tilts_sort[i]][:-5]
-        if fn[-4:].lower() != '.mrc':
-            fn = fn + '.mrc'
+        if fn[-4:].lower() != ".mrc":
+            fn = fn + ".mrc"
         stack[i] = hspy.load(fn)
 
     images_per_tilt = stack[0].data.shape[0]
     stack = hspy.stack(stack, show_progressbar=False)
     stack = _set_axes_serialem(stack, tilts, meta)
 
-    if not stack.metadata.has_item('Acquisition_instrument.TEM'):
-        stack.metadata.add_node('Acquisition_instrument.TEM')
-    stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]['Magnification']
-    stack.metadata.Acquisition_instrument.TEM.beam_energy = meta[0]['Voltage']
-    stack.metadata.Acquisition_instrument.TEM.dwell_time = meta[
-        0]['ExposureTime'] * images_per_tilt / (stack.data.shape[2] * stack.data.shape[3])
-    stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]['SpotSize']
-    stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]['Defocus']
-    stack.metadata.General.original_filename = meta[0]['ImageFile']
+    if not stack.metadata.has_item("Acquisition_instrument.TEM"):
+        stack.metadata.add_node("Acquisition_instrument.TEM")
+    stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]["Magnification"]
+    stack.metadata.Acquisition_instrument.TEM.beam_energy = meta[0]["Voltage"]
+    stack.metadata.Acquisition_instrument.TEM.dwell_time = (
+        meta[0]["ExposureTime"] * images_per_tilt / (stack.data.shape[2] * stack.data.shape[3])
+    )
+    stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]["SpotSize"]
+    stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]["Defocus"]
+    stack.metadata.General.original_filename = meta[0]["ImageFile"]
     stack = _set_tomo_metadata_serialem(stack)
     stack.metadata.Tomography.tilts = tilts
-    logger.info('SerialEM Multiframe stack successfully loaded. '
-                'Use tomotools.utils.register_serialem_stack to align frames.')
+    logger.info(
+        "SerialEM Multiframe stack successfully loaded. "
+        "Use tomotools.utils.register_serialem_stack to align frames."
+    )
     mrc_logger.setLevel(log_level)
     return stack
 
@@ -506,46 +546,48 @@ def parse_mrc_header(filename):
 
     """
     header = {}
-    with open(filename, 'r') as h:
-        header['nx'], header['ny'], header['nz'] = np.fromfile(h, np.uint32, 3)
-        header['mode'] = np.fromfile(h, np.uint32, 1)[0]
-        header['nxstart'], header['nystart'], header['nzstart'] = np.fromfile(
-            h, np.uint32, 3)
-        header['mx'], header['my'], header['mz'] = np.fromfile(h, np.uint32, 3)
-        header['xlen'], header['ylen'], header['zlen'] = np.fromfile(
+    with open(filename, "r") as h:
+        header["nx"], header["ny"], header["nz"] = np.fromfile(h, np.uint32, 3)
+        header["mode"] = np.fromfile(h, np.uint32, 1)[0]
+        header["nxstart"], header["nystart"], header["nzstart"] = np.fromfile(
+            h, np.uint32, 3
+        )
+        header["mx"], header["my"], header["mz"] = np.fromfile(h, np.uint32, 3)
+        header["xlen"], header["ylen"], header["zlen"] = np.fromfile(
             h, np.uint32, 3)
         _ = np.fromfile(h, np.uint32, 6)
-        header['amin'], header['amax'], header['amean'] = np.fromfile(
+        header["amin"], header["amax"], header["amean"] = np.fromfile(
             h, np.uint32, 3)
         _ = np.fromfile(h, np.uint32, 1)
-        header['nextra'] = np.fromfile(h, np.uint32, 1)[0]
+        header["nextra"] = np.fromfile(h, np.uint32, 1)[0]
         _ = np.fromfile(h, np.uint16, 1)[0]
         _ = np.fromfile(h, np.uint8, 6)
         strbits = np.fromfile(h, np.int8, 4)
-        header['ext_type'] = ''.join([chr(item) for item in strbits])
-        header['nversion'] = np.fromfile(h, np.uint32, 1)[0]
+        header["ext_type"] = "".join([chr(item) for item in strbits])
+        header["nversion"] = np.fromfile(h, np.uint32, 1)[0]
         _ = np.fromfile(h, np.uint8, 16)
-        header['nint'] = np.fromfile(h, np.uint16, 1)[0]
-        header['nreal'] = np.fromfile(h, np.uint16, 1)[0]
+        header["nint"] = np.fromfile(h, np.uint16, 1)[0]
+        header["nreal"] = np.fromfile(h, np.uint16, 1)[0]
         _ = np.fromfile(h, np.int8, 20)
-        header['imodStamp'] = np.fromfile(h, np.uint32, 1)[0]
-        header['imodFlags'] = np.fromfile(h, np.uint32, 1)[0]
-        header['idtype'] = np.fromfile(h, np.uint16, 1)[0]
-        header['lens'] = np.fromfile(h, np.uint16, 1)[0]
-        header['nd1'], header['nd2'], header['vd1'], header['vd2'] = np.fromfile(
-            h, np.uint16, 4)
+        header["imodStamp"] = np.fromfile(h, np.uint32, 1)[0]
+        header["imodFlags"] = np.fromfile(h, np.uint32, 1)[0]
+        header["idtype"] = np.fromfile(h, np.uint16, 1)[0]
+        header["lens"] = np.fromfile(h, np.uint16, 1)[0]
+        header["nd1"], header["nd2"], header["vd1"], header["vd2"] = np.fromfile(
+            h, np.uint16, 4
+        )
         _ = np.fromfile(h, np.float32, 6)
-        header['xorg'], header['yorg'], header['zorg'] = np.fromfile(
+        header["xorg"], header["yorg"], header["zorg"] = np.fromfile(
             h, np.float32, 3)
         strbits = np.fromfile(h, np.int8, 4)
-        header['cmap'] = ''.join([chr(item) for item in strbits])
-        header['stamp'] = np.fromfile(h, np.int8, 4)
-        header['rms'] = np.fromfile(h, np.float32, 1)[0]
-        header['nlabl'] = np.fromfile(h, np.uint32, 1)[0]
+        header["cmap"] = "".join([chr(item) for item in strbits])
+        header["stamp"] = np.fromfile(h, np.int8, 4)
+        header["rms"] = np.fromfile(h, np.float32, 1)[0]
+        header["nlabl"] = np.fromfile(h, np.uint32, 1)[0]
         strbits = np.fromfile(h, np.int8, 800)
-        header['text'] = ''.join([chr(item) for item in strbits])
-        header['ext_header'] = np.fromfile(
-            h, np.int16, int(header['nextra'] / 2))
+        header["text"] = "".join([chr(item) for item in strbits])
+        header["ext_header"] = np.fromfile(
+            h, np.int16, int(header["nextra"] / 2))
     return header
 
 
@@ -567,32 +609,42 @@ def load(filename, tilts=None):
     stack : TomoStack object
 
     """
-    known_file_types = ['.hdf5', '.mrc', '.ali', '.rec', '.hspy', '.dm3', '.dm4']
-    hspy_file_types = ['.hdf5', '.h5', '.mrc', '.ali', '.rec', '.hspy']
-    dm_file_types = ['.dm3', '.dm4']
+    known_file_types = [".hdf5", ".mrc",
+                        ".ali", ".rec", ".hspy", ".dm3", ".dm4"]
+    hspy_file_types = [".hdf5", ".h5", ".mrc", ".ali", ".rec", ".hspy"]
+    dm_file_types = [".dm3", ".dm4"]
 
     if type(filename) is str:
         ext = os.path.splitext(filename)[1]
         if ext.lower() in hspy_file_types:
-            if ext.lower() in ['.ali', '.rec']:
-                stack = load_hspy(filename, tilts, reader='mrc')
+            if ext.lower() in [".ali", ".rec"]:
+                stack = load_hspy(filename, tilts, reader="mrc")
             else:
                 stack = load_hspy(filename, tilts)
         elif ext.lower() in dm_file_types:
             stack = load_dm(filename)
         else:
-            raise TypeError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
+            raise TypeError(
+                "Unknown file type %s. Must be %s one of "
+                % (ext, [i for i in known_file_types])
+            )
 
     elif type(filename) is list:
         ext = os.path.splitext(filename[0])[1]
         if ext.lower() in dm_file_types:
             stack = load_dm_series(filename)
-        elif ext.lower() == '.mrc':
-            logger.info('Data appears to be a SerialEM multiframe series.')
+        elif ext.lower() == ".mrc":
+            logger.info("Data appears to be a SerialEM multiframe series.")
             mdocfiles = [i[:-3] + "mdoc" for i in filename]
             stack = load_serialem_series(filename, mdocfiles)
         else:
-            raise TypeError("Unknown file type %s. Must be one of %s " % (ext, [i for i in known_file_types]))
+            raise TypeError(
+                "Unknown file type %s. Must be one of %s "
+                % (ext, [i for i in known_file_types])
+            )
     else:
-        raise TypeError("Unknown filename type %s.  Must be either a string or list of strings." % type(filename))
+        raise TypeError(
+            "Unknown filename type %s.  Must be either a string or list of strings."
+            % type(filename)
+        )
     return stack

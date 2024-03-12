@@ -44,7 +44,7 @@ def get_best_slices(stack, nslices):
     total_mass = stack.data.sum((0, 1))
     mass_var = stack.data.sum(1).std(0)
     mass_var[mass_var == 0] = 1e-5
-    ratio = (total_mass / mass_var)
+    ratio = total_mass / mass_var
     locs = ratio.argsort()[::-1][0:nslices]
     return locs
 
@@ -67,7 +67,9 @@ def get_coms(stack, slices):
 
     """
     sinos = stack.data[:, :, slices]
-    y = np.linspace(-int(sinos.shape[1] / 2), int(sinos.shape[1] / 2), sinos.shape[1], dtype='int')
+    y = np.linspace(
+        -int(sinos.shape[1] / 2), int(sinos.shape[1] / 2), sinos.shape[1], dtype="int"
+    )
     total_mass = sinos.sum(1)
     coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y, 2) / total_mass
     return coms
@@ -93,15 +95,15 @@ def apply_shifts(stack, shifts):
     """
     shifted = stack.deepcopy()
     if len(shifts) != stack.data.shape[0]:
-        raise ValueError('Number of shifts (%s) is not consistent with number'
-                         'of images in the stack (%s)'
-                         % (len(shifts), stack.data.shape[0]))
+        raise ValueError(
+            "Number of shifts (%s) is not consistent with number"
+            "of images in the stack (%s)" % (len(shifts), stack.data.shape[0])
+        )
     for i in range(0, shifted.data.shape[0]):
-        shifted.data[i, :, :] =\
-            ndimage.shift(shifted.data[i, :, :],
-                          shift=[shifts[i, 0], shifts[i, 1]])
-    shifted.metadata.Tomography.shifts = \
-        shifted.metadata.Tomography.shifts + shifts
+        shifted.data[i, :, :] = ndimage.shift(
+            shifted.data[i, :, :], shift=[shifts[i, 0], shifts[i, 1]]
+        )
+    shifted.metadata.Tomography.shifts = shifted.metadata.Tomography.shifts + shifts
     return shifted
 
 
@@ -127,7 +129,7 @@ def compose_shifts(shifts, start=None):
     if start is None:
         start = np.int32(np.floor((shifts.shape[0] + 1) / 2))
     composed = np.zeros([shifts.shape[0] + 1, 2])
-    composed[start, :] = [0., 0.]
+    composed[start, :] = [0.0, 0.0]
     for i in range(start + 1, composed.shape[0]):
         composed[i, :] = composed[i - 1, :] - shifts[i - 1, :]
     for i in range(start - 1, -1, -1):
@@ -169,7 +171,7 @@ def pad_line(line, paddedsize):
         else:
             start_idx = (paddedsize - npix) / 2
             end_idx = npix + (paddedsize - npix) / 2
-    padded[int(start_idx):int(end_idx)] = line
+    padded[int(start_idx): int(end_idx)] = line
     return padded
 
 
@@ -198,6 +200,7 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
         Shifts parallel to tilt axis for each projection
 
     """
+
     def align_line(ref_line, line, cl_resolution, cl_div_factor):
         npix = np.shape(ref_line)[0]
         npad = npix * 2 - 1
@@ -207,7 +210,8 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
         line_pad = pad_line(line, npad)
 
         niters = np.int32(
-            np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))))
+            np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor)))
+        )
         start = -0.5
         end = 0.5
 
@@ -261,8 +265,9 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
             aliY.data[i] = stack.data[i]
         else:
             curr_cm_line = stack.data[i].sum(0)
-            yshifts[i] = align_line(ref_cm_line, curr_cm_line,
-                                    cl_resolution, cl_div_factor)
+            yshifts[i] = align_line(
+                ref_cm_line, curr_cm_line, cl_resolution, cl_div_factor
+            )
     return yshifts
 
 
@@ -300,14 +305,16 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
     # total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p])
     total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
     for i in range(0, ntilts):
-        total_mass[i, :] = np.sum(stack.data[i, :, xrange[0] - p - 1:xrange[1] + p], 0)
+        total_mass[i, :] = np.sum(
+            stack.data[i, :, xrange[0] - p - 1: xrange[1] + p], 0
+        )
 
-    mean_mass = np.mean(total_mass[:, p: -p], 0)
+    mean_mass = np.mean(total_mass[:, p:-p], 0)
 
     for i in range(0, ntilts):
         s = 0
         for j in range(-p, p):
-            resid = np.linalg.norm(mean_mass - total_mass[i, p + j:-p + j])
+            resid = np.linalg.norm(mean_mass - total_mass[i, p + j: -p + j])
             if resid < s or j == -p:
                 s = resid
                 xshifts[i] = -j
@@ -374,6 +381,7 @@ def calculate_shifts_pc(stack, start, show_progressbar):
         The X- and Y-shifts to be applied to each image
 
     """
+
     def calc_pc(source, shifted):
         shift = pcc(shifted, source, upsample_factor=3)
         return shift[0]
@@ -382,14 +390,13 @@ def calculate_shifts_pc(stack, start, show_progressbar):
     if start is None:
         start = np.int32(np.floor(stack.data.shape[0] / 2))
 
-    for i in tqdm.tqdm(range(start, stack.data.shape[0] - 1),
-                       disable=(not show_progressbar)):
-        shifts[i, :] = calc_pc(stack.data[i, :, :],
-                               stack.data[i + 1, :, :])
+    for i in tqdm.tqdm(
+        range(start, stack.data.shape[0] - 1), disable=(not show_progressbar)
+    ):
+        shifts[i, :] = calc_pc(stack.data[i, :, :], stack.data[i + 1, :, :])
 
     if start != 0:
-        for i in tqdm.tqdm(range(start - 1, -1, -1),
-                           disable=(not show_progressbar)):
+        for i in tqdm.tqdm(range(start - 1, -1, -1), disable=(not show_progressbar)):
             shifts[i, :] = calc_pc(stack.data[i, :, :],
                                    stack.data[i + 1, :, :])
     return shifts
@@ -412,13 +419,14 @@ def calculate_shifts_stackreg(stack):
 
     """
     sr = StackReg(StackReg.TRANSLATION)
-    shifts = sr.register_stack(stack.data, reference='previous')
+    shifts = sr.register_stack(stack.data, reference="previous")
     shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
     return shifts
 
 
-def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution,
-                       cl_div_factor):
+def calc_com_cl_shifts(
+    stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
+):
     """
     Align stack using combined center of mass and common line methods.
 
@@ -473,15 +481,24 @@ def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution,
     xshifts = np.zeros(stack.data.shape[0])
     yshifts = np.zeros(stack.data.shape[0])
     yshifts = calc_yshifts(stack, com_ref_index)
-    xshifts = calc_shifts_cl(stack, cl_ref_index,
-                             cl_resolution, cl_div_factor)
+    xshifts = calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor)
     shifts = np.stack([yshifts, xshifts], axis=1)
     return shifts
 
 
-def align_stack(stack, method, start, show_progressbar, nslices,
-                cl_ref_index, com_ref_index, cl_resolution, cl_div_factor,
-                xrange, p):
+def align_stack(
+    stack,
+    method,
+    start,
+    show_progressbar,
+    nslices,
+    cl_ref_index,
+    com_ref_index,
+    cl_resolution,
+    cl_div_factor,
+    xrange,
+    p,
+):
     """
     Compute the shifts for spatial registration.
 
@@ -536,23 +553,26 @@ def align_stack(stack, method, start, show_progressbar, nslices,
 
     """
     method = method.lower()
-    if method == 'com':
+    if method == "com":
         shifts = np.zeros([stack.data.shape[0], 2])
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
-    elif method == 'pc':
-        logger.info("Performing stack registration using "
-                    "phase correlation method")
+    elif method == "pc":
+        logger.info(
+            "Performing stack registration using " "phase correlation method")
         shifts = calculate_shifts_pc(stack, start, show_progressbar)
-    elif method == 'stackreg':
+    elif method == "stackreg":
         logger.info("Performing stack registration using PyStackReg")
         shifts = calculate_shifts_stackreg(stack)
-    elif method == 'com-cl':
-        logger.info("Performing stack registration using "
-                    "combined center of mass and common line methods")
-        shifts = calc_com_cl_shifts(stack, com_ref_index, cl_ref_index,
-                                    cl_resolution, cl_div_factor)
-    if method == 'pc':
+    elif method == "com-cl":
+        logger.info(
+            "Performing stack registration using "
+            "combined center of mass and common line methods"
+        )
+        shifts = calc_com_cl_shifts(
+            stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
+        )
+    if method == "pc":
         shifts = compose_shifts(shifts, start)
     aligned = apply_shifts(stack, shifts)
     logger.info("Stack registration complete")
@@ -579,6 +599,7 @@ def tilt_com(stack, slices=None, nslices=None):
         make the tilt axis vertical
 
     """
+
     def com_motion(theta, r, x0, z0):
         return r - x0 * np.cos(theta) - z0 * np.sin(theta)
 
@@ -589,7 +610,9 @@ def tilt_com(stack, slices=None, nslices=None):
         raise ValueError("No tilts in stack.metadata.Tomography.")
 
     if stack.data.shape[2] < 3:
-        raise ValueError("Dataset is only %s pixels in x dimension. This method cannot be used.")
+        raise ValueError(
+            "Dataset is only %s pixels in x dimension. This method cannot be used."
+        )
 
     nx = stack.data.shape[2]
     if slices is None:
@@ -602,10 +625,14 @@ def tilt_com(stack, slices=None, nslices=None):
                 nslices = 50
         else:
             if nslices > nx:
-                raise ValueError("nslices is greater than the X-dimension of the data.")
+                raise ValueError(
+                    "nslices is greater than the X-dimension of the data.")
             if nslices > 0.3 * nx:
                 nslices = int(0.3 * nx)
-                logger.warning("nslices is greater than 30%% of number of x pixels. Using %s slices instead." % nslices)
+                logger.warning(
+                    "nslices is greater than 30%% of number of x pixels. Using %s slices instead."
+                    % nslices
+                )
 
         slices = get_best_slices(stack, nslices)
         logger.info("Performing alignments using best %s slices" % nslices)
@@ -614,20 +641,17 @@ def tilt_com(stack, slices=None, nslices=None):
 
     coms = get_coms(stack, slices)
 
-    thetas = np.pi * stack.metadata.Tomography.tilts / 180.
+    thetas = np.pi * stack.metadata.Tomography.tilts / 180.0
     r = np.zeros(len(slices))
     x0 = np.zeros(len(slices))
     z0 = np.zeros(len(slices))
 
     for i in range(0, len(slices)):
-        r[i], x0[i], z0[i] = optimize.curve_fit(com_motion,
-                                                xdata=thetas,
-                                                ydata=coms[:, i],
-                                                p0=[0, 0, 0])[0]
-    slope, intercept = optimize.curve_fit(fit_line,
-                                          xdata=r,
-                                          ydata=slices,
-                                          p0=[0, 0])[0]
+        r[i], x0[i], z0[i] = optimize.curve_fit(
+            com_motion, xdata=thetas, ydata=coms[:, i], p0=[0, 0, 0]
+        )[0]
+    slope, intercept = optimize.curve_fit(
+        fit_line, xdata=r, ydata=slices, p0=[0, 0])[0]
     tilt_shift = (stack.data.shape[1] / 2 - intercept) / slope
     tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
 
@@ -666,6 +690,7 @@ def tilt_maximage(data, limit=10, delta=0.3, show_progressbar=False):
         Calculated rotation to set the tilt axis vertical
 
     """
+
     def hamming(img):
         """
         Apply hamming window to the image to remove edge effects.
@@ -727,11 +752,11 @@ def tilt_maximage(data, limit=10, delta=0.3, show_progressbar=False):
     image = np.max(data.data, 0)
 
     if image.shape[0] != image.shape[1]:
-        raise ValueError("Invalid data shape. Currently only square signal dimensions are supported.")
-    rot_pos = ndimage.rotate(hamming(image), -limit / 2,
-                             reshape=False, order=3)
-    rot_neg = ndimage.rotate(hamming(image), limit / 2,
-                             reshape=False, order=3)
+        raise ValueError(
+            "Invalid data shape. Currently only square signal dimensions are supported."
+        )
+    rot_pos = ndimage.rotate(hamming(image), -limit / 2, reshape=False, order=3)
+    rot_neg = ndimage.rotate(hamming(image), limit / 2, reshape=False, order=3)
     angles = np.arange(-limit, limit + delta, delta)
     scores_pos = []
     scores_neg = []
@@ -747,9 +772,9 @@ def tilt_maximage(data, limit=10, delta=0.3, show_progressbar=False):
     neg_angle = -angles[scores_neg.index(best_score_neg)]
     opt_angle = (pos_angle + neg_angle) / 2
 
-    logger.info('Optimum positive rotation angle: {}'.format(pos_angle))
-    logger.info('Optimum negative rotation angle: {}'.format(neg_angle))
-    logger.info('Optimum positive rotation angle: {}'.format(opt_angle))
+    logger.info("Optimum positive rotation angle: {}".format(pos_angle))
+    logger.info("Optimum negative rotation angle: {}".format(neg_angle))
+    logger.info("Optimum positive rotation angle: {}".format(opt_angle))
 
     out = copy.deepcopy(data)
     out = out.trans_stack(xshift=0, yshift=0, angle=opt_angle)
@@ -796,10 +821,10 @@ def align_to_other(stack, other):
 
     out = out.trans_stack(xshift, yshift, tiltaxis)
 
-    logger.info('TomoStack alignment applied')
-    logger.info('X-shift: %.1f' % xshift)
-    logger.info('Y-shift: %.1f' % yshift)
-    logger.info('Rotation: %.1f' % tiltaxis)
+    logger.info("TomoStack alignment applied")
+    logger.info("X-shift: %.1f" % xshift)
+    logger.info("Y-shift: %.1f" % yshift)
+    logger.info("Rotation: %.1f" % tiltaxis)
     return out
 
 

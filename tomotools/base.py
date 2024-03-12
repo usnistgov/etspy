@@ -39,7 +39,7 @@ class Stack(Signal2D):
         """Initialize TomoStack class."""
         super().__init__(*args, **kwargs)
 
-    def plot(self, navigator='slider', *args, **kwargs):
+    def plot(self, navigator="slider", *args, **kwargs):
         """Plot function to set default navigator to 'slider'."""
         super().plot(navigator, *args, **kwargs)
 
@@ -119,15 +119,15 @@ class TomoStack(Stack):
         ax2 = plt.subplot(1, 3, 2, sharex=ax1, sharey=ax1)
         ax3 = plt.subplot(1, 3, 3)
 
-        ax1.imshow(im1, cmap='gray')
+        ax1.imshow(im1, cmap="gray")
         ax1.set_axis_off()
-        ax1.set_title('Reference image')
+        ax1.set_title("Reference image")
 
-        ax2.imshow(im2, cmap='gray')
+        ax2.imshow(im2, cmap="gray")
         ax2.set_axis_off()
-        ax2.set_title('Offset image')
+        ax2.set_title("Offset image")
 
-        ax3.imshow(cc_image.real, cmap='inferno')
+        ax3.imshow(cc_image.real, cmap="inferno")
         ax3.set_axis_off()
         ax3.set_title("Cross-correlation")
         return fig
@@ -153,21 +153,19 @@ class TomoStack(Stack):
 
         """
         # Check if any transformations have been applied to the current stack
-        if np.all(self.metadata.Tomography.shifts == 0) and\
-           any([self.metadata.Tomography.xshift is None,
-                self.metadata.Tomography.xshift == 0.0]) and\
-           any([self.metadata.Tomography.yshift is None,
-                self.metadata.Tomography.yshift == 0.0]) and\
-           any([self.metadata.Tomography.tiltaxis is None,
-                self.metadata.Tomography.tiltaxis == 0.0]):
-            raise ValueError('No transformation have been applied '
-                             'to this stack')
+        no_shifts = np.all(self.metadata.Tomography.shifts == 0)
+        no_xshift = any([self.metadata.Tomography.xshift is None, self.metadata.Tomography.xshift == 0.0,])
+        no_yshift = any([self.metadata.Tomography.xshift is None, self.metadata.Tomography.xshift == 0.0,])
+        no_rotation = any([self.metadata.Tomography.tiltaxis is None, self.metadata.Tomography.tiltaxis == 0.0,])
+
+        if all([no_shifts, no_xshift, no_yshift, no_rotation]):
+            raise ValueError("No transformations have been applied to this stack")
 
         out = align.align_to_other(self, other)
 
         return out
 
-    def filter(self, method='median', size=5, taper=0.1):
+    def filter(self, method="median", size=5, taper=0.1):
         """
         Apply one of several image filters to an entire TomoStack.
 
@@ -193,22 +191,20 @@ class TomoStack(Stack):
 
         """
         filtered = self.deepcopy()
-        if method == 'median':
-            filtered.data = ndimage.median_filter(filtered.data,
-                                                  size=(1, size, size))
-        elif method == 'sobel':
+        if method == "median":
+            filtered.data = ndimage.median_filter(filtered.data, size=(1, size, size))
+        elif method == "sobel":
             for i in range(0, filtered.data.shape[0]):
                 dx = ndimage.sobel(filtered.data[i, :, :], 0)
                 dy = ndimage.sobel(filtered.data[i, :, :], 1)
                 filtered.data[i, :, :] = np.hypot(dx, dy)
-        elif method == 'both':
-            filtered.data = ndimage.median_filter(filtered.data,
-                                                  size=(1, size, size))
+        elif method == "both":
+            filtered.data = ndimage.median_filter(filtered.data, size=(1, size, size))
             for i in range(0, filtered.data.shape[0]):
                 dx = ndimage.sobel(filtered.data[i, :, :], 0)
                 dy = ndimage.sobel(filtered.data[i, :, :], 1)
                 filtered.data[i, :, :] = np.hypot(dx, dy)
-        elif method == 'bpf':
+        elif method == "bpf":
             lp_freq = 0.1
             hp_freq = 0.05
             lp_sigma = 1.5
@@ -221,9 +217,9 @@ class TomoStack(Stack):
             y = (np.arange(0, rows) - np.fix(rows / 2)) / rows
             xx, yy = np.meshgrid(x, y)
             r = np.sqrt(xx**2 + yy**2)
-            lpf = 1 / (1.0 + (r / lp_freq)**(2 * lp_sigma))
+            lpf = 1 / (1.0 + (r / lp_freq) ** (2 * lp_sigma))
 
-            hpf = 1 - (1 / (1.0 + (r / hp_freq)**(2 * hp_sigma)))
+            hpf = 1 - (1 / (1.0 + (r / hp_freq) ** (2 * hp_sigma)))
             bpf = lpf * hpf
             F_filtered = F * bpf
 
@@ -235,15 +231,21 @@ class TomoStack(Stack):
         elif method is None:
             pass
         else:
-            raise ValueError("Unknown filter method. Must be 'median', "
-                             "'sobel', 'both', 'bpf', or None")
+            raise ValueError(
+                "Unknown filter method. Must be 'median', "
+                "'sobel', 'both', 'bpf', or None"
+            )
         if taper:
             taper_size = np.int32(np.array(taper) * self.data.shape[1:])
-            filtered.data = np.pad(filtered.data,
-                                   [(0, 0),
-                                    (taper_size[0], taper_size[0]),
-                                    (taper_size[1], taper_size[1])],
-                                   mode='constant')
+            filtered.data = np.pad(
+                filtered.data,
+                [
+                    (0, 0),
+                    (taper_size[0], taper_size[0]),
+                    (taper_size[1], taper_size[1]),
+                ],
+                mode="constant",
+            )
         return filtered
 
     def normalize(self, width=3):
@@ -269,13 +271,16 @@ class TomoStack(Stack):
 
         """
         normalized = self.deepcopy()
-        minvals = np.reshape((normalized.data.min(2).min(1)),
-                             [self.data.shape[0], 1, 1])
+        minvals = np.reshape(
+            (normalized.data.min(2).min(1)), [self.data.shape[0], 1, 1]
+        )
         normalized.data = normalized.data - minvals
-        meanvals = np.reshape((normalized.data.mean(2).mean(1)),
-                              [self.data.shape[0], 1, 1])
-        stdvals = np.reshape((normalized.data.std(2).std(1)),
-                             [self.data.shape[0], 1, 1])
+        meanvals = np.reshape(
+            (normalized.data.mean(2).mean(1)), [self.data.shape[0], 1, 1]
+        )
+        stdvals = np.reshape(
+            (normalized.data.std(2).std(1)), [self.data.shape[0], 1, 1]
+        )
         normalized.data = normalized.data / (meanvals + width * stdvals)
         return normalized
 
@@ -302,12 +307,13 @@ class TomoStack(Stack):
         ranges = maxvals - minvals
 
         inverted = self.deepcopy()
-        inverted.data = inverted.data - np.reshape(inverted.data.mean(
-            2).mean(1), [self.data.shape[0], 1, 1])
+        inverted.data = inverted.data - np.reshape(
+            inverted.data.mean(2).mean(1), [self.data.shape[0], 1, 1]
+        )
         inverted.data = (inverted.data - minvals) / ranges
 
         inverted.data = inverted.data - 1
-        inverted.data = np.sqrt(inverted.data ** 2)
+        inverted.data = np.sqrt(inverted.data**2)
 
         inverted.data = (inverted.data * ranges) + minvals
 
@@ -315,16 +321,26 @@ class TomoStack(Stack):
 
     def stats(self):
         """Print basic stats about TomoStack data to terminal."""
-        print('Mean: %.1f' % self.data.mean())
-        print('Std: %.2f' % self.data.std())
-        print('Max: %.1f' % self.data.max())
-        print('Min: %.1f\n' % self.data.min())
+        print("Mean: %.1f" % self.data.mean())
+        print("Std: %.2f" % self.data.std())
+        print("Max: %.1f" % self.data.max())
+        print("Min: %.1f\n" % self.data.min())
         return
 
-    def stack_register(self, method='PC', start=None, crop=False,
-                       show_progressbar=False, nslices=20,
-                       cl_resolution=0.05, cl_div_factor=8, com_ref_index=None,
-                       cl_ref_index=None, xrange=None, p=20):
+    def stack_register(
+        self,
+        method="PC",
+        start=None,
+        crop=False,
+        show_progressbar=False,
+        nslices=20,
+        cl_resolution=0.05,
+        cl_div_factor=8,
+        com_ref_index=None,
+        cl_ref_index=None,
+        xrange=None,
+        p=20,
+    ):
         """
         Register stack spatially.
 
@@ -394,26 +410,33 @@ class TomoStack(Stack):
 
         """
         method = method.lower()
-        if method in ['pc', 'com', 'stackreg', 'com-cl']:
-            out = align.align_stack(self, method, start, show_progressbar,
-                                    nslices=nslices,
-                                    cl_resolution=cl_resolution,
-                                    cl_div_factor=cl_div_factor,
-                                    com_ref_index=com_ref_index,
-                                    cl_ref_index=cl_ref_index,
-                                    xrange=xrange,
-                                    p=p)
+        if method in ["pc", "com", "stackreg", "com-cl"]:
+            out = align.align_stack(
+                self,
+                method,
+                start,
+                show_progressbar,
+                nslices=nslices,
+                cl_resolution=cl_resolution,
+                cl_div_factor=cl_div_factor,
+                com_ref_index=com_ref_index,
+                cl_ref_index=cl_ref_index,
+                xrange=xrange,
+                p=p,
+            )
         else:
             raise ValueError(
                 "Unknown registration method: "
-                "%s. Must be PC, StackReg, or COM" % method)
+                "%s. Must be PC, StackReg, or COM" % method
+            )
 
         if crop:
             out = align.shift_crop(out)
         return out
 
-    def tilt_align(self, method, limit=10, delta=0.3, locs=None, nslices=20,
-                   show_progressbar=False):
+    def tilt_align(
+        self, method, limit=10, delta=0.3, locs=None, nslices=20, show_progressbar=False
+    ):
         """
         Align the tilt axis of a TomoStack.
 
@@ -480,18 +503,28 @@ class TomoStack(Stack):
         """
         method = method.lower()
 
-        if method == 'com':
+        if method == "com":
             out = align.tilt_com(self, locs, nslices)
-        elif method == 'maximage':
+        elif method == "maximage":
             out = align.tilt_maximage(self, limit, delta, show_progressbar)
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
-                "Must be 'CoM', 'MaxImage', or 'Minimize'" % method)
+                "Must be 'CoM', 'MaxImage', or 'Minimize'" % method
+            )
         return out
 
-    def reconstruct(self, method='FBP', iterations=None, constrain=False,
-                    thresh=0, cuda=None, thickness=None, ncores=None, sino_filter='shepp-logan'):
+    def reconstruct(
+        self,
+        method="FBP",
+        iterations=None,
+        constrain=False,
+        thresh=0,
+        cuda=None,
+        thickness=None,
+        ncores=None,
+        sino_filter="shepp-logan",
+    ):
         """
         Reconstruct a TomoStack series using one of the available methods.
 
@@ -545,42 +578,65 @@ class TomoStack(Stack):
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh)
 
         """
-        if method.lower() not in ['fbp', 'sirt',]:
-            raise ValueError('Unknown reconstruction algorithm: %s' % method)
+        if method.lower() not in [
+            "fbp",
+            "sirt",
+        ]:
+            raise ValueError("Unknown reconstruction algorithm: %s" % method)
         if cuda is None:
             if astra.use_cuda():
-                logger.info('CUDA detected with Astra')
+                logger.info("CUDA detected with Astra")
                 cuda = True
             else:
                 cuda = False
-                logger.info('CUDA not detected with Astra')
+                logger.info("CUDA not detected with Astra")
 
         out = copy.deepcopy(self)
-        out.data = recon.run(self, method, iterations, constrain, thresh,
-                             cuda, thickness, ncores, sino_filter)
+        out.data = recon.run(
+            self,
+            method,
+            iterations,
+            constrain,
+            thresh,
+            cuda,
+            thickness,
+            ncores,
+            sino_filter,
+        )
 
-        out.axes_manager[0].name = 'x'
+        out.axes_manager[0].name = "x"
         out.axes_manager[0].size = out.data.shape[0]
-        out.axes_manager[0].offset = self.axes_manager['x'].offset
-        out.axes_manager[0].scale = self.axes_manager['x'].scale
-        out.axes_manager[0].units = self.axes_manager['x'].units
+        out.axes_manager[0].offset = self.axes_manager["x"].offset
+        out.axes_manager[0].scale = self.axes_manager["x"].scale
+        out.axes_manager[0].units = self.axes_manager["x"].units
 
-        out.axes_manager[2].name = 'z'
+        out.axes_manager[2].name = "z"
         out.axes_manager[2].size = out.data.shape[1]
-        out.axes_manager[2].offset = self.axes_manager['x'].offset
-        out.axes_manager[2].scale = self.axes_manager['x'].scale
-        out.axes_manager[2].units = self.axes_manager['x'].units
+        out.axes_manager[2].offset = self.axes_manager["x"].offset
+        out.axes_manager[2].scale = self.axes_manager["x"].scale
+        out.axes_manager[2].units = self.axes_manager["x"].units
 
-        out.axes_manager[1].name = 'y'
+        out.axes_manager[1].name = "y"
         out.axes_manager[1].size = out.data.shape[2]
-        out.axes_manager[1].offset = self.axes_manager['y'].offset
-        out.axes_manager[1].scale = self.axes_manager['y'].scale
-        out.axes_manager[1].units = self.axes_manager['y'].units
+        out.axes_manager[1].offset = self.axes_manager["y"].offset
+        out.axes_manager[1].scale = self.axes_manager["y"].scale
+        out.axes_manager[1].units = self.axes_manager["y"].units
         return out
 
-    def test_align(self, tilt_shift=0.0, tilt_rotation=0.0, slices=None, thickness=None,
-                   method='FBP', iterations=50, constrain=True, cuda=None,
-                   thresh=0, vmin_std=0.1, vmax_std=10):
+    def test_align(
+        self,
+        tilt_shift=0.0,
+        tilt_rotation=0.0,
+        slices=None,
+        thickness=None,
+        method="FBP",
+        iterations=50,
+        constrain=True,
+        cuda=None,
+        thresh=0,
+        vmin_std=0.1,
+        vmax_std=10,
+    ):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -613,18 +669,23 @@ class TomoStack(Stack):
         shifted.axes_manager[0].axis = self.axes_manager[0].axis
         if cuda is None:
             if astra.use_cuda():
-                logger.info('CUDA detected with Astra')
+                logger.info("CUDA detected with Astra")
                 cuda = True
             else:
                 cuda = False
-                logger.info('CUDA not detected with Astra')
-        rec = shifted.reconstruct(method=method, iterations=iterations,
-                                  constrain=constrain, thickness=thickness,
-                                  cuda=cuda, thresh=thresh)
+                logger.info("CUDA not detected with Astra")
+        rec = shifted.reconstruct(
+            method=method,
+            iterations=iterations,
+            constrain=constrain,
+            thickness=thickness,
+            cuda=cuda,
+            thresh=thresh,
+        )
 
-        if 'ipympl' in mpl.get_backend().lower():
+        if "ipympl" in mpl.get_backend().lower():
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
-        elif 'nbagg' in mpl.get_backend().lower():
+        elif "nbagg" in mpl.get_backend().lower():
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
@@ -633,25 +694,21 @@ class TomoStack(Stack):
         minvals[minvals < 0] = 0
         maxvals = rec.data.mean((1, 2)) + vmax_std * rec.data.std((1, 2))
 
-        ax1.imshow(rec.data[0, :, :], cmap='afmhot', vmin=minvals[0],
-                   vmax=maxvals[0])
-        ax1.set_title('Slice %s' % str(slices[0]))
+        ax1.imshow(rec.data[0, :, :], cmap="afmhot", vmin=minvals[0], vmax=maxvals[0])
+        ax1.set_title("Slice %s" % str(slices[0]))
         ax1.set_axis_off()
 
-        ax2.imshow(rec.data[1, :, :], cmap='afmhot', vmin=minvals[1],
-                   vmax=maxvals[1])
-        ax2.set_title('Slice %s' % str(slices[1]))
+        ax2.imshow(rec.data[1, :, :], cmap="afmhot", vmin=minvals[1], vmax=maxvals[1])
+        ax2.set_title("Slice %s" % str(slices[1]))
         ax2.set_axis_off()
 
-        ax3.imshow(rec.data[2, :, :], cmap='afmhot', vmin=minvals[2],
-                   vmax=maxvals[2])
-        ax3.set_title('Slice %s' % str(slices[2]))
+        ax3.imshow(rec.data[2, :, :], cmap="afmhot", vmin=minvals[2], vmax=maxvals[2])
+        ax3.set_title("Slice %s" % str(slices[2]))
         ax3.set_axis_off()
         fig.tight_layout()
         return rec
 
-    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0,
-                    interpolation='linear'):
+    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0, interpolation="linear"):
         """
         Transform the stack using the skimage Affine transform.
 
@@ -686,60 +743,75 @@ class TomoStack(Stack):
 
         """
         transformed = self.deepcopy()
-        theta = np.pi * angle / 180.
-        center_y, center_x = np.float32(
-            np.array(transformed.data.shape[1:]) / 2)
+        theta = np.pi * angle / 180.0
+        center_y, center_x = np.float32(np.array(transformed.data.shape[1:]) / 2)
 
-        rot_mat = np.array([[np.cos(theta), -np.sin(theta), 0],
-                            [np.sin(theta), np.cos(theta), 0],
-                            [0, 0, 1]])
+        rot_mat = np.array(
+            [
+                [np.cos(theta), -np.sin(theta), 0],
+                [np.sin(theta), np.cos(theta), 0],
+                [0, 0, 1],
+            ]
+        )
 
-        trans_mat = np.array([[1, 0, center_x],
-                              [0, 1, center_y],
-                              [0, 0, 1]])
+        trans_mat = np.array([[1, 0, center_x], [0, 1, center_y], [0, 0, 1]])
 
-        rev_mat = np.array([[1, 0, -center_x],
-                            [0, 1, -center_y],
-                            [0, 0, 1]])
+        rev_mat = np.array([[1, 0, -center_x], [0, 1, -center_y], [0, 0, 1]])
 
         rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
 
-        shift = np.array([[1, 0, np.float32(xshift)],
-                          [0, 1, np.float32(-yshift)],
-                          [0, 0, 1]])
+        shift = np.array(
+            [[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]]
+        )
 
         full_transform = np.dot(shift, rotation_mat)
         tform = transform.AffineTransform(full_transform)
 
-        if interpolation.lower() == 'nearest' or interpolation.lower() == 'none':
+        if interpolation.lower() == "nearest" or interpolation.lower() == "none":
             interpolation_order = 0
-        elif interpolation.lower() == 'linear':
+        elif interpolation.lower() == "linear":
             interpolation_order = 1
-        elif interpolation.lower() == 'cubic':
+        elif interpolation.lower() == "cubic":
             interpolation_order = 3
         else:
-            raise ValueError("Interpolation method %s unknown. "
-                             "Must be 'nearest', 'linear', or 'cubic'"
-                             % interpolation)
+            raise ValueError(
+                "Interpolation method %s unknown. "
+                "Must be 'nearest', 'linear', or 'cubic'" % interpolation
+            )
 
         for i in range(0, self.data.shape[0]):
-            transformed.data[i, :, :] = \
-                transform.warp(
-                    transformed.data[i, :, :], inverse_map=tform.inverse, order=interpolation_order)
+            transformed.data[i, :, :] = transform.warp(
+                transformed.data[i, :, :],
+                inverse_map=tform.inverse,
+                order=interpolation_order,
+            )
 
-        transformed.metadata.Tomography.xshift =\
+        transformed.metadata.Tomography.xshift = (
             self.metadata.Tomography.xshift + xshift
+        )
 
-        transformed.metadata.Tomography.yshift =\
+        transformed.metadata.Tomography.yshift = (
             self.metadata.Tomography.yshift + yshift
+        )
 
-        transformed.metadata.Tomography.tiltaxis =\
+        transformed.metadata.Tomography.tiltaxis = (
             self.metadata.Tomography.tiltaxis + angle
+        )
         return transformed
 
     # noinspection PyTypeChecker
-    def savemovie(self, start, stop, axis='XY', fps=15, dpi=100,
-                  outfile=None, title='output.avi', clim=None, cmap='afmhot'):
+    def savemovie(
+        self,
+        start,
+        stop,
+        axis="XY",
+        fps=15,
+        dpi=100,
+        outfile=None,
+        title="output.avi",
+        clim=None,
+        cmap="afmhot",
+    ):
         """
         Save the TomoStack as an AVI movie file.
 
@@ -776,17 +848,20 @@ class TomoStack(Stack):
         if title:
             ax.set_title(title)
 
-        if axis == 'XY':
-            im = ax.imshow(self.data[:, start, :], interpolation='none',
-                           cmap=cmap, clim=clim)
-        elif axis == 'XZ':
-            im = ax.imshow(self.data[start, :, :], interpolation='none',
-                           cmap=cmap, clim=clim)
-        elif axis == 'YZ':
-            im = ax.imshow(self.data[:, :, start], interpolation='none',
-                           cmap=cmap, clim=clim)
+        if axis == "XY":
+            im = ax.imshow(
+                self.data[:, start, :], interpolation="none", cmap=cmap, clim=clim
+            )
+        elif axis == "XZ":
+            im = ax.imshow(
+                self.data[start, :, :], interpolation="none", cmap=cmap, clim=clim
+            )
+        elif axis == "YZ":
+            im = ax.imshow(
+                self.data[:, :, start], interpolation="none", cmap=cmap, clim=clim
+            )
         else:
-            raise ValueError('Unknown axis!')
+            raise ValueError("Unknown axis!")
         fig.tight_layout()
 
         def updatexy(n):
@@ -806,16 +881,16 @@ class TomoStack(Stack):
 
         frames = np.arange(start, stop, 1)
 
-        if axis == 'XY':
+        if axis == "XY":
             ani = animation.FuncAnimation(fig, updatexy, frames)
-        elif axis == 'XZ':
+        elif axis == "XZ":
             ani = animation.FuncAnimation(fig, updatexz, frames)
-        elif axis == 'YZ':
+        elif axis == "YZ":
             ani = animation.FuncAnimation(fig, updateyz, frames)
         else:
-            raise ValueError('Axis not understood!')
+            raise ValueError("Axis not understood!")
 
-        writer = animation.writers['ffmpeg'](fps=fps)
+        writer = animation.writers["ffmpeg"](fps=fps)
         ani.save(outfile, writer=writer, dpi=dpi)
         plt.close()
         return
@@ -834,8 +909,8 @@ class TomoStack(Stack):
 
         """
         nimages = self.data.shape[0]
-        self.axes_manager[0].name = 'Tilt'
-        self.axes_manager[0].units = 'degrees'
+        self.axes_manager[0].name = "Tilt"
+        self.axes_manager[0].units = "degrees"
         self.axes_manager[0].scale = increment
         self.axes_manager[0].offset = start
         tilts = np.arange(start, nimages * increment + start, increment)
@@ -893,28 +968,20 @@ class TomoStack(Stack):
         else:
             if (xshift > 0) and (yshift > 0):
                 output.data = output.data[:, :-yshift, :-xshift]
-                output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, yshift:, xshift:]
-                output.data[nslice:, :, :] = \
-                    self.data[nslice:, :-yshift, :-xshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, xshift:]
+                output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :-xshift]
             elif (xshift > 0) and (yshift < 0):
                 output.data = output.data[:, :yshift, :-xshift]
-                output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, :yshift, xshift:]
-                output.data[nslice:, :, :] = \
-                    self.data[nslice:, -yshift:, :-xshift]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, xshift:]
+                output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :-xshift]
             elif (xshift < 0) and (yshift > 0):
                 output.data = output.data[:, :-yshift, :xshift]
-                output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, yshift:, :xshift]
-                output.data[nslice:, :, :] = \
-                    self.data[nslice:, :-yshift, -xshift:]
+                output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :xshift]
+                output.data[nslice:, :, :] = self.data[nslice:, :-yshift, -xshift:]
             elif (xshift < 0) and (yshift < 0):
                 output.data = output.data[:, :yshift, :xshift]
-                output.data[0:nslice, :, :] = \
-                    self.data[0:nslice, :yshift, :xshift]
-                output.data[nslice:, :, :] = \
-                    self.data[nslice:, -yshift:, -xshift:]
+                output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :xshift]
+                output.data[nslice:, :, :] = self.data[nslice:, -yshift:, -xshift:]
             else:
                 pass
         if display:
@@ -960,15 +1027,18 @@ class TomoStack(Stack):
         else:
             filename, ext = os.path.splitext(filename)
 
-        filename = filename + '_%sx%sx%s_%s.rpl' % (str(datashape[0]),
-                                                    str(datashape[1]),
-                                                    str(datashape[2]),
-                                                    self.data.dtype.name)
+        filename = filename + "_%sx%sx%s_%s.rpl" % (
+            str(datashape[0]),
+            str(datashape[1]),
+            str(datashape[2]),
+            self.data.dtype.name,
+        )
         self.save(filename)
         return
 
-    def recon_error(self, nslice=None, iterations=50, constrain=True,
-                    cuda=None, thresh=0):
+    def recon_error(
+        self, nslice=None, iterations=50, constrain=True, cuda=None, thresh=0
+    ):
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1015,31 +1085,35 @@ class TomoStack(Stack):
 
         if cuda is None:
             if astra.use_cuda():
-                logger.info('CUDA detected with Astra')
+                logger.info("CUDA detected with Astra")
                 cuda = True
             else:
                 cuda = False
-                logger.info('CUDA not detected with Astra')
+                logger.info("CUDA not detected with Astra")
         sinogram = self.isig[nslice, :].data
         angles = self.metadata.Tomography.tilts
-        rec_stack, error = recon.astra_sirt_error(sinogram, angles,
-                                                  iterations=iterations,
-                                                  constrain=constrain,
-                                                  thresh=thresh, cuda=cuda)
+        rec_stack, error = recon.astra_sirt_error(
+            sinogram,
+            angles,
+            iterations=iterations,
+            constrain=constrain,
+            thresh=thresh,
+            cuda=cuda,
+        )
         rec_stack = Signal2D(rec_stack)
-        rec_stack.axes_manager[0].name = 'SIRT iteration'
+        rec_stack.axes_manager[0].name = "SIRT iteration"
         rec_stack.axes_manager[0].scale = 1
         rec_stack.axes_manager[1].name = self.axes_manager[2].name
         rec_stack.axes_manager[1].scale = self.axes_manager[2].scale
         rec_stack.axes_manager[1].units = self.axes_manager[2].units
-        rec_stack.axes_manager[2].name = 'z'
+        rec_stack.axes_manager[2].name = "z"
         rec_stack.axes_manager[2].scale = self.axes_manager[2].scale
         rec_stack.axes_manager[2].units = self.axes_manager[2].units
-        rec_stack.navigator = 'slider'
+        rec_stack.navigator = "slider"
 
         error = Signal1D(error)
-        error.axes_manager[0].name = 'SIRT Iteration'
-        error.metadata.Signal.quantity = 'Sum of Squared Difference'
+        error.axes_manager[0].name = "SIRT Iteration"
+        error.metadata.Signal.quantity = "Sum of Squared Difference"
         return rec_stack, error
 
 
@@ -1101,27 +1175,27 @@ class RecStack(Stack):
         if zslice is None:
             zslice = np.uint16(self.data.shape[2] / 2)
 
-        if 'ipympl' in mpl.get_backend().lower():
+        if "ipympl" in mpl.get_backend().lower():
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
-        elif 'nbagg' in mpl.get_backend().lower():
+        elif "nbagg" in mpl.get_backend().lower():
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
-        ax1.imshow(self.data[yslice, :, :], cmap='afmhot')
-        ax1.set_title('Z-X Slice %s' % str(xslice))
-        ax1.set_ylabel('Z')
-        ax1.set_xlabel('X')
+        ax1.imshow(self.data[yslice, :, :], cmap="afmhot")
+        ax1.set_title("Z-X Slice %s" % str(xslice))
+        ax1.set_ylabel("Z")
+        ax1.set_xlabel("X")
 
-        ax2.imshow(self.data[:, zslice, :], cmap='afmhot')
-        ax2.set_title('Y-X Slice %s' % str(zslice))
-        ax2.set_ylabel('Y')
-        ax2.set_xlabel('X')
+        ax2.imshow(self.data[:, zslice, :], cmap="afmhot")
+        ax2.set_title("Y-X Slice %s" % str(zslice))
+        ax2.set_ylabel("Y")
+        ax2.set_xlabel("X")
 
-        ax3.imshow(self.data[:, :, xslice].T, cmap='afmhot')
-        ax3.set_title('Z-Y Slice %s' % str(xslice))
-        ax3.set_ylabel('Z')
-        ax3.set_xlabel('Y')
+        ax3.imshow(self.data[:, :, xslice].T, cmap="afmhot")
+        ax3.set_title("Z-Y Slice %s" % str(xslice))
+        ax3.set_ylabel("Z")
+        ax3.set_xlabel("Y")
         fig.tight_layout()
 
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
@@ -1146,9 +1220,11 @@ class RecStack(Stack):
         else:
             filename, ext = os.path.splitext(filename)
 
-        filename = filename + '_%sx%sx%s_%s.rpl' % (str(datashape[0]),
-                                                    str(datashape[1]),
-                                                    str(datashape[2]),
-                                                    self.data.dtype.name)
+        filename = filename + "_%sx%sx%s_%s.rpl" % (
+            str(datashape[0]),
+            str(datashape[1]),
+            str(datashape[2]),
+            self.data.dtype.name,
+        )
         self.save(filename)
         return

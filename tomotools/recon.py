@@ -46,8 +46,18 @@ def run_alg(sino, iters, sino_id, alg_id, rec_id):
     return astra.data2d.get(rec_id)
 
 
-def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thickness=None,
-        ncores=None, filter='shepp-logan', **kwargs):
+def run(
+    stack,
+    method,
+    niterations=20,
+    constrain=None,
+    thresh=0,
+    cuda=None,
+    thickness=None,
+    ncores=None,
+    filter="shepp-logan",
+    **kwargs
+):
     """
     Perform reconstruction of input tilt series.
 
@@ -82,37 +92,40 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
     else:
         nangles, ny, nx = stack.data.shape
 
-    thetas = np.pi * stack.metadata.Tomography.tilts / 180.
+    thetas = np.pi * stack.metadata.Tomography.tilts / 180.0
 
     if thickness is None:
         thickness = ny
 
     rec = np.zeros([nx, thickness, ny], np.float32)
 
-    proj_geom = astra.create_proj_geom('parallel', 1.0, ny, thetas)
+    proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((thickness, ny))
-    rec_id = astra.data2d.create('-vol', vol_geom)
-    sino_id = astra.data2d.create('-sino', proj_geom, np.zeros([nangles, ny]))
+    rec_id = astra.data2d.create("-vol", vol_geom)
+    sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
 
     if cuda:
-        proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
+        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
 
-        if method.lower() == 'fbp':
-            print('Reconstructing with CUDA-accelerated FBP algorithm')
-            cfg = astra.astra_dict('FBP_CUDA')
-            cfg['ProjectionDataId'] = sino_id
-            cfg['ReconstructionDataId'] = rec_id
-            cfg['option'] = {}
-            cfg['option']['FilterType'] = filter.lower()
+        if method.lower() == "fbp":
+            print("Reconstructing with CUDA-accelerated FBP algorithm")
+            cfg = astra.astra_dict("FBP_CUDA")
+            cfg["ProjectionDataId"] = sino_id
+            cfg["ReconstructionDataId"] = rec_id
+            cfg["option"] = {}
+            cfg["option"]["FilterType"] = filter.lower()
             niterations = 1
-        elif method.lower() == 'sirt':
-            logger.info('Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)' % niterations)
-            cfg = astra.astra_dict('SIRT_CUDA')
-            cfg['ProjectionDataId'] = sino_id
-            cfg['ReconstructionDataId'] = rec_id
+        elif method.lower() == "sirt":
+            logger.info(
+                "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)"
+                % niterations
+            )
+            cfg = astra.astra_dict("SIRT_CUDA")
+            cfg["ProjectionDataId"] = sino_id
+            cfg["ReconstructionDataId"] = rec_id
             if constrain:
-                cfg['option'] = {}
-                cfg['option']['MinConstraint'] = thresh
+                cfg["option"] = {}
+                cfg["option"]["MinConstraint"] = thresh
 
         alg = astra.algorithm.create(cfg)
 
@@ -125,26 +138,26 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
 
-        proj_id = astra.create_projector('linear', proj_geom, vol_geom)
+        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
 
-        if method.lower() == 'fbp':
-            logger.info('Reconstructing with CPU-based FBP algorithm')
-            cfg = astra.astra_dict('FBP')
-            cfg['ProjectorId'] = proj_id
-            cfg['ProjectionDataId'] = sino_id
-            cfg['ReconstructionDataId'] = rec_id
-            cfg['option'] = {}
-            cfg['option']['FilterType'] = filter.lower()
+        if method.lower() == "fbp":
+            logger.info("Reconstructing with CPU-based FBP algorithm")
+            cfg = astra.astra_dict("FBP")
+            cfg["ProjectorId"] = proj_id
+            cfg["ProjectionDataId"] = sino_id
+            cfg["ReconstructionDataId"] = rec_id
+            cfg["option"] = {}
+            cfg["option"]["FilterType"] = filter.lower()
             niterations = 1
-        elif method.lower() == 'sirt':
-            logger.info('Reconstructing with CPU-based FBP algorithm')
-            cfg = astra.astra_dict('SIRT')
-            cfg['ProjectorId'] = proj_id
-            cfg['ProjectionDataId'] = sino_id
-            cfg['ReconstructionDataId'] = rec_id
+        elif method.lower() == "sirt":
+            logger.info("Reconstructing with CPU-based FBP algorithm")
+            cfg = astra.astra_dict("SIRT")
+            cfg["ProjectorId"] = proj_id
+            cfg["ProjectionDataId"] = sino_id
+            cfg["ReconstructionDataId"] = rec_id
             if constrain:
-                cfg['option'] = {}
-                cfg['option']['MinConstraint'] = thresh
+                cfg["option"] = {}
+                cfg["option"]["MinConstraint"] = thresh
 
         alg = astra.algorithm.create(cfg)
 
@@ -152,16 +165,25 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
             for i in tqdm.tqdm(range(0, nx)):
                 rec[i] = run_alg(stack.data[:, :, i], niterations, sino_id, alg, rec_id)
         else:
-            logger.info('Using %s CPU cores to reconstruct %s slices' % (ncores, nx))
+            logger.info("Using %s CPU cores to reconstruct %s slices" % (ncores, nx))
             with mp.Pool(ncores) as pool:
-                for i, result in enumerate(pool.starmap(run_alg, [(stack.data[:, :, i], niterations, sino_id, alg, rec_id) for i in range(0, nx)])):
+                for i, result in enumerate(
+                    pool.starmap(
+                        run_alg,
+                        [
+                            (stack.data[:, :, i], niterations, sino_id, alg, rec_id)
+                            for i in range(0, nx)
+                        ],
+                    )
+                ):
                     rec[i] = result
     astra.clear()
     return rec
 
 
-def astra_sirt_error(sinogram, angles, iterations=50,
-                     constrain=True, thresh=0, cuda=False):
+def astra_sirt_error(
+    sinogram, angles, iterations=50, constrain=True, thresh=0, cuda=False
+):
     """
     Perform SIRT reconstruction using the Astra toolbox algorithms.
 
@@ -193,27 +215,27 @@ def astra_sirt_error(sinogram, angles, iterations=50,
 
     nangles, ny = sinogram.shape
 
-    proj_geom = astra.create_proj_geom('parallel', 1.0, ny, thetas)
+    proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((ny, ny))
-    rec_id = astra.data2d.create('-vol', vol_geom)
-    sino_id = astra.data2d.create('-sino', proj_geom, np.zeros([nangles, ny]))
+    rec_id = astra.data2d.create("-vol", vol_geom)
+    sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
 
     if cuda:
-        alg_name = 'SIRT_CUDA'
-        proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
+        alg_name = "SIRT_CUDA"
+        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
     else:
-        alg_name = 'SIRT'
-        proj_id = astra.create_projector('linear', proj_geom, vol_geom)
+        alg_name = "SIRT"
+        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
 
     astra.data2d.store(sino_id, sinogram)
 
     cfg = astra.astra_dict(alg_name)
-    cfg['ProjectionDataId'] = sino_id
-    cfg['ProjectorId'] = proj_id
-    cfg['ReconstructionDataId'] = rec_id
+    cfg["ProjectionDataId"] = sino_id
+    cfg["ProjectorId"] = proj_id
+    cfg["ReconstructionDataId"] = rec_id
     if constrain:
-        cfg['option'] = {}
-        cfg['option']['MinConstraint'] = thresh
+        cfg["option"] = {}
+        cfg["option"]["MinConstraint"] = thresh
 
     alg = astra.algorithm.create(cfg)
 
