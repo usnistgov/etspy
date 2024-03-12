@@ -23,7 +23,7 @@ class TestReconCUDA:
         slices = stack.isig[120:121, :].deepcopy()
         rec = slices.reconstruct('FBP', cuda=True)
         assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_sirt_gpu(self):
@@ -35,7 +35,7 @@ class TestReconCUDA:
                                  thresh=0,
                                  cuda=True)
         assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
 

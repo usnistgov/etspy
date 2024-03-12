@@ -25,7 +25,7 @@ class TestReconstruction:
         slices = stack.isig[120:121, :].deepcopy()
         rec = slices.reconstruct('FBP', cuda=False)
         assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_sirt_cpu(self):
@@ -37,7 +37,7 @@ class TestReconstruction:
                                  thresh=0,
                                  cuda=False)
         assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
 

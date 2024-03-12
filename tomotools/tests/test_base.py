@@ -289,7 +289,7 @@ class TestReconstruct:
         stack = ds.get_needle_data(True)
         slices = stack.isig[:, 120:121].deepcopy()
         rec = slices.reconstruct('FBP', cuda=None)
-        assert type(rec) is TomoStack
+        assert type(rec) is RecStack
 
 
 class TestManualAlign:
