@@ -12,7 +12,6 @@ Contains the TomoStack class and its methods.
 
 import numpy as np
 from tomotools import recon, align
-import copy
 import os
 from skimage import transform
 import pylab as plt
@@ -591,8 +590,7 @@ class TomoStack(Stack):
                 cuda = False
                 logger.info("CUDA not detected with Astra")
 
-        out = copy.deepcopy(self)
-        out.data = recon.run(
+        rec = recon.run(
             self,
             method,
             iterations,
@@ -604,24 +602,30 @@ class TomoStack(Stack):
             sino_filter,
         )
 
-        out.axes_manager[0].name = "x"
-        out.axes_manager[0].size = out.data.shape[0]
-        out.axes_manager[0].offset = self.axes_manager["x"].offset
-        out.axes_manager[0].scale = self.axes_manager["x"].scale
-        out.axes_manager[0].units = self.axes_manager["x"].units
+        axes_dict = self.axes_manager.as_dictionary()
+        rec_axes_dict = [axes_dict['axis-2'], dict(axes_dict['axis-1']), axes_dict['axis-1']]
+        rec_axes_dict[1]['name'] = 'z'
+        rec_axes_dict[1]['size'] = rec.shape[1]
+        rec = RecStack(rec, axes=rec_axes_dict)
 
-        out.axes_manager[2].name = "z"
-        out.axes_manager[2].size = out.data.shape[1]
-        out.axes_manager[2].offset = self.axes_manager["x"].offset
-        out.axes_manager[2].scale = self.axes_manager["x"].scale
-        out.axes_manager[2].units = self.axes_manager["x"].units
+        # out.axes_manager[0].name = "x"
+        # out.axes_manager[0].size = out.data.shape[0]
+        # out.axes_manager[0].offset = self.axes_manager["x"].offset
+        # out.axes_manager[0].scale = self.axes_manager["x"].scale
+        # out.axes_manager[0].units = self.axes_manager["x"].units
 
-        out.axes_manager[1].name = "y"
-        out.axes_manager[1].size = out.data.shape[2]
-        out.axes_manager[1].offset = self.axes_manager["y"].offset
-        out.axes_manager[1].scale = self.axes_manager["y"].scale
-        out.axes_manager[1].units = self.axes_manager["y"].units
-        return out
+        # out.axes_manager[2].name = "z"
+        # out.axes_manager[2].size = out.data.shape[1]
+        # out.axes_manager[2].offset = self.axes_manager["x"].offset
+        # out.axes_manager[2].scale = self.axes_manager["x"].scale
+        # out.axes_manager[2].units = self.axes_manager["x"].units
+
+        # out.axes_manager[1].name = "y"
+        # out.axes_manager[1].size = out.data.shape[2]
+        # out.axes_manager[1].offset = self.axes_manager["y"].offset
+        # out.axes_manager[1].scale = self.axes_manager["y"].scale
+        # out.axes_manager[1].units = self.axes_manager["y"].units
+        return rec
 
     def test_align(
         self,
