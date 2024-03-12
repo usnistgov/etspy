@@ -50,7 +50,282 @@ class Stack(Signal2D):
         conversion of the TomoStack to a Signal2D.
 
         """
-        self.data = self.data.astype(dtype)
+
+    def invert(self):
+        """
+        Invert the contrast levels of an entire TomoStack.
+
+        Returns
+        ----------
+        inverted : TomoStack object
+            Copy of the input stack with contrast inverted
+
+        Examples
+        --------
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> s_inverted = stack.invert()
+
+        """
+        maxvals = self.data.max(2).max(1)
+        maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
+        minvals = self.data.min(2).min(1)
+        minvals = minvals.reshape([self.data.shape[0], 1, 1])
+        ranges = maxvals - minvals
+
+        inverted = self.deepcopy()
+        inverted.data = inverted.data - np.reshape(
+            inverted.data.mean(2).mean(1), [self.data.shape[0], 1, 1]
+        )
+        inverted.data = (inverted.data - minvals) / ranges
+
+        inverted.data = inverted.data - 1
+        inverted.data = np.sqrt(inverted.data**2)
+
+        inverted.data = (inverted.data * ranges) + minvals
+
+        return inverted
+
+    def normalize(self, width=3):
+        """
+        Normalize the contrast levels of an entire TomoStack.
+
+        Args
+        ----------
+        width : integer
+            Number of standard deviations from the mean to set
+            as maximum intensity level.
+
+        Returns
+        ----------
+        normalized : TomoStack object
+            Copy of the input stack with intensities normalized
+
+        Examples
+        --------
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> s_normalized = stack.normalize()
+
+        """
+        normalized = self.deepcopy()
+        minvals = np.reshape(
+            (normalized.data.min(2).min(1)), [self.data.shape[0], 1, 1]
+        )
+        normalized.data = normalized.data - minvals
+        meanvals = np.reshape(
+            (normalized.data.mean(2).mean(1)), [self.data.shape[0], 1, 1]
+        )
+        stdvals = np.reshape(
+            (normalized.data.std(2).std(1)), [self.data.shape[0], 1, 1]
+        )
+        normalized.data = normalized.data / (meanvals + width * stdvals)
+        return normalized
+
+    # noinspection PyTypeChecker
+    def savemovie(self, start, stop, axis="XY", fps=15, dpi=100, outfile=None, title="output.avi", clim=None, cmap="afmhot"):
+        """
+        Save the TomoStack as an AVI movie file.
+
+        Args
+        ----------
+        start : integer
+         Filename for output. If None, a UI will prompt for a filename.
+        stop : integer
+         Filename for output. If None, a UI will prompt for a filename.
+        axis : string
+         Projection axis for the output movie.
+         Must be 'XY' (default), 'YZ' , or 'XZ'
+        fps : integer
+         Number of frames per second at which to create the movie.
+        dpi : integer
+         Resolution to save the images in the movie.
+        outfile : string
+         Filename for output.
+        title : string
+         Title to add at the top of the movie
+        clim : tuple
+         Upper and lower contrast limit to use for movie
+        cmap : string
+         Matplotlib colormap to use for movie
+
+        """
+        if clim is None:
+            clim = [self.data.min(), self.data.max()]
+
+        fig, ax = plt.subplots(1, figsize=(8, 8))
+
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        if title:
+            ax.set_title(title)
+
+        if axis == "XY":
+            im = ax.imshow(self.data[:, start, :], interpolation="none", cmap=cmap, clim=clim)
+        elif axis == "XZ":
+            im = ax.imshow(self.data[start, :, :], interpolation="none", cmap=cmap, clim=clim)
+        elif axis == "YZ":
+            im = ax.imshow(self.data[:, :, start], interpolation="none", cmap=cmap, clim=clim)
+        else:
+            raise ValueError("Unknown axis!")
+        fig.tight_layout()
+
+        def updatexy(n):
+            tmp = self.data[:, n, :]
+            im.set_data(tmp)
+            return im
+
+        def updatexz(n):
+            tmp = self.data[n, :, :]
+            im.set_data(tmp)
+            return im
+
+        def updateyz(n):
+            tmp = self.data[:, :, n]
+            im.set_data(tmp)
+            return im
+
+        frames = np.arange(start, stop, 1)
+
+        if axis == "XY":
+            ani = animation.FuncAnimation(fig, updatexy, frames)
+        elif axis == "XZ":
+            ani = animation.FuncAnimation(fig, updatexz, frames)
+        elif axis == "YZ":
+            ani = animation.FuncAnimation(fig, updateyz, frames)
+        else:
+            raise ValueError("Axis not understood!")
+
+        writer = animation.writers["ffmpeg"](fps=fps)
+        ani.save(outfile, writer=writer, dpi=dpi)
+        plt.close()
+        return
+
+    def save_raw(self, filename=None):
+        """
+        Save TomoStack data as a .raw/.rpl file pair.
+
+        Args
+        ----------
+        filname : string (optional)
+            Name of file to receive data. If not specified, the metadata will
+            be used. Data dimensions and data type will be appended.
+
+        """
+        datashape = self.data.shape
+
+        if filename is None:
+            filename = self.metadata.General.title
+        else:
+            filename, ext = os.path.splitext(filename)
+
+        filename = filename + "_%sx%sx%s_%s.rpl" % (
+            str(datashape[0]),
+            str(datashape[1]),
+            str(datashape[2]),
+            self.data.dtype.name,
+        )
+        self.save(filename)
+        return
+
+    def stats(self):
+        """Print basic stats about TomoStack data to terminal."""
+        print("Mean: %.1f" % self.data.mean())
+        print("Std: %.2f" % self.data.std())
+        print("Max: %.1f" % self.data.max())
+        print("Min: %.1f\n" % self.data.min())
+        return
+
+    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0, interpolation="linear"):
+        """
+        Transform the stack using the skimage Affine transform.
+
+        Args
+        ----------
+        xshift : float
+            Number of pixels by which to shift in the X dimension
+        yshift : float
+            Number of pixels by which to shift the stack in the Y dimension
+        angle : float
+            Angle in degrees by which to rotate the stack about the X-Y plane
+        interpolation : str
+            Mode of interpolation to employ. Must be either 'linear',
+            'cubic', 'nearest' or 'none'.  Note that 'nearest' and 'none'
+            are equivalent.  Default is 'linear'.
+
+        Returns
+        ----------
+        out : TomoStack object
+            Transformed copy of the input stack
+
+        Examples
+        ----------
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data()
+        >>> xshift = 10.0
+        >>> yshift = 3.5
+        >>> angle = -15.2
+        >>> transformed = stack.trans_stack(xshift, yshift, angle)
+        >>> transformed
+        <TomoStack, title: , dimensions: (77|256, 256)>
+
+        """
+        transformed = self.deepcopy()
+        theta = np.pi * angle / 180.0
+        center_y, center_x = np.float32(np.array(transformed.data.shape[1:]) / 2)
+
+        rot_mat = np.array(
+            [
+                [np.cos(theta), -np.sin(theta), 0],
+                [np.sin(theta), np.cos(theta), 0],
+                [0, 0, 1],
+            ]
+        )
+
+        trans_mat = np.array([[1, 0, center_x], [0, 1, center_y], [0, 0, 1]])
+
+        rev_mat = np.array([[1, 0, -center_x], [0, 1, -center_y], [0, 0, 1]])
+
+        rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
+
+        shift = np.array(
+            [[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]]
+        )
+
+        full_transform = np.dot(shift, rotation_mat)
+        tform = transform.AffineTransform(full_transform)
+
+        if interpolation.lower() == "nearest" or interpolation.lower() == "none":
+            interpolation_order = 0
+        elif interpolation.lower() == "linear":
+            interpolation_order = 1
+        elif interpolation.lower() == "cubic":
+            interpolation_order = 3
+        else:
+            raise ValueError(
+                "Interpolation method %s unknown. "
+                "Must be 'nearest', 'linear', or 'cubic'" % interpolation
+            )
+
+        for i in range(0, self.data.shape[0]):
+            transformed.data[i, :, :] = transform.warp(
+                transformed.data[i, :, :],
+                inverse_map=tform.inverse,
+                order=interpolation_order,
+            )
+
+        transformed.metadata.Tomography.xshift = (
+            self.metadata.Tomography.xshift + xshift
+        )
+
+        transformed.metadata.Tomography.yshift = (
+            self.metadata.Tomography.yshift + yshift
+        )
+
+        transformed.metadata.Tomography.tiltaxis = (
+            self.metadata.Tomography.tiltaxis + angle
+        )
+        return transformed
 
 
 class TomoStack(Stack):
@@ -59,17 +334,6 @@ class TomoStack(Stack):
 
     Note: All attributes are initialized with values of None or 0.0
     in __init__ unless they are already defined
-
-    # Attributes
-    # ----------
-    # shifts : numpy array
-    #     X,Y shifts calculated for each image for stack registration
-    # tiltaxis : float
-    #      Angular orientation (in degrees) by which data is rotated to
-           orient the
-    #      stack so that the tilt axis is vertical
-    # xshift : float
-    #     Lateral shift of the tilt axis from the center of the stack.
     """
 
     def test_correlation(self, images=None):
@@ -229,85 +493,6 @@ class TomoStack(Stack):
             )
         return filtered
 
-    def normalize(self, width=3):
-        """
-        Normalize the contrast levels of an entire TomoStack.
-
-        Args
-        ----------
-        width : integer
-            Number of standard deviations from the mean to set
-            as maximum intensity level.
-
-        Returns
-        ----------
-        normalized : TomoStack object
-            Copy of the input stack with intensities normalized
-
-        Examples
-        --------
-        >>> import tomotools.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> s_normalized = stack.normalize()
-
-        """
-        normalized = self.deepcopy()
-        minvals = np.reshape(
-            (normalized.data.min(2).min(1)), [self.data.shape[0], 1, 1]
-        )
-        normalized.data = normalized.data - minvals
-        meanvals = np.reshape(
-            (normalized.data.mean(2).mean(1)), [self.data.shape[0], 1, 1]
-        )
-        stdvals = np.reshape(
-            (normalized.data.std(2).std(1)), [self.data.shape[0], 1, 1]
-        )
-        normalized.data = normalized.data / (meanvals + width * stdvals)
-        return normalized
-
-    def invert(self):
-        """
-        Invert the contrast levels of an entire TomoStack.
-
-        Returns
-        ----------
-        inverted : TomoStack object
-            Copy of the input stack with contrast inverted
-
-        Examples
-        --------
-        >>> import tomotools.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> s_inverted = stack.invert()
-
-        """
-        maxvals = self.data.max(2).max(1)
-        maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
-        minvals = self.data.min(2).min(1)
-        minvals = minvals.reshape([self.data.shape[0], 1, 1])
-        ranges = maxvals - minvals
-
-        inverted = self.deepcopy()
-        inverted.data = inverted.data - np.reshape(
-            inverted.data.mean(2).mean(1), [self.data.shape[0], 1, 1]
-        )
-        inverted.data = (inverted.data - minvals) / ranges
-
-        inverted.data = inverted.data - 1
-        inverted.data = np.sqrt(inverted.data**2)
-
-        inverted.data = (inverted.data * ranges) + minvals
-
-        return inverted
-
-    def stats(self):
-        """Print basic stats about TomoStack data to terminal."""
-        print("Mean: %.1f" % self.data.mean())
-        print("Std: %.2f" % self.data.std())
-        print("Max: %.1f" % self.data.max())
-        print("Min: %.1f\n" % self.data.min())
-        return
-
     def stack_register(
         self,
         method="PC",
@@ -415,9 +600,7 @@ class TomoStack(Stack):
             out = align.shift_crop(out)
         return out
 
-    def tilt_align(
-        self, method, limit=10, delta=0.3, locs=None, nslices=20, show_progressbar=False
-    ):
+    def tilt_align(self, method, limit=10, delta=0.3, locs=None, nslices=20, show_progressbar=False):
         """
         Align the tilt axis of a TomoStack.
 
@@ -589,24 +772,6 @@ class TomoStack(Stack):
         rec_axes_dict[1]['name'] = 'z'
         rec_axes_dict[1]['size'] = rec.shape[1]
         rec = RecStack(rec, axes=rec_axes_dict)
-
-        # out.axes_manager[0].name = "x"
-        # out.axes_manager[0].size = out.data.shape[0]
-        # out.axes_manager[0].offset = self.axes_manager["x"].offset
-        # out.axes_manager[0].scale = self.axes_manager["x"].scale
-        # out.axes_manager[0].units = self.axes_manager["x"].units
-
-        # out.axes_manager[2].name = "z"
-        # out.axes_manager[2].size = out.data.shape[1]
-        # out.axes_manager[2].offset = self.axes_manager["x"].offset
-        # out.axes_manager[2].scale = self.axes_manager["x"].scale
-        # out.axes_manager[2].units = self.axes_manager["x"].units
-
-        # out.axes_manager[1].name = "y"
-        # out.axes_manager[1].size = out.data.shape[2]
-        # out.axes_manager[1].offset = self.axes_manager["y"].offset
-        # out.axes_manager[1].scale = self.axes_manager["y"].scale
-        # out.axes_manager[1].units = self.axes_manager["y"].units
         return rec
 
     def test_align(
@@ -693,193 +858,6 @@ class TomoStack(Stack):
         ax3.set_axis_off()
         fig.tight_layout()
         return rec
-
-    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0, interpolation="linear"):
-        """
-        Transform the stack using the skimage Affine transform.
-
-        Args
-        ----------
-        xshift : float
-            Number of pixels by which to shift in the X dimension
-        yshift : float
-            Number of pixels by which to shift the stack in the Y dimension
-        angle : float
-            Angle in degrees by which to rotate the stack about the X-Y plane
-        interpolation : str
-            Mode of interpolation to employ. Must be either 'linear',
-            'cubic', 'nearest' or 'none'.  Note that 'nearest' and 'none'
-            are equivalent.  Default is 'linear'.
-
-        Returns
-        ----------
-        out : TomoStack object
-            Transformed copy of the input stack
-
-        Examples
-        ----------
-        >>> import tomotools.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> xshift = 10.0
-        >>> yshift = 3.5
-        >>> angle = -15.2
-        >>> transformed = stack.trans_stack(xshift, yshift, angle)
-        >>> transformed
-        <TomoStack, title: , dimensions: (77|256, 256)>
-
-        """
-        transformed = self.deepcopy()
-        theta = np.pi * angle / 180.0
-        center_y, center_x = np.float32(np.array(transformed.data.shape[1:]) / 2)
-
-        rot_mat = np.array(
-            [
-                [np.cos(theta), -np.sin(theta), 0],
-                [np.sin(theta), np.cos(theta), 0],
-                [0, 0, 1],
-            ]
-        )
-
-        trans_mat = np.array([[1, 0, center_x], [0, 1, center_y], [0, 0, 1]])
-
-        rev_mat = np.array([[1, 0, -center_x], [0, 1, -center_y], [0, 0, 1]])
-
-        rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
-
-        shift = np.array(
-            [[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]]
-        )
-
-        full_transform = np.dot(shift, rotation_mat)
-        tform = transform.AffineTransform(full_transform)
-
-        if interpolation.lower() == "nearest" or interpolation.lower() == "none":
-            interpolation_order = 0
-        elif interpolation.lower() == "linear":
-            interpolation_order = 1
-        elif interpolation.lower() == "cubic":
-            interpolation_order = 3
-        else:
-            raise ValueError(
-                "Interpolation method %s unknown. "
-                "Must be 'nearest', 'linear', or 'cubic'" % interpolation
-            )
-
-        for i in range(0, self.data.shape[0]):
-            transformed.data[i, :, :] = transform.warp(
-                transformed.data[i, :, :],
-                inverse_map=tform.inverse,
-                order=interpolation_order,
-            )
-
-        transformed.metadata.Tomography.xshift = (
-            self.metadata.Tomography.xshift + xshift
-        )
-
-        transformed.metadata.Tomography.yshift = (
-            self.metadata.Tomography.yshift + yshift
-        )
-
-        transformed.metadata.Tomography.tiltaxis = (
-            self.metadata.Tomography.tiltaxis + angle
-        )
-        return transformed
-
-    # noinspection PyTypeChecker
-    def savemovie(
-        self,
-        start,
-        stop,
-        axis="XY",
-        fps=15,
-        dpi=100,
-        outfile=None,
-        title="output.avi",
-        clim=None,
-        cmap="afmhot",
-    ):
-        """
-        Save the TomoStack as an AVI movie file.
-
-        Args
-        ----------
-        start : integer
-         Filename for output. If None, a UI will prompt for a filename.
-        stop : integer
-         Filename for output. If None, a UI will prompt for a filename.
-        axis : string
-         Projection axis for the output movie.
-         Must be 'XY' (default), 'YZ' , or 'XZ'
-        fps : integer
-         Number of frames per second at which to create the movie.
-        dpi : integer
-         Resolution to save the images in the movie.
-        outfile : string
-         Filename for output.
-        title : string
-         Title to add at the top of the movie
-        clim : tuple
-         Upper and lower contrast limit to use for movie
-        cmap : string
-         Matplotlib colormap to use for movie
-
-        """
-        if clim is None:
-            clim = [self.data.min(), self.data.max()]
-
-        fig, ax = plt.subplots(1, figsize=(8, 8))
-
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        if title:
-            ax.set_title(title)
-
-        if axis == "XY":
-            im = ax.imshow(
-                self.data[:, start, :], interpolation="none", cmap=cmap, clim=clim
-            )
-        elif axis == "XZ":
-            im = ax.imshow(
-                self.data[start, :, :], interpolation="none", cmap=cmap, clim=clim
-            )
-        elif axis == "YZ":
-            im = ax.imshow(
-                self.data[:, :, start], interpolation="none", cmap=cmap, clim=clim
-            )
-        else:
-            raise ValueError("Unknown axis!")
-        fig.tight_layout()
-
-        def updatexy(n):
-            tmp = self.data[:, n, :]
-            im.set_data(tmp)
-            return im
-
-        def updatexz(n):
-            tmp = self.data[n, :, :]
-            im.set_data(tmp)
-            return im
-
-        def updateyz(n):
-            tmp = self.data[:, :, n]
-            im.set_data(tmp)
-            return im
-
-        frames = np.arange(start, stop, 1)
-
-        if axis == "XY":
-            ani = animation.FuncAnimation(fig, updatexy, frames)
-        elif axis == "XZ":
-            ani = animation.FuncAnimation(fig, updatexz, frames)
-        elif axis == "YZ":
-            ani = animation.FuncAnimation(fig, updateyz, frames)
-        else:
-            raise ValueError("Axis not understood!")
-
-        writer = animation.writers["ffmpeg"](fps=fps)
-        ani.save(outfile, writer=writer, dpi=dpi)
-        plt.close()
-        return
 
     def set_tilts(self, start, increment):
         """
@@ -995,33 +973,6 @@ class TomoStack(Stack):
 
         return output
 
-    def save_raw(self, filename=None):
-        """
-        Save TomoStack data as a .raw/.rpl file pair.
-
-        Args
-        ----------
-        filname : string (optional)
-            Name of file to receive data. If not specified, the metadata will
-            be used. Data dimensions and data type will be appended.
-
-        """
-        datashape = self.data.shape
-
-        if filename is None:
-            filename = self.metadata.General.title
-        else:
-            filename, ext = os.path.splitext(filename)
-
-        filename = filename + "_%sx%sx%s_%s.rpl" % (
-            str(datashape[0]),
-            str(datashape[1]),
-            str(datashape[2]),
-            self.data.dtype.name,
-        )
-        self.save(filename)
-        return
-
     def recon_error(
         self, nslice=None, iterations=50, constrain=True, cuda=None, thresh=0
     ):
@@ -1122,24 +1073,6 @@ class RecStack(Stack):
     #     Lateral shift of the tilt axis from the center of the stack.
     """
 
-    # def __init__(self, *args, **kwargs):
-    #     """Initialize TomoStack class."""
-    #     super().__init__(*args, **kwargs)
-
-    # def plot(self, navigator='slider', *args, **kwargs):
-    #     """Plot function to set default navigator to 'slider'."""
-    #     super().plot(navigator, *args, **kwargs)
-
-    # def change_data_type(self, dtype):
-    #     """
-    #     Change data type.
-
-    #     Use instead of the inherited change_dtype function of Hyperspy which results in
-    #     conversion of the RecStack to a Signal2D.
-
-    #     """
-    #     self.data = self.data.astype(dtype)
-
     def plot_slices(self, yslice=None, zslice=None, xslice=None):
         """
         Plot slices along all three axes of a reconstruction stack.
@@ -1187,30 +1120,3 @@ class RecStack(Stack):
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
         return fig
-
-    def save_raw(self, filename=None):
-        """
-        Save RecStack data as a .raw/.rpl file pair.
-
-        Args
-        ----------
-        filname : string (optional)
-            Name of file to receive data. If not specified, the metadata will
-            be used. Data dimensions and data type will be appended.
-
-        """
-        datashape = self.data.shape
-
-        if filename is None:
-            filename = self.metadata.General.title
-        else:
-            filename, ext = os.path.splitext(filename)
-
-        filename = filename + "_%sx%sx%s_%s.rpl" % (
-            str(datashape[0]),
-            str(datashape[1]),
-            str(datashape[2]),
-            self.data.dtype.name,
-        )
-        self.save(filename)
-        return
