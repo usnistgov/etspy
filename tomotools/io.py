@@ -19,123 +19,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
-#     """
-#     Create a TomoStack object from other data structures.
-
-#     Parameters
-#     ----------
-#     data : Numpy array, Hyperspy Signal2D
-#         Tilt series data to be converted.  If NumPy array, the first
-#         dimension must represent the tilt dimension. If Hyperspy Signal2D, the
-#         the tilt dimension must be the navigation axis.
-
-#     tilts : None, Numpy array, or Hyperpsy Signal1D
-#         Array containing the tilt values in degrees for each projection.
-#         If provided, these values will be stored in
-#         stack.metadata.Tomography.tilts
-
-#     manual_tilts : bool
-#         If True, prompt for input of maximum positive tilt, maximum negative
-#         tilt, and tilt increment in order to population stack.metadata.Tomography.tilts
-
-
-#     Returns
-#     -------
-#     tomo_stack_signal : TomoStack object
-
-
-#     Examples
-#     --------
-#     >>> import numpy as np
-#     >>> from tomotools.io import create_stack
-#     >>> s = np.random.random((50, 500,500))
-#     >>> s_new = create_stack(s)
-#     >>> s_new
-#     <TomoStack, title: , dimensions: (50|500, 500)>
-
-#     >>> import numpy as np
-#     >>> from tomotools.io import create_stack
-#     >>> import hyperspy.api as hs
-#     >>> s = hs.signals.Signal2D(np.random.random((50, 500,500)))
-#     >>> s_new = create_stack(s)
-#     >>> s_new
-#     <TomoStack, title: , dimensions: (50|500, 500)>
-
-#     """
-
-#     def _set_axes(s):
-#         s.axes_manager[0].name = "Tilt"
-#         s.axes_manager[0].units = "degrees"
-#         s.axes_manager[1].name = "x"
-#         s.axes_manager[2].name = "y"
-#         return s
-
-#     def _set_tomo_metadata(s):
-#         tomo_metadata = {
-#             "cropped": False,
-#             "shifts": np.zeros([s.data.shape[0], 2]),
-#             "tiltaxis": 0,
-#             "tilts": np.zeros(s.data.shape[0]),
-#             "xshift": 0,
-#             "yshift": 0,
-#         }
-#         s.metadata.add_node("Tomography")
-#         s.metadata.Tomography.add_dictionary(tomo_metadata)
-#         return s
-
-#     def _get_manual_tilts():
-#         negtilt = eval(input("Enter maximum negative tilt: "))
-#         postilt = eval(input("Enter maximum positive tilt: "))
-#         tiltstep = eval(input("Enter tilt step: "))
-#         tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
-#         return tilts
-
-#     if type(data) is np.ndarray:
-#         stack = hspy.signals.Signal2D(data)
-#     elif type(data) is hspy.signals.Signal2D:
-#         stack = data.deepcopy()
-#     else:
-#         raise TypeError(
-#             "Unsupported data type. Must be either" "NumPy Array or Hyperspy Signal2D"
-#         )
-
-#     stack = _set_tomo_metadata(stack)
-
-#     if type(tilts) is np.ndarray:
-#         pass
-#     elif type(tilts) is hspy.signals.Signal1D:
-#         tilts = tilts.data
-#     elif manual_tilts:
-#         tilts = _get_manual_tilts()
-#     else:
-#         tilts = np.zeros(stack.data.shape[0])
-#         logger.info(
-#             "Tilts are not defined. Please add tilts to Tomography metadata.")
-
-#     if tilts.shape[0] != stack.data.shape[0]:
-#         raise ValueError(
-#             "Number of tilts is not consistent with data shape."
-#             "%s does not equal %s" % (tilts.shape[0], stack.data.shape[0])
-#         )
-
-#     stack = _set_axes(stack)
-#     stack.metadata.Tomography.tilts = tilts
-#     stack.axes_manager[0].offset = tilts[0]
-#     stack.axes_manager[0].scale = tilts[1] - tilts[0]
-
-#     axes_list = [x for _, x in sorted(
-#         stack.axes_manager.as_dictionary().items())]
-#     metadata_dict = stack.metadata.as_dictionary()
-#     original_metadata_dict = stack.original_metadata.as_dictionary()
-#     stack = TomoStack(
-#         stack,
-#         axes=axes_list,
-#         metadata=metadata_dict,
-#         original_metadata=original_metadata_dict,
-#     )
-#     return stack
-
 def create_stack(stack, tilts=None):
     """Create a TomoStack.
 
@@ -247,16 +130,13 @@ def get_dm_tilts(s):
         Tilt angles extracted from the DM tags
     """
     maxtilt = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
-        "Tomography_setup"
-    ]["Tilt_angles"]["Maximum_tilt_angle_deg"]
+        "Tomography_setup"]["Tilt_angles"]["Maximum_tilt_angle_deg"]
 
     mintilt = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
-        "Tomography_setup"
-    ]["Tilt_angles"]["Minimum_tilt_angle_deg"]
+        "Tomography_setup"]["Tilt_angles"]["Minimum_tilt_angle_deg"]
 
     tiltstep = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
-        "Tomography_setup"
-    ]["Tilt_angles"]["Tilt_angle_step_deg"]
+        "Tomography_setup"]["Tilt_angles"]["Tilt_angle_step_deg"]
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
     return tilts
