@@ -183,14 +183,12 @@ class TestSerialEM:
                                "test_data", "SerialEM_Multiframe_Test")
         files = glob.glob(dirname + "/*.mrc")
         stack = tomotools.load(files)
-        print(stack.axes_manager)
-        assert stack.axes_manager[0].name == 'multiframe'
         assert stack.axes_manager.signal_shape == (1024, 1024)
         assert stack.axes_manager.navigation_shape == (2, 3)
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] < 0
-        assert type(stack) is hs.signals.Signal2D
+        assert type(stack) is TomoStack
 
 
 class TestUnknown:

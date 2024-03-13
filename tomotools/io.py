@@ -404,7 +404,7 @@ def load_serialem_series(mrcfiles, mdocfiles):
         "Use tomotools.utils.register_serialem_stack to align frames."
     )
     mrc_logger.setLevel(log_level)
-    return stack
+    return stack, tilts
 
 
 def parse_mrc_header(filename):
@@ -523,7 +523,7 @@ def load(filename, tilts=None):
         elif ext.lower() == ".mrc":
             logger.info("Data appears to be a SerialEM multiframe series.")
             mdocfiles = [i[:-3] + "mdoc" for i in filename]
-            stack = load_serialem_series(filename, mdocfiles)
+            stack, tilts = load_serialem_series(filename, mdocfiles)
         else:
             raise TypeError(
                 "Unknown file type %s. Must be one of %s "
@@ -534,5 +534,6 @@ def load(filename, tilts=None):
             "Unknown filename type %s.  Must be either a string or list of strings."
             % type(filename)
         )
+    print(tilts)
     stack = create_stack(stack, tilts)
     return stack
