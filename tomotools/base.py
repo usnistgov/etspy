@@ -26,17 +26,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class Stack(Signal2D):
+class CommonStack(Signal2D):
     """
-    Create a Stack object for tomography data.
+    Create a CommonStack object for tomography data.
 
     Note: All attributes are initialized with values of None or 0.0
     in __init__ unless they are already defined
     """
-
-    def __init__(self, *args, **kwargs):
-        """Initialize TomoStack class."""
-        super().__init__(*args, **kwargs)
 
     def plot(self, navigator="slider", *args, **kwargs):
         """Plot function to set default navigator to 'slider'."""
@@ -47,18 +43,18 @@ class Stack(Signal2D):
         Change data type.
 
         Use instead of the inherited change_dtype function of Hyperspy which results in
-        conversion of the TomoStack to a Signal2D.
+        conversion of the Stack to a Signal2D.
 
         """
         self.data = self.data.astype(dtype)
 
     def invert(self):
         """
-        Invert the contrast levels of an entire TomoStack.
+        Invert the contrast levels of an entire Stack.
 
         Returns
         ----------
-        inverted : TomoStack object
+        inverted : CommonStack object
             Copy of the input stack with contrast inverted
 
         Examples
@@ -89,7 +85,7 @@ class Stack(Signal2D):
 
     def normalize(self, width=3):
         """
-        Normalize the contrast levels of an entire TomoStack.
+        Normalize the contrast levels of an entire Stack.
 
         Args
         ----------
@@ -99,7 +95,7 @@ class Stack(Signal2D):
 
         Returns
         ----------
-        normalized : TomoStack object
+        normalized : CommonStack object
             Copy of the input stack with intensities normalized
 
         Examples
@@ -126,7 +122,7 @@ class Stack(Signal2D):
     # noinspection PyTypeChecker
     def savemovie(self, start, stop, axis="XY", fps=15, dpi=100, outfile=None, title="output.avi", clim=None, cmap="afmhot"):
         """
-        Save the TomoStack as an AVI movie file.
+        Save the Stack as an AVI movie file.
 
         Args
         ----------
@@ -204,7 +200,7 @@ class Stack(Signal2D):
 
     def save_raw(self, filename=None):
         """
-        Save TomoStack data as a .raw/.rpl file pair.
+        Save Stack data as a .raw/.rpl file pair.
 
         Args
         ----------
@@ -230,7 +226,7 @@ class Stack(Signal2D):
         return
 
     def stats(self):
-        """Print basic stats about TomoStack data to terminal."""
+        """Print basic stats about Stack data to terminal."""
         print("Mean: %.1f" % self.data.mean())
         print("Std: %.2f" % self.data.std())
         print("Max: %.1f" % self.data.max())
@@ -256,7 +252,7 @@ class Stack(Signal2D):
 
         Returns
         ----------
-        out : TomoStack object
+        out : CommonStack object
             Transformed copy of the input stack
 
         Examples
@@ -329,12 +325,14 @@ class Stack(Signal2D):
         return transformed
 
 
-class TomoStack(Stack):
+class TomoStack(CommonStack):
     """
     Create a TomoStack object for tomography data.
 
-    Note: All attributes are initialized with values of None or 0.0
-    in __init__ unless they are already defined
+    Parameters
+    ----------
+    CommonStack : CommonStack
+        CommonStack class
     """
 
     def test_correlation(self, images=None):
@@ -485,11 +483,10 @@ class TomoStack(Stack):
             taper_size = np.int32(np.array(taper) * self.data.shape[1:])
             filtered.data = np.pad(
                 filtered.data,
-                [
-                    (0, 0),
-                    (taper_size[0], taper_size[0]),
-                    (taper_size[1], taper_size[1]),
-                ],
+                [(0, 0),
+                 (taper_size[0], taper_size[0]),
+                 (taper_size[1], taper_size[1]),
+                 ],
                 mode="constant",
             )
         return filtered
@@ -775,20 +772,19 @@ class TomoStack(Stack):
         rec = RecStack(rec, axes=rec_axes_dict)
         return rec
 
-    def test_align(
-        self,
-        tilt_shift=0.0,
-        tilt_rotation=0.0,
-        slices=None,
-        thickness=None,
-        method="FBP",
-        iterations=50,
-        constrain=True,
-        cuda=None,
-        thresh=0,
-        vmin_std=0.1,
-        vmax_std=10,
-    ):
+    def test_align(self,
+                   tilt_shift=0.0,
+                   tilt_rotation=0.0,
+                   slices=None,
+                   thickness=None,
+                   method="FBP",
+                   iterations=50,
+                   constrain=True,
+                   cuda=None,
+                   thresh=0,
+                   vmin_std=0.1,
+                   vmax_std=10,
+                   ):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -974,9 +970,7 @@ class TomoStack(Stack):
 
         return output
 
-    def recon_error(
-        self, nslice=None, iterations=50, constrain=True, cuda=None, thresh=0
-    ):
+    def recon_error(self, nslice=None, iterations=50, constrain=True, cuda=None, thresh=0):
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1055,23 +1049,14 @@ class TomoStack(Stack):
         return rec_stack, error
 
 
-class RecStack(Stack):
+class RecStack(CommonStack):
     """
     Create a RecStack object for tomography data.
 
-    Note: All attributes are initialized with values of None or 0.0
-    in __init__ unless they are already defined
-
-    # Attributes
-    # ----------
-    # shifts : numpy array
-    #     X,Y shifts calculated for each image for stack registration
-    # tiltaxis : float
-    #      Angular orientation (in degrees) by which data is rotated to
-           orient the
-    #      stack so that the tilt axis is vertical
-    # xshift : float
-    #     Lateral shift of the tilt axis from the center of the stack.
+    Parameters
+    ----------
+    CommonStack : CommonStack
+        CommonStack class
     """
 
     def plot_slices(self, yslice=None, zslice=None, xslice=None):
