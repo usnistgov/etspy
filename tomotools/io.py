@@ -534,6 +534,9 @@ def load(filename, tilts=None):
             "Unknown filename type %s.  Must be either a string or list of strings."
             % type(filename)
         )
-    print(tilts)
+
     stack = create_stack(stack, tilts)
+    stack.change_data_type('float32')
+    if stack.data.min() < 0:
+        stack.data -= stack.data.min()
     return stack

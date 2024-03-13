@@ -50,6 +50,7 @@ class Stack(Signal2D):
         conversion of the TomoStack to a Signal2D.
 
         """
+        self.data = self.data.astype(dtype)
 
     def invert(self):
         """
