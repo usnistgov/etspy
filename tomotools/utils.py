@@ -9,7 +9,7 @@ Utility module for TomoTools package.
 """
 
 import numpy as np
-from tomotools.io import convert_to_tomo_stack
+from tomotools.io import create_stack
 import logging
 import tqdm
 from scipy import ndimage
@@ -94,7 +94,7 @@ def register_serialem_stack(stack, ncpus=1):
             )
         reg = np.array(reg)
 
-    reg = convert_to_tomo_stack(reg)
+    reg = create_stack(reg)
     reg.axes_manager[0].scale = stack.axes_manager[1].scale
     reg.axes_manager[0].offset = stack.axes_manager[1].offset
     reg.axes_manager[0].units = stack.axes_manager[1].units

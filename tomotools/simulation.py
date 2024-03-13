@@ -10,7 +10,7 @@ Simulation module for TomoTools package.
 import numpy as np
 from scipy import ndimage
 import astra
-from tomotools.io import convert_to_tomo_stack
+from tomotools.io import create_stack
 import hyperspy.api as hs
 
 
@@ -164,7 +164,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
         proj_id, proj_data = astra.create_sino3d_gpu(model, proj_geom, vol_geom)
         proj_data = np.transpose(proj_data, [1, 2, 0])
 
-    stack = convert_to_tomo_stack(proj_data, angles)
+    stack = create_stack(proj_data, angles)
     return stack
 
 

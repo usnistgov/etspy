@@ -13,250 +13,239 @@ import os
 import hyperspy.api as hspy
 from tomotools.base import TomoStack
 import logging
+from hyperspy.signals import Signal2D
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
+# def convert_to_tomo_stack(data, tilts=None, manual_tilts=False):
+#     """
+#     Create a TomoStack object from other data structures.
+
+#     Parameters
+#     ----------
+#     data : Numpy array, Hyperspy Signal2D
+#         Tilt series data to be converted.  If NumPy array, the first
+#         dimension must represent the tilt dimension. If Hyperspy Signal2D, the
+#         the tilt dimension must be the navigation axis.
+
+#     tilts : None, Numpy array, or Hyperpsy Signal1D
+#         Array containing the tilt values in degrees for each projection.
+#         If provided, these values will be stored in
+#         stack.metadata.Tomography.tilts
+
+#     manual_tilts : bool
+#         If True, prompt for input of maximum positive tilt, maximum negative
+#         tilt, and tilt increment in order to population stack.metadata.Tomography.tilts
+
+
+#     Returns
+#     -------
+#     tomo_stack_signal : TomoStack object
+
+
+#     Examples
+#     --------
+#     >>> import numpy as np
+#     >>> from tomotools.io import create_stack
+#     >>> s = np.random.random((50, 500,500))
+#     >>> s_new = create_stack(s)
+#     >>> s_new
+#     <TomoStack, title: , dimensions: (50|500, 500)>
+
+#     >>> import numpy as np
+#     >>> from tomotools.io import create_stack
+#     >>> import hyperspy.api as hs
+#     >>> s = hs.signals.Signal2D(np.random.random((50, 500,500)))
+#     >>> s_new = create_stack(s)
+#     >>> s_new
+#     <TomoStack, title: , dimensions: (50|500, 500)>
+
+#     """
+
+#     def _set_axes(s):
+#         s.axes_manager[0].name = "Tilt"
+#         s.axes_manager[0].units = "degrees"
+#         s.axes_manager[1].name = "x"
+#         s.axes_manager[2].name = "y"
+#         return s
+
+#     def _set_tomo_metadata(s):
+#         tomo_metadata = {
+#             "cropped": False,
+#             "shifts": np.zeros([s.data.shape[0], 2]),
+#             "tiltaxis": 0,
+#             "tilts": np.zeros(s.data.shape[0]),
+#             "xshift": 0,
+#             "yshift": 0,
+#         }
+#         s.metadata.add_node("Tomography")
+#         s.metadata.Tomography.add_dictionary(tomo_metadata)
+#         return s
+
+#     def _get_manual_tilts():
+#         negtilt = eval(input("Enter maximum negative tilt: "))
+#         postilt = eval(input("Enter maximum positive tilt: "))
+#         tiltstep = eval(input("Enter tilt step: "))
+#         tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
+#         return tilts
+
+#     if type(data) is np.ndarray:
+#         stack = hspy.signals.Signal2D(data)
+#     elif type(data) is hspy.signals.Signal2D:
+#         stack = data.deepcopy()
+#     else:
+#         raise TypeError(
+#             "Unsupported data type. Must be either" "NumPy Array or Hyperspy Signal2D"
+#         )
+
+#     stack = _set_tomo_metadata(stack)
+
+#     if type(tilts) is np.ndarray:
+#         pass
+#     elif type(tilts) is hspy.signals.Signal1D:
+#         tilts = tilts.data
+#     elif manual_tilts:
+#         tilts = _get_manual_tilts()
+#     else:
+#         tilts = np.zeros(stack.data.shape[0])
+#         logger.info(
+#             "Tilts are not defined. Please add tilts to Tomography metadata.")
+
+#     if tilts.shape[0] != stack.data.shape[0]:
+#         raise ValueError(
+#             "Number of tilts is not consistent with data shape."
+#             "%s does not equal %s" % (tilts.shape[0], stack.data.shape[0])
+#         )
+
+#     stack = _set_axes(stack)
+#     stack.metadata.Tomography.tilts = tilts
+#     stack.axes_manager[0].offset = tilts[0]
+#     stack.axes_manager[0].scale = tilts[1] - tilts[0]
+
+#     axes_list = [x for _, x in sorted(
+#         stack.axes_manager.as_dictionary().items())]
+#     metadata_dict = stack.metadata.as_dictionary()
+#     original_metadata_dict = stack.original_metadata.as_dictionary()
+#     stack = TomoStack(
+#         stack,
+#         axes=axes_list,
+#         metadata=metadata_dict,
+#         original_metadata=original_metadata_dict,
+#     )
+#     return stack
+
+def create_stack(stack, tilts=None):
+    """Create a TomoStack.
+
+    Args:
+        stack : Hyperspy Signal2D or NumPy array
+            Tilt series data (ntilts, ny, nx)
+        tilts : NumPy array
+            Array defining the tilt angles
+
+    Returns:
+        stack : TomoStack
     """
-    Create a TomoStack object from other data structures.
+    if type(stack) is Signal2D:
+        ntilts = stack.data.shape[0]
+        if tilts is None:
+            tilts = np.zeros(ntilts)
+        if ntilts != tilts.shape[0]:
+            raise ValueError("Number of tilts (%s) does not match the tilt dimension of the data array (%s)" % (tilts.shape[0], ntilts))
+
+        if stack.metadata.has_item("Tomography"):
+            pass
+        else:
+            ntilts = stack.data.shape[0]
+            if tilts is None:
+                tilts = np.zeros(ntilts)
+            tomo_metadata = {"cropped": False, "shifts": np.zeros([ntilts, 2]), "tiltaxis": 0,
+                             "tilts": tilts, "xshift": 0, "yshift": 0}
+            stack.metadata.add_node("Tomography")
+            stack.metadata.Tomography.add_dictionary(tomo_metadata)
+        axes_list = [x for _, x in sorted(stack.axes_manager.as_dictionary().items())]
+        metadata_dict = stack.metadata.as_dictionary()
+        original_metadata_dict = stack.original_metadata.as_dictionary()
+        stack = TomoStack(stack, axes=axes_list, metadata=metadata_dict, original_metadata=original_metadata_dict)
+    elif type(stack) is np.ndarray:
+        ntilts = stack.shape[0]
+        if tilts is None:
+            tilts = np.zeros(ntilts)
+        if ntilts != tilts.shape[0]:
+            raise ValueError("Number of tilts (%s) does not match the tilt dimension of the data array (%s)" % (tilts.shape[0], ntilts))
+
+        tomo_metadata = {"cropped": False, "shifts": np.zeros([ntilts, 2]), "tiltaxis": 0,
+                         "tilts": tilts, "xshift": 0, "yshift": 0}
+        stack = TomoStack(stack)
+        stack.metadata.add_node("Tomography")
+        stack.metadata.Tomography.add_dictionary(tomo_metadata)
+    stack.axes_manager[0].name = "Tilt"
+    stack.axes_manager[0].units = "degrees"
+    stack.axes_manager[1].name = "x"
+    stack.axes_manager[2].name = "y"
+    if tilts is None:
+        logger.info("Unable to find tilt angles. Calibrate axis 0.")
+    return stack
+
+
+def get_mrc_tilts(stack, filename):
+    """Extract tilts from an MRC file.
 
     Parameters
     ----------
-    data : Numpy array, Hyperspy Signal2D
-        Tilt series data to be converted.  If NumPy array, the first
-        dimension must represent the tilt dimension. If Hyperspy Signal2D, the
-        the tilt dimension must be the navigation axis.
+    stack : Signal2D or TomoStack
 
-    tilts : None, Numpy array, or Hyperpsy Signal1D
-        Array containing the tilt values in degrees for each projection.
-        If provided, these values will be stored in
-        stack.metadata.Tomography.tilts
-
-    manual_tilts : bool
-        If True, prompt for input of maximum positive tilt, maximum negative
-        tilt, and tilt increment in order to population stack.metadata.Tomography.tilts
-
+    filename : string
+        Name of MRC file
 
     Returns
     -------
-    tomo_stack_signal : TomoStack object
-
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from tomotools.io import convert_to_tomo_stack
-    >>> s = np.random.random((50, 500,500))
-    >>> s_new = convert_to_tomo_stack(s)
-    >>> s_new
-    <TomoStack, title: , dimensions: (50|500, 500)>
-
-    >>> import numpy as np
-    >>> from tomotools.io import convert_to_tomo_stack
-    >>> import hyperspy.api as hs
-    >>> s = hs.signals.Signal2D(np.random.random((50, 500,500)))
-    >>> s_new = convert_to_tomo_stack(s)
-    >>> s_new
-    <TomoStack, title: , dimensions: (50|500, 500)>
-
+    tilts : NumPy array or None
+        Tilt angles extracted from MRC file
     """
-
-    def _set_axes(s):
-        s.axes_manager[0].name = "Tilt"
-        s.axes_manager[0].units = "degrees"
-        s.axes_manager[1].name = "x"
-        s.axes_manager[2].name = "y"
-        return s
-
-    def _set_tomo_metadata(s):
-        tomo_metadata = {
-            "cropped": False,
-            "shifts": np.zeros([s.data.shape[0], 2]),
-            "tiltaxis": 0,
-            "tilts": np.zeros(s.data.shape[0]),
-            "xshift": 0,
-            "yshift": 0,
-        }
-        s.metadata.add_node("Tomography")
-        s.metadata.Tomography.add_dictionary(tomo_metadata)
-        return s
-
-    def _get_manual_tilts():
-        negtilt = eval(input("Enter maximum negative tilt: "))
-        postilt = eval(input("Enter maximum positive tilt: "))
-        tiltstep = eval(input("Enter tilt step: "))
-        tilts = np.arange(negtilt, postilt + tiltstep, tiltstep)
-        return tilts
-
-    if type(data) is np.ndarray:
-        stack = hspy.signals.Signal2D(data)
-    elif type(data) is hspy.signals.Signal2D:
-        stack = data.deepcopy()
-    else:
-        raise TypeError(
-            "Unsupported data type. Must be either" "NumPy Array or Hyperspy Signal2D"
-        )
-
-    stack = _set_tomo_metadata(stack)
-
-    if type(tilts) is np.ndarray:
-        pass
-    elif type(tilts) is hspy.signals.Signal1D:
-        tilts = tilts.data
-    elif manual_tilts:
-        tilts = _get_manual_tilts()
-    else:
-        tilts = np.zeros(stack.data.shape[0])
-        logger.info(
-            "Tilts are not defined. Please add tilts to Tomography metadata.")
-
-    if tilts.shape[0] != stack.data.shape[0]:
-        raise ValueError(
-            "Number of tilts is not consistent with data shape."
-            "%s does not equal %s" % (tilts.shape[0], stack.data.shape[0])
-        )
-
-    stack = _set_axes(stack)
-    stack.metadata.Tomography.tilts = tilts
-    stack.axes_manager[0].offset = tilts[0]
-    stack.axes_manager[0].scale = tilts[1] - tilts[0]
-
-    axes_list = [x for _, x in sorted(
-        stack.axes_manager.as_dictionary().items())]
-    metadata_dict = stack.metadata.as_dictionary()
-    original_metadata_dict = stack.original_metadata.as_dictionary()
-    stack = TomoStack(
-        stack,
-        axes=axes_list,
-        metadata=metadata_dict,
-        original_metadata=original_metadata_dict,
-    )
-    return stack
-
-
-def load_hspy(filename, tilts=None, reader=None):
-    """
-    Read an MRC file to a TomoStack object using the Hyperspy reader.
-
-    Parameters
-    ----------
-    filename : string
-        Name of file that contains data to be read.
-
-    tilts : list or NumPy array
-        List of floats indicating the specimen tilt at each projection
-
-    reader : str
-        Hyperspy file reader to use
-
-    Returns
-    ----------
-    stack : TomoStack object
-
-    """
-
-    def _set_axes(s):
-        s.axes_manager[0].name = "Tilt"
-        s.axes_manager[0].units = "degrees"
-        s.axes_manager[1].name = "x"
-        s.axes_manager[2].name = "y"
-        return s
-
-    def _set_tomo_metadata(s):
-        tomo_metadata = {
-            "cropped": False,
-            "shifts": np.zeros([s.data.shape[0], 2]),
-            "tiltaxis": 0,
-            "tilts": np.zeros(s.data.shape[0]),
-            "xshift": 0,
-            "yshift": 0,
-        }
-        s.metadata.add_node("Tomography")
-        s.metadata.Tomography.add_dictionary(tomo_metadata)
-        return s
-
-    # serialem_format = False
-    stack = hspy.load(filename, reader=reader)
-    stack = _set_axes(stack)
-    if not stack.metadata.has_item("Tomography"):
-        stack = _set_tomo_metadata(stack)
-    ext = os.path.splitext(filename)[1]
-    if ext.lower() in [".mrc", ".ali", ".rec"]:
-        tiltfile = os.path.splitext(filename)[0] + ".rawtlt"
-        if stack.original_metadata.has_item("fei_header"):
-            if stack.original_metadata.fei_header.has_item("a_tilt"):
-                tilts = stack.original_metadata.fei_header["a_tilt"][
-                    0: stack.data.shape[0]
-                ]
-                logger.info("Tilts found in MRC file header")
-            elif os.path.isfile(tiltfile):
-                tilts = np.loadtxt(tiltfile)
-                logger.info(".rawtlt file detected.")
-                if len(tilts) == stack.data.shape[0]:
-                    logger.info("Tilts loaded from .rawtlt file")
-                else:
-                    logger.info(
-                        "Number of tilts in .rawtlt file inconsistent"
-                        " with data shape"
-                    )
-        elif stack.original_metadata.has_item("std_header"):
-            # serialem_format = True
-            logger.info("SerialEM generated MRC file detected")
-            ext_header = parse_mrc_header(filename)["ext_header"]
-            tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][
+    tiltfile = os.path.splitext(filename)[0] + ".rawtlt"
+    if stack.original_metadata.has_item("fei_header"):
+        if stack.original_metadata.fei_header.has_item("a_tilt"):
+            tilts = stack.original_metadata.fei_header["a_tilt"][
                 0: stack.data.shape[0]
             ]
-            tilts = tilts / 100
+            logger.info("Tilts found in MRC file header")
+    elif stack.original_metadata.has_item("std_header"):
+        logger.info("SerialEM generated MRC file detected")
+        ext_header = parse_mrc_header(filename)["ext_header"]
+        tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][
+            0: stack.data.shape[0]
+        ]
+        tilts = tilts / 100
+    elif os.path.isfile(tiltfile):
+        tilts = np.loadtxt(tiltfile)
+        logger.info(".rawtlt file detected.")
+        if len(tilts) == stack.data.shape[0]:
+            logger.info("Tilts loaded from .rawtlt file")
         else:
-            tilts = np.zeros(stack.data.shape[0])
-            logger.info("Unable to find tilt angles. Calibrate axis 0.")
-    elif ext.lower() in [".hdf5", ".hd5", ".hspy"]:
-        tilts = stack.metadata.Tomography.tilts
+            logger.info(
+                "Number of tilts in .rawtlt file inconsistent"
+                " with data shape"
+            )
     else:
-        raise ValueError("Cannot read file type: %s" % ext)
-
-    stack.axes_manager[0].scale = tilts[1] - tilts[0]
-    stack.axes_manager[0].offset = tilts[0]
-    stack.metadata.Tomography.tilts = tilts
-
-    if stack.data.min() < 0:
-        stack.data = np.float32(stack.data)
-        stack.data += np.abs(stack.data.min())
-
-    axes_list = [x for _, x in sorted(
-        stack.axes_manager.as_dictionary().items())]
-    metadata_dict = stack.metadata.as_dictionary()
-    original_metadata_dict = stack.original_metadata.as_dictionary()
-    stack = TomoStack(
-        stack,
-        axes=axes_list,
-        metadata=metadata_dict,
-        original_metadata=original_metadata_dict,
-    )
-    return stack
+        tilts = None
+    return tilts
 
 
-def load_dm(filename):
-    """
-    Read DM image series.
-
-    Read series of images in a single DM3 file to a TomoStack object
-    using the Hyperspy reader.
+def get_dm_tilts(s):
+    """Extract tilts from DM tags.
 
     Parameters
     ----------
-    filename : string
-        Name of DM3 file that contains data to be read.
+    s : Singal2D or TomoStack
 
     Returns
-    ----------
-    stack : TomoStack object
-
+    -------
+    tilts : NumPy array
+        Tilt angles extracted from the DM tags
     """
-    s = hspy.load(filename)
-    s.change_dtype(np.float32)
     maxtilt = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
         "Tomography_setup"
     ]["Tilt_angles"]["Maximum_tilt_angle_deg"]
@@ -270,34 +259,48 @@ def load_dm(filename):
     ]["Tilt_angles"]["Tilt_angle_step_deg"]
 
     tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
-
-    s = convert_to_tomo_stack(s, tilts)
-    return s
+    return tilts
 
 
-def load_dm_series(files):
-    """
-    Load a series of individual DM3/DM4 files as a TomoStack object.
+def parse_mdoc(mdoc_file, series=False):
+    """Parse experimental parameters from a SerialEM MDOC file.
 
     Parameters
     ----------
-    input_data : string or list of files
-        Path to image series data or a list of files.
+    mdoc_file : str
+        Name of MDOC file
+    series : bool, optional
+        If True, the MDOC files originated from a multiscan SerialEM acquisition.
+        If False, the files originated from a single scan SerialEM acquisition.
 
     Returns
-    ----------
-    stack : TomoStack object
-
+    -------
+    _type_
+        _description_
     """
-    s = hspy.load(files)
-    tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
-    sorted_order = np.argsort(tilts)
-    tilts_sorted = np.sort(tilts)
-    files_sorted = list(np.array(files)[sorted_order])
-    del s
-    stack = hspy.load(files_sorted, stack=True)
-    stack = convert_to_tomo_stack(stack, tilts_sorted)
-    return stack
+    keys = ["PixelSpacing", "Voltage", "ImageFile", "Image Size", "DataMode",
+            "Magnification", "ExposureTime", "SpotSize", "Defocus"]
+    metadata = {}
+    with open(mdoc_file, "r") as f:
+        lines = f.readlines()
+        for i in range(0, 35):
+            for k in keys:
+                if k in lines[i]:
+                    if k == "ImageFile":
+                        metadata[k] = lines[i].split("=")[1].strip()
+                    else:
+                        metadata[k] = float(lines[i].split("=")[1].strip())
+    if series:
+        for i in range(0, 35):
+            if 'TiltAngle' in lines[i]:
+                tilt = float(lines[i].split("=")[1].strip())
+    else:
+        tilt = []
+        for i in lines:
+            if "TiltAngle" in i:
+                tilt.append(float(i.split("=")[1].strip()))
+        tilt = np.array(tilt)
+    return metadata, tilt
 
 
 def load_serialem(mrcfile, mdocfile):
@@ -318,70 +321,17 @@ def load_serialem(mrcfile, mdocfile):
         Tilt series
 
     """
-
-    def _parse_mdoc(mdoc_file):
-        keys = [
-            "PixelSpacing",
-            "Voltage",
-            "ImageFile",
-            "Image Size",
-            "DataMode",
-            "Magnification",
-            "ExposureTime",
-            "SpotSize",
-            "Defocus",
-        ]
-        metadata = {}
-        with open(mdoc_file, "r") as f:
-            lines = f.readlines()
-        for i in range(0, 35):
-            for k in keys:
-                if k in lines[i]:
-                    if k == "ImageFile":
-                        metadata[k] = lines[i].split("=")[1].strip()
-                    else:
-                        metadata[k] = float(lines[i].split("=")[1].strip())
-        tilts = []
-        for i in lines:
-            if "TiltAngle" in i:
-                tilts.append(float(i.split("=")[1].strip()))
-        tilts = np.array(tilts)
-        return metadata, tilts
-
-    def _set_axes_serialem(s, tilts, meta):
-        s.axes_manager[0].scale = tilts[1] - tilts[0]
-        s.axes_manager[0].offset = tilts[0]
-        s.axes_manager[0].units = "degrees"
-        s.axes_manager[0].name = "Tilt"
-        s.axes_manager[1].scale = meta["PixelSpacing"] / 10
-        s.axes_manager[2].scale = meta["PixelSpacing"] / 10
-        s.axes_manager[1].units = "nm"
-        s.axes_manager[2].units = "nm"
-        s.axes_manager[1].name = "y"
-        s.axes_manager[2].name = "x"
-        return s
-
-    def _set_tomo_metadata_serialem(s):
-        tomo_metadata = {
-            "cropped": False,
-            "shifts": np.zeros([s.data.shape[0], 2]),
-            "tiltaxis": 0,
-            "tilts": np.zeros(s.data.shape[0]),
-            "xshift": 0,
-            "yshift": 0,
-        }
-        s.metadata.add_node("Tomography")
-        s.metadata.Tomography.add_dictionary(tomo_metadata)
-        return s
-
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
     mrc_logger.setLevel(logging.ERROR)
 
-    meta, tilts = _parse_mdoc(mdocfile)
+    meta, tilts = parse_mdoc(mdocfile)
     stack = hspy.load(mrcfile)
 
-    stack = _set_axes_serialem(stack, tilts, meta)
+    stack.axes_manager[1].scale = stack.axes_manager[1].scale / 10
+    stack.axes_manager[2].scale = stack.axes_manager[2].scale / 10
+    stack.axes_manager[1].units = "nm"
+    stack.axes_manager[2].units = "nm"
 
     if not stack.metadata.has_item("Acquisition_instrument.TEM"):
         stack.metadata.add_node("Acquisition_instrument.TEM")
@@ -393,7 +343,6 @@ def load_serialem(mrcfile, mdocfile):
     stack.metadata.Acquisition_instrument.TEM.spot_size = meta["SpotSize"]
     stack.metadata.Acquisition_instrument.TEM.defocus = meta["Defocus"]
     stack.metadata.General.original_filename = meta["ImageFile"]
-    stack = convert_to_tomo_stack(stack, tilts)
     logger.info("SerialEM stack successfully loaded. ")
     mrc_logger.setLevel(log_level)
     return stack
@@ -417,86 +366,17 @@ def load_serialem_series(mrcfiles, mdocfiles):
         Tilt series resulting by averaging frames at each tilt
 
     """
-
-    def _parse_mdoc(mdoc_file):
-        """
-        Parse a SerialEM mdoc file.
-
-        Args
-        ----------
-        mdoc_file : str
-            Name of the mdoc file to parse
-
-        Returns
-        ----------
-        metadata : dict
-            Dictionary with values parsed from mdoc file
-
-        """
-        keys = [
-            "PixelSpacing",
-            "Voltage",
-            "ImageFile",
-            "Image Size",
-            "DataMode",
-            "TiltAngle",
-            "Magnification",
-            "ExposureTime",
-            "SpotSize",
-            "Defocus",
-        ]
-        metadata = {}
-        with open(mdoc_file, "r") as f:
-            for i in range(0, 35):
-                line = f.readline()
-                for k in keys:
-                    if k in line:
-                        if k == "ImageFile":
-                            metadata[k] = line.split("=")[1].strip()
-                        else:
-                            metadata[k] = float(line.split("=")[1].strip())
-        return metadata
-
-    def _set_axes_serialem(s, tilts, meta):
-        s.axes_manager[0].scale = 1
-        s.axes_manager[0].offset = 0
-        s.axes_manager[0].name = "multiframe"
-        s.axes_manager[0].units = "scan"
-        s.axes_manager[1].scale = tilts[1] - tilts[0]
-        s.axes_manager[1].offset = tilts[0]
-        s.axes_manager[1].units = "degrees"
-        s.axes_manager[1].name = "Tilt"
-        s.axes_manager[2].scale = meta[0]["PixelSpacing"] / 10
-        s.axes_manager[3].scale = meta[0]["PixelSpacing"] / 10
-        s.axes_manager[2].units = "nm"
-        s.axes_manager[3].units = "nm"
-        s.axes_manager[2].name = "y"
-        s.axes_manager[3].name = "x"
-        return s
-
-    def _set_tomo_metadata_serialem(s):
-        tomo_metadata = {
-            "cropped": False,
-            "shifts": np.zeros([s.data.shape[0], 2]),
-            "tiltaxis": 0,
-            "tilts": np.zeros(s.data.shape[0]),
-            "xshift": 0,
-            "yshift": 0,
-        }
-        s.metadata.add_node("Tomography")
-        s.metadata.Tomography.add_dictionary(tomo_metadata)
-        return s
-
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
     mrc_logger.setLevel(logging.ERROR)
 
     stack = [None] * len(mrcfiles)
     meta = [None] * len(mdocfiles)
+    tilts = np.zeros(len(mdocfiles))
     for i in range(0, len(mdocfiles)):
-        meta[i] = _parse_mdoc(mdocfiles[i])
+        meta[i], tilts[i] = parse_mdoc(mdocfiles[i], True)
 
-    tilts = np.array([meta[i]["TiltAngle"] for i in range(0, len(meta))])
+    # tilts = np.array([meta[i]["TiltAngle"] for i in range(0, len(meta))])
     tilts_sort = np.argsort(tilts)
     tilts.sort()
 
@@ -508,7 +388,6 @@ def load_serialem_series(mrcfiles, mdocfiles):
 
     images_per_tilt = stack[0].data.shape[0]
     stack = hspy.stack(stack, show_progressbar=False)
-    stack = _set_axes_serialem(stack, tilts, meta)
 
     if not stack.metadata.has_item("Acquisition_instrument.TEM"):
         stack.metadata.add_node("Acquisition_instrument.TEM")
@@ -520,8 +399,6 @@ def load_serialem_series(mrcfiles, mdocfiles):
     stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]["SpotSize"]
     stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]["Defocus"]
     stack.metadata.General.original_filename = meta[0]["ImageFile"]
-    stack = _set_tomo_metadata_serialem(stack)
-    stack.metadata.Tomography.tilts = tilts
     logger.info(
         "SerialEM Multiframe stack successfully loaded. "
         "Use tomotools.utils.register_serialem_stack to align frames."
@@ -609,30 +486,40 @@ def load(filename, tilts=None):
     stack : TomoStack object
 
     """
-    known_file_types = [".hdf5", ".mrc",
-                        ".ali", ".rec", ".hspy", ".dm3", ".dm4"]
-    hspy_file_types = [".hdf5", ".h5", ".mrc", ".ali", ".rec", ".hspy"]
+    hspy_file_types = [".hdf5", ".h5", ".hspy"]
+    mrc_file_types = [".mrc", ".ali", ".rec"]
     dm_file_types = [".dm3", ".dm4"]
+    known_file_types = hspy_file_types + mrc_file_types + dm_file_types
 
     if type(filename) is str:
         ext = os.path.splitext(filename)[1]
         if ext.lower() in hspy_file_types:
-            if ext.lower() in [".ali", ".rec"]:
-                stack = load_hspy(filename, tilts, reader="mrc")
-            else:
-                stack = load_hspy(filename, tilts)
+            stack = hspy.load(filename)
+            if stack.metadata.has_item("Tomography"):
+                tilts = stack.metadata.Tomography.tilts
         elif ext.lower() in dm_file_types:
-            stack = load_dm(filename)
+            stack = hspy.load(filename)
+            stack.change_dtype(np.float32)
+            tilts = get_dm_tilts(stack)
+        elif ext.lower() in mrc_file_types:
+            try:
+                stack = hspy.load(filename, reader="mrc")
+                tilts = get_mrc_tilts(stack, filename)
+            except TypeError:
+                raise RuntimeError("Unable to read MRC with Hyperspy")
         else:
-            raise TypeError(
-                "Unknown file type %s. Must be %s one of "
-                % (ext, [i for i in known_file_types])
-            )
+            raise TypeError("Unknown file type %s. Must be %s one of " % (ext, [i for i in known_file_types]))
 
     elif type(filename) is list:
         ext = os.path.splitext(filename[0])[1]
         if ext.lower() in dm_file_types:
-            stack = load_dm_series(filename)
+            s = hspy.load(filename)
+            tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
+            sorted_order = np.argsort(tilts)
+            tilts = np.sort(tilts)
+            files_sorted = list(np.array(filename)[sorted_order])
+            del s
+            stack = hspy.load(files_sorted, stack=True)
         elif ext.lower() == ".mrc":
             logger.info("Data appears to be a SerialEM multiframe series.")
             mdocfiles = [i[:-3] + "mdoc" for i in filename]
@@ -647,4 +534,5 @@ def load(filename, tilts=None):
             "Unknown filename type %s.  Must be either a string or list of strings."
             % type(filename)
         )
+    stack = create_stack(stack, tilts)
     return stack

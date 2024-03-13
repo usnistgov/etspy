@@ -27,21 +27,8 @@ else:
     hspy_mrc_broken = False
 
 
-class TestHspy:
-
-    def test_convert_signal2d(self):
-        tilts = np.arange(-10, 10, 2)
-        data = hs.signals.Signal2D(np.zeros([10, 100, 100]))
-        stack = tomotools.io.convert_to_tomo_stack(data, tilts=tilts)
-        assert stack.axes_manager.signal_shape == (100, 100)
-        assert stack.axes_manager.navigation_shape == (10,)
-        assert stack.metadata.has_item('Tomography')
-        assert type(stack.metadata.Tomography.tilts) is np.ndarray
-        assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
-        assert stack.metadata.Tomography.tilts[0] == -10
-        assert type(stack) is TomoStack
-
-    def test_load_hspy_mrc(self):
+class TestLoadMRC:
+    def test_load_mrc(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")
         stack_orig = hs.load(filename)
@@ -57,7 +44,7 @@ class TestHspy:
         assert stack.axes_manager[1].scale == stack_orig.axes_manager[1].scale
         assert stack.axes_manager[1].units == stack_orig.axes_manager[1].units
 
-    def test_load_hspy_ali(self):
+    def test_load_ali(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.ali")
         stack_orig = hs.load(filename)
@@ -73,11 +60,25 @@ class TestHspy:
         assert stack.axes_manager[1].scale == stack_orig.axes_manager[1].scale
         assert stack.axes_manager[1].units == stack_orig.axes_manager[1].units
 
+
+class TestHspy:
+    def test_convert_signal2d(self):
+        tilts = np.arange(-10, 10, 2)
+        data = hs.signals.Signal2D(np.zeros([10, 100, 100]))
+        stack = tomotools.io.create_stack(data, tilts=tilts)
+        assert stack.axes_manager.signal_shape == (100, 100)
+        assert stack.axes_manager.navigation_shape == (10,)
+        assert stack.metadata.has_item('Tomography')
+        assert type(stack.metadata.Tomography.tilts) is np.ndarray
+        assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
+        assert stack.metadata.Tomography.tilts[0] == -10
+        assert type(stack) is TomoStack
+
     def test_load_hspy_hdf5(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF_Aligned.hdf5")
         stack_orig = hs.load(filename)
-        stack = tomotools.io.load_hspy(filename)
+        stack = tomotools.io.load(filename)
         with h5py.File(filename, 'r') as h5:
             h5_shape = h5['Experiments']['__unnamed__']['data'].shape
         assert stack.data.shape[1:] == h5_shape[1:]
@@ -92,7 +93,7 @@ class TestHspy:
 
 class TestNumpy:
     def test_numpy_to_stack_no_tilts(self):
-        stack = tomotools.io.convert_to_tomo_stack(
+        stack = tomotools.io.create_stack(
             np.random.random([50, 100, 100]), tilts=None)
         assert type(stack) is tomotools.TomoStack
         assert stack.axes_manager.signal_shape == (100, 100)
@@ -107,17 +108,17 @@ class TestNumpy:
         tilts = np.arange(-50, 50, 2)
         data = np.random.random([25, 100, 100])
         with pytest.raises(ValueError):
-            tomotools.io.convert_to_tomo_stack(data, tilts=tilts)
+            tomotools.io.create_stack(data, tilts=tilts)
 
     def test_numpy_to_stack_with_bad_data(self):
         tilts = np.arange(-50, 0, 2)
         data = hs.signals.Signal1D(np.zeros([25, 100]))
         with pytest.raises(TypeError):
-            tomotools.io.convert_to_tomo_stack(data, tilts=tilts)
+            tomotools.io.create_stack(data, tilts=tilts)
 
     def test_numpy_to_stack_with_tilts(self):
         tilts = np.arange(-50, 50, 2)
-        stack = tomotools.io.convert_to_tomo_stack(
+        stack = tomotools.io.create_stack(
             np.random.random([50, 100, 100]), tilts=tilts)
         assert type(stack) is tomotools.TomoStack
         assert stack.axes_manager.signal_shape == (100, 100)
@@ -130,7 +131,7 @@ class TestNumpy:
 
     def test_numpy_to_stack_with_tilt_signal(self):
         tilts = hs.signals.Signal1D(np.arange(-50, 50, 2))
-        stack = tomotools.io.convert_to_tomo_stack(
+        stack = tomotools.io.create_stack(
             np.random.random([50, 100, 100]), tilts=tilts)
         assert type(stack) is tomotools.TomoStack
         assert stack.axes_manager.signal_shape == (100, 100)
@@ -145,7 +146,7 @@ class TestNumpy:
 class TestSignal:
     def test_signal_to_stack(self):
         signal = hs.signals.Signal2D(np.random.random([50, 100, 100]))
-        stack = tomotools.io.convert_to_tomo_stack(signal)
+        stack = tomotools.io.create_stack(signal)
         assert stack.axes_manager[0].name == 'Tilt'
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (50,)

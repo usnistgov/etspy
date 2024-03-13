@@ -4,7 +4,7 @@
 """API for TomoTools."""
 
 import logging
-from tomotools.io import load
+from tomotools.io import load, create_stack
 from tomotools.base import TomoStack
 from tomotools import io
 from tomotools import utils
