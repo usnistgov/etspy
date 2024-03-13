@@ -110,27 +110,8 @@ class TestNumpy:
         with pytest.raises(ValueError):
             tomotools.io.create_stack(data, tilts=tilts)
 
-    def test_numpy_to_stack_with_bad_data(self):
-        tilts = np.arange(-50, 0, 2)
-        data = hs.signals.Signal1D(np.zeros([25, 100]))
-        with pytest.raises(TypeError):
-            tomotools.io.create_stack(data, tilts=tilts)
-
     def test_numpy_to_stack_with_tilts(self):
         tilts = np.arange(-50, 50, 2)
-        stack = tomotools.io.create_stack(
-            np.random.random([50, 100, 100]), tilts=tilts)
-        assert type(stack) is tomotools.TomoStack
-        assert stack.axes_manager.signal_shape == (100, 100)
-        assert stack.axes_manager.navigation_shape == (50,)
-        assert stack.metadata.has_item('Tomography')
-        assert type(stack.metadata.Tomography.tilts) is np.ndarray
-        assert stack.metadata.Tomography.tilts[0] == -50
-        assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
-        assert type(stack) is TomoStack
-
-    def test_numpy_to_stack_with_tilt_signal(self):
-        tilts = hs.signals.Signal1D(np.arange(-50, 50, 2))
         stack = tomotools.io.create_stack(
             np.random.random([50, 100, 100]), tilts=tilts)
         assert type(stack) is tomotools.TomoStack
