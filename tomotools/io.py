@@ -108,10 +108,7 @@ def get_mrc_tilts(stack, filename):
         if len(tilts) == stack.data.shape[0]:
             logger.info("Tilts loaded from .rawtlt file")
         else:
-            logger.info(
-                "Number of tilts in .rawtlt file inconsistent"
-                " with data shape"
-            )
+            raise ValueError("Number of tilts in .rawtlt file inconsistent with data shape")
     else:
         tilts = None
     return tilts

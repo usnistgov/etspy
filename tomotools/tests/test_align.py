@@ -97,6 +97,19 @@ class TestTiltAlign:
         tilt_axis = ali.metadata.Tomography.tiltaxis
         assert abs(-2.7 - tilt_axis) < 1.0
 
+    def test_tilt_align_com_no_locs(self):
+        stack = ds.get_needle_data()
+        reg = stack.stack_register('PC')
+        ali = reg.tilt_align(method='CoM', locs=None, nslices=None)
+        tilt_axis = ali.metadata.Tomography.tiltaxis
+        assert abs(-2.7 - tilt_axis) < 1.0
+
+    def test_tilt_align_com_nslices_too_big(self):
+        stack = ds.get_needle_data()
+        reg = stack.stack_register('PC')
+        with pytest.raises(ValueError):
+            reg.tilt_align(method='CoM', locs=None, nslices=300)
+
     def test_tilt_align_com_no_tilts(self):
         stack = ds.get_needle_data()
         reg = stack.stack_register('PC')

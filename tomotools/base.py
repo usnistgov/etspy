@@ -62,7 +62,6 @@ class CommonStack(Signal2D):
         >>> import tomotools.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> s_inverted = stack.invert()
-
         """
         maxvals = self.data.max(2).max(1)
         maxvals = maxvals.reshape([self.data.shape[0], 1, 1])

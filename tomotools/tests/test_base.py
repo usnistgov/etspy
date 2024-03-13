@@ -4,8 +4,9 @@ import pytest
 import numpy as np
 import sys
 import io
-from tomotools.base import TomoStack, RecStack
+from tomotools.base import CommonStack, TomoStack, RecStack
 import hyperspy.api as hs
+# from hyperspy.signals import Signal2D
 
 
 def _set_tomo_metadata(s):
@@ -93,7 +94,8 @@ class TestOperations:
         assert norm.data.min() == 0.0
 
     def test_stack_invert(self):
-        stack = ds.get_needle_data()
+        # stack = ds.get_needle_data()
+        stack = CommonStack(np.random.random([10, 100, 100]))
         invert = stack.invert()
         hist, bins = np.histogram(stack.data)
         hist_inv, bins_inv = np.histogram(invert.data)

@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 import h5py
 import glob
+from hyperspy.signals import Signal2D
 
 tomotools_path = os.path.dirname(tomotools.__file__)
 
@@ -59,6 +60,24 @@ class TestLoadMRC:
         assert type(stack) is TomoStack
         assert stack.axes_manager[1].scale == stack_orig.axes_manager[1].scale
         assert stack.axes_manager[1].units == stack_orig.axes_manager[1].units
+
+    def test_load_mrc_with_rawtlt(self):
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.mrc")
+        stack = tomotools.io.load(filename)
+        stack.original_metadata = {}
+        tilts = tomotools.io.get_mrc_tilts(stack, filename)
+        assert type(tilts) is np.ndarray
+        assert tilts.shape[0] == stack.data.shape[0]
+
+    def test_load_mrc_with_bad_rawtlt(self):
+        filename = os.path.join(tomotools_path, "tests",
+                                "test_data", "HAADF.mrc")
+        stack = tomotools.io.load(filename)
+        stack.original_metadata = {}
+        stack.data = np.append(stack.data, np.zeros([1, stack.data.shape[1], stack.data.shape[2]]), axis=0)
+        with pytest.raises(ValueError):
+            tomotools.io.get_mrc_tilts(stack, filename)
 
 
 class TestHspy:
@@ -138,6 +157,12 @@ class TestSignal:
         assert stack.axes_manager[1].scale == signal.axes_manager[1].scale
         assert stack.axes_manager[1].units == signal.axes_manager[1].units
 
+    def test_signal_to_stack_bad_tilts(self):
+        signal = hs.signals.Signal2D(np.random.random([50, 100, 100]))
+        tilts = np.zeros(20)
+        with pytest.raises(ValueError):
+            tomotools.io.create_stack(signal, tilts)
+
 
 class TestDM:
     def test_load_single_dm(self):
@@ -176,9 +201,9 @@ class TestDM:
         assert stack.axes_manager[2].units == signal.axes_manager[2].units
 
 
-@pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
+# @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestSerialEM:
-    def test_serialem_series(self):
+    def test_load_serialem_series(self):
         dirname = os.path.join(tomotools_path, "tests",
                                "test_data", "SerialEM_Multiframe_Test")
         files = glob.glob(dirname + "/*.mrc")
@@ -189,6 +214,26 @@ class TestSerialEM:
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] < 0
         assert type(stack) is TomoStack
+
+    def test_load_serialem(self):
+        dirname = os.path.join(tomotools_path, "tests",
+                               "test_data", "SerialEM_Multiframe_Test")
+        file = glob.glob(dirname + "/*.mrc")[0]
+        stack = tomotools.load(file)
+        assert stack.axes_manager.signal_shape == (1024, 1024)
+        assert stack.axes_manager.navigation_shape == (2,)
+        assert stack.metadata.has_item('Tomography')
+        assert type(stack.metadata.Tomography.tilts) is np.ndarray
+        assert stack.metadata.Tomography.tilts[0] == 0.0
+        assert type(stack) is TomoStack
+
+    def test_load_serial_em_explicit(self):
+        dirname = os.path.join(tomotools_path, "tests",
+                               "test_data", "SerialEM_Multiframe_Test")
+        mrcfile = glob.glob(dirname + "/*.mrc")[0]
+        mdocfile = mrcfile[:-3] + "mdoc"
+        stack = tomotools.io.load_serialem(mrcfile, mdocfile)
+        assert type(stack) is Signal2D
 
 
 class TestUnknown:
