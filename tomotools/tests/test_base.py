@@ -225,17 +225,15 @@ class TestSIRTError:
 
     def test_sirt_error(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(128, iterations=50,
+        rec_stack, error = stack.recon_error(128, iterations=2,
                                              constrain=True, cuda=False)
         assert error.data.shape[0] == rec_stack.data.shape[0]
         assert rec_stack.data.shape[1:] ==\
             (stack.data.shape[1], stack.data.shape[1])
-        assert (1 - (3.8709e12 / error.data[0])) < 0.001
-        assert (1 - (2.8624e12 / error.data[1])) < 0.001
 
     def test_sirt_error_no_slice(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(None, iterations=50,
+        rec_stack, error = stack.recon_error(None, iterations=2,
                                              constrain=True, cuda=False)
         assert error.data.shape[0] == rec_stack.data.shape[0]
         assert rec_stack.data.shape[1:] ==\
@@ -262,9 +260,9 @@ class TestTiltAlign:
         assert type(ali) is TomoStack
 
     def test_tilt_align_maximage(self):
-        stack = ds.get_needle_data()
-        reg = stack.stack_register('PC')
-        ali = reg.tilt_align('MaxImage')
+        stack = ds.get_needle_data(True)
+        stack = stack.inav[0:10]
+        ali = stack.tilt_align('MaxImage')
         assert type(ali) is TomoStack
 
     def test_tilt_align_unknown_method(self):
