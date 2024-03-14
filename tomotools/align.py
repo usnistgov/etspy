@@ -249,12 +249,10 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
         xrange = [round(xrange[0]) + p, round(xrange[1]) - p]
 
     xshifts = np.zeros([ntilts, 1])
-    # total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p])
     total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
+
     for i in range(0, ntilts):
-        total_mass[i, :] = np.sum(
-            stack.data[i, :, xrange[0] - p - 1: xrange[1] + p], 0
-        )
+        total_mass[i, :] = np.sum(stack.data[i, :, xrange[0] - p - 1: xrange[1] + p], 0)
 
     mean_mass = np.mean(total_mass[:, p:-p], 0)
 
@@ -383,7 +381,7 @@ def calculate_shifts_stackreg(stack, start, show_progressbar):
     return shifts
 
 
-def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor):
+def calc_shifts_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor):
     """
     Align stack using combined center of mass and common line methods.
 
@@ -520,7 +518,7 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
         cl_ref_index = kwargs.get('cl_ref_index', stack.data.shape[0] // 2)
         cl_resolution = kwargs.get('cl_resolution', 0.05)
         cl_div_factor = kwargs.get('cl_div_factor', 8)
-        shifts = calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor)
+        shifts = calc_shifts_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor)
     else:
         raise ValueError('Invalid alignment method %s' % method)
     aligned = apply_shifts(stack, shifts)
