@@ -201,7 +201,7 @@ class TestDM:
         assert stack.axes_manager[2].units == signal.axes_manager[2].units
 
 
-# @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
+@pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestSerialEM:
     def test_load_serialem_series(self):
         dirname = os.path.join(tomotools_path, "tests",
