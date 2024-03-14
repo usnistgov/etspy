@@ -77,9 +77,10 @@ def register_serialem_stack(stack, ncpus=1):
 
     if ncpus == 1:
         reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
+        start = stack.data.shape[0] // 2
         for i in tqdm.tqdm(range(0, ntilts)):
             shifted = np.zeros([nframes, ny, nx])
-            shifts = calculate_shifts_stackreg(stack.inav[:, i])
+            shifts = calculate_shifts_stackreg(stack.inav[:, i], start, False)
             for k in range(0, nframes):
                 shifted[k, :, :] = ndimage.shift(
                     stack.data[i, k, :, :], shift=[shifts[k, 0], shifts[k, 1]]

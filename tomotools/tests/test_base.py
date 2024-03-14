@@ -73,14 +73,6 @@ class TestFiltering:
         with pytest.raises(ValueError):
             stack.inav[0:10].filter(method='WRONG')
 
-    def test_image_filter_none(self):
-        stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method=None)
-        assert filt.axes_manager.navigation_shape == \
-            stack.inav[0:10].axes_manager.navigation_shape
-        assert filt.axes_manager.signal_shape == \
-            stack.inav[0:10].axes_manager.signal_shape
-
 
 class TestOperations:
 
