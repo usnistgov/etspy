@@ -7,9 +7,23 @@ class TestModels:
         stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
         assert stack.data.shape == (10, 10, 10)
 
+    def test_catalyst_model_with_particle(self):
+        stack = sim.create_catalyst_model(1, volsize=[20, 20, 20], support_radius=5, size_interval=[2, 3])
+        assert stack.data.shape == (20, 20, 20)
+
+    def test_needle_model(self):
+        model = sim.create_needle_model()
+        assert model.shape == (256, 256, 256)
+        assert type(model) is np.ndarray
+
     def test_tilt_series_model(self):
         stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
         proj = sim.create_model_tilt_series(stack, np.arange(0, 15, 5))
+        assert proj.data.shape == (3, 10, 10)
+
+    def test_tilt_series_model_no_cuda(self):
+        stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        proj = sim.create_model_tilt_series(stack, np.arange(0, 15, 5), cuda=False)
         assert proj.data.shape == (3, 10, 10)
 
     def test_tilt_series_model_no_tilts(self):
@@ -43,8 +57,14 @@ class TestModifications:
         shifted = sim.misalign_stack(stack, tilt_rotate=2)
         assert shifted.data.shape == (90, 10, 10)
 
-    def test_add_noise(self):
+    def test_add_noise_gaussian(self):
         model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
         stack = sim.create_model_tilt_series(model)
-        noisy = sim.add_noise(stack)
+        noisy = sim.add_noise(stack, 'gaussian')
+        assert noisy.data.shape == (90, 10, 10)
+
+    def test_add_noise_poissanian(self):
+        model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
+        stack = sim.create_model_tilt_series(model)
+        noisy = sim.add_noise(stack, 'poissonian')
         assert noisy.data.shape == (90, 10, 10)

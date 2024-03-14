@@ -136,7 +136,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
         Tilt series of the model data
 
     """
-    if not cuda:
+    if cuda is None:
         cuda = astra.use_cuda()
 
     if type(angles) is not np.ndarray:
@@ -220,7 +220,7 @@ def misalign_stack(
     return misaligned
 
 
-def add_noise(stack, noise_type="gaussian", factor=0.2):
+def add_noise(stack, noise_type="gaussian", scale_factor=0.2):
     """
     Apply misalignment to a model tilt series.
 
@@ -243,7 +243,7 @@ def add_noise(stack, noise_type="gaussian", factor=0.2):
 
     if noise_type == "gaussian":
         noise = np.random.normal(
-            stack.data.mean(), factor * stack.data.mean(), stack.data.shape
+            stack.data.mean(), scale_factor * stack.data.mean(), stack.data.shape
         )
         noisy.data = noisy.data + noise
         if noisy.data.min() < 0:
