@@ -14,6 +14,15 @@ class TestReconstruction:
         with pytest.raises(TypeError):
             slices.reconstruct('FBP')
 
+    def test_recon_single_slice(self):
+        stack = ds.get_needle_data(True)
+        # tilts = stack.metadata.Tomography.tilts
+        slices = stack.isig[120, :]
+        rec = recon.run(slices, 'FBP', cuda=False)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is numpy.ndarray
+        assert rec.data.shape[2] == slices.data.shape[1]
+
     def test_recon_unknown_algorithm(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
@@ -23,6 +32,14 @@ class TestReconstruction:
     def test_recon_fbp_cpu(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
+        rec = slices.reconstruct('FBP', cuda=False)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
+        assert rec.data.shape[2] == slices.data.shape[1]
+
+    def test_recon_fbp_cpu_multicore(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:122, :].deepcopy()
         rec = slices.reconstruct('FBP', cuda=False)
         assert type(stack) is tomotools.base.TomoStack
         assert type(rec) is tomotools.base.RecStack

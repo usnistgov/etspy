@@ -88,6 +88,7 @@ def run(
     """
     if len(stack.data.shape) == 2:
         nangles, ny = stack.data.shape
+        stack.data = stack.data[:, :, np.newaxis]
         nx = 1
     else:
         nangles, ny, nx = stack.data.shape
