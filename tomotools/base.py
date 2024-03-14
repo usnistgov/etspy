@@ -284,9 +284,7 @@ class CommonStack(Signal2D):
 
         rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
 
-        shift = np.array(
-            [[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]]
-        )
+        shift = np.array([[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]])
 
         full_transform = np.dot(shift, rotation_mat)
         tform = transform.AffineTransform(full_transform)
@@ -310,17 +308,11 @@ class CommonStack(Signal2D):
                 order=interpolation_order,
             )
 
-        transformed.metadata.Tomography.xshift = (
-            self.metadata.Tomography.xshift + xshift
-        )
+        transformed.metadata.Tomography.xshift = self.metadata.Tomography.xshift + xshift
 
-        transformed.metadata.Tomography.yshift = (
-            self.metadata.Tomography.yshift + yshift
-        )
+        transformed.metadata.Tomography.yshift = self.metadata.Tomography.yshift + yshift
 
-        transformed.metadata.Tomography.tiltaxis = (
-            self.metadata.Tomography.tiltaxis + angle
-        )
+        transformed.metadata.Tomography.tiltaxis = self.metadata.Tomography.tiltaxis + angle
         return transformed
 
 
@@ -471,13 +463,9 @@ class TomoStack(CommonStack):
             h = np.hamming(rows)
             ham2d = np.sqrt(np.outer(h, h))
             filtered.data = filtered.data * ham2d
-        elif method is None:
-            pass
         else:
-            raise ValueError(
-                "Unknown filter method. Must be 'median', "
-                "'sobel', 'both', 'bpf', or None"
-            )
+            raise ValueError("Unknown filter method. Must be 'median', 'sobel', 'both', or 'bpf'"
+                             )
         if taper:
             taper_size = np.int32(np.array(taper) * self.data.shape[1:])
             filtered.data = np.pad(
@@ -490,20 +478,7 @@ class TomoStack(CommonStack):
             )
         return filtered
 
-    def stack_register(
-        self,
-        method="PC",
-        start=None,
-        crop=False,
-        show_progressbar=False,
-        nslices=20,
-        cl_resolution=0.05,
-        cl_div_factor=8,
-        com_ref_index=None,
-        cl_ref_index=None,
-        xrange=None,
-        p=20,
-    ):
+    def stack_register(self, method="PC", start=None, show_progressbar=False, crop=False, **kwargs):
         """
         Register stack spatially.
 
@@ -574,19 +549,7 @@ class TomoStack(CommonStack):
         """
         method = method.lower()
         if method in ["pc", "com", "stackreg", "com-cl"]:
-            out = align.align_stack(
-                self,
-                method,
-                start,
-                show_progressbar,
-                nslices=nslices,
-                cl_resolution=cl_resolution,
-                cl_div_factor=cl_div_factor,
-                com_ref_index=com_ref_index,
-                cl_ref_index=cl_ref_index,
-                xrange=xrange,
-                p=p,
-            )
+            out = align.align_stack(self, method, start, show_progressbar, **kwargs)
         else:
             raise ValueError(
                 "Unknown registration method: "

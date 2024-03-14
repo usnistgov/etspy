@@ -14,7 +14,7 @@ from scipy import optimize, ndimage
 import tqdm
 from pystackreg import StackReg
 import logging
-from numpy.fft import fft, fftshift, ifftshift, ifft
+# from numpy.fft import fft, fftshift, ifftshift, ifft
 from skimage.registration import phase_cross_correlation as pcc
 
 logger = logging.getLogger(__name__)
@@ -107,36 +107,6 @@ def apply_shifts(stack, shifts):
     return shifted
 
 
-def compose_shifts(shifts, start=None):
-    """
-
-    Compose a series of calculated shifts.
-
-    Args
-    ----------
-    shifts : NumPy array
-        The X- and Y-shifts to be composed
-    start : int
-        The image index at which the alignment should start. If None,
-        the mid-point of the stack will be used.
-
-    Returns
-    ----------
-    composed : NumPy array
-        Composed shifts
-
-    """
-    if start is None:
-        start = np.int32(np.floor((shifts.shape[0] + 1) / 2))
-    composed = np.zeros([shifts.shape[0] + 1, 2])
-    composed[start, :] = [0.0, 0.0]
-    for i in range(start + 1, composed.shape[0]):
-        composed[i, :] = composed[i - 1, :] - shifts[i - 1, :]
-    for i in range(start - 1, -1, -1):
-        composed[i, :] = composed[i + 1, :] + shifts[i]
-    return composed
-
-
 def pad_line(line, paddedsize):
     """
 
@@ -155,23 +125,11 @@ def pad_line(line, paddedsize):
         Padded version of input data
 
     """
-    padded = np.zeros(paddedsize)
     npix = len(line)
-    if np.mod(npix, 2) == 0:
-        if np.mod(paddedsize, 2) == 0:
-            start_idx = (paddedsize - npix) / 2
-            end_idx = npix + (paddedsize - npix) / 2
-        else:
-            start_idx = (paddedsize - npix - 1) / 2
-            end_idx = npix + (paddedsize - npix - 1) / 2
-    else:
-        if np.mod(paddedsize, 2) == 0:
-            start_idx = (paddedsize - npix + 1) / 2
-            end_idx = npix + (paddedsize - npix + 1) / 2
-        else:
-            start_idx = (paddedsize - npix) / 2
-            end_idx = npix + (paddedsize - npix) / 2
-    padded[int(start_idx): int(end_idx)] = line
+    start_idx = (paddedsize - npix) // 2
+    end_idx = start_idx + npix
+    padded = np.zeros(paddedsize)
+    padded[start_idx:end_idx] = line
     return padded
 
 
@@ -202,47 +160,41 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
     """
 
     def align_line(ref_line, line, cl_resolution, cl_div_factor):
-        npix = np.shape(ref_line)[0]
-        npad = npix * 2 - 1
+        npad = len(ref_line) * 2 - 1
 
         # Pad with zeros while preserving the center location
         ref_line_pad = pad_line(ref_line, npad)
         line_pad = pad_line(line, npad)
 
-        niters = np.int32(
-            np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor)))
-        )
-        start = -0.5
-        end = 0.5
+        niters = int(np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))))
+        start, end = -0.5, 0.5
+
+        ref_line_pad_FT = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(ref_line_pad)))
+        line_pad_FT = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(line_pad)))
 
         midpoint = (npad - 1) / 2
         kx = np.arange(-midpoint, midpoint + 1)
 
-        ref_line_pad_FT = fftshift(fft(ifftshift(ref_line_pad)))
-        line_pad_FT = fftshift(fft(ifftshift(line_pad)))
-
-        for i in range(0, niters):
-            boundary = np.arange(start, end, (end - start) / cl_div_factor)
-            index = (np.roll(boundary, -1) + boundary) / 2
-            index = index[:-1]
+        for i in range(niters):
+            boundary = np.linspace(start, end, cl_div_factor, False)
+            index = (boundary[:-1] + boundary[1:]) / 2
 
             max_vals = np.zeros(len(index))
-            for j in range(0, len(index)):
-                pfactor = np.exp(2 * np.pi * 1j * (index[j] * kx / npad))
+            for j, idx in enumerate(index):
+                pfactor = np.exp(2 * np.pi * 1j * (idx * kx / npad))
                 conjugate = np.conj(ref_line_pad_FT) * line_pad_FT * pfactor
-                xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
+                xcorr = np.abs(np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))))
                 max_vals[j] = np.max(xcorr)
 
             max_loc = np.argmax(max_vals)
-            start = boundary[max_loc]
-            end = boundary[max_loc + 1]
+            start, end = boundary[max_loc], boundary[max_loc + 1]
 
         subpixel_shift = index[max_loc]
-        max_pfactor = np.exp(2 * np.pi * 1j * (index[max_loc] * kx / npad))
+        max_pfactor = np.exp(2 * np.pi * 1j * (subpixel_shift * kx / npad))
 
         # Determine integer shift via cross correlation
         conjugate = np.conj(ref_line_pad_FT) * line_pad_FT * max_pfactor
-        xcorr = np.abs(fftshift(ifft(ifftshift(conjugate))))
+        xcorr = np.abs(np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))))
         max_loc = np.argmax(xcorr)
 
         integer_shift = max_loc
@@ -250,24 +202,19 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
 
         # Calculate full shift
         shift = integer_shift + subpixel_shift
-
         return -shift
 
-    if not cl_ref_index:
-        cl_ref_index = round(stack.data.shape[0] / 2)
+    if cl_ref_index is None:
+        cl_ref_index = stack.data.shape[0] // 2
 
-    aliY = stack.deepcopy()
     yshifts = np.zeros(stack.data.shape[0])
     ref_cm_line = stack.data[cl_ref_index].sum(0)
 
-    for i in tqdm.tqdm(range(0, stack.data.shape[0])):
+    for i in tqdm.tqdm(range(stack.data.shape[0])):
         if i == cl_ref_index:
-            aliY.data[i] = stack.data[i]
-        else:
-            curr_cm_line = stack.data[i].sum(0)
-            yshifts[i] = align_line(
-                ref_cm_line, curr_cm_line, cl_resolution, cl_div_factor
-            )
+            continue
+        curr_cm_line = stack.data[i].sum(0)
+        yshifts[i] = align_line(ref_cm_line, curr_cm_line, cl_resolution, cl_div_factor)
     return yshifts
 
 
@@ -365,7 +312,7 @@ def calculate_shifts_com(stack, nslices):
     return yshifts
 
 
-def calculate_shifts_pc(stack, start, show_progressbar):
+def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor):
     """
 
     Calculate shifts using the phase correlation algorithm.
@@ -381,30 +328,24 @@ def calculate_shifts_pc(stack, start, show_progressbar):
         The X- and Y-shifts to be applied to each image
 
     """
+    shifts = np.zeros((stack.data.shape[0], 2))
 
-    def calc_pc(source, shifted):
-        shift = pcc(shifted, source, upsample_factor=3)
-        return shift[0]
+    with tqdm.tqdm(total=stack.data.shape[0] - 1, desc="Calculating shifts", disable=not show_progressbar) as pbar:
+        for i in range(start, 0, -1):
+            shift = pcc(stack.data[i], stack.data[i - 1], upsample_factor=upsample_factor)[0]
+            shifts[i - 1] = shifts[i] + shift
+            pbar.update(1)
 
-    shifts = np.zeros([stack.data.shape[0] - 1, 2])
-    if start is None:
-        start = np.int32(np.floor(stack.data.shape[0] / 2))
+        for i in range(start, stack.data.shape[0] - 1):
+            shift = pcc(stack.data[i], stack.data[i + 1], upsample_factor=upsample_factor)[0]
+            shifts[i + 1] = shifts[i] + shift
+            pbar.update(1)
 
-    for i in tqdm.tqdm(
-        range(start, stack.data.shape[0] - 1), disable=(not show_progressbar)
-    ):
-        shifts[i, :] = calc_pc(stack.data[i, :, :], stack.data[i + 1, :, :])
-
-    if start != 0:
-        for i in tqdm.tqdm(range(start - 1, -1, -1), disable=(not show_progressbar)):
-            shifts[i, :] = calc_pc(stack.data[i, :, :],
-                                   stack.data[i + 1, :, :])
     return shifts
 
 
-def calculate_shifts_stackreg(stack):
+def calculate_shifts_stackreg(stack, start, show_progressbar):
     """
-
     Calculate shifts using PyStackReg.
 
     Args
@@ -418,15 +359,31 @@ def calculate_shifts_stackreg(stack):
         The X- and Y-shifts to be applied to each image
 
     """
-    sr = StackReg(StackReg.TRANSLATION)
-    shifts = sr.register_stack(stack.data, reference="previous")
-    shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
+    shifts = np.zeros((stack.data.shape[0], 2))
+
+    if start is None:
+        start = stack.data.shape[0] // 2  # Use the midpoint if start is not provided
+
+    # Initialize pystackreg object with TranslationTransform2D
+    reg = StackReg(StackReg.TRANSLATION)
+
+    with tqdm.tqdm(total=stack.data.shape[0] - 1, desc="Calculating shifts", disable=not show_progressbar) as pbar:
+        # Calculate shifts relative to the image at the 'start' index
+        for i in range(start, 0, -1):
+            transformation = reg.register(stack.data[i], stack.data[i - 1])
+            shift = -transformation[0:2, 2][::-1]
+            shifts[i - 1] = shifts[i] + shift
+            pbar.update(1)
+
+        for i in range(start, stack.data.shape[0] - 1):
+            transformation = reg.register(stack.data[i], stack.data[i + 1])
+            shift = -transformation[0:2, 2][::-1]
+            shifts[i + 1] = shifts[i] + shift
+            pbar.update(1)
     return shifts
 
 
-def calc_com_cl_shifts(
-    stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
-):
+def calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor):
     """
     Align stack using combined center of mass and common line methods.
 
@@ -460,7 +417,7 @@ def calc_com_cl_shifts(
 
     """
 
-    def calc_yshifts(stack, com_ref=None):
+    def calc_yshifts(stack, com_ref):
         ntilts = stack.data.shape[0]
         aliX = stack.deepcopy()
         coms = np.zeros(ntilts)
@@ -474,8 +431,7 @@ def calc_com_cl_shifts(
 
     if cl_resolution >= 0.5:
         raise ValueError("Resolution should be less than 0.5")
-    if not com_ref_index:
-        com_ref_index = round(stack.data.shape[1] / 2)
+
     logger.info("Center of mass reference slice: %s" % com_ref_index)
     logger.info("Common line reference slice: %s" % cl_ref_index)
     xshifts = np.zeros(stack.data.shape[0])
@@ -486,19 +442,7 @@ def calc_com_cl_shifts(
     return shifts
 
 
-def align_stack(
-    stack,
-    method,
-    start,
-    show_progressbar,
-    nslices,
-    cl_ref_index,
-    com_ref_index,
-    cl_resolution,
-    cl_div_factor,
-    xrange,
-    p,
-):
+def align_stack(stack, method, start, show_progressbar, **kwargs):
     """
     Compute the shifts for spatial registration.
 
@@ -552,28 +496,33 @@ def align_stack(
         Spatially registered copy of the input stack
 
     """
-    method = method.lower()
-    if method == "com":
+    if start is None:
+        start = stack.data.shape[0] // 2  # Use the slice closest to the midpoint if start is not provided
+
+    if method.lower() == "com":
+        logger.info("Performing stack registration using center of mass method")
+        xrange = kwargs.get('xrange', None)
+        p = kwargs.get('p', 20)
+        nslices = kwargs.get('nslices', 20)
         shifts = np.zeros([stack.data.shape[0], 2])
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
-    elif method == "pc":
-        logger.info(
-            "Performing stack registration using " "phase correlation method")
-        shifts = calculate_shifts_pc(stack, start, show_progressbar)
-    elif method == "stackreg":
+    elif method.lower() == 'pc':
+        upsample_factor = kwargs.get('upsample_factor', 3)
+        logger.info("Performing stack registration using phase correlation")
+        shifts = calculate_shifts_pc(stack, start, show_progressbar, upsample_factor)
+    elif method.lower() in ["stackreg", 'sr']:
         logger.info("Performing stack registration using PyStackReg")
-        shifts = calculate_shifts_stackreg(stack)
-    elif method == "com-cl":
-        logger.info(
-            "Performing stack registration using "
-            "combined center of mass and common line methods"
-        )
-        shifts = calc_com_cl_shifts(
-            stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
-        )
-    if method == "pc":
-        shifts = compose_shifts(shifts, start)
+        shifts = calculate_shifts_stackreg(stack, start, show_progressbar)
+    elif method.lower() == "com-cl":
+        logger.info("Performing stack registration using combined center of mass and common line methods")
+        com_ref_index = kwargs.get('com_ref_index', stack.data.shape[1] // 2)
+        cl_ref_index = kwargs.get('cl_ref_index', stack.data.shape[0] // 2)
+        cl_resolution = kwargs.get('cl_resolution', 0.05)
+        cl_div_factor = kwargs.get('cl_div_factor', 8)
+        shifts = calc_com_cl_shifts(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor)
+    else:
+        raise ValueError('Invalid alignment method %s' % method)
     aligned = apply_shifts(stack, shifts)
     logger.info("Stack registration complete")
     return aligned
