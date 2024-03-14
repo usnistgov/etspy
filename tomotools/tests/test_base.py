@@ -243,6 +243,16 @@ class TestSIRTError:
         assert (1 - (3.8709e12 / error.data[0])) < 0.001
         assert (1 - (2.8624e12 / error.data[1])) < 0.001
 
+    def test_sirt_error_no_cuda(self):
+        stack = ds.get_needle_data(True)
+        rec_stack, error = stack.recon_error(128, iterations=50,
+                                             constrain=True, cuda=None)
+        assert error.data.shape[0] == rec_stack.data.shape[0]
+        assert rec_stack.data.shape[1:] ==\
+            (stack.data.shape[1], stack.data.shape[1])
+        assert (1 - (3.8709e12 / error.data[0])) < 0.001
+        assert (1 - (2.8624e12 / error.data[1])) < 0.001
+
 
 class TestTiltAlign:
 
@@ -338,6 +348,11 @@ class TestManualAlign:
     def test_manual_align_no_shifts(self):
         stack = ds.get_needle_data(True)
         shifted = stack.manual_align(128)
+        assert type(shifted) is TomoStack
+
+    def test_manual_align_with_display(self):
+        stack = ds.get_needle_data(True)
+        shifted = stack.manual_align(64, display=True)
         assert type(shifted) is TomoStack
 
 
