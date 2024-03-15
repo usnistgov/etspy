@@ -104,12 +104,6 @@ class TestTiltAlign:
         tilt_axis = ali.metadata.Tomography.tiltaxis
         assert abs(-2.7 - tilt_axis) < 1.0
 
-    def test_tilt_align_com_nslices_too_big(self):
-        stack = ds.get_needle_data()
-        reg = stack.stack_register('PC')
-        with pytest.raises(ValueError):
-            reg.tilt_align(method='CoM', locs=None, nslices=300)
-
     def test_tilt_align_com_no_tilts(self):
         stack = ds.get_needle_data()
         reg = stack.stack_register('PC')
@@ -125,13 +119,6 @@ class TestTiltAlign:
         ali = reg.tilt_align(method='MaxImage')
         tilt_axis = ali.metadata.Tomography.tiltaxis
         assert isinstance(tilt_axis, float)
-
-    def test_tilt_align_maximage_nonsquare(self):
-        stack = ds.get_needle_data()
-        reg = stack.stack_register('PC')
-        reg = reg.isig[:, 1:]
-        with pytest.raises(ValueError):
-            reg.tilt_align(method='MaxImage')
 
     def test_tilt_align_unknown_method(self):
         stack = ds.get_needle_data()

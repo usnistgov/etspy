@@ -70,9 +70,10 @@ def get_coms(stack, slices):
         Center of mass as a function of tilt for each slice [ntilts, nslices].
 
     """
+    com_range = int(sinos.shape[1] / 2)
     sinos = stack.data[:, :, slices]
-    y_coordinates = np.linspace(sinos.shape[1] // 2,
-                                sinos.shape[1] // 2,
+    y_coordinates = np.linspace(-com_range,
+                                com_range,
                                 sinos.shape[1], dtype="int")
     total_mass = sinos.sum(1)
     coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y_coordinates, 2) / total_mass
@@ -567,18 +568,20 @@ def tilt_com(stack, slices=None, nslices=None):
     if nx < 3:
         raise ValueError("Dataset is only %s pixels in x dimension. This method cannot be used." % stack.data.shape[2])
 
-    if nslices > nx:
-        raise ValueError("nslices is greater than the X-dimension of the data.")
-
     # Determine the best slice locations for the analysis
     if slices is None:
         if nslices is None:
-            nslices = min(int(0.1 * nx), 20)
+            nslices = int(0.1 * nx)
+            if nslices < 3:
+                nslices = 3
+            elif nslices > 50:
+                nslices = 50
         else:
-            nslices = min(nslices, int(0.3 * nx))
-            logger.warning("nslices is greater than 30%% of number of x pixels. Using %s slices instead." % nslices)
-        if nslices < 3:
-            nslices = 3
+            if nslices > nx:
+                raise ValueError("nslices is greater than the X-dimension of the data.")
+            if nslices > 0.3 * nx:
+                nslices = int(0.3 * nx)
+                logger.warning("nslices is greater than 30%% of number of x pixels. Using %s slices instead." % nslices)
 
         slices = get_best_slices(stack, nslices)
         logger.info("Performing alignments using best %s slices" % nslices)
@@ -591,7 +594,7 @@ def tilt_com(stack, slices=None, nslices=None):
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 
     for idx, i in enumerate(slices):
-        r[idx], x0[idx], z0[idx] = optimize.curve_fit(com_motion, xdata=thetas, ydata=coms[:, i], p0=[0, 0, 0])[0]
+        r[idx], x0[idx], z0[idx] = optimize.curve_fit(com_motion, xdata=thetas, ydata=coms[:, idx], p0=[0, 0, 0])[0]
     slope, intercept = optimize.curve_fit(fit_line, xdata=r, ydata=slices, p0=[0, 0])[0]
     tilt_shift = (ny / 2 - intercept) / slope
     tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
