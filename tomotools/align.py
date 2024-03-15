@@ -70,8 +70,8 @@ def get_coms(stack, slices):
         Center of mass as a function of tilt for each slice [ntilts, nslices].
 
     """
-    com_range = int(sinos.shape[1] / 2)
     sinos = stack.data[:, :, slices]
+    com_range = int(sinos.shape[1] / 2)
     y_coordinates = np.linspace(-com_range,
                                 com_range,
                                 sinos.shape[1], dtype="int")
