@@ -98,25 +98,50 @@ def create_catalyst_model(
     return catalyst
 
 
-def create_needle_model():
+def create_cylinder_model(vol_size=200, radius=30, blur=True, blur_sigma=1.5):
     """
     Create a model data array that mimics a needle shaped sample.
 
     Args
     ----------
-
+    vol_size : int
+        Size of the volume for the model
+    radius : int
+        Radius of the cylinder to create
+    blur : bool
+        If True, apply a Gaussian blur to the volume
+    blur_sigma : float
+        Sigma value for the Gaussiuan blur
     Returns
     ----------
-    model : TomoStack object
-        Simulated tilt series
+    cylinder : Signal2D
+        Simulated cylinder object
 
     """
-    model = np.zeros([256, 256, 256])
-    xx, yy = np.mgrid[:256, :256]
-    for i in range(0, 200):
-        idx = (xx - 128) ** 2 + (yy - 128) ** 2
-        model[i, :, :] = idx < 1300 - i * 9
-    return model
+    vol_shape = np.array([vol_size, vol_size, vol_size])
+    cylinder = np.zeros(vol_shape, np.uint16)
+
+    xx, yy = np.ogrid[:vol_shape[1], :vol_shape[2]]
+
+    center_x, center_y, _ = vol_shape // 2
+
+    # Equation for the cylinder cross section
+    cross_section = (xx - center_x)**2 + (yy - center_y)**2 <= radius**2
+
+    # Fill the cylinder
+    for i in range(vol_shape[2]):
+        cylinder[:, :, i] = cross_section
+
+    cylinder = 50 * cylinder
+
+    if blur:
+        cylinder = ndimage.gaussian_filter(cylinder, sigma=blur_sigma)
+
+    cylinder = hs.signals.Signal2D(np.transpose(cylinder, [2, 0, 1]))
+    cylinder.axes_manager[0].name = "X"
+    cylinder.axes_manager[1].name = "Y"
+    cylinder.axes_manager[2].name = "Z"
+    return cylinder
 
 
 def create_model_tilt_series(model, angles=None, cuda=None):
@@ -128,7 +153,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     model : NumPy array or Hyperspy Signal2D
         3D array or signal containing the model volume to project to a tilt series
     angles : NumPy array
-        Projection angles for tilt series
+        Projection angles for tilt series in degrees
 
     Returns
     ----------
@@ -145,24 +170,21 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     if type(model) is hs.signals.Signal2D:
         model = model.data
 
-    xdim = model.shape[2]
-    ydim = model.shape[1]
-    thickness = model.shape[0]
+    xdim, zdim, ydim = model.shape
+    ntilts = len(angles)
 
-    proj_data = np.zeros([len(angles), ydim, xdim])
-    vol_geom = astra.create_vol_geom(thickness, xdim, ydim)
-    tilts = angles * np.pi / 180
+    proj_data = np.zeros([ntilts, ydim, xdim])
+    vol_geom = astra.create_vol_geom([ydim, ydim])
+    thetas = np.radians(angles)
 
+    proj_geom = astra.create_proj_geom("parallel", 1.0, ydim, thetas)
     if cuda is False:
-        proj_geom = astra.create_proj_geom("parallel", 1, xdim, tilts)
-        proj_id = astra.create_projector("strip", proj_geom, vol_geom)
-
-        for i in range(0, model.shape[1]):
-            sino_id, proj_data[:, i, :] = astra.create_sino(model[:, i, :], proj_id)
+        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
     else:
-        proj_geom = astra.create_proj_geom("parallel3d", 1, 1, xdim, ydim, tilts)
-        proj_id, proj_data = astra.create_sino3d_gpu(model, proj_geom, vol_geom)
-        proj_data = np.transpose(proj_data, [1, 2, 0])
+        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+
+    for i in range(0, model.shape[0]):
+        sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
 
     stack = create_stack(proj_data, angles)
     return stack
