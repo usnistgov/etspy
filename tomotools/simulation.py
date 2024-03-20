@@ -204,9 +204,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     return stack
 
 
-def misalign_stack(
-    stack, min_shift=-5, max_shift=5, tilt_shift=0, tilt_rotate=0, x_only=False
-):
+def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0, tilt_rotate=0, y_only=False, interp_order=3):
     """
     Apply misalignment to a model tilt series.
 
@@ -236,22 +234,20 @@ def misalign_stack(
 
     if tilt_shift != 0:
         misaligned.data = ndimage.shift(
-            misaligned.data, shift=[0, 0, tilt_shift], order=0
+            misaligned.data, shift=[0, 0, tilt_shift], order=interp_order
         )
     if tilt_rotate != 0:
         misaligned.data = ndimage.rotate(
-            misaligned.data, axes=(1, 2), angle=-tilt_rotate, order=0, reshape=False
+            misaligned.data, axes=(1, 2), angle=-tilt_rotate, order=interp_order, reshape=False
         )
 
     if (min_shift != 0) or (max_shift != 0):
         jitter = np.random.uniform(min_shift, max_shift, size=(stack.data.shape[0], 2))
         for i in range(stack.data.shape[0]):
-            if x_only:
-                jitter[i, 0] = 0
+            if y_only:
+                jitter[i, 1] = 0
 
-            misaligned.data[i, :, :] = ndimage.shift(
-                misaligned.data[i, :, :], shift=[jitter[i, 0], jitter[i, 1]], order=0
-            )
+            misaligned.data[i, :, :] = ndimage.shift(misaligned.data[i, :, :], shift=[jitter[i, 0], jitter[i, 1]], order=interp_order)
     misaligned.metadata.Tomography.shifts = jitter
     return misaligned
 
