@@ -14,7 +14,6 @@ from scipy import optimize, ndimage
 import tqdm
 from pystackreg import StackReg
 import logging
-# from numpy.fft import fft, fftshift, ifftshift, ifft
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 from skimage.feature import canny
@@ -41,7 +40,7 @@ def get_best_slices(stack, nslices):
 
     Returns
     ----------
-    slice_locations : NumPy array
+    locs : NumPy array
         Location along the x-axis of the best slices
 
     """
@@ -49,8 +48,8 @@ def get_best_slices(stack, nslices):
     mass_std = stack.data.sum(1).std(0)
     mass_std[mass_std == 0] = 1e-5
     mass_ratio = total_mass / mass_std
-    slice_locations = mass_ratio.argsort()[::-1][0:nslices]
-    return slice_locations
+    best_slice_locations = mass_ratio.argsort()[::-1][0:nslices]
+    return best_slice_locations
 
 
 def get_coms(stack, slices):
@@ -131,11 +130,11 @@ def pad_line(line, paddedsize):
 
     """
     npix = len(line)
-    start_idx = (paddedsize - npix) // 2
-    end_idx = start_idx + npix
-    padded = np.zeros(paddedsize)
-    padded[start_idx:end_idx] = line
-    return padded
+    start_index = (paddedsize - npix) // 2
+    end_index = start_index + npix
+    padded_line = np.zeros(paddedsize)
+    padded_line[start_index:end_index] = line
+    return padded_line
 
 
 def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
