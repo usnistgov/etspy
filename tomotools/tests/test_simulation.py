@@ -1,5 +1,6 @@
 from tomotools import simulation as sim
 import numpy as np
+from hyperspy.signals import Signal2D
 
 
 class TestModels:
@@ -11,10 +12,15 @@ class TestModels:
         stack = sim.create_catalyst_model(1, volsize=[20, 20, 20], support_radius=5, size_interval=[2, 3])
         assert stack.data.shape == (20, 20, 20)
 
-    def test_needle_model(self):
-        model = sim.create_needle_model()
-        assert model.shape == (256, 256, 256)
-        assert type(model) is np.ndarray
+    def test_cylinder_model(self):
+        model = sim.create_cylinder_model()
+        assert model.data.shape == (200, 200, 200)
+        assert type(model) is Signal2D
+
+    def test_cylinder_model_with_others(self):
+        model = sim.create_cylinder_model(add_others=True)
+        assert model.data.shape == (400, 400, 400)
+        assert type(model) is Signal2D
 
     def test_tilt_series_model(self):
         stack = sim.create_catalyst_model(0, volsize=[10, 10, 10])

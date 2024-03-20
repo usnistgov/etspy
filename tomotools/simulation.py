@@ -91,7 +91,7 @@ def create_catalyst_model(nparticles=15, particle_density=255, support_density=1
     return catalyst
 
 
-def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=True):
+def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False):
     """
     Create a model data array that mimics a needle shaped sample.
 
