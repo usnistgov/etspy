@@ -14,14 +14,7 @@ from tomotools.io import create_stack
 import hyperspy.api as hs
 
 
-def create_catalyst_model(
-    nparticles=15,
-    particle_density=255,
-    support_density=100,
-    volsize=[600, 600, 600],
-    support_radius=200,
-    size_interval=[5, 12],
-):
+def create_catalyst_model(nparticles=15, particle_density=255, support_density=100, volsize=[600, 600, 600], support_radius=200, size_interval=[5, 12]):
     """
     Create a model data array that mimics a hetergeneous catalyst.
 
@@ -98,7 +91,7 @@ def create_catalyst_model(
     return catalyst
 
 
-def create_cylinder_model(vol_size=200, radius=30, blur=True, blur_sigma=1.5):
+def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=True):
     """
     Create a model data array that mimics a needle shaped sample.
 
@@ -118,21 +111,42 @@ def create_cylinder_model(vol_size=200, radius=30, blur=True, blur_sigma=1.5):
         Simulated cylinder object
 
     """
-    vol_shape = np.array([vol_size, vol_size, vol_size])
+    if add_others:
+        vol_shape = np.array([400, 400, 400])
+    else:
+        vol_shape = np.array([200, 200, 200])
+
     cylinder = np.zeros(vol_shape, np.uint16)
-
     xx, yy = np.ogrid[:vol_shape[1], :vol_shape[2]]
-
     center_x, center_y, _ = vol_shape // 2
 
-    # Equation for the cylinder cross section
-    cross_section = (xx - center_x)**2 + (yy - center_y)**2 <= radius**2
+    # Create first cylinder
+    cylinder1 = (xx - center_x)**2 + (yy - center_y)**2 <= radius**2
 
-    # Fill the cylinder
-    for i in range(vol_shape[2]):
-        cylinder[:, :, i] = cross_section
+    if not add_others:
+        # Add the cylinder to the volume
+        for i in range(vol_shape[2]):
+            cylinder[:, :, i] = cylinder1
 
-    cylinder = 50 * cylinder
+    else:
+        # Create second cylinder
+        radius_cylinder2 = 10
+        center_x, center_y = [30, 30]
+        cylinder2 = (xx - center_x)**2 + (yy - center_y)**2 <= radius_cylinder2**2
+
+        # Create third cylinder
+        radius_cylinder3 = 15
+        center_x, center_y = [370, 350]
+        cylinder3 = (xx - center_x)**2 + (yy - center_y)**2 <= radius_cylinder3**2
+
+        # Add the cylinders to the volume
+        for i in range(vol_shape[2]):
+            if i < 150:
+                cylinder[:, :, i] = 50 * cylinder1 + 10 * cylinder2
+            elif i < 270 and i > 230:
+                cylinder[:, :, i] = 50 * cylinder1 + 20 * cylinder3
+            else:
+                cylinder[:, :, i] = 50 * cylinder1
 
     if blur:
         cylinder = ndimage.gaussian_filter(cylinder, sigma=blur_sigma)
@@ -174,7 +188,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     ntilts = len(angles)
 
     proj_data = np.zeros([ntilts, ydim, xdim])
-    vol_geom = astra.create_vol_geom([ydim, ydim])
+    vol_geom = astra.create_vol_geom([zdim, ydim])
     thetas = np.radians(angles)
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ydim, thetas)
