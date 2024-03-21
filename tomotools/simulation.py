@@ -220,7 +220,7 @@ def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0, tilt_rotate=0
         Number of pixels by which to offset the tilt axis from the center
     tilt_rotate : int
         Amount of rotation to apply to the stack
-    x_only : bool
+    y_only : bool
         If True, limit the application of jitter to the x-direction only.
         Default is False
 

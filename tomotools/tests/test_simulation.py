@@ -54,7 +54,7 @@ class TestModifications:
     def test_misalign_stack_with_xonly(self):
         model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
         stack = sim.create_model_tilt_series(model)
-        shifted = sim.misalign_stack(stack, x_only=True)
+        shifted = sim.misalign_stack(stack, y_only=True)
         assert shifted.data.shape == (90, 10, 10)
 
     def test_misalign_stack_with_rotation(self):

@@ -42,7 +42,7 @@ def get_catalyst_tilt_series(
     maxshift=5,
     tiltshift=0,
     tiltrotate=0,
-    xonly=False,
+    yonly=False,
     noise=False,
     noise_factor=0.2,
 ):
@@ -87,7 +87,7 @@ def get_catalyst_tilt_series(
             max_shift=maxshift,
             tilt_shift=tiltshift,
             tilt_rotate=tiltrotate,
-            x_only=xonly,
+            y_only=yonly,
         )
     if noise:
         catalyst = add_noise(catalyst, "gaussian", noise_factor)
