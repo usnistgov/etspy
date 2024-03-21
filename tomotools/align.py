@@ -649,7 +649,6 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False):
 
     # Calculate average angle from detected lines
     rotation_angle = np.degrees(np.mean(angles))
-    print(rotation_angle)
 
     if plot_results:
         fig, ax = plt.subplots(1)
