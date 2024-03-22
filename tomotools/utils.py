@@ -337,10 +337,7 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
         pass
     elif filter_name == "shepp-logan":
         filter[1:] = filter[1:] * np.sinc(omega[1:] / (2 * np.pi))
-    elif filter_name in [
-        "hanning",
-        "hann",
-    ]:
+    elif filter_name in ["hanning", "hann",]:
         filter[1:] = filter[1:] * (1 + np.cos(omega[1:])) / 2
     elif filter_name in [
         "cosine",

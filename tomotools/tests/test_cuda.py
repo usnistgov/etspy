@@ -3,6 +3,7 @@ import matplotlib
 import tomotools
 import numpy
 from tomotools import recon
+from tomotools.base import TomoStack
 import astra
 import pytest
 
@@ -69,3 +70,17 @@ class TestReconRunCUDA:
         assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert rec.data.shape[0] == slices.data.shape[2]
         assert type(rec) is numpy.ndarray
+
+
+@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+class TestStackRegisterCUDA:
+    def test_register_pc_cuda(self):
+        stack = ds.get_needle_data()
+        stack.metadata.Tomography.shifts = \
+            stack.metadata.Tomography.shifts[0:20]
+        reg = stack.inav[0:20].stack_register('PC', cuda=True)
+        assert type(reg) is TomoStack
+        assert reg.axes_manager.signal_shape == \
+            stack.inav[0:20].axes_manager.signal_shape
+        assert reg.axes_manager.navigation_shape == \
+            stack.inav[0:20].axes_manager.navigation_shape
