@@ -105,6 +105,9 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
         If True, apply a Gaussian blur to the volume
     blur_sigma : float
         Sigma value for the Gaussiuan blur
+    add_others : bool
+        If True, add a second and third cylinder to the model near the periphery.  This is useful
+        for testing the effects of additional objects entering the tilt series field of view.
     Returns
     ----------
     cylinder : Signal2D
