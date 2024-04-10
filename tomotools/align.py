@@ -305,7 +305,7 @@ def calculate_shifts_com(stack, nslices):
     logger.info("Refinining Y-shifts using center of mass method")
     slices = get_best_slices(stack, nslices)
 
-    angles = stack.metadata.Tomography.tilts
+    angles = stack.axes_manager[0].axis
     [ntilts, ydim, xdim] = stack.data.shape
     thetas = np.pi * angles / 180
 
@@ -639,7 +639,7 @@ def tilt_com(stack, slices=None, nslices=None):
     _, ny, nx = stack.data.shape
 
     if stack.metadata.Tomography.tilts is None:
-        raise ValueError("Tilts are not defined in stack.metadata.Tomography.")
+        logger.warning("Tilts are not defined in stack.metadata.Tomography.  Ensure that navigation axis is calibrated.")
 
     if nx < 3:
         raise ValueError("Dataset is only %s pixels in x dimension. This method cannot be used." % stack.data.shape[2])
@@ -665,7 +665,8 @@ def tilt_com(stack, slices=None, nslices=None):
     slices = np.sort(slices)
 
     coms = get_coms(stack, slices)
-    thetas = np.pi * stack.metadata.Tomography.tilts / 180.0
+    angles = stack.axes_manager[0].axis
+    thetas = np.deg2rad(angles)
 
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 

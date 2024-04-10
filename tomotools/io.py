@@ -66,6 +66,8 @@ def create_stack(stack, tilts=None):
         stack.metadata.Tomography.add_dictionary(tomo_metadata)
     stack.axes_manager[0].name = "Tilt"
     stack.axes_manager[0].units = "degrees"
+    stack.axes_manager[0].convert_to_non_uniform_axis()
+    stack.axes_manager[0].axis = tilts
     stack.axes_manager[1].name = "x"
     stack.axes_manager[2].name = "y"
     if tilts is None:
