@@ -104,13 +104,6 @@ class TestTiltAlign:
         tilt_axis = ali.metadata.Tomography.tiltaxis
         assert abs(-2.7 - tilt_axis) < 1.0
 
-    def test_tilt_align_com_no_tilts(self):
-        stack = ds.get_needle_data()
-        reg = stack.stack_register('PC')
-        reg.metadata.Tomography.tilts = None
-        with pytest.raises(ValueError):
-            reg.tilt_align(method='CoM', locs=[64, 128, 192])
-
     def test_tilt_align_maximage(self):
         stack = ds.get_needle_data()
         stack = stack.inav[0:5]

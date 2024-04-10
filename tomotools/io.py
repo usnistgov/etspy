@@ -14,6 +14,7 @@ import hyperspy.api as hspy
 from tomotools.base import TomoStack
 import logging
 from hyperspy.signals import Signal2D
+from hyperspy.axes import UniformDataAxis
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -66,7 +67,8 @@ def create_stack(stack, tilts=None):
         stack.metadata.Tomography.add_dictionary(tomo_metadata)
     stack.axes_manager[0].name = "Tilt"
     stack.axes_manager[0].units = "degrees"
-    stack.axes_manager[0].convert_to_non_uniform_axis()
+    if type(stack.axes_manager[0]) is UniformDataAxis:
+        stack.axes_manager[0].convert_to_non_uniform_axis()
     stack.axes_manager[0].axis = tilts
     stack.axes_manager[1].name = "x"
     stack.axes_manager[2].name = "y"
