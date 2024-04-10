@@ -371,7 +371,7 @@ def load(filename, tilts=None):
     if type(filename) is str:
         ext = os.path.splitext(filename)[1]
         if ext.lower() in hspy_file_types:
-            stack = hspy.load(filename)
+            stack = hspy.load(filename, reader='HSPY')
             if stack.metadata.has_item("Tomography"):
                 tilts = stack.metadata.Tomography.tilts
         elif ext.lower() in dm_file_types:

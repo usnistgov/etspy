@@ -65,7 +65,8 @@ class TestLoadMRC:
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")
         stack = tomotools.io.load(filename)
-        stack.original_metadata = {}
+        del stack.original_metadata.fei_header
+        del stack.original_metadata.std_header
         tilts = tomotools.io.get_mrc_tilts(stack, filename)
         assert type(tilts) is np.ndarray
         assert tilts.shape[0] == stack.data.shape[0]
@@ -74,7 +75,8 @@ class TestLoadMRC:
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF.mrc")
         stack = tomotools.io.load(filename)
-        stack.original_metadata = {}
+        del stack.original_metadata.fei_header
+        del stack.original_metadata.std_header
         stack.data = np.append(stack.data, np.zeros([1, stack.data.shape[1], stack.data.shape[2]]), axis=0)
         with pytest.raises(ValueError):
             tomotools.io.get_mrc_tilts(stack, filename)
@@ -96,7 +98,7 @@ class TestHspy:
     def test_load_hspy_hdf5(self):
         filename = os.path.join(tomotools_path, "tests",
                                 "test_data", "HAADF_Aligned.hdf5")
-        stack_orig = hs.load(filename)
+        stack_orig = hs.load(filename, reader='HSPY')
         stack = tomotools.io.load(filename)
         with h5py.File(filename, 'r') as h5:
             h5_shape = h5['Experiments']['__unnamed__']['data'].shape
