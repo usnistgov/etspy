@@ -21,7 +21,6 @@ Installation
     conda activate tomo
     conda install -c astra-toolbox astra-toolbox 
     conda install -c conda-forge hyperspy 
-    conda install -c conda-forge ipympl
     conda update --all
     ```
 
@@ -30,6 +29,11 @@ Installation
     pip install git+https://github.com/usnistgov/tomotools.git
     ```
 
+  # OPTIONAL: install `ipympl` and to enable interactive plotting in Jupyter
+  ```bash
+  conda install -c conda-forge ipympl
+  ```
+  
 Removal
 -------
 The package can be removed with:
