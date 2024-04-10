@@ -93,7 +93,8 @@ def run(
     else:
         nangles, ny, nx = stack.data.shape
 
-    thetas = np.pi * stack.metadata.Tomography.tilts / 180.0
+    angles = stack.axes_manager[0].axis
+    thetas = np.deg2rad(angles)
 
     if thickness is None:
         thickness = ny

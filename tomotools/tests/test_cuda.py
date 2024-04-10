@@ -45,7 +45,7 @@ class TestAstraSIRTGPU:
     def test_astra_sirt_error_gpu(self):
         stack = ds.get_needle_data(True)
         [ntilts, ny, nx] = stack.data.shape
-        angles = stack.metadata.Tomography.tilts
+        angles = stack.axes_manager[0].axis
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_sirt_error(sino, angles, iterations=2,
                                                   constrain=True, thresh=0, cuda=True)

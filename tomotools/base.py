@@ -985,7 +985,7 @@ class TomoStack(CommonStack):
                 cuda = False
                 logger.info("CUDA not detected with Astra")
         sinogram = self.isig[nslice, :].data
-        angles = self.metadata.Tomography.tilts
+        angles = self.axes_manager[0].axis
         rec_stack, error = recon.astra_sirt_error(
             sinogram,
             angles,

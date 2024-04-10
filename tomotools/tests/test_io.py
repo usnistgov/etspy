@@ -41,6 +41,7 @@ class TestLoadMRC:
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
         assert stack.metadata.Tomography.tilts[0] == -76
+        assert stack.axes_manager[0].axis[0] == -76
         assert type(stack) is TomoStack
         assert stack.axes_manager[1].scale == stack_orig.axes_manager[1].scale
         assert stack.axes_manager[1].units == stack_orig.axes_manager[1].units
@@ -57,6 +58,7 @@ class TestLoadMRC:
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
         assert stack.metadata.Tomography.tilts[0] == -76
+        assert stack.axes_manager[0].axis[0] == -76
         assert type(stack) is TomoStack
         assert stack.axes_manager[1].scale == stack_orig.axes_manager[1].scale
         assert stack.axes_manager[1].units == stack_orig.axes_manager[1].units
@@ -93,6 +95,7 @@ class TestHspy:
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
         assert stack.metadata.Tomography.tilts[0] == -10
+        assert stack.axes_manager[0].axis[0] == -10
         assert type(stack) is TomoStack
 
     def test_load_hspy_hdf5(self):
@@ -107,6 +110,7 @@ class TestHspy:
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] == -76
+        assert stack.axes_manager[0].axis[0] == -76
         assert type(stack) is TomoStack
         assert stack.axes_manager[1].scale == stack_orig.axes_manager[1].scale
         assert stack.axes_manager[1].units == stack_orig.axes_manager[1].units
@@ -122,6 +126,7 @@ class TestNumpy:
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] == 0
+        assert stack.axes_manager[0].axis[0] == 0
         assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
         assert type(stack) is TomoStack
 
@@ -142,6 +147,7 @@ class TestNumpy:
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] == -50
         assert stack.metadata.Tomography.tilts.shape[0] == stack.data.shape[0]
+        assert stack.axes_manager[0].axis[0] == -50
         assert type(stack) is TomoStack
 
 
@@ -155,6 +161,7 @@ class TestSignal:
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] == 0
+        assert stack.axes_manager[0].axis[0] == 0
         assert type(stack) is TomoStack
         assert stack.axes_manager[1].scale == signal.axes_manager[1].scale
         assert stack.axes_manager[1].units == signal.axes_manager[1].units
@@ -179,6 +186,7 @@ class TestDM:
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] < 0
         assert type(stack) is TomoStack
+        assert stack.axes_manager[0].axis[0] < 0
         assert stack.axes_manager[1].scale == signal.axes_manager[1].scale
         assert stack.axes_manager[1].units == signal.axes_manager[1].units
         assert stack.axes_manager[2].scale == signal.axes_manager[2].scale
@@ -196,6 +204,7 @@ class TestDM:
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
         assert stack.metadata.Tomography.tilts[0] < 0
+        assert stack.axes_manager[0].axis[0] < 0
         assert type(stack) is TomoStack
         assert stack.axes_manager[1].scale == signal.axes_manager[1].scale
         assert stack.axes_manager[1].units == signal.axes_manager[1].units
@@ -214,18 +223,20 @@ class TestSerialEM:
         assert stack.axes_manager.navigation_shape == (2, 3)
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
+        assert stack.axes_manager[0].axis[0] < 0
         assert stack.metadata.Tomography.tilts[0] < 0
+        assert stack.axes_manager[0].axis[0] < 0
         assert type(stack) is TomoStack
 
     def test_load_serialem(self):
         dirname = os.path.join(tomotools_path, "tests",
                                "test_data", "SerialEM_Multiframe_Test")
-        # file = glob.glob(dirname + "/*.mrc")[0]
         stack = tomotools.load(dirname + "/test_000.mrc")
         assert stack.axes_manager.signal_shape == (1024, 1024)
         assert stack.axes_manager.navigation_shape == (2,)
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
+        assert stack.axes_manger[0].axis[0] == 0.0
         assert stack.metadata.Tomography.tilts[0] == 0.0
         assert type(stack) is TomoStack
 

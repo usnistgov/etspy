@@ -16,7 +16,6 @@ class TestReconstruction:
 
     def test_recon_single_slice(self):
         stack = ds.get_needle_data(True)
-        # tilts = stack.metadata.Tomography.tilts
         slices = stack.isig[120, :]
         rec = recon.run(slices, 'FBP', cuda=False)
         assert type(stack) is tomotools.base.TomoStack
@@ -80,7 +79,7 @@ class TestAstraSIRTError:
     def test_astra_sirt_error_cpu(self):
         stack = ds.get_needle_data(True)
         [ntilts, ny, nx] = stack.data.shape
-        angles = stack.metadata.Tomography.tilts
+        angles = stack.axes_manager[0].axis[0]
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_sirt_error(sino, angles, iterations=2,
                                                   constrain=True, thresh=0, cuda=False)
