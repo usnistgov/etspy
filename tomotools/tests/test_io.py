@@ -236,7 +236,7 @@ class TestSerialEM:
         assert stack.axes_manager.navigation_shape == (2,)
         assert stack.metadata.has_item('Tomography')
         assert type(stack.metadata.Tomography.tilts) is np.ndarray
-        assert stack.axes_manger[0].axis[0] == 0.0
+        assert stack.axes_manager[0].axis[0] == 0.0
         assert stack.metadata.Tomography.tilts[0] == 0.0
         assert type(stack) is TomoStack
 
