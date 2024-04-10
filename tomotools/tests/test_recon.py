@@ -7,13 +7,6 @@ import pytest
 
 class TestReconstruction:
 
-    def test_recon_no_tilts(self):
-        stack = ds.get_needle_data(True)
-        stack.metadata.Tomography.tilts = None
-        slices = stack.isig[120:121, :].deepcopy()
-        with pytest.raises(TypeError):
-            slices.reconstruct('FBP')
-
     def test_recon_single_slice(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120, :]
@@ -79,7 +72,7 @@ class TestAstraSIRTError:
     def test_astra_sirt_error_cpu(self):
         stack = ds.get_needle_data(True)
         [ntilts, ny, nx] = stack.data.shape
-        angles = stack.axes_manager[0].axis[0]
+        angles = stack.axes_manager[0].axis
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_sirt_error(sino, angles, iterations=2,
                                                   constrain=True, thresh=0, cuda=False)

@@ -213,7 +213,7 @@ def astra_sirt_error(
         3D array of the form [y, z, x] containing the reconstructed object.
 
     """
-    thetas = angles * np.pi / 180
+    thetas = np.deg2rad(angles)
 
     nangles, ny = sinogram.shape
 
