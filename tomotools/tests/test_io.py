@@ -220,8 +220,8 @@ class TestSerialEM:
     def test_load_serialem(self):
         dirname = os.path.join(tomotools_path, "tests",
                                "test_data", "SerialEM_Multiframe_Test")
-        file = glob.glob(dirname + "/*.mrc")[0]
-        stack = tomotools.load(file)
+        # file = glob.glob(dirname + "/*.mrc")[0]
+        stack = tomotools.load(dirname + "/test_000.mrc")
         assert stack.axes_manager.signal_shape == (1024, 1024)
         assert stack.axes_manager.navigation_shape == (2,)
         assert stack.metadata.has_item('Tomography')
