@@ -9,7 +9,7 @@ pytest-doctest:
     - python setup.py install
     - pytest --doctest-modules tomotools/ --ignore=tomotools/tomotools/tests/test_datasets.py
 
-pytest-doctest:
+pytest-unit-tests:
     stage: test
     script:
     - pytest tomotools/tomotools/tests/  --ignore=tomotools/tomotools/tests/test_datasets.py
