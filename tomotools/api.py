@@ -10,5 +10,7 @@ from tomotools import io
 from tomotools import utils
 from tomotools import align
 
+from . import __version__
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
