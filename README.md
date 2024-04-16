@@ -11,17 +11,13 @@ Installation
 
   Anaconda (Preferred):
   ---------------------
-  * The required packages can be installed into an existing Anaconda environmnent.
-    Install major dependencies Astra Toolbox and HyperSpy. Optional but highly recommended,
-    ipympl should also be installed to enable interactive plotting in Jupyter Lab.
+  * Install major dependencies Astra Toolbox and HyperSpy.
     
-    # NOTE: `astra-toolbox` must be installed first due to a dependency conflict.
     ```bash
     conda create -n tomo
     conda activate tomo
     conda install -c astra-toolbox astra-toolbox 
-    conda install -c conda-forge hyperspy 
-    conda update --all
+    conda install -c conda-forge hyperspy-base hyperspy-gui-ipywidgets 
     ```
 
   * Install the TomoTools package from GitHub:
@@ -29,10 +25,15 @@ Installation
     pip install git+https://github.com/usnistgov/tomotools.git
     ```
 
-  # OPTIONAL: install `ipympl` and to enable interactive plotting in Jupyter
-  ```bash
-  conda install -c conda-forge ipympl
-  ```
+  Optional (higly recommended):
+  ---------------------
+  * Install `ipympl` and `ipykernel` to use `tomotools` with Jupyter.
+    * `ipympl` enables interactive plotting in Jupyter Lab or Notebook.  
+    * `ipykernel` allows use of the the tomoools kernel with Jupyter installed in a different environment. 
+
+    ```bash
+    conda install ipympl ipykernel
+    ```
   
 Removal
 -------
