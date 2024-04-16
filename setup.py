@@ -4,9 +4,9 @@ from setuptools import setup
 
 setup(
     name='tomotools',
-    version='0.6.0',
+    version='0.7.1',
     author='Andrew A. Herzing',
-    description='Suite of data processing algorithms for processing electron '
+    description='Suite of tools for processing and reconstruction of electron '
             'tomography data',
     packages=['tomotools'],
     install_requires=[
