@@ -651,8 +651,6 @@ class TomoStack(CommonStack):
         """
         Reconstruct a TomoStack series using one of the available methods.
 
-        astraWBP, astraSIRT, astraSIRT_GPU
-
         Args
         ----------
         method : string

@@ -52,7 +52,11 @@ def run_dart(sino, iters, dart_iters, p,
              alg_id, proj_id, mask_id, rec_id, sino_id,
              thresholds, gray_levels):
     """
-    Run FBP or SIRT reconstruction algorithm.
+    Run DART reconstruction algorithm.
+
+    Adapted from pseudo-code published in:
+    K. J. Batenburg and J. Sijbers, "DART: A Practical Reconstruction
+    Algorithm for Discrete Tomography," doi: 10.1109/TIP.2011.2131661.
 
     Args
     ----------
