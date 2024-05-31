@@ -70,7 +70,7 @@ class TestReconRun:
     def test_run_sirt_no_cuda(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
-        rec = recon.run(slices, 'SIRT', iterations=2, cuda=False)
+        rec = recon.run(slices, 'SIRT', niterations=2, cuda=False)
         assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert rec.data.shape[0] == slices.data.shape[2]
         assert type(rec) is numpy.ndarray

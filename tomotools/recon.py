@@ -72,7 +72,7 @@ def run(
     method : string
         Reconstruction algorithm to use.  Must be either 'FBP' (default) or
         'SIRT'
-    iterations : integer (only required for SIRT)
+    niterations : integer (only required for SIRT)
         Number of iterations for the SIRT reconstruction (for SIRT methods
         only)
     constrain : boolean
