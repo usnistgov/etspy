@@ -57,6 +57,24 @@ class TestReconstruction:
         assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
+    def test_recon_dart_cpu(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        gray_levels = [0., slices.data.max() / 2, slices.data.max()]
+        rec = slices.reconstruct('DART', iterations=2, cuda=False, gray_levels=gray_levels, dart_iterations=1, ncores=1)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
+        assert rec.data.shape[2] == slices.data.shape[1]
+
+    def test_recon_dart_cpu_multicore(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:122, :].deepcopy()
+        gray_levels = [0., slices.data.max() / 2, slices.data.max()]
+        rec = slices.reconstruct('DART', iterations=2, cuda=False, gray_levels=gray_levels, dart_iterations=1, ncores=1)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
+        assert rec.data.shape[2] == slices.data.shape[1]
+
 
 class TestReconRun:
     def test_run_fbp_no_cuda(self):
@@ -71,6 +89,15 @@ class TestReconRun:
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
         rec = recon.run(slices, 'SIRT', niterations=2, cuda=False)
+        assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
+        assert rec.data.shape[0] == slices.data.shape[2]
+        assert type(rec) is numpy.ndarray
+
+    def test_run_dart_no_cuda(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        gray_levels = [0., slices.data.max() / 2, slices.data.max()]
+        rec = recon.run(slices, 'DART', niterations=2, cuda=False, gray_levels=gray_levels, dart_iterations=1)
         assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert rec.data.shape[0] == slices.data.shape[2]
         assert type(rec) is numpy.ndarray

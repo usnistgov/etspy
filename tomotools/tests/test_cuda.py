@@ -39,6 +39,21 @@ class TestReconCUDA:
         assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
+    def test_recon_dart_gpu(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        gray_levels = [0., slices.data.max() / 2, slices.data.max()]
+        rec = slices.reconstruct('DART',
+                                 constrain=True,
+                                 iterations=2,
+                                 thresh=0,
+                                 cuda=True,
+                                 gray_levels=gray_levels,
+                                 dart_iterations=1)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
+        assert rec.data.shape[2] == slices.data.shape[1]
+
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestAstraSIRTGPU:
@@ -67,6 +82,15 @@ class TestReconRunCUDA:
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
         rec = recon.run(slices, 'SIRT', niterations=2, cuda=True)
+        assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
+        assert rec.data.shape[0] == slices.data.shape[2]
+        assert type(rec) is numpy.ndarray
+
+    def test_run_dart_cuda(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        gray_levels = [0., slices.data.max() / 2, slices.data.max()]
+        rec = recon.run(slices, 'DART', niterations=2, cuda=False, gray_levels=gray_levels, dart_iterations=1)
         assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert rec.data.shape[0] == slices.data.shape[2]
         assert type(rec) is numpy.ndarray
