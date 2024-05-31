@@ -12,6 +12,8 @@ import astra
 import logging
 import multiprocessing as mp
 import tqdm
+import copy
+from scipy.ndimage import gaussian_filter, convolve
 
 ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
@@ -56,7 +58,9 @@ def run(
     thickness=None,
     ncores=None,
     filter="shepp-logan",
-    **kwargs
+    gray_levels=None,
+    dart_iterations=None,
+    p=0.99,
 ):
     """
     Perform reconstruction of input tilt series.
@@ -111,30 +115,95 @@ def run(
         if method.lower() == "fbp":
             logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
             cfg = astra.astra_dict("FBP_CUDA")
+            cfg["ProjectorId"] = proj_id
             cfg["ProjectionDataId"] = sino_id
             cfg["ReconstructionDataId"] = rec_id
             cfg["option"] = {}
             cfg["option"]["FilterType"] = filter.lower()
             niterations = 1
+
+            alg = astra.algorithm.create(cfg)
+
+            for i in tqdm.tqdm(range(0, nx)):
+                astra.data2d.store(sino_id, stack.data[:, :, i])
+                astra.algorithm.run(alg, niterations)
+                rec[i, :, :] = astra.data2d.get(rec_id)
         elif method.lower() == "sirt":
             logger.info(
                 "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)"
                 % niterations
             )
             cfg = astra.astra_dict("SIRT_CUDA")
+            cfg["ProjectorId"] = proj_id
             cfg["ProjectionDataId"] = sino_id
             cfg["ReconstructionDataId"] = rec_id
             if constrain:
                 cfg["option"] = {}
                 cfg["option"]["MinConstraint"] = thresh
+            alg = astra.algorithm.create(cfg)
 
-        alg = astra.algorithm.create(cfg)
+            for i in tqdm.tqdm(range(0, nx)):
+                astra.data2d.store(sino_id, stack.data[:, :, i])
+                astra.algorithm.run(alg, niterations)
+                rec[i, :, :] = astra.data2d.get(rec_id)
+        elif method.lower() == "dart":
+            thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
+            mask = np.ones([thickness, ny])
+            mask_id = astra.data2d.create('-vol', vol_geom, mask)
+            cfg = astra.astra_dict('SART_CUDA')
+            cfg["ProjectorId"] = proj_id
+            cfg['ProjectionDataId'] = sino_id
+            cfg['ReconstructionDataId'] = rec_id
+            cfg['option'] = {}
+            cfg['option']['MinConstraint'] = 0
+            cfg['option']['MaxConstraint'] = 255
+            cfg['option']['ReconstructionMaskId'] = mask_id
 
-        for i in tqdm.tqdm(range(0, nx)):
-            astra.data2d.store(sino_id, stack.data[:, :, i])
-            astra.algorithm.run(alg, niterations)
-            rec[i, :, :] = astra.data2d.get(rec_id)
+            alg = astra.algorithm.create(cfg)
 
+            for i in tqdm.tqdm(range(0, nx)):
+                sinogram = stack.data[:, :, i]
+                astra.data2d.store(sino_id, sinogram)
+                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
+                astra.data2d.store(mask_id, np.ones([thickness, ny]))
+                astra.algorithm.run(alg, niterations)
+                curr_rec = astra.data2d.get(rec_id)
+                dart_rec = copy.deepcopy(curr_rec)
+                for j in range(dart_iterations):
+                    segmented = dart_segment(dart_rec, thresholds, gray_levels)
+                    boundary = get_dart_boundaries(segmented)
+
+                    # Define free and fixed pixels
+                    free = np.random.rand(*dart_rec.shape)
+                    free = free < 1 - p
+                    free = np.logical_or(boundary, free)
+                    fixed = ~free
+                    free_idx = np.where(free)
+                    fixed_idx = np.where(fixed)
+
+                    # Set fixed pixels to segmented values
+                    dart_rec[fixed_idx[0], fixed_idx[1]] = segmented[fixed_idx[0], fixed_idx[1]]
+
+                    # Calculate sinogram of free pixels
+                    fixed_rec = copy.deepcopy(dart_rec)
+                    fixed_rec[free_idx[0], free_idx[1]] = 0
+                    _, fixed_sino = astra.creators.create_sino(fixed_rec, proj_id)
+                    free_sino = sinogram - fixed_sino
+
+                    # Run SART reconstruction on free sinogram with free pixel mask
+                    astra.data2d.store(rec_id, dart_rec)
+                    astra.data2d.store(mask_id, free)
+                    astra.data2d.store(sino_id, free_sino)
+                    astra.algorithm.run(alg, niterations)
+                    dart_rec = astra.data2d.get(rec_id)
+
+                    # Smooth reconstruction
+                    if j < dart_iterations - 1:
+                        smooth = gaussian_filter(dart_rec, sigma=1)
+                        curr_rec[free_idx[0], free_idx[1]] = smooth[free_idx[0], free_idx[1]]
+                    else:
+                        curr_rec = dart_rec
+                rec[i, :, :] = curr_rec
     else:
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
@@ -151,7 +220,7 @@ def run(
             cfg["option"]["FilterType"] = filter.lower()
             niterations = 1
         elif method.lower() == "sirt":
-            logger.info("Reconstructing with CPU-based FBP algorithm")
+            logger.info("Reconstructing with CPU-based SIRT algorithm")
             cfg = astra.astra_dict("SIRT")
             cfg["ProjectorId"] = proj_id
             cfg["ProjectionDataId"] = sino_id
@@ -159,27 +228,113 @@ def run(
             if constrain:
                 cfg["option"] = {}
                 cfg["option"]["MinConstraint"] = thresh
+        elif method.lower() == "dart":
+            thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
+            mask = np.ones([thickness, ny])
+            mask_id = astra.data2d.create('-vol', vol_geom, mask)
+            cfg = astra.astra_dict('SART')
+            cfg["ProjectorId"] = proj_id
+            cfg['ProjectionDataId'] = sino_id
+            cfg['ReconstructionDataId'] = rec_id
+            cfg['option'] = {}
+            cfg['option']['MinConstraint'] = 0
+            cfg['option']['MaxConstraint'] = 255
+            cfg['option']['ReconstructionMaskId'] = mask_id
 
         alg = astra.algorithm.create(cfg)
 
-        if ncores == 1:
+        if method.lower() in ['fbp', 'sirt', ]:
+            if ncores == 1:
+                for i in tqdm.tqdm(range(0, nx)):
+                    rec[i] = run_alg(stack.data[:, :, i], niterations, sino_id, alg, rec_id)
+            else:
+                logger.info("Using %s CPU cores to reconstruct %s slices" % (ncores, nx))
+                with mp.Pool(ncores) as pool:
+                    for i, result in enumerate(
+                        pool.starmap(
+                            run_alg,
+                            [
+                                (stack.data[:, :, i], niterations, sino_id, alg, rec_id)
+                                for i in range(0, nx)
+                            ],
+                        )
+                    ):
+                        rec[i] = result
+        elif method.lower() == 'dart':
+            thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
+            mask = np.ones([thickness, ny])
+            mask_id = astra.data2d.create('-vol', vol_geom, mask)
+            cfg = astra.astra_dict('SART')
+            cfg["ProjectorId"] = proj_id
+            cfg['ProjectionDataId'] = sino_id
+            cfg['ReconstructionDataId'] = rec_id
+            cfg['option'] = {}
+            cfg['option']['MinConstraint'] = 0
+            cfg['option']['MaxConstraint'] = 255
+            cfg['option']['ReconstructionMaskId'] = mask_id
+
+            alg = astra.algorithm.create(cfg)
+
             for i in tqdm.tqdm(range(0, nx)):
-                rec[i] = run_alg(stack.data[:, :, i], niterations, sino_id, alg, rec_id)
-        else:
-            logger.info("Using %s CPU cores to reconstruct %s slices" % (ncores, nx))
-            with mp.Pool(ncores) as pool:
-                for i, result in enumerate(
-                    pool.starmap(
-                        run_alg,
-                        [
-                            (stack.data[:, :, i], niterations, sino_id, alg, rec_id)
-                            for i in range(0, nx)
-                        ],
-                    )
-                ):
-                    rec[i] = result
+                sinogram = stack.data[:, :, i]
+                astra.data2d.store(sino_id, sinogram)
+                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
+                astra.data2d.store(mask_id, np.ones([thickness, ny]))
+                astra.algorithm.run(alg, niterations)
+                curr_rec = astra.data2d.get(rec_id)
+                dart_rec = copy.deepcopy(curr_rec)
+                for j in range(dart_iterations):
+                    segmented = dart_segment(dart_rec, thresholds, gray_levels)
+                    boundary = get_dart_boundaries(segmented)
+
+                    # Define free and fixed pixels
+                    free = np.random.rand(*dart_rec.shape)
+                    free = free < 1 - p
+                    free = np.logical_or(boundary, free)
+                    fixed = ~free
+                    free_idx = np.where(free)
+                    fixed_idx = np.where(fixed)
+
+                    # Set fixed pixels to segmented values
+                    dart_rec[fixed_idx[0], fixed_idx[1]] = segmented[fixed_idx[0], fixed_idx[1]]
+
+                    # Calculate sinogram of free pixels
+                    fixed_rec = copy.deepcopy(dart_rec)
+                    fixed_rec[free_idx[0], free_idx[1]] = 0
+                    _, fixed_sino = astra.creators.create_sino(fixed_rec, proj_id)
+                    free_sino = sinogram - fixed_sino
+
+                    # Run SART reconstruction on free sinogram with free pixel mask
+                    astra.data2d.store(rec_id, dart_rec)
+                    astra.data2d.store(mask_id, free)
+                    astra.data2d.store(sino_id, free_sino)
+                    astra.algorithm.run(alg, niterations)
+                    dart_rec = astra.data2d.get(rec_id)
+
+                    # Smooth reconstruction
+                    if j < dart_iterations - 1:
+                        smooth = gaussian_filter(dart_rec, sigma=1)
+                        curr_rec[free_idx[0], free_idx[1]] = smooth[free_idx[0], free_idx[1]]
+                    else:
+                        curr_rec = dart_rec
+                rec[i, :, :] = curr_rec
     astra.clear()
     return rec
+
+
+def dart_segment(rec, thresholds, gray_vals):
+    bins = np.digitize(rec, bins=thresholds, right=False)
+    segmented = np.array(gray_vals)[bins]
+    return segmented
+
+
+def get_dart_boundaries(segmented):
+    kernel = np.array([[1, 1, 1],
+                       [1, -8, 1],
+                       [1, 1, 1]])
+    edges = convolve(segmented.astype(np.int32), kernel, mode='constant', cval=0)
+    boundaries = edges != 0
+    return boundaries
 
 
 def astra_sirt_error(

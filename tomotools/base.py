@@ -646,8 +646,7 @@ class TomoStack(CommonStack):
         thresh=0,
         cuda=None,
         thickness=None,
-        ncores=None,
-        sino_filter="shepp-logan",
+        **kwargs
     ):
         """
         Reconstruct a TomoStack series using one of the available methods.
@@ -657,8 +656,7 @@ class TomoStack(CommonStack):
         Args
         ----------
         method : string
-            Reconstruction algorithm to use.  Must be either 'FBP' (default)
-            or 'SIRT'
+            Reconstruction algorithm to use.  Must be'FBP' (default), 'SIRT', or 'DART'
         iterations : integer
             Number of iterations for the SIRT reconstruction (for astraSIRT
             and astraSIRT_GPU, methods only)
@@ -671,6 +669,10 @@ class TomoStack(CommonStack):
             If True, use the CUDA-accelerated reconstruction algorithm
         thickness : integer
             Size of the output volume (in pixels) in the projection direction.
+        **kwargs: Additional keyword arguments. Possible keys include:
+        - ncores (int): Number of cores to use for multithreaded reconstructions.
+        - sino_filter (str): Filter to apply for filtered backprojection.  Default is shepp-logan.
+        - dart_iterations (int): Number of iterations to employ for DART reconstruction.
 
         Returns
         ----------
@@ -705,6 +707,7 @@ class TomoStack(CommonStack):
         if method.lower() not in [
             "fbp",
             "sirt",
+            'dart',
         ]:
             raise ValueError("Unknown reconstruction algorithm: %s" % method)
         if cuda is None:
@@ -715,6 +718,20 @@ class TomoStack(CommonStack):
                 cuda = False
                 logger.info("CUDA not detected with Astra")
 
+        ncores = kwargs.get('ncores', None)
+        sino_filter = kwargs.get('sino_filter', 'shepp-logan')
+        if method.lower() == 'dart':
+            dart_iterations = kwargs.get('dart_iterations', 5)
+            p = kwargs.get('p', 0.99)
+            gray_levels = kwargs.get('gray_levels', None)
+            if not isinstance(gray_levels, (np.ndarray, list)):
+                raise ValueError("Unknown type (%s) for gray_levels" % type(gray_levels))
+            elif gray_levels is None:
+                raise ValueError("gray_levels must be provided for DART")
+        else:
+            dart_iterations = None
+            p = None
+            gray_levels = None
         rec = recon.run(
             self,
             method,
@@ -725,6 +742,9 @@ class TomoStack(CommonStack):
             thickness,
             ncores,
             sino_filter,
+            gray_levels,
+            dart_iterations,
+            p
         )
 
         axes_dict = self.axes_manager.as_dictionary()
