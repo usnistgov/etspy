@@ -701,6 +701,13 @@ class TomoStack(CommonStack):
         >>> thresh = 0
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh, cuda=False)
 
+        Discreate algebraice reconstruction technique (DART) reconstruction
+        >>> import tomotools.datasets as ds
+        >>> stack = ds.get_needle_data(True)
+        >>> slices = stack.isig[:, 120:121].deepcopy()
+        >>> gray_levels = [0., slices.data.max()/2, slices.data.max()]
+        >>> rec = slices.reconstruct('DART',iterations=5, cuda=False, gray_levels=gray_levels, p=0.99, dart_iterations=5)
+
         """
         if method.lower() not in [
             "fbp",
