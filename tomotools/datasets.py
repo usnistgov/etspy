@@ -36,7 +36,7 @@ def get_needle_data(aligned=False):
     return needle
 
 
-def get_catalyst_tilt_series(
+def get_catalyst_data(
     misalign=False,
     minshift=-5,
     maxshift=5,
