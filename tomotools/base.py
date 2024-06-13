@@ -326,6 +326,33 @@ class TomoStack(CommonStack):
         CommonStack class
     """
 
+    def remove_projections(self, projections=None):
+        """
+        Remove projections from tilt series.
+
+        Args
+        ----------
+        projections : list
+            List of projection indices in integers to remove
+
+        Returns
+        ----------
+        s_new : TomoStack
+            Copy of self with indicated projections removed
+
+        """
+        if projections is None:
+            raise ValueError('No projections provided')
+        nprojs = len(projections)
+        s_new = self.deepcopy()
+        s_new.axes_manager[0].size -= nprojs
+        mask = np.ones(self.data.shape[0], dtype=bool)
+        mask[projections] = False
+        s_new.data = self.data[mask]
+        s_new.metadata.Tomography.shifts = s_new.metadata.Tomography.shifts[mask]
+        s_new.metadata.Tomography.tilts = s_new.metadata.Tomography.tilts[mask]
+        return s_new
+
     def test_correlation(self, images=None):
         """
         Test output of cross-correlation prior to alignment.
