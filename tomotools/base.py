@@ -394,6 +394,7 @@ class TomoStack(CommonStack):
         ax3.set_title("Cross-correlation")
         return fig
 
+    # TODO: allow a list of signals for 'other'
     def align_other(self, other):
         """
         Apply the alignment calculated for one dataset to another.
