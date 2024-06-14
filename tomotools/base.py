@@ -661,7 +661,7 @@ class TomoStack(CommonStack):
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
-                "Must be 'CoM', 'MaxImage', or 'Minimize'" % method
+                "Must be 'CoM' or 'MaxImage'" % method
             )
         return out
 
