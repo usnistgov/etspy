@@ -613,9 +613,6 @@ class TomoStack(CommonStack):
         method : string
             Algorithm to use for registration alignment. Must be either 'CoM' or
             'MaxImage'.
-        limit : integer
-            Position in tilt series to use as starting point for the
-            alignment. If None, the central projection is used.
         delta : integer
             Position i
         limit : integer or float
