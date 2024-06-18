@@ -983,7 +983,7 @@ class TomoStack(CommonStack):
 
         return output
 
-    def recon_error(self, algorithm='SIRT', nslice=None, iterations=50, constrain=True, cuda=None, thresh=0):
+    def recon_error(self, nslice=None, algorithm='SIRT', iterations=50, constrain=True, cuda=None, thresh=0):
         """
         Determine the optimum number of iterations for reconstruction.
 

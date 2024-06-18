@@ -139,7 +139,7 @@ class TestAstraError:
         [ntilts, ny, nx] = stack.data.shape
         angles = stack.metadata.Tomography.tilts
         sino = stack.isig[120, :].data
-        rec_stack, error = recon.astra_error(sino, angles, algorithm='SART', iterations=2,
+        rec_stack, error = recon.astra_error(sino, angles, method='SART', iterations=2,
                                              constrain=True, thresh=0, cuda=False)
         assert type(error) is numpy.ndarray
         assert rec_stack.shape == (2, ny, ny)
