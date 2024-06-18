@@ -685,7 +685,7 @@ def tilt_com(stack, slices=None, nslices=None):
     return final
 
 
-def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False):
+def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=False):
     """
     Perform automated determination of the tilt axis of a TomoStack.
 
@@ -703,6 +703,9 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False):
     plot_results : boolean
         If True, plot the maximum image along with the lines determined
         by Hough analysis
+    also_shift : boolean
+        If True, also calculate and apply the global shift perpendicular to the tilt
+        by minimizing the sum of the reconstruction
 
     Returns
     ----------
@@ -737,9 +740,22 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False):
 
         plt.tight_layout()
 
-    rotated = stack.trans_stack(angle=-rotation_angle)
-    rotated.metadata.Tomography.tiltaxis = -rotation_angle
-    return rotated
+    ali = stack.trans_stack(angle=-rotation_angle)
+    ali.metadata.Tomography.tiltaxis = -rotation_angle
+
+    if also_shift:
+        idx = ali.data.shape[2] // 2
+        shifts = np.arange(-20, 20, 1)
+        nshifts = shifts.shape[0]
+        shifted = ali.isig[0:nshifts, :].deepcopy()
+        for i in range(0, nshifts):
+            shifted.data[:, :, i] = np.roll(ali.isig[idx, :].data, int(shifts[i]))
+        shifted_rec = shifted.reconstruct('SIRT', 100, constrain=True)
+        tilt_shift = shifts[shifted_rec.sum((1, 2)).data.argmin()]
+        print("Calculated tilt shift: %s pixels" % tilt_shift)
+        ali = ali.trans_stack(yshift=-tilt_shift)
+        ali.metadata.Tomography.yshift = -tilt_shift
+    return ali
 
 
 def align_to_other(stack, other):
