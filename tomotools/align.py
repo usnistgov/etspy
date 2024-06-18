@@ -680,8 +680,6 @@ def tilt_com(stack, slices=None, nslices=None):
     logger.info("Calculated tilt-axis shift %.2f" % tilt_shift)
     logger.info("Calculated tilt-axis rotation %.2f" % tilt_rotation)
 
-    final.metadata.Tomography.tiltaxis = tilt_rotation
-    final.metadata.Tomography.xshift = tilt_shift
     return final
 
 
