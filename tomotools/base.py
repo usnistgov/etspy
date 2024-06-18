@@ -326,12 +326,12 @@ class TomoStack(CommonStack):
         CommonStack class
     """
 
-    def plot_sinos(self):
+    def plot_sinos(self, *args, **kwargs):
         """
-        Plot the TomoStack in sinogram orientation
+        Plot the TomoStack in sinogram orientation.
 
         """
-        self.swap_axes(1, 0).swap_axes(1, 2).plot()
+        self.swap_axes(1, 0).swap_axes(1, 2).plot(navigator='slider', *args, **kwargs)
         return
 
     def remove_projections(self, projections=None):
