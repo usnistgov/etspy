@@ -326,6 +326,14 @@ class TomoStack(CommonStack):
         CommonStack class
     """
 
+    def plot_sinos(self):
+        """
+        Plot the TomoStack in sinogram orientation
+
+        """
+        self.swap_axes(1, 0).swap_axes(1, 2).plot()
+        return
+
     def remove_projections(self, projections=None):
         """
         Remove projections from tilt series.
