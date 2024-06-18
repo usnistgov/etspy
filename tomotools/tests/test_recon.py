@@ -57,6 +57,18 @@ class TestReconstruction:
         assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
+    def test_recon_sart_cpu(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        rec = slices.reconstruct('SART',
+                                 constrain=True,
+                                 iterations=2,
+                                 thresh=0,
+                                 cuda=False)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
+        assert rec.data.shape[2] == slices.data.shape[1]
+
     def test_recon_dart_cpu(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
@@ -93,6 +105,14 @@ class TestReconRun:
         assert rec.data.shape[0] == slices.data.shape[2]
         assert type(rec) is numpy.ndarray
 
+    def test_run_sart_no_cuda(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        rec = recon.run(slices, 'SART', niterations=2, cuda=False)
+        assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
+        assert rec.data.shape[0] == slices.data.shape[2]
+        assert type(rec) is numpy.ndarray
+
     def test_run_dart_no_cuda(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
@@ -103,13 +123,23 @@ class TestReconRun:
         assert type(rec) is numpy.ndarray
 
 
-class TestAstraSIRTError:
+class TestAstraError:
     def test_astra_sirt_error_cpu(self):
         stack = ds.get_needle_data(True)
         [ntilts, ny, nx] = stack.data.shape
         angles = stack.metadata.Tomography.tilts
         sino = stack.isig[120, :].data
-        rec_stack, error = recon.astra_sirt_error(sino, angles, iterations=2,
-                                                  constrain=True, thresh=0, cuda=False)
+        rec_stack, error = recon.astra_error(sino, angles, iterations=2,
+                                             constrain=True, thresh=0, cuda=False)
+        assert type(error) is numpy.ndarray
+        assert rec_stack.shape == (2, ny, ny)
+
+    def test_astra_sart_error_cpu(self):
+        stack = ds.get_needle_data(True)
+        [ntilts, ny, nx] = stack.data.shape
+        angles = stack.metadata.Tomography.tilts
+        sino = stack.isig[120, :].data
+        rec_stack, error = recon.astra_error(sino, angles, algorithm='SART', iterations=2,
+                                             constrain=True, thresh=0, cuda=False)
         assert type(error) is numpy.ndarray
         assert rec_stack.shape == (2, ny, ny)
