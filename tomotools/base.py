@@ -611,10 +611,9 @@ class TomoStack(CommonStack):
         ideal rotation.
 
         MaxImage: Perform automated determination of the tilt axis of a
-        TomoStack by measuring the rotation of the projected maximum image.
-        Maximum image is rotated positively and negatively, filtered using a
-        Hamming window, and the rotation angle is determined by iterative
-        histogram analysis
+        TomoStack by analyzing features in the projected maximum image.  A combination
+        of edge detection and Hough transform analysis is used to determine the global
+        rotation of the stack.
 
         Args
         ----------
