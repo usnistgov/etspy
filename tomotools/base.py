@@ -983,7 +983,7 @@ class TomoStack(CommonStack):
 
         return output
 
-    def recon_error(self, nslice=None, iterations=50, constrain=True, cuda=None, thresh=0):
+    def recon_error(self, algorithm='SIRT', nslice=None, iterations=50, constrain=True, cuda=None, thresh=0):
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -994,7 +994,7 @@ class TomoStack(CommonStack):
         Args
         ----------
         algorithm : str
-            Reconstruction algorithm use.
+            Reconstruction algorithm use.  Must be 'SIRT' (default) or 'SART'.
         nslice : int
             Location at which to perform the evaluation.
         constrain : boolean
@@ -1037,16 +1037,17 @@ class TomoStack(CommonStack):
                 logger.info("CUDA not detected with Astra")
         sinogram = self.isig[nslice, :].data
         angles = self.metadata.Tomography.tilts
-        rec_stack, error = recon.astra_sirt_error(
+        rec_stack, error = recon.astra_error(
             sinogram,
             angles,
+            method=algorithm,
             iterations=iterations,
             constrain=constrain,
             thresh=thresh,
             cuda=cuda,
         )
         rec_stack = Signal2D(rec_stack)
-        rec_stack.axes_manager[0].name = "SIRT iteration"
+        rec_stack.axes_manager[0].name = algorithm.upper() + " iteration"
         rec_stack.axes_manager[0].scale = 1
         rec_stack.axes_manager[1].name = self.axes_manager[2].name
         rec_stack.axes_manager[1].scale = self.axes_manager[2].scale
@@ -1057,7 +1058,7 @@ class TomoStack(CommonStack):
         rec_stack.navigator = "slider"
 
         error = Signal1D(error)
-        error.axes_manager[0].name = "SIRT Iteration"
+        error.axes_manager[0].name = algorithm.upper() + " Iteration"
         error.metadata.Signal.quantity = "Sum of Squared Difference"
         return rec_stack, error
 

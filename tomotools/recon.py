@@ -362,7 +362,7 @@ def get_dart_boundaries(segmented):
     return boundaries
 
 
-def astra_sirt_error(sinogram, angles, iterations=50, constrain=True, thresh=0, cuda=False):
+def astra_error(sinogram, angles, method='sirt', iterations=50, constrain=True, thresh=0, cuda=False):
     """
     Perform SIRT reconstruction using the Astra toolbox algorithms.
 
@@ -373,6 +373,8 @@ def astra_sirt_error(sinogram, angles, iterations=50, constrain=True, thresh=0, 
        y is the tilt axis and x is the projection axis.
     angles : list or NumPy array
         Projection angles in degrees.
+    method : str
+        Reconstruction algorithm use.  Must be 'SIRT' or 'SART'.
     iterations : integer
         Number of iterations for the SIRT reconstruction.
     constrain : boolean
@@ -400,10 +402,10 @@ def astra_sirt_error(sinogram, angles, iterations=50, constrain=True, thresh=0, 
     sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
 
     if cuda:
-        alg_name = "SIRT_CUDA"
+        alg_name = method.upper() + "_CUDA"
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
     else:
-        alg_name = "SIRT"
+        alg_name = method.upper()
         proj_id = astra.create_projector("linear", proj_geom, vol_geom)
 
     astra.data2d.store(sino_id, sinogram)
