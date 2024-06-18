@@ -679,7 +679,7 @@ class TomoStack(CommonStack):
         Args
         ----------
         method : string
-            Reconstruction algorithm to use.  Must be'FBP' (default), 'SIRT', or 'DART'
+            Reconstruction algorithm to use.  Must be'FBP' (default), 'SIRT', 'SART', or 'DART'
         iterations : integer
             Number of iterations for the SIRT reconstruction (for astraSIRT
             and astraSIRT_GPU, methods only)
@@ -737,7 +737,8 @@ class TomoStack(CommonStack):
         if method.lower() not in [
             "fbp",
             "sirt",
-            'dart',
+            "sart",
+            "dart",
         ]:
             raise ValueError("Unknown reconstruction algorithm: %s" % method)
         if cuda is None:
