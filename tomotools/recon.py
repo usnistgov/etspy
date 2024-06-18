@@ -22,14 +22,14 @@ logger.setLevel(logging.INFO)
 
 def run_alg(sino, iters, sino_id, alg_id, rec_id):
     """
-    Run FBP or SIRT reconstruction algorithm.
+    Run FBP, SIRT, or SART reconstruction algorithm.
 
     Args
     ----------
     sino : NumPy array
        Sinogram of shape (nangles, ny)
     iters : int
-        Number of iterations for the SIRT reconstruction
+        Number of iterations for the reconstruction
     sino_id : int
         ASTRA sinogram identity
     alg_id : int
@@ -144,11 +144,10 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
     stack :TomoStack object
        TomoStack containing the input tilt series
     method : string
-        Reconstruction algorithm to use.  Must be either 'FBP' (default) or
-        'SIRT'
-    niterations : integer (only required for SIRT)
-        Number of iterations for the SIRT reconstruction (for SIRT methods
-        only)
+        Reconstruction algorithm to use.  Must be either 'FBP' (default), 'SIRT',
+        'SART', or 'DART
+    niterations : integer
+        Number of iterations for reconstruction
     constrain : boolean
         If True, output reconstruction is constrained above value given by
         'thresh'
@@ -232,6 +231,24 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
                 astra.data2d.store(sino_id, stack.data[:, :, i])
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
+        elif method.lower() == "sart":
+            logger.info(
+                "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)"
+                % niterations
+            )
+            cfg = astra.astra_dict("SART_CUDA")
+            cfg["ProjectorId"] = proj_id
+            cfg["ProjectionDataId"] = sino_id
+            cfg["ReconstructionDataId"] = rec_id
+            if constrain:
+                cfg["option"] = {}
+                cfg["option"]["MinConstraint"] = thresh
+            alg = astra.algorithm.create(cfg)
+
+            for i in tqdm.tqdm(range(0, nx)):
+                astra.data2d.store(sino_id, stack.data[:, :, i])
+                astra.algorithm.run(alg, niterations)
+                rec[i, :, :] = astra.data2d.get(rec_id)
         elif method.lower() == "dart":
             thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
             mask = np.ones([thickness, ny])
@@ -277,6 +294,15 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
             if constrain:
                 cfg["option"] = {}
                 cfg["option"]["MinConstraint"] = thresh
+        elif method.lower() == "sart":
+            logger.info("Reconstructing with CPU-based SART algorithm")
+            cfg = astra.astra_dict("SIRT")
+            cfg["ProjectorId"] = proj_id
+            cfg["ProjectionDataId"] = sino_id
+            cfg["ReconstructionDataId"] = rec_id
+            if constrain:
+                cfg["option"] = {}
+                cfg["option"]["MinConstraint"] = thresh
         elif method.lower() == "dart":
             thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
             mask = np.ones([thickness, ny])
@@ -292,7 +318,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
         alg = astra.algorithm.create(cfg)
 
-        if method.lower() in ['fbp', 'sirt', ]:
+        if method.lower() in ['fbp', 'sirt', 'sart']:
             if ncores == 1:
                 for i in tqdm.tqdm(range(0, nx)):
                     rec[i] = run_alg(stack.data[:, :, i], niterations, sino_id, alg, rec_id)
