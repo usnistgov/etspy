@@ -752,7 +752,6 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=Fal
             shifted.data[:, :, i] = np.roll(ali.isig[idx, :].data, int(shifts[i]))
         shifted_rec = shifted.reconstruct('SIRT', 100, constrain=True)
         tilt_shift = shifts[shifted_rec.sum((1, 2)).data.argmin()]
-        print("Calculated tilt shift: %s pixels" % tilt_shift)
         ali = ali.trans_stack(yshift=-tilt_shift)
         ali.metadata.Tomography.yshift = -tilt_shift
     return ali

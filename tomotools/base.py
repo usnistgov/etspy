@@ -596,7 +596,7 @@ class TomoStack(CommonStack):
             out = align.shift_crop(out)
         return out
 
-    def tilt_align(self, method, limit=10, delta=0.3, locs=None, nslices=20, show_progressbar=False):
+    def tilt_align(self, method, **kwargs):
         """
         Align the tilt axis of a TomoStack.
 
@@ -613,27 +613,22 @@ class TomoStack(CommonStack):
         MaxImage: Perform automated determination of the tilt axis of a
         TomoStack by analyzing features in the projected maximum image.  A combination
         of edge detection and Hough transform analysis is used to determine the global
-        rotation of the stack.
+        rotation of the stack.  Optionally, the global shift of the tilt axis can also
+        be calculated by minimization of the sum of the reconstruction.
 
         Args
         ----------
         method : string
             Algorithm to use for registration alignment. Must be either 'CoM' or
             'MaxImage'.
-        delta : integer
-            Position i
-        limit : integer or float
-            Maximum rotation angle to use for MaxImage calculation
-        delta : float
-            Angular increment for MaxImage calculation
-        locs : list
-            Image coordinates indicating the locations at which to calculate
-            the alignment
-        axis : integer
-            Axis along which to extract sinograms. Value of 0 means tilt axis
-            is horizontally oriented.  1 means vertically oriented.
-        show_progressbar : boolean
-            Enable/disable progress bar
+
+        **kwargs: Additional keyword arguments. Possible keys include:
+                - nslices (int): Number of slices to use for the center of mass tilt alignment.
+                - locs (list): Location along tilt axis to use for center of mass tilt alignment.
+                - limit (integer or float): Maximum rotation angle to use for MaxImage calculation
+                - delta (float): Angular increment in degrees for MaxImage calculation
+                - plot_results (bool): if True, plot results of Hough line analysis
+                - also_shift (bool): if True, also calculate global shift of tilt axis
 
         Returns
         ----------
@@ -654,15 +649,21 @@ class TomoStack(CommonStack):
         >>> stack = ds.get_needle_data()
         >>> reg = stack.stack_register('PC',show_progressbar=False)
         >>> method = 'MaxImage'
-        >>> ali = reg.tilt_align(method, show_progressbar=False)
+        >>> ali = reg.tilt_align(method)
 
         """
         method = method.lower()
 
         if method == "com":
+            nslices = kwargs.get('nslices', 20)
+            locs = kwargs.get('locs', None)
             out = align.tilt_com(self, locs, nslices)
         elif method == "maximage":
-            out = align.tilt_maximage(self, limit, delta, show_progressbar)
+            limit = kwargs.get('limit', 10)
+            delta = kwargs.get('delta', 0.3)
+            plot_results = kwargs.get('plot_results', False)
+            also_shift = kwargs.get('also_shift', False)
+            out = align.tilt_maximage(self, limit, delta, plot_results, also_shift)
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
