@@ -39,6 +39,18 @@ class TestReconCUDA:
         assert type(rec) is tomotools.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
+    def test_recon_sart_gpu(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        rec = slices.reconstruct('SART',
+                                 constrain=True,
+                                 iterations=2,
+                                 thresh=0,
+                                 cuda=True)
+        assert type(stack) is tomotools.base.TomoStack
+        assert type(rec) is tomotools.base.RecStack
+        assert rec.data.shape[2] == slices.data.shape[1]
+
     def test_recon_dart_gpu(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
@@ -62,8 +74,8 @@ class TestAstraSIRTGPU:
         [ntilts, ny, nx] = stack.data.shape
         angles = stack.metadata.Tomography.tilts
         sino = stack.isig[120, :].data
-        rec_stack, error = recon.astra_sirt_error(sino, angles, iterations=2,
-                                                  constrain=True, thresh=0, cuda=True)
+        rec_stack, error = recon.astra_error(sino, angles, iterations=2,
+                                             constrain=True, thresh=0, cuda=True)
         assert type(error) is numpy.ndarray
         assert rec_stack.shape == (2, ny, ny)
 
@@ -82,6 +94,14 @@ class TestReconRunCUDA:
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
         rec = recon.run(slices, 'SIRT', niterations=2, cuda=True)
+        assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
+        assert rec.data.shape[0] == slices.data.shape[2]
+        assert type(rec) is numpy.ndarray
+
+    def test_run_sart_cuda(self):
+        stack = ds.get_needle_data(True)
+        slices = stack.isig[120:121, :].deepcopy()
+        rec = recon.run(slices, 'SART', niterations=2, cuda=True)
         assert rec.data.shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert rec.data.shape[0] == slices.data.shape[2]
         assert type(rec) is numpy.ndarray
