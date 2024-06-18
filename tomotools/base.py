@@ -435,7 +435,7 @@ class TomoStack(CommonStack):
         Args
         ----------
         method : string
-            Type of filter to apply. Must be 'median' or 'sobel'.
+            Type of filter to apply. Must be 'median', 'bpf', 'both', or 'sobel'.
         size : integer
             Size of filtering neighborhood.
         taper : float
