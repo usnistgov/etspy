@@ -213,7 +213,7 @@ class TestStackRegister:
         assert np.sum(reg.data.shape) < np.sum(stack.data.shape)
 
 
-class TestSIRTError:
+class TestErrorPlots:
 
     def test_sirt_error(self):
         stack = ds.get_needle_data(True)
@@ -236,6 +236,34 @@ class TestSIRTError:
     def test_sirt_error_no_cuda(self):
         stack = ds.get_needle_data(True)
         rec_stack, error = stack.recon_error(128, iterations=50,
+                                             constrain=True, cuda=None)
+        assert error.data.shape[0] == rec_stack.data.shape[0]
+        assert rec_stack.data.shape[1:] ==\
+            (stack.data.shape[1], stack.data.shape[1])
+        assert (1 - (3.8709e12 / error.data[0])) < 0.001
+        assert (1 - (2.8624e12 / error.data[1])) < 0.001
+
+    def test_sart_error(self):
+        stack = ds.get_needle_data(True)
+        rec_stack, error = stack.recon_error(128, algorithm='SART', iterations=2,
+                                             constrain=True, cuda=False)
+        assert error.data.shape[0] == rec_stack.data.shape[0]
+        assert rec_stack.data.shape[1:] ==\
+            (stack.data.shape[1], stack.data.shape[1])
+
+    def test_sart_error_no_slice(self):
+        stack = ds.get_needle_data(True)
+        rec_stack, error = stack.recon_error(None, algorithm='SART', iterations=2,
+                                             constrain=True, cuda=False)
+        assert error.data.shape[0] == rec_stack.data.shape[0]
+        assert rec_stack.data.shape[1:] ==\
+            (stack.data.shape[1], stack.data.shape[1])
+        assert (1 - (3.8709e12 / error.data[0])) < 0.001
+        assert (1 - (2.8624e12 / error.data[1])) < 0.001
+
+    def test_sart_error_no_cuda(self):
+        stack = ds.get_needle_data(True)
+        rec_stack, error = stack.recon_error(128, algorithm='SART', iterations=50,
                                              constrain=True, cuda=None)
         assert error.data.shape[0] == rec_stack.data.shape[0]
         assert rec_stack.data.shape[1:] ==\
