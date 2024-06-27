@@ -821,9 +821,15 @@ class TomoStack(CommonStack):
             chosen.
         thickness : integer
             Size of the output volume (in pixels) in the projection direction.
+        method : str
+            Reconstruction algorithm to use.  Must be 'FBP', 'SIRT', or 'SART'.
         cuda : bool
             If True, use CUDA-accelerated Astra algorithms.  If None, use
             CUDA if astra.use_cuda() is True.
+        thresh : float
+            Minimum value for reconstruction
+        vmin_std, vmax_std : float
+            Number of standard deviations from mean to use for scaling the displayed slices
         """
         if slices is None:
             mid = np.int32(self.data.shape[2] / 2)
@@ -1081,7 +1087,7 @@ class RecStack(CommonStack):
         CommonStack class
     """
 
-    def plot_slices(self, yslice=None, zslice=None, xslice=None):
+    def plot_slices(self, yslice=None, zslice=None, xslice=None, vmin_std=0.1, vmax_std=5):
         """
         Plot slices along all three axes of a reconstruction stack.
 
@@ -1090,15 +1096,18 @@ class RecStack(CommonStack):
         yslice, zslice, xslice : int
             Indices of slices to plot
 
+        vmin_std, vmax_std : float
+            Number of standard deviations from mean to use for scaling the displayed slices
+
         Returns
         ----------
         fig : Matplotlib Figure
 
         """
         if xslice is None:
-            xslice = np.uint16(self.data.shape[1] / 2)
+            xslice = np.uint16(self.data.shape[0] / 2)
         if yslice is None:
-            yslice = np.uint16(self.data.shape[0] / 2)
+            yslice = np.uint16(self.data.shape[1] / 2)
         if zslice is None:
             zslice = np.uint16(self.data.shape[2] / 2)
 
@@ -1109,20 +1118,25 @@ class RecStack(CommonStack):
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
-        ax1.imshow(self.data[yslice, :, :], cmap="afmhot")
-        ax1.set_title("Z-X Slice %s" % str(xslice))
-        ax1.set_ylabel("Z")
-        ax1.set_xlabel("X")
+        slices = [self.data[xslice, :, :], self.data[:, zslice, :], self.data[:, :, yslice]]
+        minvals = [slices[i].mean() - vmin_std * slices[i].std() for i in range(3)]
+        minvals = [x if x >= 0 else 0 for x in minvals]
+        maxvals = [slices[i].mean() + vmax_std * slices[i].std() for i in range(3)]
 
-        ax2.imshow(self.data[:, zslice, :], cmap="afmhot")
+        ax1.imshow(slices[0], cmap="afmhot", vmin=minvals[0], vmax=maxvals[0])
+        ax1.set_title("Z-Y Slice %s" % str(xslice))
+        ax1.set_ylabel("Z")
+        ax1.set_xlabel("Y")
+
+        ax2.imshow(slices[1], cmap="afmhot", vmin=minvals[1], vmax=maxvals[1])
         ax2.set_title("Y-X Slice %s" % str(zslice))
         ax2.set_ylabel("Y")
         ax2.set_xlabel("X")
 
-        ax3.imshow(self.data[:, :, xslice].T, cmap="afmhot")
-        ax3.set_title("Z-Y Slice %s" % str(xslice))
+        ax3.imshow(slices[2].T, cmap="afmhot", vmin=minvals[2], vmax=maxvals[2])
+        ax3.set_title("Z-X Slice %s" % str(xslice))
         ax3.set_ylabel("Z")
-        ax3.set_xlabel("Y")
+        ax3.set_xlabel("X")
         fig.tight_layout()
 
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
