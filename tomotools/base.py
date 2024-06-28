@@ -327,10 +327,7 @@ class TomoStack(CommonStack):
     """
 
     def plot_sinos(self, *args, **kwargs):
-        """
-        Plot the TomoStack in sinogram orientation.
-
-        """
+        """Plot the TomoStack in sinogram orientation."""
         self.swap_axes(1, 0).swap_axes(1, 2).plot(navigator='slider', *args, **kwargs)
         return
 

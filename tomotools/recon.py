@@ -348,12 +348,44 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
 
 def dart_segment(rec, thresholds, gray_vals):
+    """
+    Segmentation step for DART Reconstruction.
+
+    Args
+    ----------
+    rec : NumPy array
+       Tomographic reconstruction.
+    thresholds : list or NumPy array
+        Threshold values for segmentation.
+    gray_vals : list or NumPy array
+        Grayscale values to assign the segmented regions.
+
+    Returns
+    ----------
+    segmented : NumPy array
+        Segmented version of the reconstruction.
+
+    """
     bins = np.digitize(rec, bins=thresholds, right=False)
     segmented = np.array(gray_vals)[bins]
     return segmented
 
 
 def get_dart_boundaries(segmented):
+    """
+    Boundary step for DART Reconstruction.
+
+    Args
+    ----------
+    segmented : NumPy array
+        Segmented reconstruction.
+
+    Returns
+    ----------
+    boundaries : NumPy array
+        Boundaries of the segmented reconstruction.
+
+    """
     kernel = np.array([[1, 1, 1],
                        [1, -8, 1],
                        [1, 1, 1]])
