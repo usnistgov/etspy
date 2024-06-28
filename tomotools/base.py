@@ -1087,7 +1087,7 @@ class RecStack(CommonStack):
         CommonStack class
     """
 
-    def plot_slices(self, yslice=None, zslice=None, xslice=None, vmin_std=0.1, vmax_std=5):
+    def plot_slices(self, xslice, yslice=None, zslice=None, vmin_std=0.1, vmax_std=5):
         """
         Plot slices along all three axes of a reconstruction stack.
 
@@ -1134,7 +1134,7 @@ class RecStack(CommonStack):
         ax2.set_xlabel("X")
 
         ax3.imshow(slices[2].T, cmap="afmhot", vmin=minvals[2], vmax=maxvals[2])
-        ax3.set_title("Z-X Slice %s" % str(xslice))
+        ax3.set_title("Z-X Slice %s" % str(yslice))
         ax3.set_ylabel("Z")
         ax3.set_xlabel("X")
         fig.tight_layout()
