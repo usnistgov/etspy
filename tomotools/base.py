@@ -878,7 +878,7 @@ class TomoStack(CommonStack):
         ax3.set_title("Slice %s" % str(slices[2]))
         ax3.set_axis_off()
         fig.tight_layout()
-        return rec
+        return
 
     def set_tilts(self, start, increment):
         """
