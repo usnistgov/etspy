@@ -1084,7 +1084,7 @@ class RecStack(CommonStack):
         CommonStack class
     """
 
-    def plot_slices(self, xslice, yslice=None, zslice=None, vmin_std=0.1, vmax_std=5):
+    def plot_slices(self, xslice=None, yslice=None, zslice=None, vmin_std=0.1, vmax_std=5):
         """
         Plot slices along all three axes of a reconstruction stack.
 
