@@ -213,6 +213,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
             for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                 astra.data2d.store(sino_id, stack.data[:, :, i])
+                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
         elif method.lower() == "sirt":
@@ -231,8 +232,10 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
             for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                 astra.data2d.store(sino_id, stack.data[:, :, i])
+                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
+
         elif method.lower() == "sart":
             logger.info(
                 "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)"
@@ -249,8 +252,10 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
             for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                 astra.data2d.store(sino_id, stack.data[:, :, i])
+                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
+
         elif method.lower() == "dart":
             thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
             mask = np.ones([thickness, ny])
