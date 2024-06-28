@@ -676,6 +676,7 @@ class TomoStack(CommonStack):
         thresh=0,
         cuda=None,
         thickness=None,
+        show_progressbar=True,
         **kwargs
     ):
         """
@@ -697,6 +698,8 @@ class TomoStack(CommonStack):
             If True, use the CUDA-accelerated reconstruction algorithm
         thickness : integer
             Size of the output volume (in pixels) in the projection direction.
+        show_progressbar : bool
+            If True, show a progress bar for the reconstruction. Default is True.
         **kwargs: Additional keyword arguments. Possible keys include:
         - ncores (int): Number of cores to use for multithreaded reconstructions.
         - sino_filter (str): Filter to apply for filtered backprojection.  Default is shepp-logan.
@@ -780,7 +783,8 @@ class TomoStack(CommonStack):
             sino_filter,
             gray_levels,
             dart_iterations,
-            p
+            p,
+            show_progressbar
         )
 
         axes_dict = self.axes_manager.as_dictionary()
@@ -853,6 +857,7 @@ class TomoStack(CommonStack):
             thickness=thickness,
             cuda=cuda,
             thresh=thresh,
+            show_progressbar=False
         )
 
         if "ipympl" in mpl.get_backend().lower():

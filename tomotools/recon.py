@@ -135,7 +135,7 @@ def run_dart(sino, iters, dart_iters, p,
 
 
 def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thickness=None, ncores=None,
-        filter="shepp-logan", gray_levels=None, dart_iterations=None, p=0.99,):
+        filter="shepp-logan", gray_levels=None, dart_iterations=None, p=0.99, show_progressbar=True):
     """
     Perform reconstruction of input tilt series.
 
@@ -168,6 +168,8 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
         Number of DART iterations
     p : float
         Probability for setting free pixels in DART reconstruction
+    show_progressbar : bool
+        If True, show a progress bar for the reconstruction. Default is True.
 
     Returns
     ----------
@@ -209,7 +211,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
             alg = astra.algorithm.create(cfg)
 
-            for i in tqdm.tqdm(range(0, nx)):
+            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                 astra.data2d.store(sino_id, stack.data[:, :, i])
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
@@ -227,7 +229,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
                 cfg["option"]["MinConstraint"] = thresh
             alg = astra.algorithm.create(cfg)
 
-            for i in tqdm.tqdm(range(0, nx)):
+            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                 astra.data2d.store(sino_id, stack.data[:, :, i])
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
@@ -245,7 +247,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
                 cfg["option"]["MinConstraint"] = thresh
             alg = astra.algorithm.create(cfg)
 
-            for i in tqdm.tqdm(range(0, nx)):
+            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                 astra.data2d.store(sino_id, stack.data[:, :, i])
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
@@ -263,7 +265,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
             cfg['option']['ReconstructionMaskId'] = mask_id
             alg = astra.algorithm.create(cfg)
 
-            for i in tqdm.tqdm(range(0, nx)):
+            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                 sinogram = stack.data[:, :, i]
                 astra.data2d.store(sino_id, sinogram)
                 astra.data2d.store(rec_id, np.zeros([thickness, ny]))
@@ -320,7 +322,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
         if method.lower() in ['fbp', 'sirt', 'sart']:
             if ncores == 1:
-                for i in tqdm.tqdm(range(0, nx)):
+                for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                     rec[i] = run_alg(stack.data[:, :, i], niterations, sino_id, alg, rec_id)
             else:
                 logger.info("Using %s CPU cores to reconstruct %s slices" % (ncores, nx))
@@ -331,7 +333,7 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
                         rec[i] = result
         elif method.lower() == 'dart':
             if ncores == 1:
-                for i in tqdm.tqdm(range(0, nx)):
+                for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
                     rec[i] = run_dart(stack.data[:, :, i], niterations, dart_iterations, p,
                                       alg, proj_id, mask_id, rec_id, sino_id, thresholds, gray_levels)
             else:
