@@ -345,7 +345,7 @@ def parse_mrc_header(filename):
     return header
 
 
-def load(filename, tilts=None):
+def load(filename, tilts=None, **kwargs):
     """
     Create a TomoStack object using data from a file.
 
@@ -357,6 +357,9 @@ def load(filename, tilts=None):
 
     tilts : list or NumPy array
         List of floats indicating the specimen tilt at each projection
+
+    **kwargs: Additional keyword arguments. Possible keys include:
+        - mdocs (list): List of mdoc files for SerialEM data
 
     Returns
     ----------
@@ -399,7 +402,10 @@ def load(filename, tilts=None):
             stack = hspy.load(files_sorted, stack=True)
         elif ext.lower() == ".mrc":
             logger.info("Data appears to be a SerialEM multiframe series.")
-            mdocfiles = [i[:-3] + "mdoc" for i in filename]
+            if 'mdocs' in kwargs.keys():
+                mdocfiles = kwargs['mdocs']
+            else:
+                mdocfiles = [i[:-3] + "mdoc" for i in filename]
             stack, tilts = load_serialem_series(filename, mdocfiles)
         else:
             raise TypeError(
