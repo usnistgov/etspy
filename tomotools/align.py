@@ -683,7 +683,7 @@ def tilt_com(stack, slices=None, nslices=None):
     return final
 
 
-def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=False):
+def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=False, shift_limit=20):
     """
     Perform automated determination of the tilt axis of a TomoStack.
 
@@ -743,7 +743,7 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=Fal
 
     if also_shift:
         idx = ali.data.shape[2] // 2
-        shifts = np.arange(-20, 20, 1)
+        shifts = np.arange(-shift_limit, shift_limit, 1)
         nshifts = shifts.shape[0]
         shifted = ali.isig[0:nshifts, :].deepcopy()
         for i in range(0, nshifts):

@@ -626,6 +626,7 @@ class TomoStack(CommonStack):
                 - delta (float): Angular increment in degrees for MaxImage calculation
                 - plot_results (bool): if True, plot results of Hough line analysis
                 - also_shift (bool): if True, also calculate global shift of tilt axis
+                - shift_limit (int): Search range for global shift of tilt axis
 
         Returns
         ----------
@@ -660,7 +661,8 @@ class TomoStack(CommonStack):
             delta = kwargs.get('delta', 0.3)
             plot_results = kwargs.get('plot_results', False)
             also_shift = kwargs.get('also_shift', False)
-            out = align.tilt_maximage(self, limit, delta, plot_results, also_shift)
+            shift_limit = kwargs.get('shift_limit', 20)
+            out = align.tilt_maximage(self, limit, delta, plot_results, also_shift, shift_limit)
         else:
             raise ValueError(
                 "Invalid alignment method: %s."
