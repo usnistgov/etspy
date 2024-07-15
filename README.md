@@ -58,7 +58,7 @@ Documentation is very limited at this point
 
 Documentation
 -------------
-Release: https://github.com/andrewherzing/tomotools
+Release: https://github.com/usnistgov/tomotools
 
 A demo notebook is available in the resources folder.  More documentation
 will be made available over time.
