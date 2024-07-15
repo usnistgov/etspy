@@ -1,9 +1,9 @@
-import tomotools.datasets as ds
+import etspy.datasets as ds
 import matplotlib
-import tomotools
+import etspy
 import numpy
-from tomotools import recon
-from tomotools.base import TomoStack
+from etspy import recon
+from etspy.base import TomoStack
 import astra
 import pytest
 
@@ -23,8 +23,8 @@ class TestReconCUDA:
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
         rec = slices.reconstruct('FBP', cuda=True)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_sirt_gpu(self):
@@ -35,8 +35,8 @@ class TestReconCUDA:
                                  iterations=2,
                                  thresh=0,
                                  cuda=True)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_sart_gpu(self):
@@ -47,8 +47,8 @@ class TestReconCUDA:
                                  iterations=2,
                                  thresh=0,
                                  cuda=True)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_dart_gpu(self):
@@ -62,8 +62,8 @@ class TestReconCUDA:
                                  cuda=True,
                                  gray_levels=gray_levels,
                                  dart_iterations=1)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
 

@@ -1,18 +1,18 @@
-from tomotools import datasets as ds
-import tomotools
-from tomotools import io, utils
+from etspy import datasets as ds
+import etspy
+from etspy import io, utils
 import pytest
 import numpy
-from tomotools.base import TomoStack
+from etspy.base import TomoStack
 import hyperspy.api as hs
 import os
 import glob
 
-tomotools_path = os.path.dirname(tomotools.__file__)
+etspy_path = os.path.dirname(etspy.__file__)
 
 
 def hspy_mrc_reader_check():
-    dirname = os.path.join(tomotools_path, "tests",
+    dirname = os.path.join(etspy_path, "tests",
                            "test_data", "SerialEM_Multiframe_Test")
     files = glob.glob(dirname + "/*.mrc")
     file = files[0]
@@ -31,7 +31,7 @@ else:
 @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestMultiframeAverage:
     def test_register_serialem_stack(self):
-        dirname = os.path.join(tomotools_path, "tests",
+        dirname = os.path.join(etspy_path, "tests",
                                "test_data", "SerialEM_Multiframe_Test")
         files = glob.glob(dirname + "/*.mrc")
         stack = io.load(files)
@@ -40,7 +40,7 @@ class TestMultiframeAverage:
         assert stack_avg.data.shape[0] == 3
 
     def test_register_serialem_stack_multicpu(self):
-        dirname = os.path.join(tomotools_path, "tests",
+        dirname = os.path.join(etspy_path, "tests",
                                "test_data", "SerialEM_Multiframe_Test")
         files = glob.glob(dirname + "/*.mrc")
         stack = io.load(files)
@@ -49,7 +49,7 @@ class TestMultiframeAverage:
         assert stack_avg.data.shape[0] == 3
 
     def test_multiaverage(self):
-        dirname = os.path.join(tomotools_path, "tests",
+        dirname = os.path.join(etspy_path, "tests",
                                "test_data", "SerialEM_Multiframe_Test")
         files = glob.glob(dirname + "/*.mrc")
         stack = io.load(files)

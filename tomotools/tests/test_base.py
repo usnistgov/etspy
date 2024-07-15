@@ -1,10 +1,10 @@
 import matplotlib
-from tomotools import datasets as ds
+from etspy import datasets as ds
 import pytest
 import numpy as np
 import sys
 import io
-from tomotools.base import CommonStack, TomoStack, RecStack
+from etspy.base import CommonStack, TomoStack, RecStack
 import hyperspy.api as hs
 # from hyperspy.signals import Signal2D
 

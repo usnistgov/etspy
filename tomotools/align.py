@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
+# This file is part of ETSpy
 
 """
-Alignment module for TomoTools package.
+Alignment module for ETSpy package.
 
 @author: Andrew Herzing
 """

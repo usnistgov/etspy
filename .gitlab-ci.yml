@@ -7,19 +7,19 @@ pytest-doctest:
     stage: test
     script:
     - python setup.py install
-    - pytest --doctest-modules tomotools/ --ignore=tomotools/tomotools/tests/test_datasets.py
+    - pytest --doctest-modules etspy/ --ignore=etspy/etspy/tests/test_datasets.py
 
 pytest-doctest:
     stage: test
     script:
-    - pytest tomotools/tomotools/tests/  --ignore=tomotools/tomotools/tests/test_datasets.py
+    - pytest etspy/etspy/tests/  --ignore=etspy/etspy/tests/test_datasets.py
     
 flake8_checks:
     stage: test
     script:
-    - flake8 --exclude=api.py --ignore=E501 tomotools/
+    - flake8 --exclude=api.py --ignore=E501 etspy/
 
 pydocstyle_checks:
     stage: test
     script:
-    - pydocstyle tomotools/
+    - pydocstyle etspy/

@@ -1,5 +1,5 @@
-import tomotools.api as tomotools
-from tomotools import datasets as ds
+import etspy.api as etspy
+from etspy import datasets as ds
 import pytest
 import numpy as np
 
@@ -10,26 +10,26 @@ class TestAlignFunctions:
         stack = stack.inav[0:5]
         shifts = np.zeros(10)
         with pytest.raises(ValueError):
-            tomotools.align.apply_shifts(stack, shifts)
+            etspy.align.apply_shifts(stack, shifts)
 
     def test_pad_line(self):
         line = np.zeros(100)
-        padded = tomotools.align.pad_line(line, 200)
+        padded = etspy.align.pad_line(line, 200)
         assert padded.shape[0] == 200
 
     def test_pad_line_uneven_line(self):
         line = np.zeros(101)
-        padded = tomotools.align.pad_line(line, 200)
+        padded = etspy.align.pad_line(line, 200)
         assert padded.shape[0] == 200
 
     def test_pad_line_uneven_padded(self):
         line = np.zeros(100)
-        padded = tomotools.align.pad_line(line, 201)
+        padded = etspy.align.pad_line(line, 201)
         assert padded.shape[0] == 201
 
     def test_pad_line_uneven_both(self):
         line = np.zeros(101)
-        padded = tomotools.align.pad_line(line, 201)
+        padded = etspy.align.pad_line(line, 201)
         assert padded.shape[0] == 201
 
 
@@ -40,7 +40,7 @@ class TestAlignStackRegister:
         stack.metadata.Tomography.shifts = \
             stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register('PC')
-        assert type(reg) is tomotools.TomoStack
+        assert type(reg) is etspy.TomoStack
         assert reg.axes_manager.signal_shape == \
             stack.inav[0:20].axes_manager.signal_shape
         assert reg.axes_manager.navigation_shape == \
@@ -53,7 +53,7 @@ class TestAlignStackRegister:
         stack.metadata.Tomography.tilts = \
             stack.metadata.Tomography.tilts[0:20]
         reg = stack.inav[0:20].stack_register('COM')
-        assert type(reg) is tomotools.TomoStack
+        assert type(reg) is etspy.TomoStack
         assert reg.axes_manager.signal_shape == \
             stack.inav[0:20].axes_manager.signal_shape
         assert reg.axes_manager.navigation_shape == \
@@ -64,7 +64,7 @@ class TestAlignStackRegister:
         stack.metadata.Tomography.shifts = \
             stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register('StackReg')
-        assert type(reg) is tomotools.TomoStack
+        assert type(reg) is etspy.TomoStack
         assert reg.axes_manager.signal_shape == \
             stack.inav[0:20].axes_manager.signal_shape
         assert reg.axes_manager.navigation_shape == \
@@ -75,7 +75,7 @@ class TestAlignStackRegister:
         stack.metadata.Tomography.shifts = \
             stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register('COM-CL')
-        assert type(reg) is tomotools.TomoStack
+        assert type(reg) is etspy.TomoStack
         assert reg.axes_manager.signal_shape == \
             stack.inav[0:20].axes_manager.signal_shape
         assert reg.axes_manager.navigation_shape == \
