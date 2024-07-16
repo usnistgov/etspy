@@ -86,8 +86,8 @@ class TestOperations:
         assert norm.data.min() == 0.0
 
     def test_stack_invert(self):
-	im = np.zeros([10,100,100])
-	im[:,40:60,40:60] = 10
+        im = np.zeros([10, 100, 100])
+        im[:, 40:60, 40:60] = 10
         stack = CommonStack(im)
         invert = stack.invert()
         hist, bins = np.histogram(stack.data)
