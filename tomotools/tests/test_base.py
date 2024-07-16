@@ -86,8 +86,9 @@ class TestOperations:
         assert norm.data.min() == 0.0
 
     def test_stack_invert(self):
-        # stack = ds.get_needle_data()
-        stack = CommonStack(np.random.random([10, 100, 100]))
+	im = np.zeros([10,100,100])
+	im[:,40:60,40:60] = 10
+        stack = CommonStack(im)
         invert = stack.invert()
         hist, bins = np.histogram(stack.data)
         hist_inv, bins_inv = np.histogram(invert.data)
