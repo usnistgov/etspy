@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
+# This file is part of ETSpy
 
 """
-Reconstruction module for TomoTools package.
+Reconstruction module for ETSpy package.
 
 @author: Andrew Herzing
 """

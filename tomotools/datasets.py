@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
+# This file is part of ETSpy
 
 """
-Test dataset handling module for TomoTools package.
+Test dataset handling module for ETSpy package.
 
 @author: Andrew Herzing
 """
 
-import tomotools.api as tomotools
-from tomotools.simulation import misalign_stack, add_noise
+import etspy.api as etspy
+from etspy.simulation import misalign_stack, add_noise
 import os
 
-tomotools_path = os.path.dirname(tomotools.__file__)
+etspy_path = os.path.dirname(etspy.__file__)
 
 
 def get_needle_data(aligned=False):
@@ -27,12 +27,12 @@ def get_needle_data(aligned=False):
     """
     if aligned:
         filename = os.path.join(
-            tomotools_path, "tests", "test_data", "HAADF_Aligned.hdf5"
+            etspy_path, "tests", "test_data", "HAADF_Aligned.hdf5"
         )
-        needle = tomotools.load(filename)
+        needle = etspy.load(filename)
     else:
-        filename = os.path.join(tomotools_path, "tests", "test_data", "HAADF.mrc")
-        needle = tomotools.load(filename)
+        filename = os.path.join(etspy_path, "tests", "test_data", "HAADF.mrc")
+        needle = etspy.load(filename)
     return needle
 
 
@@ -77,9 +77,9 @@ def get_catalyst_data(
 
     """
     filename = os.path.join(
-        tomotools_path, "tests", "test_data", "Catalyst3DModel_TiltSeries180.hdf5"
+        etspy_path, "tests", "test_data", "Catalyst3DModel_TiltSeries180.hdf5"
     )
-    catalyst = tomotools.load(filename)
+    catalyst = etspy.load(filename)
     if misalign:
         catalyst = misalign_stack(
             catalyst,

@@ -1,6 +1,6 @@
-import tomotools
-from tomotools import recon
-from tomotools import datasets as ds
+import etspy
+from etspy import recon
+from etspy import datasets as ds
 import numpy
 import pytest
 
@@ -19,7 +19,7 @@ class TestReconstruction:
         # tilts = stack.metadata.Tomography.tilts
         slices = stack.isig[120, :]
         rec = recon.run(slices, 'FBP', cuda=False)
-        assert type(stack) is tomotools.base.TomoStack
+        assert type(stack) is etspy.base.TomoStack
         assert type(rec) is numpy.ndarray
         assert rec.data.shape[2] == slices.data.shape[1]
 
@@ -33,16 +33,16 @@ class TestReconstruction:
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:121, :].deepcopy()
         rec = slices.reconstruct('FBP', cuda=False)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_fbp_cpu_multicore(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[120:122, :].deepcopy()
         rec = slices.reconstruct('FBP', cuda=False)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_sirt_cpu(self):
@@ -53,8 +53,8 @@ class TestReconstruction:
                                  iterations=2,
                                  thresh=0,
                                  cuda=False)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_sart_cpu(self):
@@ -65,8 +65,8 @@ class TestReconstruction:
                                  iterations=2,
                                  thresh=0,
                                  cuda=False)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_dart_cpu(self):
@@ -74,8 +74,8 @@ class TestReconstruction:
         slices = stack.isig[120:121, :].deepcopy()
         gray_levels = [0., slices.data.max() / 2, slices.data.max()]
         rec = slices.reconstruct('DART', iterations=2, cuda=False, gray_levels=gray_levels, dart_iterations=1, ncores=1)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_dart_cpu_multicore(self):
@@ -83,8 +83,8 @@ class TestReconstruction:
         slices = stack.isig[120:122, :].deepcopy()
         gray_levels = [0., slices.data.max() / 2, slices.data.max()]
         rec = slices.reconstruct('DART', iterations=2, cuda=False, gray_levels=gray_levels, dart_iterations=1, ncores=1)
-        assert type(stack) is tomotools.base.TomoStack
-        assert type(rec) is tomotools.base.RecStack
+        assert type(stack) is etspy.base.TomoStack
+        assert type(rec) is etspy.base.RecStack
         assert rec.data.shape[2] == slices.data.shape[1]
 
 

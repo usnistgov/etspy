@@ -1,4 +1,4 @@
-from tomotools import simulation as sim
+from etspy import simulation as sim
 import numpy as np
 from hyperspy.signals import Signal2D
 

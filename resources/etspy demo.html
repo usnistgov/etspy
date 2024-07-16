@@ -3,7 +3,7 @@
 <head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TomoTools Demo</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>ETSpy Demo</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 
 
 
@@ -14580,7 +14580,7 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="TomoTools-Demo">TomoTools Demo<a class="anchor-link" href="#TomoTools-Demo">&#182;</a></h1><p>This notebook demonstrates the basic use and functionality of the TomoTools package.</p>
+<h1 id="ETSpy-Demo">ETSpy Demo<a class="anchor-link" href="#ETSpy-Demo">&#182;</a></h1><p>This notebook demonstrates the basic use and functionality of the ETSpy package.</p>
 <p>It covers:</p>
 <ul>
 <li>Loading simulated data</li>
@@ -14601,12 +14601,12 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h1 id="Imports">Imports<a class="anchor-link" href="#Imports">&#182;</a></h1><p>For interactive plotting, we set the Matplotlib backend to <code>widget</code>.</p>
-<p>In addition to the <code>tomotools</code> package itself we also need to import:</p>
+<p>In addition to the <code>etspy</code> package itself we also need to import:</p>
 <ul>
 <li>PyPlot from MatplotLib</li>
 <li>Hyperspy</li>
 </ul>
-<p>Finally, we also need to import the <code>datasets</code> module of <code>tomotools</code> in order to load the simluated data we will be working with.</p>
+<p>Finally, we also need to import the <code>datasets</code> module of <code>etspyng with.</p>
 
 </div>
 </div>
@@ -14627,8 +14627,8 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">hyperspy.api</span> <span class="k">as</span> <span class="nn">hs</span>
 
-<span class="kn">import</span> <span class="nn">tomotools.api</span> <span class="k">as</span> <span class="nn">tomo</span>
-<span class="kn">from</span> <span class="nn">tomotools</span> <span class="kn">import</span> <span class="n">datasets</span> <span class="k">as</span> <span class="n">ds</span>
+<span class="kn">import</span> <span class="nn">etspy.api</span> <span class="k">as</span> <span class="nn">tomo</span>
+<span class="kn">from</span> <span class="nn">etspy<span class="kn">import</span> <span class="n">datasets</span> <span class="k">as</span> <span class="n">ds</span>
 </pre></div>
 
      </div>
@@ -14961,8 +14961,8 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.align:Performing stack registration using PyStackReg
-INFO:tomotools.align:Stack registration complete
+<pre>INFO:etspyerforming stack registration using PyStackReg
+INFO:etspy.align:Stack registration complete
 </pre>
 </div>
 </div>
@@ -15127,9 +15127,9 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.recon:Reconstructing volume using FBP
-INFO:tomotools.recon:Reconstruction using 64 cores
-INFO:tomotools.recon:Reconstruction complete
+<pre>INFO:etspy
+INFO:etspy.recon:Reconstruction using 64 cores
+INFO:etspy.recon:Reconstruction complete
 </pre>
 </div>
 </div>
@@ -15231,7 +15231,7 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.base:CUDA detected with Astra
+<pre>INFO:etspy.base:CUDA detected with Astra
 </pre>
 </div>
 </div>
@@ -15396,10 +15396,10 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.recon:Reconstruction volume using FBP_CUDA
-INFO:tomotools.recon:Reconstruction complete
-INFO:tomotools.recon:Reconstructing volume using SIRT w/ minimum constraint. Minimum value: 0
-INFO:tomotools.recon:Reconstruction complete
+<pre>INFO:etspy
+INFO:etspy.recon:Reconstruction complete
+INFO:etspy.recon:Reconstructing volume using SIRT w/ minimum constraint. Minimum value: 0
+INFO:etspy.recon:Reconstruction complete
 </pre>
 </div>
 </div>
@@ -15636,7 +15636,7 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>WARNING:hyperspy.misc.utils:The package {package} does not set its version in {package}.__version__. Please report this issue to the tomotools developers.
+<pre>WARNING:hyperspy.misc.utils:The package {package} does not set its version in {package}.__version__. Please report this issue to the etspy developers.
 </pre>
 </div>
 </div>
@@ -15657,7 +15657,7 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>WARNING:hyperspy.misc.utils:The package {package} does not set its version in {package}.__version__. Please report this issue to the tomotools developers.
+<pre>WARNING:hyperspy.misc.utils:The package {package} does not set its version in {package}.__version__. Please report this issue to the etspy developers.
 </pre>
 </div>
 </div>
@@ -15713,7 +15713,7 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.io:Tilts found in MRC file header
+<pre>INFO:etspy.io:Tilts found in MRC file header
 </pre>
 </div>
 </div>
@@ -15831,8 +15831,8 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.align:Performing stack registration using PyStackReg
-INFO:tomotools.align:Stack registration complete
+<pre>INFO:etspy.align:Performing stack registration using PyStackReg
+INFO:etspy.align:Stack registration complete
 </pre>
 </div>
 </div>
@@ -15929,9 +15929,9 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.base:CUDA detected with Astra
-INFO:tomotools.recon:Reconstruction volume using FBP_CUDA
-INFO:tomotools.recon:Reconstruction complete
+<pre>INFO:etspy.base:CUDA detected with Astra
+INFO:etspy.recon:Reconstruction volume using FBP_CUDA
+INFO:etspy.recon:Reconstruction complete
 </pre>
 </div>
 </div>
@@ -16018,9 +16018,9 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.align:Performing alignments using slices: [84, 128, 171]
-INFO:tomotools.align:Calculated tilt-axis shift 2.62
-INFO:tomotools.align:Calculated tilt-axis rotation -1.99
+<pre>INFO:etspy.align:Performing alignments using slices: [84, 128, 171]
+INFO:etspy.align:Calculated tilt-axis shift 2.62
+INFO:etspy.align:Calculated tilt-axis rotation -1.99
 </pre>
 </div>
 </div>
@@ -16059,9 +16059,9 @@ INFO:tomotools.align:Calculated tilt-axis rotation -1.99
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.base:CUDA detected with Astra
-INFO:tomotools.recon:Reconstruction volume using FBP_CUDA
-INFO:tomotools.recon:Reconstruction complete
+<pre>INFO:etspy.base:CUDA detected with Astra
+INFO:etspy.recon:Reconstruction volume using FBP_CUDA
+INFO:etspy.recon:Reconstruction complete
 </pre>
 </div>
 </div>
@@ -16200,9 +16200,9 @@ class="
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>INFO:tomotools.base:CUDA detected with Astra
-INFO:tomotools.recon:Reconstructing volume using SIRT w/ minimum constraint. Minimum value: 0
-INFO:tomotools.recon:Reconstruction complete
+<pre>INFO:etspy.base:CUDA detected with Astra
+INFO:etspy.recon:Reconstructing volume using SIRT w/ minimum constraint. Minimum value: 0
+INFO:etspy.recon:Reconstruction complete
 </pre>
 </div>
 </div>

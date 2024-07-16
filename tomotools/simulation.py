@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
+# This file is part of ETSpy
 
 """
-Simulation module for TomoTools package.
+Simulation module for ETSpy package.
 
 @author: Andrew Herzing
 """
 import numpy as np
 from scipy import ndimage
 import astra
-from tomotools.io import create_stack
+from etspy.io import create_stack
 import hyperspy.api as hs
 
 

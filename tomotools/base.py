@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
+# This file is part of ETSpy
 
 """
-Primary module for TomoTools package.
+Primary module for ETSpy package.
 
 Contains the TomoStack class and its methods.
 
@@ -11,7 +11,7 @@ Contains the TomoStack class and its methods.
 """
 
 import numpy as np
-from tomotools import recon, align
+from etspy import recon, align
 import os
 from skimage import transform
 import pylab as plt
@@ -59,7 +59,7 @@ class CommonStack(Signal2D):
 
         Examples
         --------
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> s_inverted = stack.invert()
         """
@@ -99,7 +99,7 @@ class CommonStack(Signal2D):
 
         Examples
         --------
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> s_normalized = stack.normalize()
 
@@ -256,7 +256,7 @@ class CommonStack(Signal2D):
 
         Examples
         ----------
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> xshift = 10.0
         >>> yshift = 3.5
@@ -453,7 +453,7 @@ class TomoStack(CommonStack):
 
         Examples
         --------
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> filtered = stack.filter(method='median')
 
@@ -517,7 +517,7 @@ class TomoStack(CommonStack):
 
         Options are phase correlation (PC) maximization, StackReg, center of
         mass ('COM'), or combined center of mass and common line methods.
-        See docstring for tomotools.align.align_stack for details.
+        See docstring for etspy.align.align_stack for details.
 
         Args
         ----------
@@ -560,22 +560,22 @@ class TomoStack(CommonStack):
         Examples
         --------
         Registration with phase correlation algorithm (PC)
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> regPC = stack.stack_register('PC')
 
         Registration with center of mass tracking (COM)
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> regCOM = stack.stack_register('COM')
 
         Registration with StackReg
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> regSR = stack.stack_register('StackReg')
 
         Registration with center of mass and common line (COM-CL)
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> regCOMCL = stack.stack_register('COM-CL')
 
@@ -636,14 +636,14 @@ class TomoStack(CommonStack):
         Examples
         ----------
         Align tilt axis using the center of mass (CoM) method
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> reg = stack.stack_register('PC',show_progressbar=False)
         >>> method = 'CoM'
         >>> ali = reg.tilt_align(method, locs=[50,100,160])
 
         Align tilt axis using the maximum image method
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data()
         >>> reg = stack.stack_register('PC',show_progressbar=False)
         >>> method = 'MaxImage'
@@ -715,20 +715,20 @@ class TomoStack(CommonStack):
         Examples
         ----------
         Filtered backprojection (FBP) reconstruction
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP', cuda=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5, cuda=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> iterations = 5
@@ -737,7 +737,7 @@ class TomoStack(CommonStack):
         >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh, cuda=False)
 
         Discreate algebraice reconstruction technique (DART) reconstruction
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> gray_levels = [0., slices.data.max()/2, slices.data.max()]
@@ -1035,7 +1035,7 @@ class TomoStack(CommonStack):
 
         Examples
         ----------
-        >>> import tomotools.datasets as ds
+        >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> rec_stack, error = stack.recon_error(iterations=5)
 

@@ -1,14 +1,14 @@
-"""Setup file for TomoTools package."""
+"""Setup file for ETSpy package."""
 
 from setuptools import setup
 
 setup(
-    name='tomotools',
+    name='etspy',
     version='0.7.1',
     author='Andrew A. Herzing',
     description='Suite of tools for processing and reconstruction of electron '
             'tomography data',
-    packages=['tomotools'],
+    packages=['etspy'],
     install_requires=[
         'pystackreg',
     ]

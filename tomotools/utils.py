@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
+# This file is part of ETSpy
 
 """
-Utility module for TomoTools package.
+Utility module for ETSpy package.
 
 @author: Andrew Herzing
 """
 
 import numpy as np
-from tomotools.io import create_stack
+from etspy.io import create_stack
 import logging
 import tqdm
 from scipy import ndimage
-from tomotools.align import calculate_shifts_stackreg
+from etspy.align import calculate_shifts_stackreg
 from pystackreg import StackReg
 from multiprocessing import Pool
 
@@ -70,7 +70,7 @@ def register_serialem_stack(stack, ncpus=1):
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
     """
-    align_logger = logging.getLogger("tomotools.align")
+    align_logger = logging.getLogger("etspy.align")
     log_level = align_logger.getEffectiveLevel()
     align_logger.setLevel(logging.ERROR)
     ntilts, nframes, ny, nx = stack.data.shape

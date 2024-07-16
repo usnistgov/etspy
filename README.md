@@ -1,7 +1,7 @@
-TomoTools package
+ETSpy package
 ===========
 
-TomoTools is a Hyperspy-based software package for the aligment and reconstruction
+ETSpy is a Hyperspy-based software package for the aligment and reconstruction
 of electron tomography data from TEM/STEM instruments. Tools are provided for basic 
 tilt series data processing, stack alignment, and reconstruction using the astra-toolbox.
 
@@ -20,14 +20,14 @@ Installation
     conda install -c conda-forge hyperspy-base hyperspy-gui-ipywidgets 
     ```
 
-  * Install the TomoTools package from GitHub:
+  * Install the ETSpy package from GitHub:
     ```bash
-    pip install git+https://github.com/usnistgov/tomotools.git
+    pip install git+https://github.com/usnistgov/etspy.git
     ```
 
   Optional (higly recommended):
   ---------------------
-  * Install `ipympl` and `ipykernel` to use `tomotools` with Jupyter.
+  * Install `ipympl` and `ipykernel` to use `etspy` with Jupyter.
     * `ipympl` enables interactive plotting in Jupyter Lab or Notebook.  
     * `ipykernel` allows use of the the tomoools kernel with Jupyter installed in a different environment. 
 
@@ -40,7 +40,7 @@ Removal
 The package can be removed with:
 
 ```bash
-pip uninstall tomotools
+pip uninstall etspy
 ```
 
 
@@ -49,8 +49,8 @@ Usage
 In python or ipython:
 
 ```python
-import tomotools.api as tomotools
-stack = tomotools.load('TiltSeries.mrc')
+import etspy.api as etspy
+stack = etspy.load('TiltSeries.mrc')
 ```
 
 Documentation is very limited at this point
@@ -58,7 +58,7 @@ Documentation is very limited at this point
 
 Documentation
 -------------
-Release: https://github.com/usnistgov/tomotools
+Release: https://github.com/usnistgov/etspy
 
 A demo notebook is available in the resources folder.  More documentation
 will be made available over time.

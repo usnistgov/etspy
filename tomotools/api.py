@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
-"""API for TomoTools."""
+# This file is part of ETSpy
+"""API for ETSpy."""
 
 import logging
-from tomotools.io import load, create_stack
-from tomotools.base import TomoStack
-from tomotools import io
-from tomotools import utils
-from tomotools import align
+from etspy.io import load, create_stack
+from etspy.base import TomoStack
+from etspy import io
+from etspy import utils
+from etspy import align
 
 from . import __version__
 

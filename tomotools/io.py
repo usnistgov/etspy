@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of TomoTools
+# This file is part of ETSpy
 
 """
-Data input/output module for TomoTools package.
+Data input/output module for ETSpy package.
 
 @author: Andrew Herzing
 """
@@ -11,7 +11,7 @@ Data input/output module for TomoTools package.
 import numpy as np
 import os
 import hyperspy.api as hspy
-from tomotools.base import TomoStack
+from etspy.base import TomoStack
 import logging
 from hyperspy.signals import Signal2D
 
@@ -278,7 +278,7 @@ def load_serialem_series(mrcfiles, mdocfiles):
     stack.metadata.General.original_filename = meta[0]["ImageFile"]
     logger.info(
         "SerialEM Multiframe stack successfully loaded. "
-        "Use tomotools.utils.register_serialem_stack to align frames."
+        "Use etspy.utils.register_serialem_stack to align frames."
     )
     mrc_logger.setLevel(log_level)
     return stack, tilts
