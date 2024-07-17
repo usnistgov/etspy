@@ -1,4 +1,4 @@
-name: etspy
+name: etspy-dev
 channels:
   - astra-toolbox
   - conda-forge
