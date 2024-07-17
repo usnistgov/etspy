@@ -1,0 +1,17 @@
+name: etspy
+channels:
+  - astra-toolbox
+  - conda-forge
+  - defaults
+dependencies:
+  - astra-toolbox
+  - hyperspy-base
+  - hyperspy-gui-ipywidgets
+  - ipykernel
+  - numba
+  - pip
+  - pip:
+      - pydocstyle
+      - pystackreg
+      - pytest
+      - git+https://github.com/usnistgov/etspy.git
