@@ -1,4 +1,4 @@
-image: aaherzing/tomotools:latest
+image: aaherzing/etspy:latest
 
 stages:
     - test

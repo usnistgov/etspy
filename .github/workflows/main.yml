@@ -14,7 +14,7 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     container:
-      image: aaherzing/tomotools:latest
+      image: aaherzing/etspy:latest
     steps:
     - uses: actions/checkout@v4
     - run: pip install -e ./
