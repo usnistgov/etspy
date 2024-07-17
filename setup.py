@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='etspy',
-    version='0.7.1',
+    version='0.8',
     author='Andrew A. Herzing',
     description='Suite of tools for processing and reconstruction of electron '
             'tomography data',

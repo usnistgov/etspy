@@ -3,4 +3,4 @@
 # This file is part of ETSpy
 """__init__ function for ETSpy."""
 
-__version__ = '0.7.1'
+__version__ = '0.8'
