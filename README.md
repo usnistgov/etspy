@@ -1,7 +1,7 @@
 ETSpy package
 ===========
 
-ETSpy is a Hyperspy-based software package for the aligment and reconstruction
+ETSpy is a Hyperspy extension package package for the processing, aligment, and reconstruction
 of electron tomography data from TEM/STEM instruments. Tools are provided for basic 
 tilt series data processing, stack alignment, and reconstruction using the astra-toolbox.
 
