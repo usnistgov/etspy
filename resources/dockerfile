@@ -1,17 +1,11 @@
 FROM ubuntu:20.04
-FROM condaforge/miniforge3:latest
-ENV DEBIAN_FRONTEND noninteractive
+FROM continuumio/miniconda3:latest
 
 RUN apt-get update -qq -y
-RUN apt-get install ffmpeg libsm6 libxext6 g++ -y
+RUN apt-get install g++ -y
 
-RUN conda update -n base -c defaults -c conda-forge conda
-RUN conda update --all -y
-
-RUN conda install -c conda-forge hyperspy-base -y
 RUN conda install astra-toolbox -c astra-toolbox -y
-RUN conda install pytest flake8 pydocstyle -y
-
+RUN conda install hyperspy-base -c conda-forge -y
+RUN conda install numba pytest flake8 pydocstyle -y
 RUN pip install pystackreg
-
-
+RUN pip install git+https://github.com/usnistgov/etspy.git
