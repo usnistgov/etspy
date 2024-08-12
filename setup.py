@@ -11,5 +11,9 @@ setup(
     packages=['etspy'],
     install_requires=[
         'pystackreg',
-    ]
+    ],
+    package_data={
+        # Include all data files in the data directory
+        "etspy": ["tests/test_data/*"]
+    },
 )
