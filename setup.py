@@ -15,7 +15,8 @@ setup(
     package_data={
         # Include all data files in the data directory
         "etspy": ["tests/test_data/*",
-                  "tests/test_data/DM_Series_Test",
-                  "tests/test_data/SerialEM_Multiframe_Test"],
+                  "tests/test_data/DM_Series_Test/*",
+                  "tests/test_data/SerialEM_Multiframe_Test/*"
+                  ],
     },
 )
