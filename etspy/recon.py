@@ -14,15 +14,17 @@ import multiprocessing as mp
 import tqdm
 import copy
 from scipy.ndimage import gaussian_filter, convolve
+import dask
+from dask.diagnostics import ProgressBar
 
 ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def run_alg(sino, iters, sino_id, alg_id, rec_id):
+def run_alg(sino, iters, cfg, vol_geom, proj_geom):
     """
-    Run FBP, SIRT, or SART reconstruction algorithm.
+    Function to run CPU-based FBP, SIRT, or SART reconstruction algorithm using dask.
 
     Args
     ----------
@@ -30,12 +32,12 @@ def run_alg(sino, iters, sino_id, alg_id, rec_id):
        Sinogram of shape (nangles, ny)
     iters : int
         Number of iterations for the reconstruction
-    sino_id : int
-        ASTRA sinogram identity
-    alg_id : int
-        ASTRA algorithm identity
-    rec_id : boolean
-        ASTRA reconstruction identity
+    cfg : dict
+        ASTRA algorithm configuration
+    vol_geom : dict
+        ASTRA volume geometry
+    proj_geom : dict
+        ASTRA projection geometry
 
     Returns
     ----------
@@ -43,7 +45,14 @@ def run_alg(sino, iters, sino_id, alg_id, rec_id):
         Reconstruction of input sinogram
 
     """
-    astra.data2d.store(sino_id, sino)
+    proj_id = astra.create_projector("strip", proj_geom, vol_geom)
+    rec_id = astra.data2d.create("-vol", vol_geom)
+    sino_id = astra.data2d.create("-sino", proj_geom, sino)
+    cfg["ReconstructionDataId"] = rec_id
+    cfg["ProjectorId"] = proj_id
+    cfg["ProjectionDataId"] = sino_id
+    cfg["ReconstructionDataId"] = rec_id
+    alg_id = astra.algorithm.create(cfg)
     astra.algorithm.run(alg_id, iters)
     return astra.data2d.get(rec_id)
 
@@ -193,95 +202,66 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((thickness, ny))
-    rec_id = astra.data2d.create("-vol", vol_geom)
-    sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
+    cfg = {}
+    cfg['option'] = {}
 
     if cuda:
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-
-        if method.lower() == "fbp":
+        if method.lower() == 'fbp':
             logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
-            cfg = astra.astra_dict("FBP_CUDA")
-            cfg["ProjectorId"] = proj_id
-            cfg["ProjectionDataId"] = sino_id
-            cfg["ReconstructionDataId"] = rec_id
-            cfg["option"] = {}
+            cfg['type'] = 'FBP_CUDA'
             cfg["option"]["FilterType"] = filter.lower()
             niterations = 1
-
-            alg = astra.algorithm.create(cfg)
-
-            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
-                astra.data2d.store(sino_id, stack.data[:, :, i])
-                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
-                astra.algorithm.run(alg, niterations)
-                rec[i, :, :] = astra.data2d.get(rec_id)
-        elif method.lower() == "sirt":
+        elif method.lower() == 'sirt':
             logger.info(
                 "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)"
                 % niterations
             )
-            cfg = astra.astra_dict("SIRT_CUDA")
-            cfg["ProjectorId"] = proj_id
-            cfg["ProjectionDataId"] = sino_id
-            cfg["ReconstructionDataId"] = rec_id
+            cfg['type'] = 'SIRT_CUDA'
             if constrain:
-                cfg["option"] = {}
                 cfg["option"]["MinConstraint"] = thresh
-            alg = astra.algorithm.create(cfg)
-
-            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
-                astra.data2d.store(sino_id, stack.data[:, :, i])
-                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
-                astra.algorithm.run(alg, niterations)
-                rec[i, :, :] = astra.data2d.get(rec_id)
-
-        elif method.lower() == "sart":
+        elif method.lower() == 'sart':
             logger.info(
                 "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)"
                 % niterations
             )
-            cfg = astra.astra_dict("SART_CUDA")
-            cfg["ProjectorId"] = proj_id
-            cfg["ProjectionDataId"] = sino_id
-            cfg["ReconstructionDataId"] = rec_id
+            cfg['type'] = 'SART_CUDA'
             if constrain:
-                cfg["option"] = {}
                 cfg["option"]["MinConstraint"] = thresh
-            alg = astra.algorithm.create(cfg)
-
-            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
-                astra.data2d.store(sino_id, stack.data[:, :, i])
-                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
-                astra.algorithm.run(alg, niterations)
-                rec[i, :, :] = astra.data2d.get(rec_id)
 
         elif method.lower() == "dart":
             thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
             mask = np.ones([thickness, ny])
             mask_id = astra.data2d.create('-vol', vol_geom, mask)
             cfg = astra.astra_dict('SART_CUDA')
-            cfg["ProjectorId"] = proj_id
-            cfg['ProjectionDataId'] = sino_id
-            cfg['ReconstructionDataId'] = rec_id
-            cfg['option'] = {}
             cfg['option']['MinConstraint'] = 0
             cfg['option']['MaxConstraint'] = 255
             cfg['option']['ReconstructionMaskId'] = mask_id
-            alg = astra.algorithm.create(cfg)
 
-            for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
-                sinogram = stack.data[:, :, i]
-                astra.data2d.store(sino_id, sinogram)
-                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
+        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+        rec_id = astra.data2d.create("-vol", vol_geom)
+        sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
+        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+        cfg["ReconstructionDataId"] = rec_id
+        cfg["ProjectorId"] = proj_id
+        cfg["ProjectionDataId"] = sino_id
+        cfg["ReconstructionDataId"] = rec_id
+        alg = astra.algorithm.create(cfg)
+
+        for i in tqdm.tqdm(range(0, nx), disable=not (show_progressbar)):
+            astra.data2d.store(sino_id, stack.data[:, :, i])
+            astra.data2d.store(rec_id, np.zeros([thickness, ny]))
+            if method.lower() == "dart":
                 astra.data2d.store(mask_id, np.ones([thickness, ny]))
-                rec[i, :, :] = run_dart(sinogram, niterations, dart_iterations, p,
+                rec[i, :, :] = run_dart(stack.data[:, :, i], niterations, dart_iterations, p,
                                         alg, proj_id, mask_id, rec_id, sino_id, thresholds, gray_levels)
+            else:
+                astra.algorithm.run(alg, niterations)
+                rec[i, :, :] = astra.data2d.get(rec_id)
     else:
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
 
-        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+        proj_id = astra.create_projector("strip", proj_geom, vol_geom)
 
         if method.lower() == "fbp":
             logger.info("Reconstructing with CPU-based FBP algorithm")
@@ -445,7 +425,7 @@ def astra_error(sinogram, angles, method='sirt', iterations=50, constrain=True, 
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
     else:
         alg_name = method.upper()
-        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+        proj_id = astra.create_projector("strip", proj_geom, vol_geom)
 
     astra.data2d.store(sino_id, sinogram)
 
