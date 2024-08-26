@@ -24,7 +24,7 @@ logger.setLevel(logging.INFO)
 
 def run_alg(sino, iters, cfg, vol_geom, proj_geom):
     """
-    Function to run CPU-based FBP, SIRT, or SART reconstruction algorithm using dask.
+    Run CPU-based FBP, SIRT, or SART reconstruction algorithm using dask.
 
     Args
     ----------

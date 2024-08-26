@@ -718,13 +718,13 @@ class TomoStack(CommonStack):
         >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> rec = slices.reconstruct('FBP', cuda=False)
+        >>> rec = slices.reconstruct('FBP', cuda=False, show_progressbar=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> rec = slices.reconstruct('SIRT',iterations=5, cuda=False)
+        >>> rec = slices.reconstruct('SIRT',iterations=5, cuda=False, show_progressbar=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
@@ -734,14 +734,14 @@ class TomoStack(CommonStack):
         >>> iterations = 5
         >>> constrain = True
         >>> thresh = 0
-        >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh, cuda=False)
+        >>> rec = slices.reconstruct('SIRT',iterations, constrain, thresh, cuda=False, show_progressbar=False)
 
         Discreate algebraice reconstruction technique (DART) reconstruction
         >>> import etspy.datasets as ds
         >>> stack = ds.get_needle_data(True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> gray_levels = [0., slices.data.max()/2, slices.data.max()]
-        >>> rec = slices.reconstruct('DART',iterations=5, cuda=False, gray_levels=gray_levels, p=0.99, dart_iterations=5)
+        >>> rec = slices.reconstruct('DART',iterations=5, cuda=False, gray_levels=gray_levels, p=0.99, dart_iterations=5, show_progressbar=False)
 
         """
         if method.lower() not in [
