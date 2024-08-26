@@ -10,8 +10,8 @@ dependencies:
   - ipykernel
   - numba
   - pip
+  - pystackreg
   - pip:
       - pydocstyle
-      - pystackreg
       - pytest
       - git+https://github.com/usnistgov/etspy.git
