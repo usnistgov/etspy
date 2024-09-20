@@ -8,14 +8,16 @@ Utility module for ETSpy package.
 @author: Andrew Herzing
 """
 
-import numpy as np
-from etspy.io import create_stack
 import logging
-import tqdm
-from scipy import ndimage
-from etspy.align import calculate_shifts_stackreg
-from pystackreg import StackReg
 from multiprocessing import Pool
+
+import numpy as np
+import tqdm
+from pystackreg import StackReg
+from scipy import ndimage
+
+from etspy.align import calculate_shifts_stackreg
+from etspy.io import create_stack
 
 
 def multiaverage(stack, nframes, ny, nx):
@@ -90,8 +92,7 @@ def register_serialem_stack(stack, ncpus=1):
         with Pool(ncpus) as pool:
             reg = pool.starmap(
                 multiaverage,
-                [(stack.inav[:, i].data, nframes, ny, nx)
-                 for i in range(0, ntilts)],
+                [(stack.inav[:, i].data, nframes, ny, nx) for i in range(0, ntilts)],
             )
         reg = np.array(reg)
 
@@ -161,8 +162,7 @@ def weight_stack(stack, accuracy="medium"):
         num = 20000
         delta = 0.001
     else:
-        raise ValueError(
-            "Unknown accuracy level.  Must be 'low', 'medium', or 'high'.")
+        raise ValueError("Unknown accuracy level.  Must be 'low', 'medium', or 'high'.")
 
     r = np.arange(1, ny + 1)
     r = 2 / (ny - 1) * (r - 1) - 1
@@ -297,8 +297,10 @@ def get_radial_mask(mask_shape, center=None):
     """
     if center is None:
         center = [int(i / 2) for i in mask_shape]
-    radius = min(center[0], center[1], mask_shape[1] - center[0], mask_shape[0] - center[1])
-    yy, xx = np.ogrid[0: mask_shape[0], 0: mask_shape[1]]
+    radius = min(
+        center[0], center[1], mask_shape[1] - center[0], mask_shape[0] - center[1]
+    )
+    yy, xx = np.ogrid[0 : mask_shape[0], 0 : mask_shape[1]]
     mask = np.sqrt((xx - center[0]) ** 2 + (yy - center[1]) ** 2)
     mask = mask < radius
     return mask
@@ -337,7 +339,10 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
         pass
     elif filter_name == "shepp-logan":
         filter[1:] = filter[1:] * np.sinc(omega[1:] / (2 * np.pi))
-    elif filter_name in ["hanning", "hann",]:
+    elif filter_name in [
+        "hanning",
+        "hann",
+    ]:
         filter[1:] = filter[1:] * (1 + np.cos(omega[1:])) / 2
     elif filter_name in [
         "cosine",

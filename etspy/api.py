@@ -4,11 +4,10 @@
 """API for ETSpy."""
 
 import logging
-from etspy.io import load, create_stack
+
+from etspy import align, io, utils
 from etspy.base import TomoStack
-from etspy import io
-from etspy import utils
-from etspy import align
+from etspy.io import create_stack, load
 
 from . import __version__
 

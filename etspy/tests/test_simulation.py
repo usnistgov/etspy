@@ -1,6 +1,7 @@
-from etspy import simulation as sim
 import numpy as np
 from hyperspy.signals import Signal2D
+
+from etspy import simulation as sim
 
 
 class TestModels:
@@ -9,7 +10,9 @@ class TestModels:
         assert stack.data.shape == (10, 10, 10)
 
     def test_catalyst_model_with_particle(self):
-        stack = sim.create_catalyst_model(1, volsize=[20, 20, 20], support_radius=5, size_interval=[2, 3])
+        stack = sim.create_catalyst_model(
+            1, volsize=[20, 20, 20], support_radius=5, size_interval=[2, 3]
+        )
         assert stack.data.shape == (20, 20, 20)
 
     def test_cylinder_model(self):
@@ -66,11 +69,11 @@ class TestModifications:
     def test_add_noise_gaussian(self):
         model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
         stack = sim.create_model_tilt_series(model)
-        noisy = sim.add_noise(stack, 'gaussian')
+        noisy = sim.add_noise(stack, "gaussian")
         assert noisy.data.shape == (90, 10, 10)
 
     def test_add_noise_poissanian(self):
         model = sim.create_catalyst_model(0, volsize=[10, 10, 10])
         stack = sim.create_model_tilt_series(model)
-        noisy = sim.add_noise(stack, 'poissonian')
+        noisy = sim.add_noise(stack, "poissonian")
         assert noisy.data.shape == (90, 10, 10)

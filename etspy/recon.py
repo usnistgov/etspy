@@ -7,15 +7,16 @@ Reconstruction module for ETSpy package.
 
 @author: Andrew Herzing
 """
-import numpy as np
-import astra
+import copy
 import logging
 import multiprocessing as mp
-import tqdm
-import copy
-from scipy.ndimage import gaussian_filter, convolve
+
+import astra
 import dask
+import numpy as np
+import tqdm
 from dask.diagnostics import ProgressBar
+from scipy.ndimage import convolve, gaussian_filter
 
 ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
@@ -57,7 +58,9 @@ def run_alg(sino, iters, cfg, vol_geom, proj_geom):
     return astra.data2d.get(rec_id)
 
 
-def run_dart(sino, iters, dart_iters, p, thresholds, gray_levels, cfg, vol_geom, proj_geom):
+def run_dart(
+    sino, iters, dart_iters, p, thresholds, gray_levels, cfg, vol_geom, proj_geom
+):
     """
     Run discrete algebraic reoncsturction technique (DART) algorithm.
 
@@ -95,7 +98,7 @@ def run_dart(sino, iters, dart_iters, p, thresholds, gray_levels, cfg, vol_geom,
     proj_id = astra.create_projector("strip", proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, sino)
-    mask_id = astra.data2d.create('-vol', vol_geom, 1)
+    mask_id = astra.data2d.create("-vol", vol_geom, 1)
     cfg["ReconstructionDataId"] = rec_id
     cfg["ProjectorId"] = proj_id
     cfg["ProjectionDataId"] = sino_id
@@ -141,8 +144,21 @@ def run_dart(sino, iters, dart_iters, p, thresholds, gray_levels, cfg, vol_geom,
     return curr_rec
 
 
-def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thickness=None, ncores=None,
-        filter="shepp-logan", gray_levels=None, dart_iterations=None, p=0.99, show_progressbar=True):
+def run(
+    stack,
+    method,
+    niterations=20,
+    constrain=None,
+    thresh=0,
+    cuda=None,
+    thickness=None,
+    ncores=None,
+    filter="shepp-logan",
+    gray_levels=None,
+    dart_iterations=None,
+    p=0.99,
+    show_progressbar=True,
+):
     """
     Perform reconstruction of input tilt series.
 
@@ -201,28 +217,28 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((thickness, ny))
     cfg = {}
-    cfg['option'] = {}
+    cfg["option"] = {}
 
     if cuda:
-        if method.lower() == 'fbp':
+        if method.lower() == "fbp":
             logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
-            cfg['type'] = 'FBP_CUDA'
+            cfg["type"] = "FBP_CUDA"
             cfg["option"]["FilterType"] = filter.lower()
             niterations = 1
-        elif method.lower() == 'sirt':
+        elif method.lower() == "sirt":
             logger.info(
                 "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)"
                 % niterations
             )
-            cfg['type'] = 'SIRT_CUDA'
+            cfg["type"] = "SIRT_CUDA"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == 'sart':
+        elif method.lower() == "sart":
             logger.info(
                 "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)"
                 % niterations
             )
-            cfg['type'] = 'SART_CUDA'
+            cfg["type"] = "SART_CUDA"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
 
@@ -231,13 +247,16 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
                 "Reconstructing with CUDA-accelerated DART algorithm (%s iterations)"
                 % niterations
             )
-            cfg['type'] = 'SART_CUDA'
-            thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
+            cfg["type"] = "SART_CUDA"
+            thresholds = [
+                (gray_levels[i] + gray_levels[i + 1]) // 2
+                for i in range(len(gray_levels) - 1)
+            ]
             mask = np.ones([thickness, ny])
-            mask_id = astra.data2d.create('-vol', vol_geom, mask)
-            cfg['option']['MinConstraint'] = 0
-            cfg['option']['MaxConstraint'] = 255
-            cfg['option']['ReconstructionMaskId'] = mask_id
+            mask_id = astra.data2d.create("-vol", vol_geom, mask)
+            cfg["option"]["MinConstraint"] = 0
+            cfg["option"]["MaxConstraint"] = 255
+            cfg["option"]["ReconstructionMaskId"] = mask_id
 
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
         rec_id = astra.data2d.create("-vol", vol_geom)
@@ -254,8 +273,17 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
             astra.data2d.store(rec_id, np.zeros([thickness, ny]))
             if method.lower() == "dart":
                 astra.data2d.store(mask_id, np.ones([thickness, ny]))
-                rec[i, :, :] = run_dart(stack.data[:, :, i], niterations, dart_iterations, p,
-                                        thresholds, gray_levels, cfg, vol_geom, proj_geom)
+                rec[i, :, :] = run_dart(
+                    stack.data[:, :, i],
+                    niterations,
+                    dart_iterations,
+                    p,
+                    thresholds,
+                    gray_levels,
+                    cfg,
+                    vol_geom,
+                    proj_geom,
+                )
             else:
                 astra.algorithm.run(alg, niterations)
                 rec[i, :, :] = astra.data2d.get(rec_id)
@@ -263,34 +291,41 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
 
-        if method.lower() == 'fbp':
+        if method.lower() == "fbp":
             logger.info("Reconstructing with CPU-based FBP algorithm")
-            cfg['type'] = 'FBP'
+            cfg["type"] = "FBP"
             cfg["option"]["FilterType"] = filter.lower()
             niterations = 1
-        elif method.lower() == 'sirt':
+        elif method.lower() == "sirt":
             logger.info("Reconstructing with CPU-based SIRT algorithm")
-            cfg['type'] = 'SIRT'
+            cfg["type"] = "SIRT"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == 'sart':
+        elif method.lower() == "sart":
             logger.info("Reconstructing with CPU-based SART algorithm")
-            cfg['type'] = 'SART'
+            cfg["type"] = "SART"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
         elif method.lower() == "dart":
             logger.info("Reconstructing with CPU-based DART algorithm")
-            cfg['type'] = 'SART'
-            thresholds = [(gray_levels[i] + gray_levels[i + 1]) // 2 for i in range(len(gray_levels) - 1)]
+            cfg["type"] = "SART"
+            thresholds = [
+                (gray_levels[i] + gray_levels[i + 1]) // 2
+                for i in range(len(gray_levels) - 1)
+            ]
             mask = np.ones([thickness, ny])
-            mask_id = astra.data2d.create('-vol', vol_geom, mask)
-            cfg['option']['MinConstraint'] = 0
-            cfg['option']['MaxConstraint'] = 255
-            cfg['option']['ReconstructionMaskId'] = mask_id
+            mask_id = astra.data2d.create("-vol", vol_geom, mask)
+            cfg["option"]["MinConstraint"] = 0
+            cfg["option"]["MaxConstraint"] = 255
+            cfg["option"]["ReconstructionMaskId"] = mask_id
 
-        if method.lower() in ['fbp', 'sirt', 'sart']:
-            tasks = [dask.delayed(run_alg)(stack.data[:, :, i], niterations, cfg,
-                                           vol_geom, proj_geom) for i in range(nx)]
+        if method.lower() in ["fbp", "sirt", "sart"]:
+            tasks = [
+                dask.delayed(run_alg)(
+                    stack.data[:, :, i], niterations, cfg, vol_geom, proj_geom
+                )
+                for i in range(nx)
+            ]
             if show_progressbar:
                 with ProgressBar():
                     results = dask.compute(*tasks, num_workers=ncores)
@@ -309,9 +344,21 @@ def run(stack, method, niterations=20, constrain=None, thresh=0, cuda=None, thic
             #             pool.starmap(run_alg,
             #                          [(stack.data[:, :, i], niterations, sino_id, alg, rec_id) for i in range(0, nx)],)):
             #             rec[i] = result
-        elif method.lower() == 'dart':
-            tasks = [dask.delayed(run_dart)(stack.data[:, :, i], niterations, dart_iterations, p,
-                                            thresholds, gray_levels, cfg, vol_geom, proj_geom) for i in range(nx)]
+        elif method.lower() == "dart":
+            tasks = [
+                dask.delayed(run_dart)(
+                    stack.data[:, :, i],
+                    niterations,
+                    dart_iterations,
+                    p,
+                    thresholds,
+                    gray_levels,
+                    cfg,
+                    vol_geom,
+                    proj_geom,
+                )
+                for i in range(nx)
+            ]
             if show_progressbar:
                 with ProgressBar():
                     results = dask.compute(*tasks, num_workers=ncores)
@@ -376,15 +423,15 @@ def get_dart_boundaries(segmented):
         Boundaries of the segmented reconstruction.
 
     """
-    kernel = np.array([[1, 1, 1],
-                       [1, -8, 1],
-                       [1, 1, 1]])
-    edges = convolve(segmented.astype(np.int32), kernel, mode='constant', cval=0)
+    kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]])
+    edges = convolve(segmented.astype(np.int32), kernel, mode="constant", cval=0)
     boundaries = edges != 0
     return boundaries
 
 
-def astra_error(sinogram, angles, method='sirt', iterations=50, constrain=True, thresh=0, cuda=False):
+def astra_error(
+    sinogram, angles, method="sirt", iterations=50, constrain=True, thresh=0, cuda=False
+):
     """
     Perform SIRT reconstruction using the Astra toolbox algorithms.
 

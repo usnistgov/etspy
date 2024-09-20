@@ -8,18 +8,19 @@ Alignment module for ETSpy package.
 @author: Andrew Herzing
 """
 
-import numpy as np
 import copy
-from scipy import optimize, ndimage
+import logging
+
+import astra
+import matplotlib.pylab as plt
+import numpy as np
 import tqdm
 from pystackreg import StackReg
-import logging
-from skimage.registration import phase_cross_correlation as pcc
-from skimage.transform import hough_line, hough_line_peaks
+from scipy import ndimage, optimize
 from skimage.feature import canny
 from skimage.filters import sobel
-import matplotlib.pylab as plt
-import astra
+from skimage.registration import phase_cross_correlation as pcc
+from skimage.transform import hough_line, hough_line_peaks
 
 has_cupy = True
 try:
@@ -78,9 +79,7 @@ def get_coms(stack, slices):
     """
     sinos = stack.data[:, :, slices]
     com_range = int(sinos.shape[1] / 2)
-    y_coordinates = np.linspace(-com_range,
-                                com_range,
-                                sinos.shape[1], dtype="int")
+    y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1], dtype="int")
     total_mass = sinos.sum(1)
     coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y_coordinates, 2) / total_mass
     return coms
@@ -194,7 +193,9 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
             for j, idx in enumerate(index):
                 pfactor = np.exp(2 * np.pi * 1j * (idx * kx / npad))
                 conjugate = np.conj(ref_line_pad_FT) * line_pad_FT * pfactor
-                xcorr = np.abs(np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))))
+                xcorr = np.abs(
+                    np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate)))
+                )
                 max_vals[j] = np.max(xcorr)
 
             max_loc = np.argmax(max_vals)
@@ -263,14 +264,16 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
     total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
 
     for i in range(0, ntilts):
-        total_mass[i, :] = np.sum(stack.data[i, :, xrange[0] - p - 1: xrange[1] + p], 0)
+        total_mass[i, :] = np.sum(
+            stack.data[i, :, xrange[0] - p - 1 : xrange[1] + p], 0
+        )
 
     mean_mass = np.mean(total_mass[:, p:-p], 0)
 
     for i in range(0, ntilts):
         s = 0
         for j in range(-p, p):
-            resid = np.linalg.norm(mean_mass - total_mass[i, p + j: -p + j])
+            resid = np.linalg.norm(mean_mass - total_mass[i, p + j : -p + j])
             if resid < s or j == -p:
                 s = resid
                 xshifts[i] = -j
@@ -337,15 +340,22 @@ def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
         The X- and Y-shifts to be applied to each image
 
     """
-    def _upsampled_dft(data, upsampled_region_size, upsample_factor=1, axis_offsets=None):
-        upsampled_region_size = [upsampled_region_size,] * data.ndim
+
+    def _upsampled_dft(
+        data, upsampled_region_size, upsample_factor=1, axis_offsets=None
+    ):
+        upsampled_region_size = [
+            upsampled_region_size,
+        ] * data.ndim
 
         im2pi = 1j * 2 * cp.pi
 
         dim_properties = list(zip(data.shape, upsampled_region_size, axis_offsets))
 
         for n_items, ups_size, ax_offset in dim_properties[::-1]:
-            kernel = (cp.arange(ups_size) - ax_offset)[:, None] * cp.fft.fftfreq(n_items, upsample_factor)
+            kernel = (cp.arange(ups_size) - ax_offset)[:, None] * cp.fft.fftfreq(
+                n_items, upsample_factor
+            )
             kernel = cp.exp(-im2pi * kernel)
             # use kernel with same precision as the data
             kernel = kernel.astype(data.dtype, copy=False)
@@ -361,7 +371,9 @@ def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
         cross_power_spectrum /= cp.maximum(cp.abs(cross_power_spectrum), 100 * eps)
         phase_correlation = cp.fft.ifft2(cross_power_spectrum)
 
-        maxima = cp.unravel_index(cp.argmax(cp.abs(phase_correlation)), phase_correlation.shape)
+        maxima = cp.unravel_index(
+            cp.argmax(cp.abs(phase_correlation)), phase_correlation.shape
+        )
         midpoint = cp.array([cp.fix(axis_size / 2) for axis_size in shape])
 
         float_dtype = cross_power_spectrum.real.dtype
@@ -377,8 +389,15 @@ def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
             shift = cp.round(shift * upsample_factor) / upsample_factor
 
             sample_region_offset = dftshift - shift * upsample_factor
-            phase_correlation = _upsampled_dft(cross_power_spectrum.conj(), upsampled_region_size, upsample_factor, sample_region_offset).conj()
-            maxima = np.unravel_index(cp.argmax(np.abs(phase_correlation)), phase_correlation.shape)
+            phase_correlation = _upsampled_dft(
+                cross_power_spectrum.conj(),
+                upsampled_region_size,
+                upsample_factor,
+                sample_region_offset,
+            ).conj()
+            maxima = np.unravel_index(
+                cp.argmax(np.abs(phase_correlation)), phase_correlation.shape
+            )
 
             maxima = cp.stack(maxima).astype(float_dtype, copy=False)
             maxima -= dftshift
@@ -392,27 +411,43 @@ def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
         ref_cp = stack_cp[0]
         ref_fft = cp.fft.fftn(ref_cp)
         shape = ref_fft.shape
-        with tqdm.tqdm(total=stack.data.shape[0] - 1, desc="Calculating shifts", disable=not show_progressbar) as pbar:
+        with tqdm.tqdm(
+            total=stack.data.shape[0] - 1,
+            desc="Calculating shifts",
+            disable=not show_progressbar,
+        ) as pbar:
             for i in range(start, 0, -1):
-                shift = _cupy_phase_correlate(stack_cp[i], stack_cp[i - 1], upsample_factor=upsample_factor)
+                shift = _cupy_phase_correlate(
+                    stack_cp[i], stack_cp[i - 1], upsample_factor=upsample_factor
+                )
                 shifts[i - 1] = shifts[i] + shift
                 pbar.update(1)
             for i in range(start, stack.data.shape[0] - 1):
-                shift = _cupy_phase_correlate(stack_cp[i], stack_cp[i + 1], upsample_factor=upsample_factor)
+                shift = _cupy_phase_correlate(
+                    stack_cp[i], stack_cp[i + 1], upsample_factor=upsample_factor
+                )
                 shifts[i + 1] = shifts[i] + shift
                 pbar.update(1)
         shifts = shifts.get()
 
     else:
         shifts = np.zeros((stack.data.shape[0], 2))
-        with tqdm.tqdm(total=stack.data.shape[0] - 1, desc="Calculating shifts", disable=not show_progressbar) as pbar:
+        with tqdm.tqdm(
+            total=stack.data.shape[0] - 1,
+            desc="Calculating shifts",
+            disable=not show_progressbar,
+        ) as pbar:
             for i in range(start, 0, -1):
-                shift = pcc(stack.data[i], stack.data[i - 1], upsample_factor=upsample_factor)[0]
+                shift = pcc(
+                    stack.data[i], stack.data[i - 1], upsample_factor=upsample_factor
+                )[0]
                 shifts[i - 1] = shifts[i] + shift
                 pbar.update(1)
 
             for i in range(start, stack.data.shape[0] - 1):
-                shift = pcc(stack.data[i], stack.data[i + 1], upsample_factor=upsample_factor)[0]
+                shift = pcc(
+                    stack.data[i], stack.data[i + 1], upsample_factor=upsample_factor
+                )[0]
                 shifts[i + 1] = shifts[i] + shift
                 pbar.update(1)
 
@@ -442,7 +477,11 @@ def calculate_shifts_stackreg(stack, start, show_progressbar):
     # Initialize pystackreg object with TranslationTransform2D
     reg = StackReg(StackReg.TRANSLATION)
 
-    with tqdm.tqdm(total=stack.data.shape[0] - 1, desc="Calculating shifts", disable=not show_progressbar) as pbar:
+    with tqdm.tqdm(
+        total=stack.data.shape[0] - 1,
+        desc="Calculating shifts",
+        disable=not show_progressbar,
+    ) as pbar:
         # Calculate shifts relative to the image at the 'start' index
         for i in range(start, 0, -1):
             transformation = reg.register(stack.data[i], stack.data[i - 1])
@@ -458,7 +497,9 @@ def calculate_shifts_stackreg(stack, start, show_progressbar):
     return shifts
 
 
-def calc_shifts_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor):
+def calc_shifts_com_cl(
+    stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
+):
     """
     Align stack using combined center of mass and common line methods.
 
@@ -572,36 +613,46 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
 
     """
     if start is None:
-        start = stack.data.shape[0] // 2  # Use the slice closest to the midpoint if start is not provided
+        start = (
+            stack.data.shape[0] // 2
+        )  # Use the slice closest to the midpoint if start is not provided
 
     if method.lower() == "com":
         logger.info("Performing stack registration using center of mass method")
-        xrange = kwargs.get('xrange', None)
-        p = kwargs.get('p', 20)
-        nslices = kwargs.get('nslices', 20)
+        xrange = kwargs.get("xrange", None)
+        p = kwargs.get("p", 20)
+        nslices = kwargs.get("nslices", 20)
         shifts = np.zeros([stack.data.shape[0], 2])
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
-    elif method.lower() == 'pc':
-        cuda = kwargs.get('cuda', False)
-        upsample_factor = kwargs.get('upsample_factor', 3)
+    elif method.lower() == "pc":
+        cuda = kwargs.get("cuda", False)
+        upsample_factor = kwargs.get("upsample_factor", 3)
         if cuda:
-            logger.info("Performing stack registration using CUDA-accelerated phase correlation")
+            logger.info(
+                "Performing stack registration using CUDA-accelerated phase correlation"
+            )
         else:
             logger.info("Performing stack registration using phase correlation")
-        shifts = calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda)
-    elif method.lower() in ["stackreg", 'sr']:
+        shifts = calculate_shifts_pc(
+            stack, start, show_progressbar, upsample_factor, cuda
+        )
+    elif method.lower() in ["stackreg", "sr"]:
         logger.info("Performing stack registration using PyStackReg")
         shifts = calculate_shifts_stackreg(stack, start, show_progressbar)
     elif method.lower() == "com-cl":
-        logger.info("Performing stack registration using combined center of mass and common line methods")
-        com_ref_index = kwargs.get('com_ref_index', stack.data.shape[1] // 2)
-        cl_ref_index = kwargs.get('cl_ref_index', stack.data.shape[0] // 2)
-        cl_resolution = kwargs.get('cl_resolution', 0.05)
-        cl_div_factor = kwargs.get('cl_div_factor', 8)
-        shifts = calc_shifts_com_cl(stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor)
+        logger.info(
+            "Performing stack registration using combined center of mass and common line methods"
+        )
+        com_ref_index = kwargs.get("com_ref_index", stack.data.shape[1] // 2)
+        cl_ref_index = kwargs.get("cl_ref_index", stack.data.shape[0] // 2)
+        cl_resolution = kwargs.get("cl_resolution", 0.05)
+        cl_div_factor = kwargs.get("cl_div_factor", 8)
+        shifts = calc_shifts_com_cl(
+            stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
+        )
     else:
-        raise ValueError('Invalid alignment method %s' % method)
+        raise ValueError("Invalid alignment method %s" % method)
     aligned = apply_shifts(stack, shifts)
     logger.info("Stack registration complete")
     return aligned
@@ -642,7 +693,10 @@ def tilt_com(stack, slices=None, nslices=None):
         raise ValueError("Tilts are not defined in stack.metadata.Tomography.")
 
     if nx < 3:
-        raise ValueError("Dataset is only %s pixels in x dimension. This method cannot be used." % stack.data.shape[2])
+        raise ValueError(
+            "Dataset is only %s pixels in x dimension. This method cannot be used."
+            % stack.data.shape[2]
+        )
 
     # Determine the best slice locations for the analysis
     if slices is None:
@@ -657,7 +711,10 @@ def tilt_com(stack, slices=None, nslices=None):
                 raise ValueError("nslices is greater than the X-dimension of the data.")
             if nslices > 0.3 * nx:
                 nslices = int(0.3 * nx)
-                logger.warning("nslices is greater than 30%% of number of x pixels. Using %s slices instead." % nslices)
+                logger.warning(
+                    "nslices is greater than 30%% of number of x pixels. Using %s slices instead."
+                    % nslices
+                )
 
         slices = get_best_slices(stack, nslices)
         logger.info("Performing alignments using best %s slices" % nslices)
@@ -670,7 +727,9 @@ def tilt_com(stack, slices=None, nslices=None):
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 
     for idx, i in enumerate(slices):
-        r[idx], x0[idx], z0[idx] = optimize.curve_fit(com_motion, xdata=thetas, ydata=coms[:, idx], p0=[0, 0, 0])[0]
+        r[idx], x0[idx], z0[idx] = optimize.curve_fit(
+            com_motion, xdata=thetas, ydata=coms[:, idx], p0=[0, 0, 0]
+        )[0]
     slope, intercept = optimize.curve_fit(fit_line, xdata=r, ydata=slices, p0=[0, 0])[0]
     tilt_shift = (ny / 2 - intercept) / slope
     tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
@@ -683,7 +742,9 @@ def tilt_com(stack, slices=None, nslices=None):
     return final
 
 
-def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=False, shift_limit=20):
+def tilt_maximage(
+    stack, limit=10, delta=0.1, plot_results=False, also_shift=False, shift_limit=20
+):
     """
     Perform automated determination of the tilt axis of a TomoStack.
 
@@ -719,7 +780,7 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=Fal
     edges = canny(edges)
 
     # Perform Hough transform to detect lines
-    angles = np.pi * np.arange(-limit, limit, delta) / 180.
+    angles = np.pi * np.arange(-limit, limit, delta) / 180.0
     h, theta, d = hough_line(edges, angles)
 
     # Find peaks in Hough space
@@ -730,7 +791,7 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=Fal
 
     if plot_results:
         fig, ax = plt.subplots(1)
-        ax.imshow(image, cmap='gray')
+        ax.imshow(image, cmap="gray")
 
         for i in range(len(angles)):
             (x0, y0) = dists[i] * np.array([np.cos(angles[i]), np.sin(angles[i])])
@@ -748,7 +809,7 @@ def tilt_maximage(stack, limit=10, delta=0.1, plot_results=False, also_shift=Fal
         shifted = ali.isig[0:nshifts, :].deepcopy()
         for i in range(0, nshifts):
             shifted.data[:, :, i] = np.roll(ali.isig[idx, :].data, int(shifts[i]))
-        shifted_rec = shifted.reconstruct('SIRT', 100, constrain=True)
+        shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
         tilt_shift = shifts[shifted_rec.sum((1, 2)).data.argmin()]
         ali = ali.trans_stack(yshift=-tilt_shift)
         ali.metadata.Tomography.yshift = -tilt_shift

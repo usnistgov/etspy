@@ -7,14 +7,23 @@ Simulation module for ETSpy package.
 
 @author: Andrew Herzing
 """
+import astra
+import hyperspy.api as hs
 import numpy as np
 from scipy import ndimage
-import astra
+
+from etspy.api import TomoStack
 from etspy.io import create_stack
-import hyperspy.api as hs
 
 
-def create_catalyst_model(nparticles=15, particle_density=255, support_density=100, volsize=[600, 600, 600], support_radius=200, size_interval=[5, 12]):
+def create_catalyst_model(
+    nparticles=15,
+    particle_density=255,
+    support_density=100,
+    volsize=[600, 600, 600],
+    support_radius=200,
+    size_interval=[5, 12],
+):
     """
     Create a model data array that mimics a hetergeneous catalyst.
 
@@ -61,7 +70,8 @@ def create_catalyst_model(nparticles=15, particle_density=255, support_density=1
                 overlap = False
 
         z_exact = np.int32(
-            np.sqrt(support_radius**2 - (x - center[0]) ** 2 - (y - center[1]) ** 2) + center[2]
+            np.sqrt(support_radius**2 - (x - center[0]) ** 2 - (y - center[1]) ** 2)
+            + center[2]
         )
         zmin = z_exact - np.int32(size / 2)
         zmax = z_exact + np.int32(size / 2)
@@ -120,11 +130,11 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
         vol_shape = np.array([200, 200, 200])
 
     cylinder = np.zeros(vol_shape, np.uint16)
-    xx, yy = np.ogrid[:vol_shape[1], :vol_shape[2]]
+    xx, yy = np.ogrid[: vol_shape[1], : vol_shape[2]]
     center_x, center_y, _ = vol_shape // 2
 
     # Create first cylinder
-    cylinder1 = (xx - center_x)**2 + (yy - center_y)**2 <= radius**2
+    cylinder1 = (xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius**2
 
     if not add_others:
         # Add the cylinder to the volume
@@ -135,12 +145,12 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
         # Create second cylinder
         radius_cylinder2 = 10
         center_x, center_y = [30, 30]
-        cylinder2 = (xx - center_x)**2 + (yy - center_y)**2 <= radius_cylinder2**2
+        cylinder2 = (xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius_cylinder2**2
 
         # Create third cylinder
         radius_cylinder3 = 15
         center_x, center_y = [370, 350]
-        cylinder3 = (xx - center_x)**2 + (yy - center_y)**2 <= radius_cylinder3**2
+        cylinder3 = (xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius_cylinder3**2
 
         # Add the cylinders to the volume
         for i in range(vol_shape[2]):
@@ -207,29 +217,40 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     return stack
 
 
-def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0, tilt_rotate=0, y_only=False, interp_order=3):
+def misalign_stack(
+    stack: TomoStack,
+    min_shift: int = -5,
+    max_shift: int = 5,
+    tilt_shift: int = 0,
+    tilt_rotate: int = 0,
+    y_only: bool = False,
+    interp_order: int = 3,
+) -> TomoStack:
     """
     Apply misalignment to a model tilt series.
 
     Args
     ----------
-    stack : TomoStack object
+    stack
         TomoStack simluation
-    min_shift : int
+    min_shift
         Minimum amount of jitter to apply to the stack
-    max_shift : int
+    max_shift
         Maximum amount of jitter to apply to the stack
-    tilt_shift : int
+    tilt_shift
         Number of pixels by which to offset the tilt axis from the center
-    tilt_rotate : int
+    tilt_rotate
         Amount of rotation to apply to the stack
-    y_only : bool
+    y_only
         If True, limit the application of jitter to the x-direction only.
         Default is False
+    interp_order
+        The order of spline interpolation used by the :py:func:`scipy.ndimage.shift`
+        or :py:function:`scipy.ndimage.rotate` function. The order must be in the range 0-5.
 
     Returns
     ----------
-    misaligned : TomoStack object
+    misaligned
         Misaligned copy of the input TomoStack
 
     """
@@ -241,7 +262,11 @@ def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0, tilt_rotate=0
         )
     if tilt_rotate != 0:
         misaligned.data = ndimage.rotate(
-            misaligned.data, axes=(1, 2), angle=-tilt_rotate, order=interp_order, reshape=False
+            misaligned.data,
+            axes=(1, 2),
+            angle=-tilt_rotate,
+            order=interp_order,
+            reshape=False,
         )
 
     if (min_shift != 0) or (max_shift != 0):
@@ -250,8 +275,12 @@ def misalign_stack(stack, min_shift=-5, max_shift=5, tilt_shift=0, tilt_rotate=0
             if y_only:
                 jitter[i, 1] = 0
 
-            misaligned.data[i, :, :] = ndimage.shift(misaligned.data[i, :, :], shift=[jitter[i, 0], jitter[i, 1]], order=interp_order)
-    misaligned.metadata.Tomography.shifts = jitter
+            misaligned.data[i, :, :] = ndimage.shift(
+                misaligned.data[i, :, :],
+                shift=[jitter[i, 0], jitter[i, 1]],
+                order=interp_order,
+            )
+        misaligned.metadata.Tomography.shifts = jitter
     return misaligned
 
 

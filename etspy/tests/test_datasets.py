@@ -1,5 +1,5 @@
-from etspy import datasets as ds
 import etspy.api as etspy
+from etspy import datasets as ds
 
 
 class TestExptlDatasetRetrieval:

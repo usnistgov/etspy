@@ -1,16 +1,13 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of ETSpy
-
 """
 Test dataset handling module for ETSpy package.
 
 @author: Andrew Herzing
 """
 
+from pathlib import Path
+
 import etspy.api as etspy
-from etspy.simulation import misalign_stack, add_noise
-import os
+from etspy.simulation import add_noise, misalign_stack
 
 etspy_path = Path(etspy.__file__).parent
 
@@ -20,7 +17,7 @@ def get_needle_data(aligned: bool = False):
     Load an experimental tilt series of needle-shaped specimen.
 
     Returns
-    ----------
+    -------
     needle : TomoStack object
         TomoStack containing the simulated catalyst tilt series
 

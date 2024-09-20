@@ -1,19 +1,20 @@
-from etspy import datasets as ds
-import etspy
-from etspy import io, utils
-import pytest
-import numpy
-from etspy.base import TomoStack
-import hyperspy.api as hs
-import os
 import glob
+import os
+
+import hyperspy.api as hs
+import numpy
+import pytest
+
+import etspy
+from etspy import datasets as ds
+from etspy import io, utils
+from etspy.base import TomoStack
 
 etspy_path = os.path.dirname(etspy.__file__)
 
 
 def hspy_mrc_reader_check():
-    dirname = os.path.join(etspy_path, "tests",
-                           "test_data", "SerialEM_Multiframe_Test")
+    dirname = os.path.join(etspy_path, "tests", "test_data", "SerialEM_Multiframe_Test")
     files = glob.glob(dirname + "/*.mrc")
     file = files[0]
     s = hs.load(file)
@@ -31,8 +32,9 @@ else:
 @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestMultiframeAverage:
     def test_register_serialem_stack(self):
-        dirname = os.path.join(etspy_path, "tests",
-                               "test_data", "SerialEM_Multiframe_Test")
+        dirname = os.path.join(
+            etspy_path, "tests", "test_data", "SerialEM_Multiframe_Test"
+        )
         files = glob.glob(dirname + "/*.mrc")
         stack = io.load(files)
         stack_avg = utils.register_serialem_stack(stack, ncpus=1)
@@ -40,8 +42,9 @@ class TestMultiframeAverage:
         assert stack_avg.data.shape[0] == 3
 
     def test_register_serialem_stack_multicpu(self):
-        dirname = os.path.join(etspy_path, "tests",
-                               "test_data", "SerialEM_Multiframe_Test")
+        dirname = os.path.join(
+            etspy_path, "tests", "test_data", "SerialEM_Multiframe_Test"
+        )
         files = glob.glob(dirname + "/*.mrc")
         stack = io.load(files)
         stack_avg = utils.register_serialem_stack(stack, ncpus=2)
@@ -49,8 +52,9 @@ class TestMultiframeAverage:
         assert stack_avg.data.shape[0] == 3
 
     def test_multiaverage(self):
-        dirname = os.path.join(etspy_path, "tests",
-                               "test_data", "SerialEM_Multiframe_Test")
+        dirname = os.path.join(
+            etspy_path, "tests", "test_data", "SerialEM_Multiframe_Test"
+        )
         files = glob.glob(dirname + "/*.mrc")
         stack = io.load(files)
         ntilts, nframes, ny, nx = stack.data.shape

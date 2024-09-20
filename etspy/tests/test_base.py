@@ -1,21 +1,26 @@
-import matplotlib
-from etspy import datasets as ds
-import pytest
-import numpy as np
-import sys
 import io
-from etspy.base import CommonStack, TomoStack, RecStack
+import sys
+
 import hyperspy.api as hs
+import matplotlib
+import numpy as np
+import pytest
+
+from etspy import datasets as ds
+from etspy.base import CommonStack, RecStack, TomoStack
+
 # from hyperspy.signals import Signal2D
 
 
 def _set_tomo_metadata(s):
-    tomo_metadata = {"cropped": False,
-                     "shifts": np.zeros([s.data.shape[0], 2]),
-                     "tiltaxis": 0,
-                     "tilts": np.zeros(s.data.shape[0]),
-                     "xshift": 0,
-                     "yshift": 0}
+    tomo_metadata = {
+        "cropped": False,
+        "shifts": np.zeros([s.data.shape[0], 2]),
+        "tiltaxis": 0,
+        "tilts": np.zeros(s.data.shape[0]),
+        "xshift": 0,
+        "yshift": 0,
+    }
     s.metadata.add_node("Tomography")
     s.metadata.Tomography.add_dictionary(tomo_metadata)
     return s
@@ -38,40 +43,52 @@ class TestFiltering:
 
     def test_image_filter_median(self):
         stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method='median')
-        assert filt.axes_manager.navigation_shape == \
-            stack.inav[0:10].axes_manager.navigation_shape
-        assert filt.axes_manager.signal_shape == \
-            stack.inav[0:10].axes_manager.signal_shape
+        filt = stack.inav[0:10].filter(method="median")
+        assert (
+            filt.axes_manager.navigation_shape
+            == stack.inav[0:10].axes_manager.navigation_shape
+        )
+        assert (
+            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
+        )
 
     def test_image_filter_sobel(self):
         stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method='sobel')
-        assert filt.axes_manager.navigation_shape == \
-            stack.inav[0:10].axes_manager.navigation_shape
-        assert filt.axes_manager.signal_shape == \
-            stack.inav[0:10].axes_manager.signal_shape
+        filt = stack.inav[0:10].filter(method="sobel")
+        assert (
+            filt.axes_manager.navigation_shape
+            == stack.inav[0:10].axes_manager.navigation_shape
+        )
+        assert (
+            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
+        )
 
     def test_image_filter_both(self):
         stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method='both')
-        assert filt.axes_manager.navigation_shape == \
-            stack.inav[0:10].axes_manager.navigation_shape
-        assert filt.axes_manager.signal_shape == \
-            stack.inav[0:10].axes_manager.signal_shape
+        filt = stack.inav[0:10].filter(method="both")
+        assert (
+            filt.axes_manager.navigation_shape
+            == stack.inav[0:10].axes_manager.navigation_shape
+        )
+        assert (
+            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
+        )
 
     def test_image_filter_bpf(self):
         stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method='bpf')
-        assert filt.axes_manager.navigation_shape == \
-            stack.inav[0:10].axes_manager.navigation_shape
-        assert filt.axes_manager.signal_shape == \
-            stack.inav[0:10].axes_manager.signal_shape
+        filt = stack.inav[0:10].filter(method="bpf")
+        assert (
+            filt.axes_manager.navigation_shape
+            == stack.inav[0:10].axes_manager.navigation_shape
+        )
+        assert (
+            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
+        )
 
     def test_image_filter_wrong_name(self):
         stack = ds.get_needle_data()
         with pytest.raises(ValueError):
-            stack.inav[0:10].filter(method='WRONG')
+            stack.inav[0:10].filter(method="WRONG")
 
 
 class TestOperations:
@@ -79,10 +96,8 @@ class TestOperations:
     def test_stack_normalize(self):
         stack = ds.get_needle_data()
         norm = stack.normalize()
-        assert norm.axes_manager.navigation_shape == \
-            stack.axes_manager.navigation_shape
-        assert norm.axes_manager.signal_shape == \
-            stack.axes_manager.signal_shape
+        assert norm.axes_manager.navigation_shape == stack.axes_manager.navigation_shape
+        assert norm.axes_manager.signal_shape == stack.axes_manager.signal_shape
         assert norm.data.min() == 0.0
 
     def test_stack_invert(self):
@@ -103,12 +118,12 @@ class TestOperations:
 
         out = sys.stdout.getvalue()
         sys.stdout = stdout
-        out = out.split('\n')
+        out = out.split("\n")
 
-        assert out[0] == 'Mean: %.1f' % stack.data.mean()
-        assert out[1] == 'Std: %.2f' % stack.data.std()
-        assert out[2] == 'Max: %.1f' % stack.data.max()
-        assert out[3] == 'Min: %.1f' % stack.data.min()
+        assert out[0] == "Mean: %.1f" % stack.data.mean()
+        assert out[1] == "Std: %.2f" % stack.data.std()
+        assert out[2] == "Max: %.1f" % stack.data.max()
+        assert out[3] == "Min: %.1f" % stack.data.min()
 
     def test_set_tilts(self):
         stack = ds.get_needle_data()
@@ -117,8 +132,10 @@ class TestOperations:
         assert stack.axes_manager[0].scale == 5
         assert stack.axes_manager[0].units == "degrees"
         assert stack.axes_manager[0].offset == -50
-        assert stack.axes_manager[0].axis.all() == \
-            np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
+        assert (
+            stack.axes_manager[0].axis.all()
+            == np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
+        )
 
     def test_set_tilts_no_metadata(self):
         stack = ds.get_needle_data()
@@ -128,8 +145,10 @@ class TestOperations:
         assert stack.axes_manager[0].scale == 5
         assert stack.axes_manager[0].units == "degrees"
         assert stack.axes_manager[0].offset == -50
-        assert stack.axes_manager[0].axis.all() == \
-            np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
+        assert (
+            stack.axes_manager[0].axis.all()
+            == np.arange(-50, stack.data.shape[0] * 5 + -50, 5).all()
+        )
 
 
 class TestTestAlign:
@@ -185,31 +204,31 @@ class TestStackRegister:
     def test_stack_register_unknown_method(self):
         stack = ds.get_needle_data(False).inav[0:5]
         with pytest.raises(ValueError):
-            stack.stack_register('UNKNOWN')
+            stack.stack_register("UNKNOWN")
 
     def test_stack_register_pc(self):
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
-        reg = stack.stack_register('PC')
+        reg = stack.stack_register("PC")
         assert type(reg) is TomoStack
 
     def test_stack_register_com(self):
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
         stack.metadata.Tomography.tilts = stack.metadata.Tomography.tilts[0:5]
-        reg = stack.stack_register('COM')
+        reg = stack.stack_register("COM")
         assert type(reg) is TomoStack
 
     def test_stack_register_stackreg(self):
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
-        reg = stack.stack_register('COM-CL')
+        reg = stack.stack_register("COM-CL")
         assert type(reg) is TomoStack
 
     def test_stack_register_with_crop(self):
         stack = ds.get_needle_data(False).inav[0:5]
         stack.metadata.Tomography.shifts = np.zeros([5, 2])
-        reg = stack.stack_register('PC', crop=True)
+        reg = stack.stack_register("PC", crop=True)
         assert type(reg) is TomoStack
         assert np.sum(reg.data.shape) < np.sum(stack.data.shape)
 
@@ -218,57 +237,57 @@ class TestErrorPlots:
 
     def test_sirt_error(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(128, iterations=2,
-                                             constrain=True, cuda=False)
+        rec_stack, error = stack.recon_error(
+            128, iterations=2, constrain=True, cuda=False
+        )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] ==\
-            (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
 
     def test_sirt_error_no_slice(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(None, iterations=2,
-                                             constrain=True, cuda=False)
+        rec_stack, error = stack.recon_error(
+            None, iterations=2, constrain=True, cuda=False
+        )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] ==\
-            (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
         assert (1 - (3.8709e12 / error.data[0])) < 0.001
         assert (1 - (2.8624e12 / error.data[1])) < 0.001
 
     def test_sirt_error_no_cuda(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(128, iterations=50,
-                                             constrain=True, cuda=None)
+        rec_stack, error = stack.recon_error(
+            128, iterations=50, constrain=True, cuda=None
+        )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] ==\
-            (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
         assert (1 - (3.8709e12 / error.data[0])) < 0.001
         assert (1 - (2.8624e12 / error.data[1])) < 0.001
 
     def test_sart_error(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(128, algorithm='SART', iterations=2,
-                                             constrain=True, cuda=False)
+        rec_stack, error = stack.recon_error(
+            128, algorithm="SART", iterations=2, constrain=True, cuda=False
+        )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] ==\
-            (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
 
     def test_sart_error_no_slice(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(None, algorithm='SART', iterations=2,
-                                             constrain=True, cuda=False)
+        rec_stack, error = stack.recon_error(
+            None, algorithm="SART", iterations=2, constrain=True, cuda=False
+        )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] ==\
-            (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
         assert (1 - (3.8709e12 / error.data[0])) < 0.001
         assert (1 - (2.8624e12 / error.data[1])) < 0.001
 
     def test_sart_error_no_cuda(self):
         stack = ds.get_needle_data(True)
-        rec_stack, error = stack.recon_error(128, algorithm='SART', iterations=50,
-                                             constrain=True, cuda=None)
+        rec_stack, error = stack.recon_error(
+            128, algorithm="SART", iterations=50, constrain=True, cuda=None
+        )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] ==\
-            (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
         assert (1 - (3.8709e12 / error.data[0])) < 0.001
         assert (1 - (2.8624e12 / error.data[1])) < 0.001
 
@@ -277,49 +296,49 @@ class TestTiltAlign:
 
     def test_tilt_align_com_axis_zero(self):
         stack = ds.get_needle_data(True)
-        ali = stack.tilt_align('CoM', locs=[64, 100, 114])
+        ali = stack.tilt_align("CoM", locs=[64, 100, 114])
         assert type(ali) is TomoStack
 
     def test_tilt_align_maximage(self):
         stack = ds.get_needle_data(True)
         stack = stack.inav[0:10]
-        ali = stack.tilt_align('MaxImage')
+        ali = stack.tilt_align("MaxImage")
         assert type(ali) is TomoStack
 
     def test_tilt_align_unknown_method(self):
         stack = ds.get_needle_data(True)
         with pytest.raises(ValueError):
-            stack.tilt_align('UNKNOWN')
+            stack.tilt_align("UNKNOWN")
 
 
 class TestTransStack:
 
     def test_test_trans_stack_linear(self):
         stack = ds.get_needle_data(True)
-        shifted = stack.trans_stack(1, 1, 1, 'linear')
+        shifted = stack.trans_stack(1, 1, 1, "linear")
         assert type(shifted) is TomoStack
 
     def test_test_trans_stack_nearest(self):
         stack = ds.get_needle_data(True)
-        shifted = stack.trans_stack(1, 1, 1, 'nearest')
+        shifted = stack.trans_stack(1, 1, 1, "nearest")
         assert type(shifted) is TomoStack
 
     def test_test_trans_stack_cubic(self):
         stack = ds.get_needle_data(True)
-        shifted = stack.trans_stack(1, 1, 1, 'cubic')
+        shifted = stack.trans_stack(1, 1, 1, "cubic")
         assert type(shifted) is TomoStack
 
     def test_test_trans_stack_unknown(self):
         stack = ds.get_needle_data(True)
         with pytest.raises(ValueError):
-            stack.trans_stack(1, 1, 1, 'UNKNOWN')
+            stack.trans_stack(1, 1, 1, "UNKNOWN")
 
 
 class TestReconstruct:
     def test_cuda_detect(self):
         stack = ds.get_needle_data(True)
         slices = stack.isig[:, 120:121].deepcopy()
-        rec = slices.reconstruct('FBP', cuda=None)
+        rec = slices.reconstruct("FBP", cuda=None)
         assert type(rec) is RecStack
 
 

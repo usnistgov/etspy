@@ -10,17 +10,19 @@ Contains the TomoStack class and its methods.
 @author: Andrew Herzing
 """
 
-import numpy as np
-from etspy import recon, align
-import os
-from skimage import transform
-import pylab as plt
-import matplotlib.animation as animation
-from hyperspy.signals import Signal2D, Signal1D
-from scipy import ndimage
-import matplotlib as mpl
 import logging
+import os
+
 import astra
+import matplotlib as mpl
+import matplotlib.animation as animation
+import numpy as np
+import pylab as plt
+from hyperspy.signals import Signal1D, Signal2D
+from scipy import ndimage
+from skimage import transform
+
+from etspy import align, recon
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -119,7 +121,18 @@ class CommonStack(Signal2D):
         return normalized
 
     # noinspection PyTypeChecker
-    def savemovie(self, start, stop, axis="XY", fps=15, dpi=100, outfile=None, title="output.avi", clim=None, cmap="afmhot"):
+    def savemovie(
+        self,
+        start,
+        stop,
+        axis="XY",
+        fps=15,
+        dpi=100,
+        outfile=None,
+        title="output.avi",
+        clim=None,
+        cmap="afmhot",
+    ):
         """
         Save the Stack as an AVI movie file.
 
@@ -157,11 +170,17 @@ class CommonStack(Signal2D):
             ax.set_title(title)
 
         if axis == "XY":
-            im = ax.imshow(self.data[:, start, :], interpolation="none", cmap=cmap, clim=clim)
+            im = ax.imshow(
+                self.data[:, start, :], interpolation="none", cmap=cmap, clim=clim
+            )
         elif axis == "XZ":
-            im = ax.imshow(self.data[start, :, :], interpolation="none", cmap=cmap, clim=clim)
+            im = ax.imshow(
+                self.data[start, :, :], interpolation="none", cmap=cmap, clim=clim
+            )
         elif axis == "YZ":
-            im = ax.imshow(self.data[:, :, start], interpolation="none", cmap=cmap, clim=clim)
+            im = ax.imshow(
+                self.data[:, :, start], interpolation="none", cmap=cmap, clim=clim
+            )
         else:
             raise ValueError("Unknown axis!")
         fig.tight_layout()
@@ -284,7 +303,9 @@ class CommonStack(Signal2D):
 
         rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
 
-        shift = np.array([[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]])
+        shift = np.array(
+            [[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]]
+        )
 
         full_transform = np.dot(shift, rotation_mat)
         tform = transform.AffineTransform(full_transform)
@@ -308,11 +329,17 @@ class CommonStack(Signal2D):
                 order=interpolation_order,
             )
 
-        transformed.metadata.Tomography.xshift = self.metadata.Tomography.xshift + xshift
+        transformed.metadata.Tomography.xshift = (
+            self.metadata.Tomography.xshift + xshift
+        )
 
-        transformed.metadata.Tomography.yshift = self.metadata.Tomography.yshift + yshift
+        transformed.metadata.Tomography.yshift = (
+            self.metadata.Tomography.yshift + yshift
+        )
 
-        transformed.metadata.Tomography.tiltaxis = self.metadata.Tomography.tiltaxis + angle
+        transformed.metadata.Tomography.tiltaxis = (
+            self.metadata.Tomography.tiltaxis + angle
+        )
         return transformed
 
 
@@ -328,7 +355,7 @@ class TomoStack(CommonStack):
 
     def plot_sinos(self, *args, **kwargs):
         """Plot the TomoStack in sinogram orientation."""
-        self.swap_axes(1, 0).swap_axes(1, 2).plot(navigator='slider', *args, **kwargs)
+        self.swap_axes(1, 0).swap_axes(1, 2).plot(navigator="slider", *args, **kwargs)
         return
 
     def remove_projections(self, projections=None):
@@ -347,7 +374,7 @@ class TomoStack(CommonStack):
 
         """
         if projections is None:
-            raise ValueError('No projections provided')
+            raise ValueError("No projections provided")
         nprojs = len(projections)
         s_new = self.deepcopy()
         s_new.axes_manager[0].size -= nprojs
@@ -422,9 +449,24 @@ class TomoStack(CommonStack):
         """
         # Check if any transformations have been applied to the current stack
         no_shifts = np.all(self.metadata.Tomography.shifts == 0)
-        no_xshift = any([self.metadata.Tomography.xshift is None, self.metadata.Tomography.xshift == 0.0,])
-        no_yshift = any([self.metadata.Tomography.xshift is None, self.metadata.Tomography.xshift == 0.0,])
-        no_rotation = any([self.metadata.Tomography.tiltaxis is None, self.metadata.Tomography.tiltaxis == 0.0,])
+        no_xshift = any(
+            [
+                self.metadata.Tomography.xshift is None,
+                self.metadata.Tomography.xshift == 0.0,
+            ]
+        )
+        no_yshift = any(
+            [
+                self.metadata.Tomography.xshift is None,
+                self.metadata.Tomography.xshift == 0.0,
+            ]
+        )
+        no_rotation = any(
+            [
+                self.metadata.Tomography.tiltaxis is None,
+                self.metadata.Tomography.tiltaxis == 0.0,
+            ]
+        )
 
         if all([no_shifts, no_xshift, no_yshift, no_rotation]):
             raise ValueError("No transformations have been applied to this stack")
@@ -497,21 +539,25 @@ class TomoStack(CommonStack):
             ham2d = np.sqrt(np.outer(h, h))
             filtered.data = filtered.data * ham2d
         else:
-            raise ValueError("Unknown filter method. Must be 'median', 'sobel', 'both', or 'bpf'"
-                             )
+            raise ValueError(
+                "Unknown filter method. Must be 'median', 'sobel', 'both', or 'bpf'"
+            )
         if taper:
             taper_size = np.int32(np.array(taper) * self.data.shape[1:])
             filtered.data = np.pad(
                 filtered.data,
-                [(0, 0),
-                 (taper_size[0], taper_size[0]),
-                 (taper_size[1], taper_size[1]),
-                 ],
+                [
+                    (0, 0),
+                    (taper_size[0], taper_size[0]),
+                    (taper_size[1], taper_size[1]),
+                ],
                 mode="constant",
             )
         return filtered
 
-    def stack_register(self, method="PC", start=None, show_progressbar=False, crop=False, **kwargs):
+    def stack_register(
+        self, method="PC", start=None, show_progressbar=False, crop=False, **kwargs
+    ):
         """
         Register stack spatially.
 
@@ -653,20 +699,21 @@ class TomoStack(CommonStack):
         method = method.lower()
 
         if method == "com":
-            nslices = kwargs.get('nslices', 20)
-            locs = kwargs.get('locs', None)
+            nslices = kwargs.get("nslices", 20)
+            locs = kwargs.get("locs", None)
             out = align.tilt_com(self, locs, nslices)
         elif method == "maximage":
-            limit = kwargs.get('limit', 10)
-            delta = kwargs.get('delta', 0.3)
-            plot_results = kwargs.get('plot_results', False)
-            also_shift = kwargs.get('also_shift', False)
-            shift_limit = kwargs.get('shift_limit', 20)
-            out = align.tilt_maximage(self, limit, delta, plot_results, also_shift, shift_limit)
+            limit = kwargs.get("limit", 10)
+            delta = kwargs.get("delta", 0.3)
+            plot_results = kwargs.get("plot_results", False)
+            also_shift = kwargs.get("also_shift", False)
+            shift_limit = kwargs.get("shift_limit", 20)
+            out = align.tilt_maximage(
+                self, limit, delta, plot_results, also_shift, shift_limit
+            )
         else:
             raise ValueError(
-                "Invalid alignment method: %s."
-                "Must be 'CoM' or 'MaxImage'" % method
+                "Invalid alignment method: %s." "Must be 'CoM' or 'MaxImage'" % method
             )
         return out
 
@@ -759,14 +806,16 @@ class TomoStack(CommonStack):
                 cuda = False
                 logger.info("CUDA not detected with Astra")
 
-        ncores = kwargs.get('ncores', None)
-        sino_filter = kwargs.get('sino_filter', 'shepp-logan')
-        if method.lower() == 'dart':
-            dart_iterations = kwargs.get('dart_iterations', 5)
-            p = kwargs.get('p', 0.99)
-            gray_levels = kwargs.get('gray_levels', None)
+        ncores = kwargs.get("ncores", None)
+        sino_filter = kwargs.get("sino_filter", "shepp-logan")
+        if method.lower() == "dart":
+            dart_iterations = kwargs.get("dart_iterations", 5)
+            p = kwargs.get("p", 0.99)
+            gray_levels = kwargs.get("gray_levels", None)
             if not isinstance(gray_levels, (np.ndarray, list)):
-                raise ValueError("Unknown type (%s) for gray_levels" % type(gray_levels))
+                raise ValueError(
+                    "Unknown type (%s) for gray_levels" % type(gray_levels)
+                )
             elif gray_levels is None:
                 raise ValueError("gray_levels must be provided for DART")
         else:
@@ -786,29 +835,34 @@ class TomoStack(CommonStack):
             gray_levels,
             dart_iterations,
             p,
-            show_progressbar
+            show_progressbar,
         )
 
         axes_dict = self.axes_manager.as_dictionary()
-        rec_axes_dict = [axes_dict['axis-2'], dict(axes_dict['axis-1']), axes_dict['axis-1']]
-        rec_axes_dict[1]['name'] = 'z'
-        rec_axes_dict[1]['size'] = rec.shape[1]
+        rec_axes_dict = [
+            axes_dict["axis-2"],
+            dict(axes_dict["axis-1"]),
+            axes_dict["axis-1"],
+        ]
+        rec_axes_dict[1]["name"] = "z"
+        rec_axes_dict[1]["size"] = rec.shape[1]
         rec = RecStack(rec, axes=rec_axes_dict)
         return rec
 
-    def test_align(self,
-                   tilt_shift=0.0,
-                   tilt_rotation=0.0,
-                   slices=None,
-                   thickness=None,
-                   method="FBP",
-                   iterations=50,
-                   constrain=True,
-                   cuda=None,
-                   thresh=0,
-                   vmin_std=0.1,
-                   vmax_std=10,
-                   ):
+    def test_align(
+        self,
+        tilt_shift=0.0,
+        tilt_rotation=0.0,
+        slices=None,
+        thickness=None,
+        method="FBP",
+        iterations=50,
+        constrain=True,
+        cuda=None,
+        thresh=0,
+        vmin_std=0.1,
+        vmax_std=10,
+    ):
         """
         Reconstruct three slices from the input data for visual inspection.
 
@@ -859,7 +913,7 @@ class TomoStack(CommonStack):
             thickness=thickness,
             cuda=cuda,
             thresh=thresh,
-            show_progressbar=False
+            show_progressbar=False,
         )
 
         if "ipympl" in mpl.get_backend().lower():
@@ -1001,7 +1055,15 @@ class TomoStack(CommonStack):
 
         return output
 
-    def recon_error(self, nslice=None, algorithm='SIRT', iterations=50, constrain=True, cuda=None, thresh=0):
+    def recon_error(
+        self,
+        nslice=None,
+        algorithm="SIRT",
+        iterations=50,
+        constrain=True,
+        cuda=None,
+        thresh=0,
+    ):
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1091,7 +1153,9 @@ class RecStack(CommonStack):
         CommonStack class
     """
 
-    def plot_slices(self, xslice=None, yslice=None, zslice=None, vmin_std=0.1, vmax_std=5):
+    def plot_slices(
+        self, xslice=None, yslice=None, zslice=None, vmin_std=0.1, vmax_std=5
+    ):
         """
         Plot slices along all three axes of a reconstruction stack.
 
@@ -1122,7 +1186,11 @@ class RecStack(CommonStack):
         else:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
-        slices = [self.data[xslice, :, :], self.data[:, zslice, :], self.data[:, :, yslice]]
+        slices = [
+            self.data[xslice, :, :],
+            self.data[:, zslice, :],
+            self.data[:, :, yslice],
+        ]
         minvals = [slices[i].mean() - vmin_std * slices[i].std() for i in range(3)]
         minvals = [x if x >= 0 else 0 for x in minvals]
         maxvals = [slices[i].mean() + vmax_std * slices[i].std() for i in range(3)]
