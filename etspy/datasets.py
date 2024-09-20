@@ -12,12 +12,12 @@ import etspy.api as etspy
 from etspy.simulation import misalign_stack, add_noise
 import os
 
-etspy_path = os.path.dirname(etspy.__file__)
+etspy_path = Path(etspy.__file__).parent
 
 
-def get_needle_data(aligned=False):
+def get_needle_data(aligned: bool = False):
     """
-    Retrieve experimental tilt series of needle-shaped specimen.
+    Load an experimental tilt series of needle-shaped specimen.
 
     Returns
     ----------
@@ -26,59 +26,55 @@ def get_needle_data(aligned=False):
 
     """
     if aligned:
-        filename = os.path.join(
-            etspy_path, "tests", "test_data", "HAADF_Aligned.hdf5"
-        )
+        filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hdf5"
         needle = etspy.load(filename)
     else:
-        filename = os.path.join(etspy_path, "tests", "test_data", "HAADF.mrc")
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
         needle = etspy.load(filename)
     return needle
 
 
 def get_catalyst_data(
-    misalign=False,
-    minshift=-5,
-    maxshift=5,
-    tiltshift=0,
-    tiltrotate=0,
-    yonly=False,
-    noise=False,
-    noise_factor=0.2,
-):
+    misalign: bool = False,
+    minshift: int = -5,
+    maxshift: int = 5,
+    tiltshift: int = 0,
+    tiltrotate: int = 0,
+    yonly: bool = False,
+    noise: bool = False,
+    noise_factor: float = 0.2,
+) -> etspy.TomoStack:
     """
-    Retrieve model catalyst tilt series.
+    Load a model-simulated catalyst tilt series.
 
     Arguments
     ----------
-    misalign : bool
+    misalign
         If True, apply random shifts to each projection to simulated drift
-    minshift : float
+    minshift
         Lower bound for random shifts
-    maxshift : float
+    maxshift
         Upper bound for random shifts
-    tiltshift : float
+    tiltshift
         Number of pixels by which to shift entire tilt series. Simulates
         offset tilt axis.
-    rotate : float
+    rotate
         Angle by which to rotate entire tilt series. Simulates non-vertical
         tilt axis.
-    xonly : bool
+    xonly
         If True, shifts are only applied along the X-axis
-    noise : bool
+    noise
         If True, add Gaussian noise to the stack
-    noise_factor : float
+    noise_factor
         Percentage noise to be added. Must be between 0 and 1.
 
     Returns
-    ----------
-    catalyst : TomoStack object
+    -------
+    catalyst : :py:class:`~etspy.TomoStack`
         TomoStack containing the simulated catalyst tilt series
 
     """
-    filename = os.path.join(
-        etspy_path, "tests", "test_data", "Catalyst3DModel_TiltSeries180.hdf5"
-    )
+    filename = etspy_path / "tests" / "test_data" / "Catalyst3DModel_TiltSeries180.hdf5"
     catalyst = etspy.load(filename)
     if misalign:
         catalyst = misalign_stack(
