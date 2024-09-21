@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of ETSpy
+# ruff: noqa: F401
 """API for ETSpy."""
 
 import logging

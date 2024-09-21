@@ -1,6 +1,6 @@
 """Setup file for ETSpy package."""
 
-from setuptools import setup
+from setuptools import setup  # type: ignore
 
 setup(
     name="etspy",

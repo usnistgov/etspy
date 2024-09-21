@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of ETSpy
-
 """
 Alignment module for ETSpy package.
 
 @author: Andrew Herzing
 """
+
+# pyright: reportPossiblyUnboundVariable=false
 
 import copy
 import logging
@@ -24,12 +22,14 @@ from skimage.transform import hough_line, hough_line_peaks
 
 has_cupy = True
 try:
-    import cupy as cp
+    import cupy as cp  # type: ignore
 except ImportError:
     has_cupy = False
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 
 
 def get_best_slices(stack, nslices):
@@ -39,7 +39,7 @@ def get_best_slices(stack, nslices):
     Slices which have the highest ratio of total mass to mass variance
     and their location are returned.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         Tilt series from which to select the best slices.
@@ -47,7 +47,7 @@ def get_best_slices(stack, nslices):
         Number of slices to return.
 
     Returns
-    ----------
+    -------
     locs : NumPy array
         Location along the x-axis of the best slices
 
@@ -64,7 +64,7 @@ def get_coms(stack, slices):
     """
     Calculate the center of mass for indicated slices.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         Tilt series from which to calculate the centers of mass.
@@ -72,7 +72,7 @@ def get_coms(stack, slices):
         Location of slices to use for center of mass calculation.
 
     Returns
-    ----------
+    -------
     coms : NumPy array
         Center of mass as a function of tilt for each slice [ntilts, nslices].
 
@@ -90,7 +90,7 @@ def apply_shifts(stack, shifts):
 
     Apply a series of shifts to a TomoStack.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         The image series to be aligned
@@ -98,20 +98,22 @@ def apply_shifts(stack, shifts):
         The X- and Y-shifts to be applied to each image
 
     Returns
-    ----------
+    -------
     shifted : TomoStack object
         Copy of input stack after shifts are applied
 
     """
     shifted = stack.deepcopy()
     if len(shifts) != stack.data.shape[0]:
-        raise ValueError(
-            "Number of shifts (%s) is not consistent with number"
-            "of images in the stack (%s)" % (len(shifts), stack.data.shape[0])
+        msg = (
+            f"Number of shifts ({len(shifts)}) is not consistent "
+            f"with number of images in the stack ({stack.data.shape[0]})"
         )
+        raise ValueError(msg)
     for i in range(shifted.data.shape[0]):
         shifted.data[i, :, :] = ndimage.shift(
-            shifted.data[i, :, :], shift=[shifts[i, 0], shifts[i, 1]]
+            shifted.data[i, :, :],
+            shift=[shifts[i, 0], shifts[i, 1]],
         )
     shifted.metadata.Tomography.shifts = shifted.metadata.Tomography.shifts + shifts
     return shifted
@@ -119,10 +121,9 @@ def apply_shifts(stack, shifts):
 
 def pad_line(line, paddedsize):
     """
-
     Pad a 1D array for FFT treatment without altering center location.
 
-    Args
+    Parameters
     ----------
     line : 1D NumPy array
         The data to be padded
@@ -130,7 +131,7 @@ def pad_line(line, paddedsize):
         The size of the desired padded data.
 
     Returns
-    ----------
+    -------
     padded : 1D NumPy array
         Padded version of input data
 
@@ -150,7 +151,7 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
 
     Used to align stack in dimension parallel to the tilt axis
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         The stack on which to calculate shifts
@@ -163,7 +164,7 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
         Factor used to determine number of iterations of alignment.
 
     Returns
-    ----------
+    -------
     yshifts : NumPy array
         Shifts parallel to tilt axis for each projection
 
@@ -179,22 +180,22 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
         niters = int(np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))))
         start, end = -0.5, 0.5
 
-        ref_line_pad_FT = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(ref_line_pad)))
-        line_pad_FT = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(line_pad)))
+        ref_line_pad_ft = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(ref_line_pad)))
+        line_pad_ft = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(line_pad)))
 
         midpoint = (npad - 1) / 2
         kx = np.arange(-midpoint, midpoint + 1)
 
-        for i in range(niters):
-            boundary = np.linspace(start, end, cl_div_factor, False)
+        for _ in range(niters):
+            boundary = np.linspace(start, end, cl_div_factor, endpoint=False)
             index = (boundary[:-1] + boundary[1:]) / 2
 
             max_vals = np.zeros(len(index))
             for j, idx in enumerate(index):
                 pfactor = np.exp(2 * np.pi * 1j * (idx * kx / npad))
-                conjugate = np.conj(ref_line_pad_FT) * line_pad_FT * pfactor
+                conjugate = np.conj(ref_line_pad_ft) * line_pad_ft * pfactor
                 xcorr = np.abs(
-                    np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate)))
+                    np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))),
                 )
                 max_vals[j] = np.max(xcorr)
 
@@ -205,7 +206,7 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
         max_pfactor = np.exp(2 * np.pi * 1j * (subpixel_shift * kx / npad))
 
         # Determine integer shift via cross correlation
-        conjugate = np.conj(ref_line_pad_FT) * line_pad_FT * max_pfactor
+        conjugate = np.conj(ref_line_pad_ft) * line_pad_ft * max_pfactor
         xcorr = np.abs(np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))))
         max_loc = np.argmax(xcorr)
 
@@ -237,7 +238,7 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
     Slices which have the highest ratio of total mass to mass variance
     and their location are returned.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         Tilt series to be aligned.
@@ -247,7 +248,7 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
         Padding element
 
     Returns
-    ----------
+    -------
     xshifts : NumPy array
         Calculated shifts parallel to tilt axis.
 
@@ -263,14 +264,15 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
     xshifts = np.zeros([ntilts, 1])
     total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
 
-    for i in range(0, ntilts):
+    for i in range(ntilts):
         total_mass[i, :] = np.sum(
-            stack.data[i, :, xrange[0] - p - 1 : xrange[1] + p], 0
+            stack.data[i, :, xrange[0] - p - 1 : xrange[1] + p],
+            0,
         )
 
     mean_mass = np.mean(total_mass[:, p:-p], 0)
 
-    for i in range(0, ntilts):
+    for i in range(ntilts):
         s = 0
         for j in range(-p, p):
             resid = np.linalg.norm(mean_mass - total_mass[i, p + j : -p + j])
@@ -288,7 +290,7 @@ def calculate_shifts_com(stack, nslices):
     perpendicular to the tilt axis are refined by a center of
     mass analysis.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         The image series to be aligned
@@ -300,7 +302,7 @@ def calculate_shifts_com(stack, nslices):
         center of mass analysis.  Must be less than or equal to 1.0.
 
     Returns
-    ----------
+    -------
     shifts : NumPy array
         The X- and Y-shifts to be applied to each image
 
@@ -313,122 +315,139 @@ def calculate_shifts_com(stack, nslices):
     thetas = np.pi * angles / 180
 
     coms = get_coms(stack, slices)
-    I_tilts = np.eye(ntilts)
-    Gam = np.array([np.cos(thetas), np.sin(thetas)]).T
-    Gam = np.dot(Gam, np.linalg.pinv(Gam)) - I_tilts
-    b = np.dot(Gam, coms)
+    i_tilts = np.eye(ntilts)
+    gam = np.array([np.cos(thetas), np.sin(thetas)]).T
+    gam = np.dot(gam, np.linalg.pinv(gam)) - i_tilts
+    b = np.dot(gam, coms)
 
-    cx = np.linalg.lstsq(Gam, b, rcond=-1)[0]
+    cx = np.linalg.lstsq(gam, b, rcond=-1)[0]
 
     yshifts = -cx[:, 0]
     return yshifts
 
 
+def _upsampled_dft(
+    data,
+    upsampled_region_size,
+    upsample_factor,
+    axis_offsets,
+):
+    upsampled_region_size = [
+        upsampled_region_size,
+    ] * data.ndim
+
+    im2pi = 1j * 2 * cp.pi
+
+    dim_properties = list(zip(data.shape, upsampled_region_size, axis_offsets))
+
+    for n_items, ups_size, ax_offset in dim_properties[::-1]:
+        kernel = (cp.arange(ups_size) - ax_offset)[:, None] * cp.fft.fftfreq(
+            n_items,
+            upsample_factor,
+        )
+        kernel = cp.exp(-im2pi * kernel)
+        # use kernel with same precision as the data
+        kernel = kernel.astype(data.dtype, copy=False)
+        data = cp.tensordot(kernel, data, axes=(1, -1))
+    return data
+
+
+def _cupy_phase_correlate(ref_cp, mov_cp, upsample_factor, shape):
+    ref_fft = cp.fft.fftn(ref_cp)
+    mov_fft = cp.fft.fftn(mov_cp)
+
+    cross_power_spectrum = ref_fft * mov_fft.conj()
+    eps = cp.finfo(cross_power_spectrum.real.dtype).eps
+    cross_power_spectrum /= cp.maximum(cp.abs(cross_power_spectrum), 100 * eps)
+    phase_correlation = cp.fft.ifft2(cross_power_spectrum)
+
+    maxima = cp.unravel_index(
+        cp.argmax(cp.abs(phase_correlation)),
+        phase_correlation.shape,
+    )
+    midpoint = cp.array([cp.fix(axis_size / 2) for axis_size in shape])
+
+    float_dtype = cross_power_spectrum.real.dtype
+
+    shift = cp.stack(maxima).astype(float_dtype, copy=False)
+    shift[shift > midpoint] -= cp.array(shape)[shift > midpoint]
+
+    if upsample_factor > 1:
+        upsample_factor = cp.array(upsample_factor, dtype=float_dtype)
+        upsampled_region_size = cp.ceil(upsample_factor * 1.5)
+        dftshift = cp.fix(upsampled_region_size / 2.0)
+
+        shift = cp.round(shift * upsample_factor) / upsample_factor
+
+        sample_region_offset = dftshift - shift * upsample_factor
+        phase_correlation = _upsampled_dft(
+            cross_power_spectrum.conj(),
+            upsampled_region_size,
+            upsample_factor,
+            sample_region_offset,
+        ).conj()
+        maxima = np.unravel_index(
+            cp.argmax(np.abs(phase_correlation)),
+            phase_correlation.shape,
+        )
+
+        maxima = cp.stack(maxima).astype(float_dtype, copy=False)
+        maxima -= dftshift
+
+        shift += maxima / upsample_factor
+    return shift
+
+
+def _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor):
+    stack_cp = cp.array(stack.data)
+    shifts = cp.zeros([stack_cp.shape[0], 2])
+    ref_cp = stack_cp[0]
+    ref_fft = cp.fft.fftn(ref_cp)
+    shape = ref_fft.shape
+    with tqdm.tqdm(
+        total=stack.data.shape[0] - 1,
+        desc="Calculating shifts",
+        disable=not show_progressbar,
+    ) as pbar:
+        for i in range(start, 0, -1):
+            shift = _cupy_phase_correlate(
+                stack_cp[i],
+                stack_cp[i - 1],
+                upsample_factor=upsample_factor,
+                shape=shape,
+            )
+            shifts[i - 1] = shifts[i] + shift
+            pbar.update(1)
+        for i in range(start, stack.data.shape[0] - 1):
+            shift = _cupy_phase_correlate(
+                stack_cp[i],
+                stack_cp[i + 1],
+                upsample_factor=upsample_factor,
+                shape=shape,
+            )
+            shifts[i + 1] = shifts[i] + shift
+            pbar.update(1)
+    shifts = shifts.get()
+    return shifts
+
+
 def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
     """
-
     Calculate shifts using the phase correlation algorithm.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         The image series to be aligned
 
     Returns
-    ----------
+    -------
     shifts : NumPy array
         The X- and Y-shifts to be applied to each image
 
     """
-
-    def _upsampled_dft(
-        data, upsampled_region_size, upsample_factor=1, axis_offsets=None
-    ):
-        upsampled_region_size = [
-            upsampled_region_size,
-        ] * data.ndim
-
-        im2pi = 1j * 2 * cp.pi
-
-        dim_properties = list(zip(data.shape, upsampled_region_size, axis_offsets))
-
-        for n_items, ups_size, ax_offset in dim_properties[::-1]:
-            kernel = (cp.arange(ups_size) - ax_offset)[:, None] * cp.fft.fftfreq(
-                n_items, upsample_factor
-            )
-            kernel = cp.exp(-im2pi * kernel)
-            # use kernel with same precision as the data
-            kernel = kernel.astype(data.dtype, copy=False)
-            data = cp.tensordot(kernel, data, axes=(1, -1))
-        return data
-
-    def _cupy_phase_correlate(ref_cp, mov_cp, upsample_factor):
-        ref_fft = cp.fft.fftn(ref_cp)
-        mov_fft = cp.fft.fftn(mov_cp)
-
-        cross_power_spectrum = ref_fft * mov_fft.conj()
-        eps = cp.finfo(cross_power_spectrum.real.dtype).eps
-        cross_power_spectrum /= cp.maximum(cp.abs(cross_power_spectrum), 100 * eps)
-        phase_correlation = cp.fft.ifft2(cross_power_spectrum)
-
-        maxima = cp.unravel_index(
-            cp.argmax(cp.abs(phase_correlation)), phase_correlation.shape
-        )
-        midpoint = cp.array([cp.fix(axis_size / 2) for axis_size in shape])
-
-        float_dtype = cross_power_spectrum.real.dtype
-
-        shift = cp.stack(maxima).astype(float_dtype, copy=False)
-        shift[shift > midpoint] -= cp.array(shape)[shift > midpoint]
-
-        if upsample_factor > 1:
-            upsample_factor = cp.array(upsample_factor, dtype=float_dtype)
-            upsampled_region_size = cp.ceil(upsample_factor * 1.5)
-            dftshift = cp.fix(upsampled_region_size / 2.0)
-
-            shift = cp.round(shift * upsample_factor) / upsample_factor
-
-            sample_region_offset = dftshift - shift * upsample_factor
-            phase_correlation = _upsampled_dft(
-                cross_power_spectrum.conj(),
-                upsampled_region_size,
-                upsample_factor,
-                sample_region_offset,
-            ).conj()
-            maxima = np.unravel_index(
-                cp.argmax(np.abs(phase_correlation)), phase_correlation.shape
-            )
-
-            maxima = cp.stack(maxima).astype(float_dtype, copy=False)
-            maxima -= dftshift
-
-            shift += maxima / upsample_factor
-        return shift
-
     if has_cupy and astra.use_cuda() and cuda:
-        stack_cp = cp.array(stack.data)
-        shifts = cp.zeros([stack_cp.shape[0], 2])
-        ref_cp = stack_cp[0]
-        ref_fft = cp.fft.fftn(ref_cp)
-        shape = ref_fft.shape
-        with tqdm.tqdm(
-            total=stack.data.shape[0] - 1,
-            desc="Calculating shifts",
-            disable=not show_progressbar,
-        ) as pbar:
-            for i in range(start, 0, -1):
-                shift = _cupy_phase_correlate(
-                    stack_cp[i], stack_cp[i - 1], upsample_factor=upsample_factor
-                )
-                shifts[i - 1] = shifts[i] + shift
-                pbar.update(1)
-            for i in range(start, stack.data.shape[0] - 1):
-                shift = _cupy_phase_correlate(
-                    stack_cp[i], stack_cp[i + 1], upsample_factor=upsample_factor
-                )
-                shifts[i + 1] = shifts[i] + shift
-                pbar.update(1)
-        shifts = shifts.get()
+        shifts = _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor)
 
     else:
         shifts = np.zeros((stack.data.shape[0], 2))
@@ -439,14 +458,18 @@ def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
         ) as pbar:
             for i in range(start, 0, -1):
                 shift = pcc(
-                    stack.data[i], stack.data[i - 1], upsample_factor=upsample_factor
+                    stack.data[i],
+                    stack.data[i - 1],
+                    upsample_factor=upsample_factor,
                 )[0]
                 shifts[i - 1] = shifts[i] + shift
                 pbar.update(1)
 
             for i in range(start, stack.data.shape[0] - 1):
                 shift = pcc(
-                    stack.data[i], stack.data[i + 1], upsample_factor=upsample_factor
+                    stack.data[i],
+                    stack.data[i + 1],
+                    upsample_factor=upsample_factor,
                 )[0]
                 shifts[i + 1] = shifts[i] + shift
                 pbar.update(1)
@@ -458,13 +481,13 @@ def calculate_shifts_stackreg(stack, start, show_progressbar):
     """
     Calculate shifts using PyStackReg.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         The image series to be aligned
 
     Returns
-    ----------
+    -------
     shifts : NumPy array
         The X- and Y-shifts to be applied to each image
 
@@ -498,7 +521,11 @@ def calculate_shifts_stackreg(stack, start, show_progressbar):
 
 
 def calc_shifts_com_cl(
-    stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
+    stack,
+    com_ref_index,
+    cl_ref_index,
+    cl_resolution,
+    cl_div_factor,
 ):
     """
     Align stack using combined center of mass and common line methods.
@@ -506,7 +533,7 @@ def calc_shifts_com_cl(
     Center of mass aligns stack perpendicular to the tilt axis and
     common line is used to align the stack parallel to the tilt axis.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         Tilt series to be aligned
@@ -526,7 +553,7 @@ def calc_shifts_com_cl(
         alignment to perform.  Default is 8.
 
     Returns
-    ----------
+    -------
     reg : TomoStack object
         Copy of stack after spatial registration.  Shift values are stored
         in reg.metadata.Tomography.shifts for later use.
@@ -535,21 +562,22 @@ def calc_shifts_com_cl(
 
     def calc_yshifts(stack, com_ref):
         ntilts = stack.data.shape[0]
-        aliX = stack.deepcopy()
+        ali_x = stack.deepcopy()
         coms = np.zeros(ntilts)
         yshifts = np.zeros_like(coms)
 
-        for i in tqdm.tqdm(range(0, ntilts)):
-            im = aliX.data[i, :, :]
+        for i in tqdm.tqdm(range(ntilts)):
+            im = ali_x.data[i, :, :]
             coms[i], _ = ndimage.center_of_mass(im)
             yshifts[i] = com_ref - coms[i]
         return yshifts
 
-    if cl_resolution >= 0.5:
-        raise ValueError("Resolution should be less than 0.5")
+    if cl_resolution >= CL_RES_THRESHOLD:
+        msg = f"Resolution should be less than {CL_RES_THRESHOLD}"
+        raise ValueError(msg)
 
-    logger.info("Center of mass reference slice: %s" % com_ref_index)
-    logger.info("Common line reference slice: %s" % cl_ref_index)
+    logger.info("Center of mass reference slice: %s", com_ref_index)
+    logger.info("Common line reference slice: %s", cl_ref_index)
     xshifts = np.zeros(stack.data.shape[0])
     yshifts = np.zeros(stack.data.shape[0])
     yshifts = calc_yshifts(stack, com_ref_index)
@@ -587,13 +615,13 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
             alignment for parallel to the tilt axis. This is a Python
             implementation of Matlab code described in:
             M. C. Scott, et al. Electron tomography at 2.4-ångström resolution,
-            Nature 483, 444–447 (2012).
+            Nature 483, 444-447 (2012).
             https://doi.org/10.1038/nature10934
 
     Shifts are then applied and the aligned stack is returned.  The tilts are
     stored in stack.metadata.Tomography.shifts for later use.
 
-    Args
+    Parameters
     ----------
     stack : Numpy array
         3-D numpy array containing the tilt series data
@@ -607,7 +635,7 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
         Enable/disable progress bar
 
     Returns
-    ----------
+    -------
     out : TomoStack object
         Spatially registered copy of the input stack
 
@@ -630,29 +658,40 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
         upsample_factor = kwargs.get("upsample_factor", 3)
         if cuda:
             logger.info(
-                "Performing stack registration using CUDA-accelerated phase correlation"
+                "Performing stack registration using "
+                "CUDA-accelerated phase correlation",
             )
         else:
             logger.info("Performing stack registration using phase correlation")
         shifts = calculate_shifts_pc(
-            stack, start, show_progressbar, upsample_factor, cuda
+            stack,
+            start,
+            show_progressbar,
+            upsample_factor,
+            cuda,
         )
     elif method.lower() in ["stackreg", "sr"]:
         logger.info("Performing stack registration using PyStackReg")
         shifts = calculate_shifts_stackreg(stack, start, show_progressbar)
     elif method.lower() == "com-cl":
         logger.info(
-            "Performing stack registration using combined center of mass and common line methods"
+            "Performing stack registration using combined "
+            "center of mass and common line methods",
         )
         com_ref_index = kwargs.get("com_ref_index", stack.data.shape[1] // 2)
         cl_ref_index = kwargs.get("cl_ref_index", stack.data.shape[0] // 2)
         cl_resolution = kwargs.get("cl_resolution", 0.05)
         cl_div_factor = kwargs.get("cl_div_factor", 8)
         shifts = calc_shifts_com_cl(
-            stack, com_ref_index, cl_ref_index, cl_resolution, cl_div_factor
+            stack,
+            com_ref_index,
+            cl_ref_index,
+            cl_resolution,
+            cl_div_factor,
         )
     else:
-        raise ValueError("Invalid alignment method %s" % method)
+        msg = f"Invalid alignment method {method}"
+        raise ValueError(msg)
     aligned = apply_shifts(stack, shifts)
     logger.info("Stack registration complete")
     return aligned
@@ -664,7 +703,7 @@ def tilt_com(stack, slices=None, nslices=None):
 
     Compares path of specimen to the path expected for an ideal cylinder
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         3-D numpy array containing the tilt series data
@@ -674,7 +713,7 @@ def tilt_com(stack, slices=None, nslices=None):
         Nubmer of slices to suer for the analysis
 
     Returns
-    ----------
+    -------
     out : TomoStack object
         Copy of the input stack after rotation and translation to center and
         make the tilt axis vertical
@@ -688,36 +727,38 @@ def tilt_com(stack, slices=None, nslices=None):
         return m * x + b
 
     _, ny, nx = stack.data.shape
+    nx_threshold = 3
 
     if stack.metadata.Tomography.tilts is None:
-        raise ValueError("Tilts are not defined in stack.metadata.Tomography.")
+        msg = "Tilts are not defined in stack.metadata.Tomography"
+        raise ValueError(msg)
 
-    if nx < 3:
-        raise ValueError(
-            "Dataset is only %s pixels in x dimension. This method cannot be used."
-            % stack.data.shape[2]
+    if nx < nx_threshold:
+        msg = (
+            f"Dataset is only {stack.data.shape[2]} pixels in x dimension. "
+            "This method cannot be used."
         )
+        raise ValueError(msg)
 
     # Determine the best slice locations for the analysis
     if slices is None:
         if nslices is None:
             nslices = int(0.1 * nx)
-            if nslices < 3:
-                nslices = 3
-            elif nslices > 50:
-                nslices = 50
+            nslices = max(min(nslices, 50), 3)  # clamp nslices to [3, 50]
         else:
             if nslices > nx:
-                raise ValueError("nslices is greater than the X-dimension of the data.")
+                msg = "nslices is greater than the X-dimension of the data."
+                raise ValueError(msg)
             if nslices > 0.3 * nx:
                 nslices = int(0.3 * nx)
-                logger.warning(
-                    "nslices is greater than 30%% of number of x pixels. Using %s slices instead."
-                    % nslices
+                msg = (
+                    "nslices is greater than 30% of number of x pixels. "
+                    f"Using {nslices} slices instead."
                 )
+                logger.warning(msg)
 
         slices = get_best_slices(stack, nslices)
-        logger.info("Performing alignments using best %s slices" % nslices)
+        logger.info("Performing alignments using best %s slices", nslices)
 
     slices = np.sort(slices)
 
@@ -726,9 +767,12 @@ def tilt_com(stack, slices=None, nslices=None):
 
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 
-    for idx, i in enumerate(slices):
+    for idx, _ in enumerate(slices):
         r[idx], x0[idx], z0[idx] = optimize.curve_fit(
-            com_motion, xdata=thetas, ydata=coms[:, idx], p0=[0, 0, 0]
+            com_motion,
+            xdata=thetas,
+            ydata=coms[:, idx],
+            p0=[0, 0, 0],
         )[0]
     slope, intercept = optimize.curve_fit(fit_line, xdata=r, ydata=slices, p0=[0, 0])[0]
     tilt_shift = (ny / 2 - intercept) / slope
@@ -736,14 +780,19 @@ def tilt_com(stack, slices=None, nslices=None):
 
     final = stack.trans_stack(yshift=tilt_shift, angle=tilt_rotation)
 
-    logger.info("Calculated tilt-axis shift %.2f" % tilt_shift)
-    logger.info("Calculated tilt-axis rotation %.2f" % tilt_rotation)
+    logger.info("Calculated tilt-axis shift %.2f", tilt_shift)
+    logger.info("Calculated tilt-axis rotation %.2f", tilt_rotation)
 
     return final
 
 
 def tilt_maximage(
-    stack, limit=10, delta=0.1, plot_results=False, also_shift=False, shift_limit=20
+    stack,
+    limit=10,
+    delta=0.1,
+    plot_results=False,
+    also_shift=False,
+    shift_limit=20,
 ):
     """
     Perform automated determination of the tilt axis of a TomoStack.
@@ -751,7 +800,7 @@ def tilt_maximage(
     The projected maximum image used to determine the tilt axis by a
     combination of Sobel filtering and Hough transform analysis.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         3-D numpy array containing the tilt series data
@@ -767,7 +816,7 @@ def tilt_maximage(
         by minimizing the sum of the reconstruction
 
     Returns
-    ----------
+    -------
     rotated : TomoStack object
         Rotated version of the input stack
 
@@ -807,7 +856,7 @@ def tilt_maximage(
         shifts = np.arange(-shift_limit, shift_limit, 1)
         nshifts = shifts.shape[0]
         shifted = ali.isig[0:nshifts, :].deepcopy()
-        for i in range(0, nshifts):
+        for i in range(nshifts):
             shifted.data[:, :, i] = np.roll(ali.isig[idx, :].data, int(shifts[i]))
         shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
         tilt_shift = shifts[shifted_rec.sum((1, 2)).data.argmin()]
@@ -820,7 +869,7 @@ def align_to_other(stack, other):
     """
     Spatially register a TomoStack using previously calculated shifts.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         TomoStack which was previously aligned
@@ -828,7 +877,7 @@ def align_to_other(stack, other):
         TomoStack to be aligned. Must be the same size as the primary stack
 
     Returns
-    ----------
+    -------
     out : TomoStack object
         Aligned copy of other TomoStack
 
@@ -855,9 +904,9 @@ def align_to_other(stack, other):
     out = out.trans_stack(xshift, yshift, tiltaxis)
 
     logger.info("TomoStack alignment applied")
-    logger.info("X-shift: %.1f" % xshift)
-    logger.info("Y-shift: %.1f" % yshift)
-    logger.info("Rotation: %.1f" % tiltaxis)
+    logger.info("X-shift: %.1f", xshift)
+    logger.info("Y-shift: %.1f", yshift)
+    logger.info("Rotation: %.1f", tiltaxis)
     return out
 
 
@@ -865,13 +914,13 @@ def shift_crop(stack):
     """
     Crop shifted stack to common area.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         TomoStack which was previously aligned
 
     Returns
-    ----------
+    -------
     out : TomoStack object
         Aligned copy of other TomoStack
 

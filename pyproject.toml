@@ -37,7 +37,7 @@ select = [
     "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PL",
     "TRY", "RUF"
 ]
-ignore = ["FBT001", "FBT002", "TRY003"]
+ignore = ["FBT001", "FBT002", "TRY003", "RET504"]
 
 [tool.ruff.lint.pylint]
 max-args = 10

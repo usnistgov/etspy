@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of ETSpy
-
 """
 Data input/output module for ETSpy package.
 
@@ -30,10 +26,28 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 PathLike = Union[str, Path]
 
+# declare known file types for later use
+hspy_file_types = [".hdf5", ".h5", ".hspy"]
+mrc_file_types = [".mrc", ".ali", ".rec"]
+dm_file_types = [".dm3", ".dm4"]
+known_file_types = hspy_file_types + mrc_file_types + dm_file_types
 
 
+class MismatchedTiltError(ValueError):
+    """Error for when number of tilts in signal does not match tilt dimension."""
 
-def create_stack(stack: Union[Signal2D, np.ndarray], tilts=None) -> TomoStack:
+    def __init__(self, num_tilts, tilt_dimension):
+        """Create a MismatchedTiltError."""
+        super().__init__(
+            f"Number of tilts ({num_tilts}) does not match "
+            f"the tilt dimension of the data array ({tilt_dimension})",
+        )
+
+
+def create_stack(
+    stack: Union[Signal2D, np.ndarray],
+    tilts: Optional[np.ndarray] = None,
+) -> TomoStack:
     """
     Create a TomoStack from existing in-memory tilt series data.
 
@@ -42,7 +56,7 @@ def create_stack(stack: Union[Signal2D, np.ndarray], tilts=None) -> TomoStack:
     stack
         Tilt series data (ntilts, ny, nx)
     tilts
-        An array defining the tilt angles
+        An (optional) array defining the tilt angles
 
     Returns
     -------
@@ -54,7 +68,7 @@ def create_stack(stack: Union[Signal2D, np.ndarray], tilts=None) -> TomoStack:
         if tilts is None:
             tilts = np.zeros(ntilts)
         if ntilts != tilts.shape[0]:
-            raise ValueError("Number of tilts (%s) does not match the tilt dimension of the data array (%s)" % (tilts.shape[0], ntilts))
+            raise MismatchedTiltError(tilts.shape[0], ntilts)
 
         if stack.metadata.has_item("Tomography"):
             pass
@@ -62,8 +76,14 @@ def create_stack(stack: Union[Signal2D, np.ndarray], tilts=None) -> TomoStack:
             ntilts = stack.data.shape[0]
             if tilts is None:
                 tilts = np.zeros(ntilts)
-            tomo_metadata = {"cropped": False, "shifts": np.zeros([ntilts, 2]), "tiltaxis": 0,
-                             "tilts": tilts, "xshift": 0, "yshift": 0}
+            tomo_metadata = {
+                "cropped": False,
+                "shifts": np.zeros([ntilts, 2]),
+                "tiltaxis": 0,
+                "tilts": tilts,
+                "xshift": 0,
+                "yshift": 0,
+            }
             stack.metadata.add_node("Tomography")
             # cast for type-checking:
             tomo_meta_node = cast(DictionaryTreeBrowser, stack.metadata.Tomography)
@@ -82,10 +102,16 @@ def create_stack(stack: Union[Signal2D, np.ndarray], tilts=None) -> TomoStack:
         if tilts is None:
             tilts = np.zeros(ntilts)
         if ntilts != tilts.shape[0]:
-            raise ValueError("Number of tilts (%s) does not match the tilt dimension of the data array (%s)" % (tilts.shape[0], ntilts))
+            raise MismatchedTiltError(tilts.shape[0], ntilts)
 
-        tomo_metadata = {"cropped": False, "shifts": np.zeros([ntilts, 2]), "tiltaxis": 0,
-                         "tilts": tilts, "xshift": 0, "yshift": 0}
+        tomo_metadata = {
+            "cropped": False,
+            "shifts": np.zeros([ntilts, 2]),
+            "tiltaxis": 0,
+            "tilts": tilts,
+            "xshift": 0,
+            "yshift": 0,
+        }
         stack = TomoStack(stack)
         stack.metadata.add_node("Tomography")
         stack.metadata.Tomography.add_dictionary(tomo_metadata)
@@ -100,7 +126,8 @@ def create_stack(stack: Union[Signal2D, np.ndarray], tilts=None) -> TomoStack:
 
 
 def get_mrc_tilts(
-    stack: Union[Signal2D, TomoStack], filename: PathLike,
+    stack: Union[Signal2D, TomoStack],
+    filename: PathLike,
 ) -> Optional[np.ndarray]:
     """Extract tilts from an MRC file.
 
@@ -129,7 +156,7 @@ def get_mrc_tilts(
         logger.info("SerialEM generated MRC file detected")
         ext_header = parse_mrc_header(filename)["ext_header"]
         tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][
-            0: stack.data.shape[0]
+            0 : stack.data.shape[0]
         ]
         tilts = tilts / 100
     elif tiltfile.is_file():
@@ -138,9 +165,8 @@ def get_mrc_tilts(
         if len(tilts) == stack.data.shape[0]:
             logger.info("Tilts loaded from .rawtlt file")
         else:
-            raise ValueError("Number of tilts in .rawtlt file inconsistent with data shape")
-    else:
-        tilts = None
+            msg = "Number of tilts in .rawtlt file inconsistent with data shape"
+            raise ValueError(msg)
     return tilts
 
 
@@ -170,12 +196,12 @@ def get_dm_tilts(s: Union[Signal2D, TomoStack]) -> np.ndarray:
         "Tomography_setup"
     ]["Tilt_angles"]["Tilt_angle_step_deg"]
 
-    tilts = np.arange(mintilt, maxtilt + tiltstep, tiltstep)
-    return tilts
+    return np.arange(mintilt, maxtilt + tiltstep, tiltstep)
 
 
 def parse_mdoc(
-    mdoc_file: PathLike, series: bool = False,
+    mdoc_file: PathLike,
+    series: bool = False,
 ) -> Tuple[dict, Union[np.ndarray, float]]:
     """Parse experimental parameters from a SerialEM MDOC file.
 
@@ -189,18 +215,30 @@ def parse_mdoc(
 
     Returns
     -------
-    _type_
-        _description_
+    metadata : dict
+        A dictionary containing the metadata read from the MDOC file
+    tilt : Union[np.ndarray, float]
+        If ``series`` is true, tilt will be a single float value, otherwise
+        it will be an ndarray containing multiple tilt values.
     """
-    keys = ["PixelSpacing", "Voltage", "ImageFile", "Image Size", "DataMode",
-            "Magnification", "ExposureTime", "SpotSize", "Defocus"]
+    keys = [
+        "PixelSpacing",
+        "Voltage",
+        "ImageFile",
+        "Image Size",
+        "DataMode",
+        "Magnification",
+        "ExposureTime",
+        "SpotSize",
+        "Defocus",
+    ]
     metadata = {}
     tilt = np.array([])
     if isinstance(mdoc_file, str):
         mdoc_file = Path(mdoc_file)
     with mdoc_file.open("r") as f:
         lines = f.readlines()
-        for i in range(0, 35):
+        for i in range(35):
             for k in keys:
                 if k in lines[i]:
                     if k == "ImageFile":
@@ -208,8 +246,8 @@ def parse_mdoc(
                     else:
                         metadata[k] = float(lines[i].split("=")[1].strip())
     if series:
-        for i in range(0, 35):
-            if 'TiltAngle' in lines[i]:
+        for i in range(35):
+            if "TiltAngle" in lines[i]:
                 tilt = float(lines[i].split("=")[1].strip())
     else:
         tilt = []
@@ -266,7 +304,8 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
 
 
 def load_serialem_series(
-    mrcfiles: List[PathLike], mdocfiles: List[PathLike],
+    mrcfiles: List[PathLike],
+    mdocfiles: List[PathLike],
 ) -> Tuple[TomoStack, np.ndarray]:
     """
     Load a multi-frame series collected by SerialEM.
@@ -323,14 +362,16 @@ def load_serialem_series(
     stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]["Magnification"]
     stack.metadata.Acquisition_instrument.TEM.beam_energy = meta[0]["Voltage"]
     stack.metadata.Acquisition_instrument.TEM.dwell_time = (
-        meta[0]["ExposureTime"] * images_per_tilt / (stack.data.shape[2] * stack.data.shape[3])
+        meta[0]["ExposureTime"]
+        * images_per_tilt
+        / (stack.data.shape[2] * stack.data.shape[3])
     )
     stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]["SpotSize"]
     stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]["Defocus"]
     stack.metadata.General.original_filename = meta[0]["ImageFile"]
     logger.info(
         "SerialEM Multiframe stack successfully loaded. "
-        "Use etspy.utils.register_serialem_stack to align frames."
+        "Use etspy.utils.register_serialem_stack to align frames.",
     )
     mrc_logger.setLevel(log_level)
     return stack, tilts
@@ -358,14 +399,14 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
         header["nx"], header["ny"], header["nz"] = np.fromfile(h, np.uint32, 3)
         header["mode"] = np.fromfile(h, np.uint32, 1)[0]
         header["nxstart"], header["nystart"], header["nzstart"] = np.fromfile(
-            h, np.uint32, 3
+            h,
+            np.uint32,
+            3,
         )
         header["mx"], header["my"], header["mz"] = np.fromfile(h, np.uint32, 3)
-        header["xlen"], header["ylen"], header["zlen"] = np.fromfile(
-            h, np.uint32, 3)
+        header["xlen"], header["ylen"], header["zlen"] = np.fromfile(h, np.uint32, 3)
         _ = np.fromfile(h, np.uint32, 6)
-        header["amin"], header["amax"], header["amean"] = np.fromfile(
-            h, np.uint32, 3)
+        header["amin"], header["amax"], header["amean"] = np.fromfile(h, np.uint32, 3)
         _ = np.fromfile(h, np.uint32, 1)
         header["nextra"] = np.fromfile(h, np.uint32, 1)[0]
         _ = np.fromfile(h, np.uint16, 1)[0]
@@ -382,11 +423,12 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
         header["idtype"] = np.fromfile(h, np.uint16, 1)[0]
         header["lens"] = np.fromfile(h, np.uint16, 1)[0]
         header["nd1"], header["nd2"], header["vd1"], header["vd2"] = np.fromfile(
-            h, np.uint16, 4
+            h,
+            np.uint16,
+            4,
         )
         _ = np.fromfile(h, np.float32, 6)
-        header["xorg"], header["yorg"], header["zorg"] = np.fromfile(
-            h, np.float32, 3)
+        header["xorg"], header["yorg"], header["zorg"] = np.fromfile(h, np.float32, 3)
         strbits = np.fromfile(h, np.int8, 4)
         header["cmap"] = "".join([chr(item) for item in strbits])
         header["stamp"] = np.fromfile(h, np.int8, 4)
@@ -394,9 +436,34 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
         header["nlabl"] = np.fromfile(h, np.uint32, 1)[0]
         strbits = np.fromfile(h, np.int8, 800)
         header["text"] = "".join([chr(item) for item in strbits])
-        header["ext_header"] = np.fromfile(
-            h, np.int16, int(header["nextra"] / 2))
+        header["ext_header"] = np.fromfile(h, np.int16, int(header["nextra"] / 2))
     return header
+
+
+def _load_single_file(filename: Path) -> Tuple[Signal2D, Optional[np.ndarray]]:
+    """Load a HyperSpy signal and any tilts from a single file."""
+    ext = filename.suffix
+    tilts = None
+    if ext.lower() in hspy_file_types:
+        stack = hs_load(filename, reader="HSPY")
+        if stack.metadata.has_item("Tomography"):
+            tilts = stack.metadata.Tomography.tilts
+    elif ext.lower() in dm_file_types:
+        stack = hs_load(filename)
+        stack.change_dtype(np.float32)
+        tilts = get_dm_tilts(stack)
+    elif ext.lower() in mrc_file_types:
+        try:
+            stack = hs_load(filename, reader="mrc")
+            tilts = get_mrc_tilts(stack, filename)
+        except TypeError as exc:
+            msg = "Unable to read MRC with Hyperspy"
+            raise RuntimeError(msg) from exc
+    else:
+        msg = f'Unknown file type "{ext}". Must be one of {known_file_types}'
+        raise TypeError(msg)
+
+    return stack, tilts
 
 
 def load(
@@ -420,39 +487,15 @@ def load(
         List of mdoc files for SerialEM data (optional)
 
     Returns
-    ----------
+    -------
     stack : TomoStack
         The resulting TomoStack object
     """
-    hspy_file_types = [".hdf5", ".h5", ".hspy"]
-    mrc_file_types = [".mrc", ".ali", ".rec"]
-    dm_file_types = [".dm3", ".dm4"]
-    known_file_types = hspy_file_types + mrc_file_types + dm_file_types
-
     if isinstance(filename, (str, Path)):
         if isinstance(filename, str):
             # coerce filename to Path
             filename = Path(filename)
-        ext = filename.suffix
-        if ext.lower() in hspy_file_types:
-            stack = hs_load(filename, reader="HSPY")
-            if stack.metadata.has_item("Tomography"):
-                tilts = stack.metadata.Tomography.tilts
-        elif ext.lower() in dm_file_types:
-            stack = hs_load(filename)
-            stack.change_dtype(np.float32)
-            tilts = get_dm_tilts(stack)
-        elif ext.lower() in mrc_file_types:
-            try:
-                stack = hs_load(filename, reader="mrc")
-                tilts = get_mrc_tilts(stack, filename)
-            except TypeError:
-                raise RuntimeError("Unable to read MRC with Hyperspy")
-        else:
-            raise TypeError(
-                "Unknown file type %s. Must be %s one of "
-                % (ext, [i for i in known_file_types])
-            )
+        stack, tilts = _load_single_file(filename)
 
     elif isinstance(filename, list):
         first_filename = filename[0]
@@ -477,18 +520,17 @@ def load(
                 mdoc_files = [i.with_suffix(".mdoc") for i in mrc_files]
             stack, tilts = load_serialem_series(filename, mdoc_files)
         else:
-            raise TypeError(
-                "Unknown file type %s. Must be one of %s "
-                % (ext, [i for i in known_file_types])
-            )
+            msg = f'Unknown file type "{ext}". Must be one of {known_file_types}'
+            raise TypeError(msg)
     else:
-        raise TypeError(
-            "Unknown filename type %s.  Must be either a string or list of strings."
-            % type(filename)
+        msg = (
+            f"Unknown filename type {type(filename)}. "
+            "Must be either a string, Path, or list of either."
         )
+        raise TypeError(msg)
 
     stack = create_stack(stack, tilts)
-    stack.change_data_type('float32')
+    stack.change_data_type("float32")
     if stack.data.min() < 0:
         stack.data -= stack.data.min()
     return stack

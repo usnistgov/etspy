@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of ETSpy
-
 """
 Utility module for ETSpy package.
 
@@ -36,7 +32,7 @@ def multiaverage(stack, nframes, ny, nx):
         Pixels in x-dimension.
 
     Returns
-    ----------
+    -------
     average : NumPy array
         Average of all frames at given tilt
     """
@@ -49,9 +45,10 @@ def multiaverage(stack, nframes, ny, nx):
 
     shifted = np.zeros([nframes, ny, nx])
     shifts = _calc_sr_shifts(stack)
-    for k in range(0, nframes):
+    for k in range(nframes):
         shifted[k, :, :] = ndimage.shift(
-            stack[k, :, :], shift=[shifts[k, 0], shifts[k, 1]]
+            stack[k, :, :],
+            shift=[shifts[k, 0], shifts[k, 1]],
         )
     average = shifted.mean(0)
     return average
@@ -67,7 +64,7 @@ def register_serialem_stack(stack, ncpus=1):
         Signal of shape [ntilts, nframes, ny, nx].
 
     Returns
-    ----------
+    -------
     reg : TomoStack object
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
@@ -80,19 +77,24 @@ def register_serialem_stack(stack, ncpus=1):
     if ncpus == 1:
         reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
         start = stack.data.shape[0] // 2
-        for i in tqdm.tqdm(range(0, ntilts)):
+        for i in tqdm.tqdm(range(ntilts)):
             shifted = np.zeros([nframes, ny, nx])
-            shifts = calculate_shifts_stackreg(stack.inav[:, i], start, False)
-            for k in range(0, nframes):
+            shifts = calculate_shifts_stackreg(
+                stack.inav[:, i],
+                start,
+                show_progressbar=False,
+            )
+            for k in range(nframes):
                 shifted[k, :, :] = ndimage.shift(
-                    stack.data[i, k, :, :], shift=[shifts[k, 0], shifts[k, 1]]
+                    stack.data[i, k, :, :],
+                    shift=[shifts[k, 0], shifts[k, 1]],
                 )
             reg[i, :, :] = shifted.mean(0)
     else:
         with Pool(ncpus) as pool:
             reg = pool.starmap(
                 multiaverage,
-                [(stack.inav[:, i].data, nframes, ny, nx) for i in range(0, ntilts)],
+                [(stack.inav[:, i].data, nframes, ny, nx) for i in range(ntilts)],
             )
         reg = np.array(reg)
 
@@ -117,12 +119,13 @@ def register_serialem_stack(stack, ncpus=1):
     return reg
 
 
-def weight_stack(stack, accuracy="medium"):
+def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
     """
-    Apply a weighting window to a stack along the direction perpendicular to the tilt axis.
+    Apply a weighting window to a stack perpendicular to the tilt axis.
 
-    This weighting is useful for reducing the effects of mass introduced at the edges of as stack when
-    determining alignments based on the center of mass.  As described in:
+    This weighting is useful for reducing the effects of mass introduced at the
+    edges of as stack when determining alignments based on the center of mass.
+    As described in:
 
             T. Sanders. Physically motivated global alignment method for electron
             tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
@@ -134,10 +137,11 @@ def weight_stack(stack, accuracy="medium"):
         Stack to be weighted.
 
     accuracy : string
-        Level of accuracy for determining the weighting.  Acceptable values are 'low', 'medium', and 'high'.
+        Level of accuracy for determining the weighting.
+        Acceptable values are 'low', 'medium', and 'high'.
 
     Returns
-    ----------
+    -------
     reg : TomoStack object
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
@@ -162,7 +166,11 @@ def weight_stack(stack, accuracy="medium"):
         num = 20000
         delta = 0.001
     else:
-        raise ValueError("Unknown accuracy level.  Must be 'low', 'medium', or 'high'.")
+        msg = (
+            f"Unknown accuracy level ('{accuracy.lower()}').  "
+            "Must be 'low', 'medium', or 'high'."
+        )
+        raise ValueError(msg)
 
     r = np.arange(1, ny + 1)
     r = 2 / (ny - 1) * (r - 1) - 1
@@ -170,76 +178,78 @@ def weight_stack(stack, accuracy="medium"):
     s = np.zeros(ntilts)
     for p in range(1, int(num / 10) + 1):
         rp = r ** (p * delta * 10)
-        for x in range(0, nx):
+        for x in range(nx):
             wg[:, x] = rp
-        for i in range(0, ntilts):
-            if v[i]:
-                if np.sum(stack.data[i, :, :] * wg) < alpha:
-                    v[i] = 0
-                    s[i] = (p - 1) * 10
+        for i in range(ntilts):
+            if v[i] and np.sum(stack.data[i, :, :] * wg) < alpha:
+                v[i] = 0
+                s[i] = (p - 1) * 10
         if v.sum() == 0:
             break
-    for i in range(0, ntilts):
+    for i in range(ntilts):
         if v[i]:
+            #TODO: check this, since p is the iteration var for the last loop
             s[i] = (p - 1) * 10
 
     v = np.arange(1, ntilts + 1)
     v[beta] = 0
-    for j in range(0, ntilts):
+    for j in range(ntilts):
         if j != beta:
             for p in range(1, 10):
                 rp = r ** ((p + s[j]) * delta)
-                for x in range(0, nx):
+                for x in range(nx):
                     wg[:, x] = rp
-                    if np.sum(stack.data[i, :, :] * wg) < alpha:
+                    #TODO: check this, since i is the iteration var for the last loop
+                    if np.sum(stack.data[i, : :] * wg) < alpha:
                         s[j] = p + s[j]
                         v[i] = 0
                         break
-    for i in range(0, ntilts):
+    for i in range(ntilts):
         if v[i]:
             s[i] = s[i] + 10
 
-    for i in range(0, ntilts):
-        for x in range(0, nx):
+    for i in range(ntilts):
+        for x in range(nx):
             wg[:, x] = r ** (s[i] * delta)
         stackw.data[i, :, :] = stack.data[i, :, :] * wg
     return stackw
 
 
-def calc_EST_angles(N):
+def calc_est_angles(num_points):
     """
     Caculate angles used for equally sloped tomography (EST).
 
     See:
-            J. Miao, F. Forster, and O. Levi. Equally sloped tomography with oversampling reconstruction.
-            Phys. Rev. B, 72 (2005) 052103.
+            J. Miao, F. Forster, and O. Levi. Equally sloped tomography with
+            oversampling reconstruction. Phys. Rev. B, 72 (2005) 052103.
             https://doi.org/10.1103/PhysRevB.72.052103
 
     Parameters
     ----------
-    N : integer
+    num_points : integer
         Number of points in scan.
 
     Returns
-    ----------
+    -------
     angles : Numpy array
         Angles in degrees for equally sloped tomography.
 
     """
-    if np.mod(N, 2) != 0:
-        raise ValueError("N must be an even number")
+    if np.mod(num_points, 2) != 0:
+        msg = "N must be an even number"
+        raise ValueError(msg)
 
-    angles = np.zeros(2 * N)
+    angles = np.zeros(2 * num_points)
 
-    n = np.arange(N / 2 + 1, N + 1, dtype="int")
-    theta1 = -np.arctan((N + 2 - 2 * n) / N)
+    n = np.arange(num_points / 2 + 1, num_points + 1, dtype="int")
+    theta1 = -np.arctan((num_points + 2 - 2 * n) / num_points)
     theta1 = np.pi / 2 - theta1
 
-    n = np.arange(1, N + 1, dtype="int")
-    theta2 = np.arctan((N + 2 - 2 * n) / N)
+    n = np.arange(1, num_points + 1, dtype="int")
+    theta2 = np.arctan((num_points + 2 - 2 * n) / num_points)
 
-    n = np.arange(1, N / 2 + 1, dtype="int")
-    theta3 = -np.pi / 2 + np.arctan((N + 2 - 2 * n) / N)
+    n = np.arange(1, num_points / 2 + 1, dtype="int")
+    theta3 = -np.pi / 2 + np.arctan((num_points + 2 - 2 * n) / num_points)
 
     angles = np.concatenate([theta1, theta2, theta3], axis=0)
     angles = angles * 180 / np.pi
@@ -265,7 +275,7 @@ def calc_golden_ratio_angles(tilt_range, nangles):
         Number of angles to calculate.
 
     Returns
-    ----------
+    -------
     thetas : Numpy Array
         Angles in degrees for golden ratio sampling over the provided tilt range.
 
@@ -290,7 +300,7 @@ def get_radial_mask(mask_shape, center=None):
         Location of mask center (x,y).
 
     Returns
-    ----------
+    -------
     mask : Numpy Array
         Logical array that is True in the masked region and False outside of it.
 
@@ -298,7 +308,7 @@ def get_radial_mask(mask_shape, center=None):
     if center is None:
         center = [int(i / 2) for i in mask_shape]
     radius = min(
-        center[0], center[1], mask_shape[1] - center[0], mask_shape[0] - center[1]
+        center[0], center[1], mask_shape[1] - center[0], mask_shape[0] - center[1],
     )
     yy, xx = np.ogrid[0 : mask_shape[0], 0 : mask_shape[1]]
     mask = np.sqrt((xx - center[0]) ** 2 + (yy - center[1]) ** 2)
@@ -321,7 +331,7 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
         corresponds to the Nyquist frequency.
 
     Returns
-    ----------
+    -------
     result : TomoStack
         Filtered version of the input TomoStack.
 
@@ -330,44 +340,48 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
 
     filter_length = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
     freq_indices = np.arange(filter_length // 2 + 1)
-    filter = np.linspace(
-        cutoff / filter_length, 1 - cutoff / filter_length, len(freq_indices)
+    ffilter = np.linspace(
+        cutoff / filter_length, 1 - cutoff / filter_length, len(freq_indices),
     )
     omega = 2 * np.pi * freq_indices / filter_length
 
     if filter_name == "ram-lak":
         pass
     elif filter_name == "shepp-logan":
-        filter[1:] = filter[1:] * np.sinc(omega[1:] / (2 * np.pi))
+        ffilter[1:] = ffilter[1:] * np.sinc(omega[1:] / (2 * np.pi))
     elif filter_name in [
         "hanning",
         "hann",
     ]:
-        filter[1:] = filter[1:] * (1 + np.cos(omega[1:])) / 2
+        ffilter[1:] = ffilter[1:] * (1 + np.cos(omega[1:])) / 2
     elif filter_name in [
         "cosine",
         "cos",
     ]:
-        filter[1:] = filter[1:] * np.cos(omega[1:] / 2)
+        ffilter[1:] = ffilter[1:] * np.cos(omega[1:] / 2)
     else:
-        raise ValueError("Invalid filter type: %s." % filter_name)
+        msg = f"Invalid filter type: {filter_name}"
+        raise ValueError(msg)
 
-    filter = np.concatenate((filter, filter[-2:0:-1]))
+    ffilter = np.concatenate((ffilter, ffilter[-2:0:-1]))
 
-    nfilter = filter.shape[0]
+    nfilter = ffilter.shape[0]
     pad_length = int((nfilter - ny) / 2)
 
-    if len(stack.data.shape) == 2:
+    if len(stack.data.shape) == 2:  # noqa: PLR2004
         padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length]])
         proj_fft = np.fft.fft(padded, axis=1)
-        filtered = np.fft.ifft(proj_fft * filter, axis=1).real
+        filtered = np.fft.ifft(proj_fft * ffilter, axis=1).real
         filtered = filtered[:, pad_length:-pad_length]
 
-    elif len(stack.data.shape) == 3:
+    elif len(stack.data.shape) == 3:  # noqa: PLR2004
         padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length], [0, 0]])
         proj_fft = np.fft.fft(padded, axis=1)
-        filtered = np.fft.ifft(proj_fft * filter[:, np.newaxis], axis=1).real
+        filtered = np.fft.ifft(proj_fft * ffilter[:, np.newaxis], axis=1).real
         filtered = filtered[:, pad_length:-pad_length, :]
+    else:
+        msg = "Method can only be applied to 2 or 3-dimensional stacks"
+        raise ValueError(msg)
     result = stack.deepcopy()
     result.data = filtered
     return result

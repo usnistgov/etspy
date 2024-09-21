@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of ETSpy
-
 """
 Simulation module for ETSpy package.
 
 @author: Andrew Herzing
 """
+
+from typing import Tuple
+
 import astra
 import hyperspy.api as hs
 import numpy as np
@@ -17,79 +16,74 @@ from etspy.io import create_stack
 
 
 def create_catalyst_model(
-    nparticles=15,
-    particle_density=255,
-    support_density=100,
-    volsize=[600, 600, 600],
-    support_radius=200,
-    size_interval=[5, 12],
+    nparticles: int = 15,
+    particle_density: int = 255,
+    support_density: int = 100,
+    volsize: Tuple[int, int, int] = (600, 600, 600),
+    support_radius: int = 200,
+    size_interval: Tuple[int, int] = (5, 12),
 ):
     """
     Create a model data array that mimics a hetergeneous catalyst.
 
-    Args
+    Parameters
     ----------
-    nparticles : int
+    nparticles
         Number of particles to add
-    particle_density : int
+    particle_density
         Grayscale value to assign to the particles
-    support_density : int
+    support_density
         Grayscale value to assign to the support
-    volsize : list
-        X, Y, Z shape of the volume
-    support_radius : int
+    volsize
+        X, Y, Z shape (in that order) of the volume
+    support_radius
         Radius (in pixels) of the support
-    size_interval : list
-        Upper and lower bounds of the particle size
+    size_interval
+        Lower and upper bounds (in that order) of the particle size
 
     Returns
-    ----------
+    -------
     catalyst : Hyperspy Signal2D
         Simulated model
 
     """
-    volsize = np.array(volsize)
-    center = np.int32(volsize / 2)
-    size_interval = [5, 12]
+    volsize_np = np.array(volsize)
+    center = np.array(volsize_np / 2, dtype=np.int32)
 
-    catalyst = np.zeros(volsize, np.uint8)
+    catalyst = np.zeros(volsize_np, np.uint8)
 
     coords = np.zeros([nparticles, 4])
-    for i in range(0, nparticles):
+    for i in range(nparticles):
         size = 2 * np.random.randint(size_interval[0], size_interval[1])
         r = support_radius * 2
         overlap = False
+        x = np.random.randint(0, volsize_np[0])  # initalize x and y before while loop
+        y = np.random.randint(0, volsize_np[1])
         while r > support_radius or overlap:
-            x = np.random.randint(0, volsize[0])
-            y = np.random.randint(0, volsize[1])
+            x = np.random.randint(0, volsize_np[0])
+            y = np.random.randint(0, volsize_np[1])
             r = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
             distance = np.abs(coords[:, 0:2] - np.array([x, y]))
-            if np.min(distance) < size_interval[1]:
-                overlap = True
-            else:
-                overlap = False
+            overlap = np.min(distance) < size_interval[1]
 
         z_exact = np.int32(
             np.sqrt(support_radius**2 - (x - center[0]) ** 2 - (y - center[1]) ** 2)
-            + center[2]
+            + center[2],
         )
         zmin = z_exact - np.int32(size / 2)
         zmax = z_exact + np.int32(size / 2)
         z_rand = np.random.randint(zmin, zmax)
         test = np.random.randint(-1, 1)
-        if test < 0:
-            z = center[2] - (z_rand - center[2])
-        else:
-            z = z_rand
+        z = center[2] - (z_rand - center[2]) if test < 0 else z_rand
         coords[i, :] = [x, y, z, size]
 
-    xx, yy, zz = np.mgrid[: volsize[0], : volsize[1], : volsize[2]]
+    xx, yy, zz = np.mgrid[: volsize_np[0], : volsize_np[1], : volsize_np[2]]
 
     support = (xx - center[0]) ** 2 + (yy - center[1]) ** 2 + (zz - center[2]) ** 2
 
     catalyst[support < support_radius**2] = support_density
 
-    for i in range(0, nparticles):
+    for i in range(nparticles):
         x, y, z, particle_radius = coords[i, :]
         particle = (xx - x) ** 2 + (yy - y) ** 2 + (zz - z) ** 2
         catalyst[particle < particle_radius**2] = particle_density
@@ -105,7 +99,7 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
     """
     Create a model data array that mimics a needle shaped sample.
 
-    Args
+    Parameters
     ----------
     vol_size : int
         Size of the volume for the model
@@ -116,18 +110,17 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
     blur_sigma : float
         Sigma value for the Gaussiuan blur
     add_others : bool
-        If True, add a second and third cylinder to the model near the periphery.  This is useful
-        for testing the effects of additional objects entering the tilt series field of view.
+        If True, add a second and third cylinder to the model near the periphery.
+        This is useful for testing the effects of additional objects entering the
+        tilt series field of view.
+
     Returns
-    ----------
+    -------
     cylinder : Signal2D
         Simulated cylinder object
 
     """
-    if add_others:
-        vol_shape = np.array([400, 400, 400])
-    else:
-        vol_shape = np.array([200, 200, 200])
+    vol_shape = np.array([400, 400, 400]) if add_others else np.array([200, 200, 200])
 
     cylinder = np.zeros(vol_shape, np.uint16)
     xx, yy = np.ogrid[: vol_shape[1], : vol_shape[2]]
@@ -153,10 +146,11 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
         cylinder3 = (xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius_cylinder3**2
 
         # Add the cylinders to the volume
+        low_thresh, mid_thresh, high_thresh = 150, 230, 270
         for i in range(vol_shape[2]):
-            if i < 150:
+            if i < low_thresh:
                 cylinder[:, :, i] = 50 * cylinder1 + 10 * cylinder2
-            elif i < 270 and i > 230:
+            elif i < high_thresh and i > mid_thresh:
                 cylinder[:, :, i] = 50 * cylinder1 + 20 * cylinder3
             else:
                 cylinder[:, :, i] = 50 * cylinder1
@@ -175,7 +169,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     """
     Create a tilt series from a 3D volume.
 
-    Args
+    Parameters
     ----------
     model : NumPy array or Hyperspy Signal2D
         3D array or signal containing the model volume to project to a tilt series
@@ -183,7 +177,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
         Projection angles for tilt series in degrees
 
     Returns
-    ----------
+    -------
     model : TomoStack object
         Tilt series of the model data
 
@@ -210,7 +204,7 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     else:
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
 
-    for i in range(0, model.shape[0]):
+    for i in range(model.shape[0]):
         sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
 
     stack = create_stack(proj_data, angles)
@@ -229,7 +223,7 @@ def misalign_stack(
     """
     Apply misalignment to a model tilt series.
 
-    Args
+    Parameters
     ----------
     stack
         TomoStack simluation
@@ -246,10 +240,11 @@ def misalign_stack(
         Default is False
     interp_order
         The order of spline interpolation used by the :py:func:`scipy.ndimage.shift`
-        or :py:function:`scipy.ndimage.rotate` function. The order must be in the range 0-5.
+        or :py:function:`scipy.ndimage.rotate` function.
+        The order must be in the range 0-5.
 
     Returns
-    ----------
+    -------
     misaligned
         Misaligned copy of the input TomoStack
 
@@ -258,7 +253,9 @@ def misalign_stack(
 
     if tilt_shift != 0:
         misaligned.data = ndimage.shift(
-            misaligned.data, shift=[0, 0, tilt_shift], order=interp_order
+            misaligned.data,
+            shift=[0, 0, tilt_shift],
+            order=interp_order,
         )
     if tilt_rotate != 0:
         misaligned.data = ndimage.rotate(
@@ -288,7 +285,7 @@ def add_noise(stack, noise_type="gaussian", scale_factor=0.2):
     """
     Apply misalignment to a model tilt series.
 
-    Args
+    Parameters
     ----------
     stack : TomoStack object
         TomoStack simluation
@@ -298,7 +295,7 @@ def add_noise(stack, noise_type="gaussian", scale_factor=0.2):
         Amount of noise to add
 
     Returns
-    ----------
+    -------
     noisy : TomoStack object
         Noisy copy of the input TomoStack
 
@@ -307,7 +304,9 @@ def add_noise(stack, noise_type="gaussian", scale_factor=0.2):
 
     if noise_type == "gaussian":
         noise = np.random.normal(
-            stack.data.mean(), scale_factor * stack.data.mean(), stack.data.shape
+            stack.data.mean(),
+            scale_factor * stack.data.mean(),
+            stack.data.shape,
         )
         noisy.data = noisy.data + noise
         if noisy.data.min() < 0:

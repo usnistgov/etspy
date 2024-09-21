@@ -91,13 +91,13 @@ class TestWeightStack:
 
 class TestHelperUtils:
     def test_est_angles(self):
-        est = utils.calc_EST_angles(10)
+        est = utils.calc_est_angles(10)
         assert type(est) is numpy.ndarray
         assert est.shape[0] == 20
 
     def test_est_angles_error(self):
         with pytest.raises(ValueError):
-            utils.calc_EST_angles(11)
+            utils.calc_est_angles(11)
 
     def test_golden_ratio_angles(self):
         gr = utils.calc_golden_ratio_angles(10, 5)
