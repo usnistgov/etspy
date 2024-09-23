@@ -165,7 +165,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     dart_iterations=None,
     p=0.99,
     show_progressbar=True,
-):
+) -> np.ndarray:
     """
     Perform reconstruction of input tilt series.
 

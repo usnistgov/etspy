@@ -1,3 +1,5 @@
+"""Tests for the alignment features of ETSpy."""
+
 import numpy as np
 import pytest
 
@@ -6,41 +8,52 @@ from etspy import datasets as ds
 
 
 class TestAlignFunctions:
+    """Test alignment functions."""
+
     def test_apply_shifts_bad_shape(self):
         stack = ds.get_needle_data()
         stack = stack.inav[0:5]
         shifts = np.zeros(10)
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=r"Number of shifts \(\d+\) is not consistent with number of images "
+            r"in the stack \(\d+\)",
+        ):
             etspy.align.apply_shifts(stack, shifts)
 
     def test_pad_line(self):
         line = np.zeros(100)
-        padded = etspy.align.pad_line(line, 200)
-        assert padded.shape[0] == 200
+        padding = 200
+        padded = etspy.align.pad_line(line, padding)
+        assert padded.shape[0] == padding
 
     def test_pad_line_uneven_line(self):
         line = np.zeros(101)
-        padded = etspy.align.pad_line(line, 200)
-        assert padded.shape[0] == 200
+        padding = 200
+        padded = etspy.align.pad_line(line, padding)
+        assert padded.shape[0] == padding
 
     def test_pad_line_uneven_padded(self):
         line = np.zeros(100)
-        padded = etspy.align.pad_line(line, 201)
-        assert padded.shape[0] == 201
+        padding = 201
+        padded = etspy.align.pad_line(line, padding)
+        assert padded.shape[0] == padding
 
     def test_pad_line_uneven_both(self):
         line = np.zeros(101)
-        padded = etspy.align.pad_line(line, 201)
-        assert padded.shape[0] == 201
+        padding = 201
+        padded = etspy.align.pad_line(line, padding)
+        assert padded.shape[0] == padding
 
 
 class TestAlignStackRegister:
+    """Test alignment using stack reg."""
 
     def test_register_pc(self):
         stack = ds.get_needle_data()
         stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register("PC")
-        assert type(reg) is etspy.TomoStack
+        assert isinstance(reg, etspy.TomoStack)
         assert (
             reg.axes_manager.signal_shape == stack.inav[0:20].axes_manager.signal_shape
         )
@@ -54,7 +67,7 @@ class TestAlignStackRegister:
         stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
         stack.metadata.Tomography.tilts = stack.metadata.Tomography.tilts[0:20]
         reg = stack.inav[0:20].stack_register("COM")
-        assert type(reg) is etspy.TomoStack
+        assert isinstance(reg, etspy.TomoStack)
         assert (
             reg.axes_manager.signal_shape == stack.inav[0:20].axes_manager.signal_shape
         )
@@ -67,7 +80,7 @@ class TestAlignStackRegister:
         stack = ds.get_needle_data()
         stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register("StackReg")
-        assert type(reg) is etspy.TomoStack
+        assert isinstance(reg, etspy.TomoStack)
         assert (
             reg.axes_manager.signal_shape == stack.inav[0:20].axes_manager.signal_shape
         )
@@ -80,7 +93,7 @@ class TestAlignStackRegister:
         stack = ds.get_needle_data()
         stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
         reg = stack.inav[0:20].stack_register("COM-CL")
-        assert type(reg) is etspy.TomoStack
+        assert isinstance(reg, etspy.TomoStack)
         assert (
             reg.axes_manager.signal_shape == stack.inav[0:20].axes_manager.signal_shape
         )
@@ -92,11 +105,18 @@ class TestAlignStackRegister:
     def test_register_unknown_method(self):
         stack = ds.get_needle_data()
         stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
-        with pytest.raises(ValueError):
-            stack.inav[0:20].stack_register("WRONG")
+        bad_method = "WRONG"
+        with pytest.raises(
+            ValueError,
+            match=f"Unknown registration method: '{bad_method.lower()}'. "
+            "Must be 'PC', 'StackReg', or 'COM'",
+        ):
+            stack.inav[0:20].stack_register(bad_method)
 
 
 class TestTiltAlign:
+    """Test tilt alignment functions."""
+
     def test_tilt_align_com(self):
         stack = ds.get_needle_data()
         reg = stack.stack_register("PC")
@@ -115,7 +135,10 @@ class TestTiltAlign:
         stack = ds.get_needle_data()
         reg = stack.stack_register("PC")
         reg.metadata.Tomography.tilts = None
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="Tilts are not defined in stack.metadata.Tomography",
+        ):
             reg.tilt_align(method="CoM", locs=[64, 128, 192])
 
     def test_tilt_align_maximage(self):
@@ -129,11 +152,17 @@ class TestTiltAlign:
 
     def test_tilt_align_unknown_method(self):
         stack = ds.get_needle_data()
-        with pytest.raises(ValueError):
-            stack.tilt_align(method="WRONG")
+        bad_method = "WRONG"
+        with pytest.raises(
+            ValueError,
+            match=f"Invalid alignment method: '{bad_method.lower()}'. "
+            "Must be 'CoM' or 'MaxImage'",
+        ):
+            stack.tilt_align(method=bad_method)
 
 
 class TestAlignOther:
+    """Test alignment of a dataset calculated for another."""
 
     def test_align_to_other(self):
         stack = ds.get_needle_data()
@@ -150,7 +179,10 @@ class TestAlignOther:
         stack = stack.inav[0:5]
         stack2 = stack.deepcopy()
         reg = stack.deepcopy()
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="No transformations have been applied to this stack",
+        ):
             reg.align_other(stack2)
 
     def test_align_to_other_with_crop(self):

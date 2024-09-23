@@ -31,6 +31,8 @@ profile = "black"
 src_paths = ["etspy"]
 
 [tool.ruff]
+
+[tool.ruff.lint]
 select = [
     "F", "E", "W", "I", "N", "D", "YTT", "UP", "S", "FBT", "B", "A", "COM", "C4",
     "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI",
@@ -39,8 +41,11 @@ select = [
 ]
 ignore = ["FBT001", "FBT002", "TRY003", "RET504"]
 
+[tool.ruff.lint.per-file-ignores]
+"etspy/tests/*" = ["S101", "D102"]
+
 [tool.ruff.lint.pylint]
 max-args = 10
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"

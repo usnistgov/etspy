@@ -188,7 +188,7 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
             break
     for i in range(ntilts):
         if v[i]:
-            #TODO: check this, since p is the iteration var for the last loop
+            # TODO: check this, since p is the iteration var for the last loop
             s[i] = (p - 1) * 10
 
     v = np.arange(1, ntilts + 1)
@@ -199,8 +199,8 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
                 rp = r ** ((p + s[j]) * delta)
                 for x in range(nx):
                     wg[:, x] = rp
-                    #TODO: check this, since i is the iteration var for the last loop
-                    if np.sum(stack.data[i, : :] * wg) < alpha:
+                    # TODO: check this, since i is the iteration var for the last loop
+                    if np.sum(stack.data[i, ::] * wg) < alpha:
                         s[j] = p + s[j]
                         v[i] = 0
                         break
@@ -308,7 +308,10 @@ def get_radial_mask(mask_shape, center=None):
     if center is None:
         center = [int(i / 2) for i in mask_shape]
     radius = min(
-        center[0], center[1], mask_shape[1] - center[0], mask_shape[0] - center[1],
+        center[0],
+        center[1],
+        mask_shape[1] - center[0],
+        mask_shape[0] - center[1],
     )
     yy, xx = np.ogrid[0 : mask_shape[0], 0 : mask_shape[1]]
     mask = np.sqrt((xx - center[0]) ** 2 + (yy - center[1]) ** 2)
@@ -341,7 +344,9 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
     filter_length = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
     freq_indices = np.arange(filter_length // 2 + 1)
     ffilter = np.linspace(
-        cutoff / filter_length, 1 - cutoff / filter_length, len(freq_indices),
+        cutoff / filter_length,
+        1 - cutoff / filter_length,
+        len(freq_indices),
     )
     omega = 2 * np.pi * freq_indices / filter_length
 

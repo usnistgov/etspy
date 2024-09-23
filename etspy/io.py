@@ -304,8 +304,8 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
 
 
 def load_serialem_series(
-    mrcfiles: List[PathLike],
-    mdocfiles: List[PathLike],
+    mrcfiles: Union[List[str], List[Path]],
+    mdocfiles: Union[List[str], List[Path]],
 ) -> Tuple[TomoStack, np.ndarray]:
     """
     Load a multi-frame series collected by SerialEM.
@@ -467,9 +467,9 @@ def _load_single_file(filename: Path) -> Tuple[Signal2D, Optional[np.ndarray]]:
 
 
 def load(
-    filename: PathLike,
+    filename: Union[PathLike, List[str], List[Path]],
     tilts: Optional[Union[List[float], np.ndarray]] = None,
-    mdocs: Optional[List[PathLike]] = None,
+    mdocs: Optional[Union[List[str], List[Path]]] = None,
 ) -> TomoStack:
     """
     Create a TomoStack object using data from a file.

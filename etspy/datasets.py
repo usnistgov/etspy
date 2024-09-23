@@ -4,12 +4,9 @@ Test dataset handling module for ETSpy package.
 @author: Andrew Herzing
 """
 
-from pathlib import Path
-
 import etspy.api as etspy
+from etspy.api import etspy_path
 from etspy.simulation import add_noise, misalign_stack
-
-etspy_path = Path(etspy.__file__).parent
 
 
 def get_needle_data(aligned: bool = False):

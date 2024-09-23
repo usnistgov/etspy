@@ -798,13 +798,13 @@ class TomoStack(CommonStack):
         --------
         Filtered backprojection (FBP) reconstruction
         >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(True)
+        >>> stack = ds.get_needle_data(aligned=True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('FBP', cuda=False, show_progressbar=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(True)
+        >>> stack = ds.get_needle_data(aligned=True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> rec = slices.reconstruct('SIRT',iterations=5,
         >>>                          cuda=False, show_progressbar=False)
@@ -812,7 +812,7 @@ class TomoStack(CommonStack):
         Simultaneous iterative reconstruction technique (SIRT) reconstruction
         with positivity constraint
         >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(True)
+        >>> stack = ds.get_needle_data(aligned=True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> iterations = 5
         >>> constrain = True
@@ -822,7 +822,7 @@ class TomoStack(CommonStack):
 
         Discreate algebraice reconstruction technique (DART) reconstruction
         >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(True)
+        >>> stack = ds.get_needle_data(aligned=True)
         >>> slices = stack.isig[:, 120:121].deepcopy()
         >>> gray_levels = [0., slices.data.max()/2, slices.data.max()]
         >>> rec = slices.reconstruct('DART', iterations=5, cuda=False,
@@ -1134,7 +1134,7 @@ class TomoStack(CommonStack):
         Examples
         --------
         >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(True)
+        >>> stack = ds.get_needle_data(aligned=True)
         >>> rec_stack, error = stack.recon_error(iterations=5)
 
         """
