@@ -141,7 +141,6 @@ def weight_stack(stack, accuracy='medium'):
         The weighted version of the input stack.
 
     """
-
     # Set the parameters based on the accuracy input
     if isinstance(accuracy, str):
         if accuracy == 'low':
