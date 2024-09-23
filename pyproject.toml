@@ -2,9 +2,18 @@
 name = "etspy"
 version = "0.8.0"
 description = "Suite of tools for processing and reconstruction of electron tomography data"
-authors = ["Andrew A. Herzing <andrew.herzing@nist.gov>"]
+authors = [
+    "Andrew A. Herzing <andrew.herzing@nist.gov>",
+    "Joshua Taillon <joshua.taillon@nist.gov>"
+]
 license = "NIST Public License"
 readme = "README.md"
+homepage = "https://pages.nist.gov/etspy/"
+repository = "https://github.com/usnistgov/etspy/"
+documentation = "https://pages.nist.gov/etspy/docs/"
+packages = [
+    { include = "etspy" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.9"
