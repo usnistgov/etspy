@@ -40,6 +40,7 @@ select = [
     "TRY", "RUF"
 ]
 ignore = ["FBT001", "FBT002", "TRY003", "RET504"]
+exclude = ["*.ipynb"]
 
 [tool.ruff.lint.per-file-ignores]
 "etspy/tests/*" = ["S101", "D102"]
