@@ -119,7 +119,7 @@ def register_serialem_stack(stack, ncpus=1):
     return reg
 
 
-def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
+def weight_stack(stack, accuracy="medium"):
     """
     Apply a weighting window to a stack perpendicular to the tilt axis.
 
@@ -131,7 +131,7 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
             tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
             https://doi.org/10.1186/s40679-015-0005-7
 
-    Parameters:
+    Parameters
     ----------
     stack : TomoStack
         The stack to be weighted.
@@ -145,16 +145,17 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
         The weighted version of the input stack.
 
     """
-
     # Set the parameters based on the accuracy input
+    # with default of "medium"
+    niterations = 2000
+    delta = 0.01
     if accuracy.lower():
-        if accuracy == 'low':
+        if accuracy == "low":
             niterations = 800
             delta = 0.025
-        elif accuracy == 'medium':
-            niterations = 2000
-            delta = 0.01
-        elif accuracy == 'high':
+        elif accuracy == "medium":
+            pass
+        elif accuracy == "high":
             niterations = 20000
             delta = 0.001
         else:
@@ -169,13 +170,17 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
     # Get stack dimensions
     ntilts, ny, nx = weighted_stack.data.shape
 
-    # Compute the minimum total projected mass and the corresponding slice index (min_slice)
-    min_mass, min_slice = np.min(np.sum(np.sum(weighted_stack.data, axis=2), axis=1)), np.argmin(np.sum(np.sum(weighted_stack.data, axis=2), axis=1))
+    # Compute the minimum total projected mass and the corresponding
+    # slice index (min_slice)
+    min_mass, min_slice = np.min(
+        np.sum(np.sum(weighted_stack.data, axis=2), axis=1),
+    ), np.argmin(np.sum(np.sum(weighted_stack.data, axis=2), axis=1))
 
     # Initialize the window array
     window = np.zeros([ny, nx])
 
-    # Initialize the status vector (1 means unmarked, 0 means marked) and mark the reference slice (min_slice)
+    # Initialize the status vector (1 means unmarked, 0 means marked) and mark
+    # the reference slice (min_slice)
     status = np.ones(ntilts)
     status[min_slice] = 0
 
@@ -188,17 +193,21 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
     adjustments = np.zeros(ntilts)
 
     # Coarse adjustment loop
-    # In this step, the applied window is made increasingly restrictive in 10 pixel increments.
-    # Whenever the the windowed mass of a projection drops below the value of min_alpha, that projection
-    # is marked and the window restriction is not carried any further for that projection.
+    # In this step, the applied window is made increasingly restrictive in 10 pixel
+    # increments. Whenever the the windowed mass of a projection drops below the value
+    # of min_alpha, that projection is marked and the window restriction is not carried
+    # any further for that projection.
 
+    power = 10  # initialize power
     for power in np.linspace(10, niterations, niterations // 10):
         # Compute the power-weighted profile for the current iteration
         r_power = r ** (power * delta)
         window = r_power[:, np.newaxis]  # Broadcasting across all columns
 
         # Compute the weighted sum for all slices at once using vectorization
-        weighted_mass = np.sum(weighted_stack.data * window[np.newaxis, :, :], axis=(1, 2))
+        weighted_mass = np.sum(
+            weighted_stack.data * window[np.newaxis, :, :], axis=(1, 2),
+        )
 
         # Update the status and adjustments for slices with weighted sums below min_mass
         update_mask = (status != 0) & (weighted_mass < min_mass)
@@ -209,20 +218,23 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
         if not np.any(status):  # More efficient than np.sum(status)
             break
 
-    # Set window for any unmarked slices to the most restricive used in the rest of the slices
+    # Set window for any unmarked slices to the most restricive used
+    # in the rest of the slices
     adjustments[np.where(status != 0)] = power - 10
 
     # Fine adjustment loop
-    # In this step the severity of the window is calculated again using the value calculated in the coarse
-    # step and the window is made more restrictive in 1 pixel increments.
+    # In this step the severity of the window is calculated again using the value
+    # calculated in the coarse step and the window is made more restrictive in 1
+    # pixel increments.
     status = np.ones(ntilts)
     status[min_slice] = 0
 
     for j in range(ntilts):
         if j != min_slice:
             for power in np.linspace(1, 10, 10):
-                # Apply fine adjustments to the weight profile and update the weight grid
-                r_power = r**((power + adjustments[j]) * delta)
+                # Apply fine adjustments to the weight profile and
+                # update the weight grid
+                r_power = r ** ((power + adjustments[j]) * delta)
                 window[:] = r_power[:, np.newaxis]
 
                 if np.sum(weighted_stack.data[j, :, :] * window) < min_mass:
@@ -235,7 +247,7 @@ def weight_stack(stack, accuracy="medium"):  # noqa: PLR0912
 
     # Apply the final window to the entire stack
     for i in range(ntilts):
-        window[:] = (r**(adjustments[i] * delta))[:, np.newaxis]
+        window[:] = (r ** (adjustments[i] * delta))[:, np.newaxis]
         weighted_stack.data[i, :, :] *= window
 
     return weighted_stack
