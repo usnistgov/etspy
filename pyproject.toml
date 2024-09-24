@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "etspy"
+version = "0.8.0"
+description = "Suite of tools for processing and reconstruction of electron tomography data"
+authors = [
+    "Andrew A. Herzing <andrew.herzing@nist.gov>",
+    "Joshua Taillon <joshua.taillon@nist.gov>"
+]
+license = "NIST Public License"
+readme = "README.md"
+homepage = "https://pages.nist.gov/etspy/"
+repository = "https://github.com/usnistgov/etspy/"
+documentation = "https://pages.nist.gov/etspy/docs/"
+packages = [
+    { include = "etspy" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pystackreg = "^0.2.7"
+astra-toolbox = "^2.2.0"
+hyperspy = "^2.1.1"
+hyperspy-gui-ipywidgets = "^2.0.2"
+ipykernel = "^6.29.5"
+numba = "^0.60.0"
+numpy = "^1.26.4"
+
+[tool.poetry.group.dev.dependencies]
+pydocstyle = "^6.3.0"
+pytest = "^8.3.3"
+ruff = "^0.6.6"
+isort = "^5.13.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+src_paths = ["etspy"]
+
+[tool.ruff]
+
+[tool.ruff.lint]
+select = [
+    "F", "E", "W", "I", "N", "D", "YTT", "UP", "S", "FBT", "B", "A", "COM", "C4",
+    "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI",
+    "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PL",
+    "TRY", "RUF"
+]
+ignore = ["FBT001", "FBT002", "TRY003", "RET504"]
+exclude = ["*.ipynb"]
+
+[tool.ruff.lint.per-file-ignores]
+"etspy/tests/*" = ["S101", "D102"]
+
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"

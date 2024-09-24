@@ -5,11 +5,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: pip install flake8
-      - run: pip install pydocstyle
-      - run: flake8 --exclude=api.py --ignore=E501 etspy/
-      - if: always()
-        run: pydocstyle etspy/
+      - run: pip install ruff isort
+      - run: isort . --check
+      - run: ruff check
 
   pytest:
     runs-on: ubuntu-latest
@@ -17,7 +15,10 @@ jobs:
       image: aaherzing/etspy:latest
     steps:
     - uses: actions/checkout@v4
-    - run: pip install -e ./
-    - run: pytest --doctest-modules --ignore=etspy/tests/test_datasets.py etspy/ 
-    - if: always()
-      run: pytest --ignore=etspy/tests/test_datasets.py etspy/tests/
+    - name: Install ETSpy
+      run: pip install -e ./
+    - name: Run docstring example tests
+      run: pytest --doctest-modules --ignore=etspy/tests etspy/ 
+    - name: Run full test suite
+      if: always()
+      run: pytest etspy/tests/
