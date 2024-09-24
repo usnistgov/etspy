@@ -48,7 +48,7 @@ class TestReconCUDA:
             cuda=True,
         )
         assert isinstance(stack, TomoStack)
-        assert isinstance(stack, RecStack)
+        assert isinstance(rec, RecStack)
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_sart_gpu(self):
@@ -62,7 +62,7 @@ class TestReconCUDA:
             cuda=True,
         )
         assert isinstance(stack, TomoStack)
-        assert isinstance(stack, RecStack)
+        assert isinstance(rec, RecStack)
         assert rec.data.shape[2] == slices.data.shape[1]
 
     def test_recon_dart_gpu(self):
@@ -79,7 +79,7 @@ class TestReconCUDA:
             dart_iterations=1,
         )
         assert isinstance(stack, TomoStack)
-        assert isinstance(stack, RecStack)
+        assert isinstance(rec, RecStack)
         assert rec.data.shape[2] == slices.data.shape[1]
 
 
