@@ -1,0 +1,65 @@
+.nist-header a {
+    text-decoration: none;
+}
+
+body {
+    margin: 0;
+    background-image: url(background-image.jpg);
+    background-size: cover;
+    background-position: center;
+  }
+  
+  p {
+      display: block;
+      -webkit-margin-before: 0em;
+      -webkit-margin-after: 0em;
+      -webkit-margin-start: 0px;
+      -webkit-margin-end: 0px;
+  }
+  
+  a {
+    color: white;
+  }
+  
+  .viewport {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .text-box {
+    height: auto;
+    width: auto;
+    margin: 1vh;
+    background-color: white;
+    border-radius: 1vh;
+    justify-content: center;
+    align-items: center;
+    border: 0.25vh solid #808080;
+  }
+  
+  .title {
+    font-size: 6vh;
+    text-align: center;
+    font-family: 'Roboto', sans-serif;
+    padding: 1vh;
+  }
+  
+  .subtitle {
+    font-size: 4vh;
+    text-align: center;
+    font-family: 'Roboto', sans-serif;
+    padding: 0 1vh 1vh 1vh;
+  }
+  
+  .footer {
+    font-size: 1vh;
+    text-align: center;
+    font-family: 'Roboto', sans-serif;
+    padding: 0 1vh 1vh 1vh;
+    color: white;
+    position: absolute;
+    bottom: 0;
+  }
