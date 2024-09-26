@@ -28,7 +28,7 @@ jobs:
   #     if: always()
   #     run: pytest etspy/tests/
   conda-pytest:
-    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
+    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, with-cuda: ${{ matrix.with-cuda }})"
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -38,6 +38,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         python-version: ["3.10", "3.11", "3.12"]
+        with-cuda: [true, false]
     steps:
       - uses: actions/checkout@v4
       - uses: conda-incubator/setup-miniconda@v3
@@ -47,6 +48,9 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           auto-activate-base: false
+      - name: Install CUDA Toolkit
+        if: ${{ matrix.with-cuda }}
+        uses: Jimver/cuda-toolkit@v0.2.17
       - name: Conda info
         run: conda info
       - name: Conda list
