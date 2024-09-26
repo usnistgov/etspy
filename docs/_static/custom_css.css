@@ -1,0 +1,18 @@
+.nist-header > a {
+    text-decoration: none;
+}
+
+#ln-messageBox {
+    color: var(--md-typeset-color) !important;
+    background-color: var(--md-default-bg-color) !important;
+    border: 10px solid var(--md-code-bg-color) !important;
+    font-size: medium !important;
+}
+
+#ln-messageBox div.setoff {
+    background: var(--md-code-bg-color) !important;
+}
+
+#ln-messageBox a {
+    color: var(--md-primary-fg-color) ! important;
+}

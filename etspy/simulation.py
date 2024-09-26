@@ -1,8 +1,4 @@
-"""
-Simulation module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Simulation module for ETSpy package."""
 
 from typing import Tuple
 

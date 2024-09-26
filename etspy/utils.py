@@ -1,8 +1,4 @@
-"""
-Utility module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Utility module for ETSpy package."""
 
 import logging
 from multiprocessing import Pool

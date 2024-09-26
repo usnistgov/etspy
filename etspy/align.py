@@ -1,8 +1,4 @@
-"""
-Alignment module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Alignment module for ETSpy package."""
 
 # pyright: reportPossiblyUnboundVariable=false
 
@@ -50,7 +46,6 @@ def get_best_slices(stack, nslices):
     -------
     locs : NumPy array
         Location along the x-axis of the best slices
-
     """
     total_mass = stack.data.sum((0, 1))
     mass_std = stack.data.sum(1).std(0)
@@ -75,7 +70,6 @@ def get_coms(stack, slices):
     -------
     coms : NumPy array
         Center of mass as a function of tilt for each slice [ntilts, nslices].
-
     """
     sinos = stack.data[:, :, slices]
     com_range = int(sinos.shape[1] / 2)

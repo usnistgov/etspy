@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 pystackreg = "^0.2.7"
 astra-toolbox = "^2.2.0"
 hyperspy = "^2.1.1"
@@ -30,6 +30,10 @@ pydocstyle = "^6.3.0"
 pytest = "^8.3.3"
 ruff = "^0.6.6"
 isort = "^5.13.2"
+sphinx = "^8.0.2"
+numpydoc = "^1.8.0"
+myst-parser = "^4.0.0"
+sphinx-immaterial = "^0.12.2"
 
 [build-system]
 requires = ["poetry-core"]
@@ -49,7 +53,7 @@ select = [
     "TRY", "RUF"
 ]
 ignore = ["FBT001", "FBT002", "TRY003", "RET504"]
-exclude = ["*.ipynb"]
+exclude = ["*.ipynb","docs/**"]
 
 [tool.ruff.lint.per-file-ignores]
 "etspy/tests/*" = ["S101", "D102"]

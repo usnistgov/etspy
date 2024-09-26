@@ -2,8 +2,6 @@
 Primary module for ETSpy package.
 
 Contains the TomoStack class and its methods.
-
-@author: Andrew Herzing
 """
 
 import logging
@@ -30,8 +28,8 @@ class CommonStack(Signal2D):
     """
     Create a CommonStack object for tomography data.
 
-    Note: All attributes are initialized with values of None or 0.0
-    in __init__ unless they are already defined
+    Note: All attributes are initialized with values of ``None`` or ``0.0``
+    in ``__init__`` unless they are already defined
     """
 
     def plot(self, navigator="slider", *args, **kwargs):

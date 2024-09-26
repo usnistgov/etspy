@@ -1,8 +1,4 @@
-"""
-Data input/output module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Data input/output module for ETSpy package."""
 
 import logging
 from pathlib import Path
@@ -381,7 +377,7 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
     """
     Read the mrc header and return as dictionary.
 
-    Args
+    Parameters
     ----------
     filename
         Name of the MRC file to parse

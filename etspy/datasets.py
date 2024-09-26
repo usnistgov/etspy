@@ -1,8 +1,4 @@
-"""
-Test dataset handling module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Test dataset handling module for ETSpy package."""
 
 import etspy.api as etspy
 from etspy.api import etspy_path
@@ -41,7 +37,7 @@ def get_catalyst_data(
     """
     Load a model-simulated catalyst tilt series.
 
-    Arguments
+    Parameters
     ----------
     misalign
         If True, apply random shifts to each projection to simulated drift

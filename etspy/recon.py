@@ -1,8 +1,4 @@
-"""
-Reconstruction module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Reconstruction module for ETSpy package."""
 
 import copy
 import logging
