@@ -6,7 +6,6 @@
 import inspect
 import os
 import sys
-
 from pathlib import Path
 from typing import cast
 
