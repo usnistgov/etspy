@@ -30,23 +30,31 @@ jobs:
   conda-pytest:
     name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         python-version: ["3.10", "3.11", "3.12"]
     steps:
+      - uses: actions/checkout@v4
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: ${{env.CONDA_ENV_NAME}}
+          environment-file: resources/etspy-dev.yml
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-      - uses: actions/checkout@v4
-      - name: Setup environment
-        run: conda env update -n ${{env.CONDA_ENV_NAME}} --file resources/etspy-dev.yml
+          auto-activate-base: false
       - name: Conda info
         run: conda info
       - name: Conda list
         run: conda list
       - name: Install etspy development
         run: which pip && pip install -e ./
+      - name: Run docstring example tests
+        run: pytest --doctest-modules --ignore=etspy/tests etspy/ 
+      - name: Run full test suite
+        if: always()
+        run: pytest etspy/tests/
