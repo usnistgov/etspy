@@ -17,13 +17,20 @@ jobs:
       - name: Install poetry
         uses: abatilo/actions-poetry@v3.0.0
       - name: Install ETSpy using poetry
-        run: poetry install --only=dev
+        run: poetry install --with=dev
       - name: Build docs
-        run: cd ${{ env.DOC_SOURCE_PATH }} && poetry run make html
-      - uses: actions/upload-artifact@v4
+        run: |
+          cd ${{ env.DOC_SOURCE_PATH }}
+          poetry run make html
+      - name: Upload built docs artifact
+        uses: actions/upload-artifact@v4
         with:
           path: ${{ env.DOC_BUILD_PATH }}
           name: doc_html
+      - name: Check links
+        run: |
+          cd ${{ env.DOC_SOURCE_PATH }}
+          poetry run make linkcheck
 
   # Push_dev:
   #   needs: Build
