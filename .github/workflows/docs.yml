@@ -1,0 +1,48 @@
+name: Documentation
+
+on: [push, pull_request]
+
+jobs:
+  build-documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v3.0.0
+      - name: Install ETSpy using poetry
+        run: poetry install --only=dev
+      - name: Build docs
+        run: cd docs && poetry run make html
+
+  # Push_dev:
+  #   needs: Build
+  #   # Push only on the "RELEASE_next_minor" and update the "dev" documentation
+  #   if: ${{ github.repository_owner == 'hyperspy' && github.ref_name == 'RELEASE_next_minor' }}
+  #   permissions:
+  #     # needs write permission to push the docs to gh-pages
+  #     contents: write
+  #   # Use the "reusable workflow" from the hyperspy organisation
+  #   uses: hyperspy/.github/.github/workflows/push_doc.yml@main
+  #   with:
+  #     repository: 'hyperspy/hyperspy-doc'
+  #     output_path: 'dev'
+  #   secrets:
+  #     access_token: ${{ secrets.PAT_DOCUMENTATION }}
+
+  # Push_tag:
+  #   needs: Build
+  #   # Push only on tag and update the "current" documentation
+  #   if: ${{ github.repository_owner == 'hyperspy' && startsWith(github.ref, 'refs/tags/') }}
+  #   permissions:
+  #     # needs write permission to push the docs to gh-pages
+  #     contents: write
+  #   # Use the "reusable workflow" from the hyperspy organisation
+  #   uses: hyperspy/.github/.github/workflows/push_doc.yml@main
+  #   with:
+  #     repository: 'hyperspy/hyperspy-doc'
+  #     output_path: 'current'
+  #   secrets:
+  #     access_token: ${{ secrets.PAT_DOCUMENTATION }}

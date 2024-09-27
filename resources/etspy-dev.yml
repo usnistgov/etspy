@@ -8,7 +8,13 @@ dependencies:
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
-  - pytest
   - pystackreg
   - pip
   - numba
+  - pytest
+  - sphinx
+  - ruff
+  - isort
+  - numpydoc
+  - myst-parser
+  - sphinx-immaterial
