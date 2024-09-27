@@ -5,6 +5,7 @@ on: [push, pull_request]
 env:
   DOC_SOURCE_PATH: docs
   DOC_BUILD_PATH: docs/_build/html
+  DOC_ARTIFACT_NAME: doc_html
 
 jobs:
   build-documentation:
@@ -26,11 +27,32 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: ${{ env.DOC_BUILD_PATH }}
-          name: doc_html
+          name: ${{ env.DOC_ARTIFACT_NAME }}
       - name: Check links
         run: |
           cd ${{ env.DOC_SOURCE_PATH }}
           poetry run make linkcheck
+
+  upload-pages:
+    name: Upload documentation pages 
+    runs-on: ubuntu-latest
+    needs: build-documentation
+    steps:
+      - name: Checkout latest commit
+        uses: actions/checkout@v4
+      - name: Switch to and clear nist-pages branch
+        run: |
+          git fetch --all
+          git switch nist-pages
+          git rm -r *
+      - name: Download
+        uses: actions/download-artifact@v4.1.8
+        with:
+          name: ${{ env.DOC_ARTIFACT_NAME }}
+      - name: see content
+        run: |
+          pwd
+          tree
 
   # Push_dev:
   #   needs: Build
