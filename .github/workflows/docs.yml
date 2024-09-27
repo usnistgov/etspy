@@ -6,6 +6,7 @@ env:
   DOC_SOURCE_PATH: docs
   DOC_BUILD_PATH: docs/_build/html
   DOC_ARTIFACT_NAME: doc_html
+  PAGES_BRANCH: nist-pages
 
 jobs:
   build-documentation:
@@ -19,6 +20,7 @@ jobs:
         with:
           with-cuda: true
           poetry-options: "--with=dev"
+          python-version: "3.11"   # use 3.11 due to flaky pystackreg install on 3.12
       - name: Build docs
         run: |
           cd ${{ env.DOC_SOURCE_PATH }}
@@ -33,26 +35,22 @@ jobs:
           cd ${{ env.DOC_SOURCE_PATH }}
           poetry run make linkcheck
 
-  upload-pages:
-    name: Upload documentation pages 
+  deploy-docs:
+    name: Deploy documentation 
     runs-on: ubuntu-latest
     needs: build-documentation
+    permissions:
+      contents: write
     steps:
       - name: Checkout latest commit
         uses: actions/checkout@v4
-      - name: Switch to and clear nist-pages branch
-        run: |
-          git fetch --all
-          git switch nist-pages
-          git rm -r *
-      - name: Download
-        uses: actions/download-artifact@v4.1.8
+      - name: Commit to ${{ env.PAGES_BRANCH }}
+        uses: ./.github/actions/push-doc
         with:
-          name: ${{ env.DOC_ARTIFACT_NAME }}
-      - name: see content
-        run: |
-          pwd
-          tree
+          artifact_name: ${{ env.DOC_ARTIFACT_NAME }}
+          branch: ${{ env.PAGES_BRANCH }}
+        env:
+          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Push_dev:
   #   needs: Build
