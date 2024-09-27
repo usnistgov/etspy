@@ -1,0 +1,75 @@
+# adapted from https://github.com/hyperspy/.github/blob/main/.github/workflows/push_doc.yml
+name: Push documentation
+description: Uses git to push the documentation to a particular branch
+inputs:
+  artifact_name:
+    description: 'The name of the github artifact containing the doc'
+    # if empty string, the current repository name is used
+    default: 'doc_html'
+    type: string
+  repository:
+    description: 'The repository, for example "usnistgov/etspy"'
+    # if empty string, the current repository name is used
+    default: ''
+    type: string
+  branch:
+    description: 'The branch to push to, for example "gh-pages"'
+    default: 'gh-pages'
+    type: string
+  output_path:
+    description: 'The path where the doc will be written'
+    default: '.'
+    type: string
+secrets:
+  access_token:
+    description: 'The access token required to push a repository: "GITHUB_TOKEN" if same repository of personal access token for separate repository'
+    # See https://github.com/ad-m/github-push-action/tree/master?tab=readme-ov-file#inputs
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        repository: ${{ inputs.repository }}
+        ref: ${{ inputs.branch }} 
+        # Need to specify token here to enable pushing to other repository
+        token: ${{ env.ACCESS_TOKEN }}
+    - name: Git pull
+      shell: bash -el {0}
+    - uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ${{ inputs.output_path }}
+    - name: list files
+      shell: bash -el {0}
+      run: |
+        ls
+    - name: Git status
+      shell: bash -el {0}
+      run: |
+        git status
+        git status -s
+        if [[ $(git status -s) ]]; then
+          HAS_CHANGES='true'
+        else
+          HAS_CHANGES='false'
+        fi
+        echo "HAS_CHANGES=${HAS_CHANGES}" >> $GITHUB_ENV
+    - name: Commit files
+      # Skip when there is nothing to commit
+      if: ${{ env.HAS_CHANGES == 'true' }}
+      shell: bash -el {0}
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add -A
+        git commit -m "Update docs build" -a
+
+    - name: Push changes
+      if: ${{ env.HAS_CHANGES == 'true' }}
+      uses: ad-m/github-push-action@v0.8.0
+      with:
+        github_token: ${{ env.ACCESS_TOKEN }}
+        repository: ${{ inputs.repository }}
+        branch: ${{ inputs.branch }}
