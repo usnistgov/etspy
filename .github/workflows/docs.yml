@@ -12,18 +12,11 @@ jobs:
     steps:
       - name: Checkout latest commit
         uses: actions/checkout@v4
+      - name: Set up CUDA and poetry
+        uses: ./.github/actions/install-with-poetry
         with:
-          fetch-depth: 0
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v3.0.0
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.17
-        with:
-          method: network
-          sub-packages: '["cudart"]'
-          non-cuda-sub-packages: '["libcufft"]'
-      - name: Install ETSpy using poetry
-        run: poetry install --with=dev
+          with-cuda: true
+          poetry-options: "--with=dev"
       - name: Build docs
         run: |
           cd ${{ env.DOC_SOURCE_PATH }}
