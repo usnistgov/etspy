@@ -15,8 +15,9 @@ jobs:
       - run: poetry run ruff check
 
   conda-pytest:
-    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, with-cuda: ${{ matrix.with-cuda }})"
+    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
     runs-on: ${{ matrix.os }}
+    needs: [ format-checks ]
     defaults:
       run:
         shell: bash -el {0}
@@ -37,3 +38,27 @@ jobs:
       - name: Run full test suite
         if: always()
         run: pytest etspy/tests/
+
+  poetry-pytest:
+    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    needs: [ format-checks ]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout latest commit
+        uses: actions/checkout@v4
+      - name: Install with poetry
+        uses: ./.github/actions/install-with-poetry
+        with:
+          python-version: ${{ matrix.python-version }}
+          with-cuda: true
+          poetry-options: "--with=dev"
+      - name: Run docstring example tests
+        run: poetry run pytest --doctest-modules --ignore=etspy/tests etspy/ 
+      - name: Run full test suite
+        if: always()
+        run: poetry run pytest etspy/tests/
