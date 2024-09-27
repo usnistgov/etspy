@@ -1,9 +1,6 @@
 name: CI
 on: push
 
-env:
-  CONDA_ENV_NAME: etspy
-
 jobs:
   format-checks:
     runs-on: ubuntu-latest
@@ -14,19 +11,6 @@ jobs:
       - run: poetry run isort . --check
       - run: poetry run ruff check
 
-  # pytest:
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: aaherzing/etspy:latest
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - name: Install ETSpy
-  #     run: pip install
-  #   - name: Run docstring example tests
-  #     run: pytest --doctest-modules --ignore=etspy/tests etspy/ 
-  #   - name: Run full test suite
-  #     if: always()
-  #     run: pytest etspy/tests/
   conda-pytest:
     name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, with-cuda: ${{ matrix.with-cuda }})"
     runs-on: ${{ matrix.os }}
@@ -40,19 +24,9 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: ./.github/actions/install-with-conda
         with:
-          activate-environment: ${{env.CONDA_ENV_NAME}}
-          environment-file: resources/etspy-dev.yml
-          auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          auto-activate-base: false
-      - name: Conda info
-        run: conda info
-      - name: Conda list
-        run: conda list
-      - name: Install etspy development
-        run: which pip && pip install -e ./
       - name: Run docstring example tests
         run: pytest --doctest-modules --ignore=etspy/tests etspy/ 
       - name: Run full test suite
