@@ -641,7 +641,7 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
 
     if method.lower() == "com":
         logger.info("Performing stack registration using center of mass method")
-        xrange = kwargs.get("xrange", None)
+        xrange = kwargs.get("xrange")
         p = kwargs.get("p", 20)
         nslices = kwargs.get("nslices", 20)
         shifts = np.zeros([stack.data.shape[0], 2])

@@ -724,7 +724,7 @@ class TomoStack(CommonStack):
 
         if method == "com":
             nslices = kwargs.get("nslices", 20)
-            locs = kwargs.get("locs", None)
+            locs = kwargs.get("locs")
             out = align.tilt_com(self, locs, nslices)
         elif method == "maximage":
             limit = kwargs.get("limit", 10)
@@ -844,11 +844,11 @@ class TomoStack(CommonStack):
                 cuda = False
                 logger.info("CUDA not detected with Astra")
 
-        ncores = kwargs.get("ncores", None)
+        ncores = kwargs.get("ncores")
         sino_filter = kwargs.get("sino_filter", "shepp-logan")
         if method.lower() == "dart":
             dart_iterations = kwargs.get("dart_iterations", 5)
-            gray_levels = kwargs.get("gray_levels", None)
+            gray_levels = kwargs.get("gray_levels")
             if not isinstance(gray_levels, (np.ndarray, list)):
                 msg = f"Unknown type ({type(gray_levels)}) for gray_levels"
                 raise ValueError(msg)
