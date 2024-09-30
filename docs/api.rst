@@ -1,7 +1,10 @@
-Primary API
-===========
+.. Primary API
+.. ===========
 
-.. python-apigen-group:: api
+.. .. python-apigen-group:: api
+
+General Information
+===================
 
 Signals
 =======

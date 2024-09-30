@@ -25,20 +25,6 @@ release = '0.8.0'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-# extensions = [
-#     "numpydoc",
-#     "sphinx.ext.autodoc",
-#     "sphinx.ext.autosummary",
-#     "sphinx.ext.duration",
-#     "sphinx.ext.doctest",
-#     "sphinx.ext.githubpages",
-#     "sphinx.ext.intersphinx",
-#     "sphinx.ext.napoleon",
-#     "sphinx_copybutton",
-#     "sphinx_favicon",
-#     "myst_parser",
-# ]
-
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
@@ -70,7 +56,7 @@ rst_prolog = """
 """
 
 # Sets the default role of `content` to :python:`content`, which uses the custom Python syntax highlighting inline literal
-default_role = "python"
+# default_role = "python"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -92,18 +78,18 @@ html_theme_options = {
     "site_url": "https://pages.nist.gov/etspy/",
     "repo_url": "https://github.com/usnistgov/etspy/",
     "repo_name": "ETSpy",
-    "edit_uri": "blob/main/docs",
+    "edit_uri": "blob/master/docs",
     "globaltoc_collapse": True,
     "features": [
         "navigation.expand",
         # "navigation.tabs",
-        "toc.integrate",
-        "navigation.sections",
+        # "toc.integrate",
+        # "navigation.sections",
         "navigation.instant",
         # "header.autohide",
         "navigation.top",
-        # "navigation.tracking",
-        # "search.highlight",
+        "navigation.tracking",
+        "search.highlight",
         "search.share",
         "toc.follow",
         "toc.sticky",
@@ -183,6 +169,7 @@ python_apigen_modules = {
 }
 python_apigen_show_base_classes = True
 
+# set up "automatic" groupings for members
 python_apigen_default_groups = [
     (".*etspy\\.api.*", "api"),
     (".*etspy\\.align.*", "align"),
@@ -192,11 +179,6 @@ python_apigen_default_groups = [
     (".*etspy\\.recon.*", "recon"),
     (".*etspy\\.datasets.*", "datasets"),
     (".*etspy\\.base.*", "signals"),
-    # ("class:.*", "Classes"),
-    # ("data:.*", "Variables"),
-    # ("function:.*", "Functions"),
-    # ("classmethod:.*", "Class methods"),
-    # ("method:.*", "Methods"),
     (r"method:.*\.[A-Z][A-Za-z,_]*", "Constructors"),
     (r"method:.*\.__[A-Za-z,_]*__", "Special methods"),
     (r"method:.*\.__(init|new)__", "Constructors"),
@@ -205,11 +187,6 @@ python_apigen_default_groups = [
     (r".*:.*\.is_[a-z,_]*", "Attributes"),
 ]
 python_apigen_default_order = [
-    # ("class:.*", 10),
-    # ("data:.*", 11),
-    # ("function:.*", 12),
-    # ("classmethod:.*", 40),
-    # ("method:.*", 50),
     (r"method:.*\.[A-Z][A-Za-z,_]*", 20),
     (r"method:.*\.__[A-Za-z,_]*__", 28),
     (r"method:.*\.__(init|new)__", 20),
@@ -220,32 +197,11 @@ python_apigen_default_order = [
 python_apigen_order_tiebreaker = "alphabetical"
 python_apigen_case_insensitive_filesystem = False
 
-# autodoc_default_options = {
-#     # other options
-#     'inherited-members': False
-# }
-
-# def autodoc_process_bases(app, name, obj, options, bases):
-#     """
-#     Remove private classes or mixin classes from documented class bases.
-#     """
-#     # Determine the bases to be removed
-#     remove_bases = []
-#     for base in bases:
-#         print(f"{app}, {name}, {obj}, {base}")
-#         if "etspy" not in str(base):
-#             remove_bases.append(base)
-
-#     # Remove from the bases list in-place
-#     for base in remove_bases:
-#         bases.remove(base)
 
 def autodoc_skip_member(app, what, name, obj, skip, options):
     """
     Instruct autodoc to skip members that not directly from ETSpy.
     """
-    # print(f"{what}, {name}, {obj}, {skip}")
-
     if skip:
         # Continue skipping things Sphinx already wants to skip
         return skip
@@ -261,16 +217,9 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
             p = Path(inspect.getfile(obj))
         if PACKAGE_PATH not in p.parents:
             # skip if member does not come from ETSpy
-            # print(f"skipping {p}")
             return True
     except TypeError:
         pass
-        # print(f"could not get file for {what}, {name}, {obj},")
-
-
-    # if name[0] == "_":
-    #     # For some reason we need to tell Sphinx to hide private members
-    #     return True
 
     return skip
 
@@ -278,3 +227,14 @@ def setup(app):
     app.connect("autodoc-skip-member", autodoc_skip_member)
     # app.connect("autodoc-process-bases", autodoc_process_bases)
     # app.connect("autodoc-process-signature", autodoc_process_signature)
+    
+# -- Link checking configs -------------------------------------------------
+
+linkcheck_ignore = [
+    "https://doi.org/10.1103/PhysRevB.72.052103" # 403 Client Error: Forbidden for url: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.72.052103
+]
+
+linkcheck_exclude_documents = []
+
+# Specify a standard user agent, as Sphinx default is blocked on some sites
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54"

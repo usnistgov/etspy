@@ -35,6 +35,10 @@ numpydoc = "^1.8.0"
 myst-parser = "^4.0.0"
 sphinx-immaterial = "^0.12.2"
 
+[tool.poetry.group.jupyter.dependencies]
+ipympl = "^0.9.4"
+ipykernel = "^6.29.5"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
