@@ -11,6 +11,10 @@ class AlignmentMethod(str, Enum):
     Allowed values for the stack alignment method.
 
     See :py:func:`etspy.align.align_stack` for more details.
+
+    Group
+    -----
+    align
     """
 
     STACK_REG = "StackReg"
@@ -39,6 +43,7 @@ class AlignmentMethod(str, Enum):
     def values(cls) -> List[str]:
         """Calculate a list of allowed values in the AlignmentMethod enum."""
         return [v.value for k, v in cls.__members__.items()]
+
 
 AlignmentMethodType = Union[
     AlignmentMethod,

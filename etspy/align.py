@@ -17,7 +17,7 @@ from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 
-from etspy import AlignmentMethod
+from etspy import AlignmentMethod, AlignmentMethodType
 from etspy.base import TomoStack
 
 has_cupy = True
@@ -50,6 +50,10 @@ def get_best_slices(stack: TomoStack, nslices: int) -> np.ndarray:
     -------
     :py:class:`~numpy.ndarray`
         Location along the x-axis of the best slices
+
+    Group
+    -----
+    align
     """
     total_mass = stack.data.sum((0, 1))
     mass_std = stack.data.sum(1).std(0)
@@ -74,6 +78,10 @@ def get_coms(stack: TomoStack, slices: np.ndarray) -> np.ndarray:
     -------
     :py:class:`~numpy.ndarray`
         Center of mass as a function of tilt for each slice [ntilts, nslices].
+
+    Group
+    -----
+    align
     """
     sinos = stack.data[:, :, slices]
     com_range = int(sinos.shape[1] / 2)
@@ -100,6 +108,9 @@ def apply_shifts(stack: TomoStack, shifts: np.ndarray) -> TomoStack:
     shifted : TomoStack
         Copy of input stack after shifts are applied
 
+    Group
+    -----
+    align
     """
     shifted = stack.deepcopy()
     if len(shifts) != stack.data.shape[0]:
@@ -133,6 +144,9 @@ def pad_line(line: np.ndarray, paddedsize: int) -> np.ndarray:
     padded : :py:class:`~numpy.ndarray`
         Padded version of input data (1 dimensional)
 
+    Group
+    -----
+    align
     """
     npix = len(line)
     start_index = (paddedsize - npix) // 2
@@ -169,6 +183,10 @@ def calc_shifts_cl(
     -------
     yshifts : :py:class:`~numpy.ndarray`
         Shifts parallel to tilt axis for each projection
+
+    Group
+    -----
+    align
     """
 
     def align_line(ref_line, line, cl_resolution, cl_div_factor):
@@ -256,6 +274,10 @@ def calculate_shifts_conservation_of_mass(
     -------
     xshifts : :py:class:`~numpy.ndarray`
         Calculated shifts parallel to tilt axis.
+
+    Group
+    -----
+    align
     """
     logger.info("Refinining X-shifts using conservation of mass method")
     [ntilts, ny, nx] = stack.data.shape
@@ -306,6 +328,10 @@ def calculate_shifts_com(stack: TomoStack, nslices: int) -> np.ndarray:
     -------
     shifts : :py:class:`~numpy.ndarray`
         The X- and Y-shifts to be applied to each image
+
+    Group
+    -----
+    align
     """
     logger.info("Refinining Y-shifts using center of mass method")
     slices = get_best_slices(stack, nslices)
@@ -459,6 +485,9 @@ def calculate_shifts_pc(
     shifts : :py:class:`~numpy.ndarray`
         The X- and Y-shifts to be applied to each image
 
+    Group
+    -----
+    align
     """
     if has_cupy and astra.use_cuda() and cuda:
         shifts = _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor)
@@ -513,6 +542,9 @@ def calculate_shifts_stackreg(
     shifts : :py:class:`~numpy.ndarray`
         The X- and Y-shifts to be applied to each image
 
+    Group
+    -----
+    align
     """
     shifts = np.zeros((stack.data.shape[0], 2))
 
@@ -577,6 +609,10 @@ def calc_shifts_com_cl(
     -------
     reg : :py:class:`~numpy.ndarray`
         The X- and Y-shifts to be applied to each image
+
+    Group
+    -----
+    align
     """
 
     def calc_yshifts(stack, com_ref):
@@ -607,7 +643,7 @@ def calc_shifts_com_cl(
 
 def align_stack(  # noqa: PLR0913
     stack: TomoStack,
-    method: AlignmentMethod,
+    method: AlignmentMethodType,
     start: Optional[int],
     show_progressbar: bool,
     xrange: Optional[Tuple[int, int]] = None,
@@ -660,50 +696,50 @@ def align_stack(  # noqa: PLR0913
         3-D numpy array containing the tilt series data
     method
         Method by which to calculate the alignments. Valid options
-        are controlled by the :py:class:`etspy.align.AlignmentMethod` enum.
+        are controlled by the :py:class:`etspy.AlignmentMethod` enum.
     start
         Position in tilt series to use as starting point for the alignment.
         If None, the central projection is used.
     show_progressbar
         Enable/disable progress bar
     xrange
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
         The range for performing alignment. See
         :py:func:`~etspy.align.calculate_shifts_com` for more details.
     p
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
         Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more
         details.
     nslices
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
         Number of slices to return. See
         :py:func:`~etspy.align.calculate_shifts_com` for more details.
     cuda
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.PC`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.PC`)
         Enable/disable the use of GPU-accelerated processes using CUDA. See
         :py:func:`~etspy.align.calculate_shifts_pc` for more details.
     upsample_factor
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.PC`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.PC`)
         Factor by which to resample the data. See
         :py:func:`~etspy.align.calculate_shifts_pc` for more details.
     com_ref_index
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
         Reference slice for center of mass alignment.  All other slices will be aligned
         to this reference. See :py:func:`~etspy.align.calc_shifts_com_cl` for more
         details.
     cl_ref_index
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
         Reference slice for common line alignment.  All other slices
         will be aligned to this reference. If not provided the projection
         closest to the middle of the stack will be chosen. See
         :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
     cl_resolution
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
         Resolution for subpixel common line alignment. Default is 0.05.
         Should be less than 0.5. See :py:func:`~etspy.align.calc_shifts_com_cl` for
         more details.
     cl_div_factor
-        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
         Factor which determines the number of iterations of common line
         alignment to perform.  Default is 8. See
         :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
@@ -713,6 +749,9 @@ def align_stack(  # noqa: PLR0913
     out : TomoStack
         Spatially registered copy of the input stack
 
+    Group
+    -----
+    align
     """
     if start is None:
         start = (
@@ -798,6 +837,10 @@ def tilt_com(
     out : TomoStack
         Copy of the input stack after rotation and translation to center and
         make the tilt axis vertical
+
+    Group
+    -----
+    align
     """
 
     def com_motion(theta, r, x0, z0):
@@ -902,6 +945,9 @@ def tilt_maximage(
     rotated : TomoStack
         Rotated version of the input stack
 
+    Group
+    -----
+    align
     """
     image = stack.data.max(0)
 
@@ -963,6 +1009,9 @@ def align_to_other(stack: TomoStack, other: TomoStack) -> TomoStack:
     out : TomoStack
         Aligned copy of other TomoStack
 
+    Group
+    -----
+    align
     """
     out = copy.deepcopy(other)
 
@@ -1006,6 +1055,9 @@ def shift_crop(stack: TomoStack) -> TomoStack:
     out : TomoStack
         Aligned copy of other TomoStack
 
+    Group
+    -----
+    align
     """
     cropped = copy.deepcopy(stack)
     shifts = stack.metadata.Tomography.shifts

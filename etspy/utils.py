@@ -31,6 +31,10 @@ def multiaverage(stack, nframes, ny, nx):
     -------
     average : NumPy array
         Average of all frames at given tilt
+
+    Group
+    -----
+    utilities
     """
 
     def _calc_sr_shifts(stack):
@@ -64,6 +68,9 @@ def register_serialem_stack(stack, ncpus=1):
     reg : TomoStack object
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
+    Group
+    -----
+    utilities
     """
     align_logger = logging.getLogger("etspy.align")
     log_level = align_logger.getEffectiveLevel()
@@ -140,6 +147,9 @@ def weight_stack(stack, accuracy="medium"):
     stackw : object
         The weighted version of the input stack.
 
+    Group
+    -----
+    utilities
     """
     # Set the parameters based on the accuracy input
     # with default of "medium"
@@ -168,9 +178,12 @@ def weight_stack(stack, accuracy="medium"):
 
     # Compute the minimum total projected mass and the corresponding
     # slice index (min_slice)
-    min_mass, min_slice = np.min(
-        np.sum(np.sum(weighted_stack.data, axis=2), axis=1),
-    ), np.argmin(np.sum(np.sum(weighted_stack.data, axis=2), axis=1))
+    min_mass, min_slice = (
+        np.min(
+            np.sum(np.sum(weighted_stack.data, axis=2), axis=1),
+        ),
+        np.argmin(np.sum(np.sum(weighted_stack.data, axis=2), axis=1)),
+    )
 
     # Initialize the window array
     window = np.zeros([ny, nx])
@@ -202,7 +215,8 @@ def weight_stack(stack, accuracy="medium"):
 
         # Compute the weighted sum for all slices at once using vectorization
         weighted_mass = np.sum(
-            weighted_stack.data * window[np.newaxis, :, :], axis=(1, 2),
+            weighted_stack.data * window[np.newaxis, :, :],
+            axis=(1, 2),
         )
 
         # Update the status and adjustments for slices with weighted sums below min_mass
@@ -268,6 +282,9 @@ def calc_est_angles(num_points):
     angles : Numpy array
         Angles in degrees for equally sloped tomography.
 
+    Group
+    -----
+    utilities
     """
     if np.mod(num_points, 2) != 0:
         msg = "N must be an even number"
@@ -313,6 +330,9 @@ def calc_golden_ratio_angles(tilt_range, nangles):
     thetas : Numpy Array
         Angles in degrees for golden ratio sampling over the provided tilt range.
 
+    Group
+    -----
+    utilities
     """
     alpha = tilt_range / 180 * np.pi
     i = np.arange(nangles) + 1
@@ -338,6 +358,9 @@ def get_radial_mask(mask_shape, center=None):
     mask : Numpy Array
         Logical array that is True in the masked region and False outside of it.
 
+    Group
+    -----
+    utilities
     """
     if center is None:
         center = [int(i / 2) for i in mask_shape]
@@ -372,6 +395,9 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
     result : TomoStack
         Filtered version of the input TomoStack.
 
+    Group
+    -----
+    utilities
     """
     nangles, ny = stack.data.shape[0:2]
 

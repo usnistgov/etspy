@@ -14,6 +14,9 @@ def get_needle_data(aligned: bool = False):
     needle : TomoStack object
         TomoStack containing the simulated catalyst tilt series
 
+    Group
+    -----
+    datasets
     """
     if aligned:
         filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hdf5"
@@ -63,6 +66,9 @@ def get_catalyst_data(
     catalyst : :py:class:`~etspy.TomoStack`
         TomoStack containing the simulated catalyst tilt series
 
+    Group
+    -----
+    datasets
     """
     filename = etspy_path / "tests" / "test_data" / "Catalyst3DModel_TiltSeries180.hdf5"
     catalyst = etspy.load(filename)

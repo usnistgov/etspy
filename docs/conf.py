@@ -174,22 +174,42 @@ python_apigen_show_base_classes = True
 
 # set up "automatic" groupings for members
 python_apigen_default_groups = [
-    (".*etspy\\.api.*", "api"),
-    (".*etspy\\.align.*", "align"),
-    (".*etspy\\.utils.*", "utilities"),
-    (".*etspy\\.io.*", "io"),
-    (".*etspy\\.simulation.*", "simulation"),
-    (".*etspy\\.recon.*", "recon"),
-    (".*etspy\\.datasets.*", "datasets"),
-    (".*etspy\\.base.*", "signals"),
+    ("class:.*", "Classes"),
+    ("data:.*", "Variables"),
+    ("function:.*", "Functions"),
+    ("classmethod:.*", "Class methods"),
+    ("method:.*", "Methods"),
     (r"method:.*\.[A-Z][A-Za-z,_]*", "Constructors"),
     (r"method:.*\.__[A-Za-z,_]*__", "Special methods"),
     (r"method:.*\.__(init|new)__", "Constructors"),
     (r"method:.*\.__(str|repr)__", "String representation"),
     ("property:.*", "Properties"),
-    (r".*:.*\.is_[a-z,_]*", "Attributes"),
+    (r"etspy\.AlignmentMethod.*", "align"),
+    # (r".*:.*\.is_[a-z,_]*", "Attributes"),
+    (r"attribute:.*etspy\.AlignmentMethod.*", "Enum Values"),
+    # (".*etspy\\.api.*", "api"),
+    # (".*etspy\\.align.*", "align"),
+    # (".*etspy\\.utils.*", "utilities"),
+    # (".*etspy\\.io.*", "io"),
+    # (".*etspy\\.simulation.*", "simulation"),
+    # (".*etspy\\.recon.*", "recon"),
+    # (".*etspy\\.datasets.*", "datasets"),
+    # (".*etspy\\.base.*", "signals"),
 ]
 python_apigen_default_order = [
+    (".*etspy\\.api.*", 20),
+    (".*etspy\\.align.*", 21),
+    (".*etspy\\.utils.*", 22),
+    (".*etspy\\.io.*", 23),
+    (".*etspy\\.simulation.*", 24),
+    (".*etspy\\.recon.*", 25),
+    (".*etspy\\.datasets.*", 26),
+    (".*etspy\\.base.*", 27),
+    ("class:.*", 30),
+    ("data:.*", 31),
+    ("function:.*", 32),
+    ("classmethod:.*", 40),
+    ("method:.*", 50),
     (r"method:.*\.[A-Z][A-Za-z,_]*", 20),
     (r"method:.*\.__[A-Za-z,_]*__", 28),
     (r"method:.*\.__(init|new)__", 20),
@@ -221,11 +241,15 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
         if PACKAGE_PATH not in p.parents:
             # skip if member does not come from ETSpy
             return True
-    except TypeError:
-        pass
+    except TypeError as e:
+        if 'AlignmentMethod' in str(obj):
+            return False
+        return 'etspy' not in str(obj)
 
     return skip
 
+def autodoc_process_signature(app, what, name, obj, options, signature, return_annotation):
+    print(f"{what}, {name}, {obj}, {options}, {signature}, {return_annotation}")
 
 def setup(app):
     app.connect("autodoc-skip-member", autodoc_skip_member)

@@ -40,6 +40,9 @@ def run_alg(sino, iters, cfg, vol_geom, proj_geom):
     Numpy array
         Reconstruction of input sinogram
 
+    Group
+    -----
+    recon
     """
     proj_id = astra.create_projector("strip", proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
@@ -97,6 +100,9 @@ def run_dart(
     Numpy array
         Reconstruction of input sinogram
 
+    Group
+    -----
+    recon
     """
     proj_id = astra.create_projector("strip", proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
@@ -202,6 +208,9 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     rec : Numpy array
         Containing the reconstructed volume
 
+    Group
+    -----
+    recon
     """
     if len(stack.data.shape) == 2:  # noqa: PLR2004
         nangles, ny = stack.data.shape
@@ -397,6 +406,9 @@ def dart_segment(rec, thresholds, gray_vals):
     segmented : NumPy array
         Segmented version of the reconstruction.
 
+    Group
+    -----
+    recon
     """
     bins = np.digitize(rec, bins=thresholds, right=False)
     segmented = np.array(gray_vals)[bins]
@@ -417,6 +429,9 @@ def get_dart_boundaries(segmented):
     boundaries : NumPy array
         Boundaries of the segmented reconstruction.
 
+    Group
+    -----
+    recon
     """
     kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]])
     edges = convolve(segmented.astype(np.int32), kernel, mode="constant", cval=0)
@@ -462,6 +477,9 @@ def astra_error(
     rec : Numpy array
         3D array of the form [y, z, x] containing the reconstructed object.
 
+    Group
+    -----
+    recon
     """
     thetas = angles * np.pi / 180
 

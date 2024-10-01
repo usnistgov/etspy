@@ -30,7 +30,13 @@ known_file_types = hspy_file_types + mrc_file_types + dm_file_types
 
 
 class MismatchedTiltError(ValueError):
-    """Error for when number of tilts in signal does not match tilt dimension."""
+    """
+    Error for when number of tilts in signal does not match tilt dimension.
+
+    Group
+    -----
+    io
+    """
 
     def __init__(self, num_tilts, tilt_dimension):
         """Create a MismatchedTiltError."""
@@ -58,6 +64,14 @@ def create_stack(
     -------
     stack: TomoStack
         A TomoStack instance containing the provided data
+
+    Group
+    -----
+    io
+
+    Order
+    -----
+    2
     """
     if isinstance(stack, Signal2D):
         ntilts = stack.data.shape[0]
@@ -138,6 +152,10 @@ def get_mrc_tilts(
     -------
     tilts: Optional[np_types.ArrayLike]
         Tilt angles extracted from MRC file (or ``None`` if not present)
+
+    Group
+    -----
+    io
     """
     if isinstance(filename, str):
         filename = Path(filename)
@@ -179,6 +197,10 @@ def get_dm_tilts(s: Union[Signal2D, TomoStack]) -> np.ndarray:
     -------
     tilts: np.ndarray
         Tilt angles extracted from the DM tags
+
+    Group
+    -----
+    io
     """
     maxtilt = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
         "Tomography_setup"
@@ -216,6 +238,10 @@ def parse_mdoc(
     tilt : Union[np.ndarray, float]
         If ``series`` is true, tilt will be a single float value, otherwise
         it will be an ndarray containing multiple tilt values.
+
+    Group
+    -----
+    io
     """
     keys = [
         "PixelSpacing",
@@ -271,6 +297,9 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
     stack : TomoStack
         Tilt series
 
+    Group
+    -----
+    io
     """
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
@@ -320,6 +349,10 @@ def load_serialem_series(
         Tilt series resulting by averaging frames at each tilt
     tilts : np.ndarray
         The tilt values for each image in the stack
+
+    Group
+    -----
+    io
     """
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
@@ -387,6 +420,9 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
     header : dict
         Dictionary with header values from an MRC file
 
+    Group
+    -----
+    io
     """
     header = {}
     if isinstance(filename, str):
@@ -486,6 +522,14 @@ def load(
     -------
     stack : TomoStack
         The resulting TomoStack object
+
+    Group
+    -----
+    io
+
+    Order
+    -----
+    1
     """
     if isinstance(filename, (str, Path)):
         if isinstance(filename, str):

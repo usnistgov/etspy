@@ -42,6 +42,9 @@ def create_catalyst_model(
     catalyst : Hyperspy Signal2D
         Simulated model
 
+    Group
+    -----
+    simulation
     """
     volsize_np = np.array(volsize)
     center = np.array(volsize_np / 2, dtype=np.int32)
@@ -115,6 +118,9 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
     cylinder : Signal2D
         Simulated cylinder object
 
+    Group
+    -----
+    simulation
     """
     vol_shape = np.array([400, 400, 400]) if add_others else np.array([200, 200, 200])
 
@@ -177,6 +183,9 @@ def create_model_tilt_series(model, angles=None, cuda=None):
     model : TomoStack object
         Tilt series of the model data
 
+    Group
+    -----
+    simulation
     """
     if cuda is None:
         cuda = astra.use_cuda()
@@ -244,6 +253,9 @@ def misalign_stack(
     misaligned
         Misaligned copy of the input TomoStack
 
+    Group
+    -----
+    simulation
     """
     misaligned = stack.deepcopy()
 
@@ -295,6 +307,9 @@ def add_noise(stack, noise_type="gaussian", scale_factor=0.2):
     noisy : TomoStack object
         Noisy copy of the input TomoStack
 
+    Group
+    -----
+    simulation
     """
     noisy = stack.deepcopy()
 

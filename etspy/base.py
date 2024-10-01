@@ -30,6 +30,10 @@ class CommonStack(Signal2D):
 
     Note: All attributes are initialized with values of ``None`` or ``0.0``
     in ``__init__`` unless they are already defined
+
+    Group
+    -----
+    signals
     """
 
     def plot(self, navigator="slider", *args, **kwargs):
@@ -362,6 +366,10 @@ class TomoStack(CommonStack):
     ----------
     CommonStack : CommonStack
         CommonStack class
+
+    Group
+    -----
+    signals
     """
 
     def plot_sinos(self, *args, **kwargs):
@@ -1186,6 +1194,10 @@ class RecStack(CommonStack):
     ----------
     CommonStack : CommonStack
         CommonStack class
+
+    Group
+    -----
+    signals
     """
 
     def plot_slices(
