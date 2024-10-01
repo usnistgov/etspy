@@ -18,7 +18,7 @@ from matplotlib.artist import Artist
 from scipy import ndimage
 from skimage import transform
 
-from etspy import align, recon
+from etspy import AlignmentMethod, AlignmentMethodType, align, recon
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -575,7 +575,7 @@ class TomoStack(CommonStack):
 
     def stack_register(
         self,
-        method="PC",
+        method: AlignmentMethodType = AlignmentMethod.PC,
         start=None,
         show_progressbar=False,
         crop=False,

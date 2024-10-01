@@ -4,6 +4,7 @@
 
 import copy
 import logging
+from typing import Optional, Tuple, cast
 
 import astra
 import matplotlib.pylab as plt
@@ -15,6 +16,9 @@ from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
+
+from etspy import AlignmentMethod
+from etspy.base import TomoStack
 
 has_cupy = True
 try:
@@ -28,7 +32,7 @@ logger.setLevel(logging.INFO)
 CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 
 
-def get_best_slices(stack, nslices):
+def get_best_slices(stack: TomoStack, nslices: int) -> np.ndarray:
     """
     Get best nslices for center of mass analysis.
 
@@ -37,14 +41,14 @@ def get_best_slices(stack, nslices):
 
     Parameters
     ----------
-    stack : TomoStack object
-        Tilt series from which to select the best slices.
-    nslices : integer
-        Number of slices to return.
+    stack
+        Tilt series from which to select the best slices
+    nslices
+        Number of slices to return
 
     Returns
     -------
-    locs : NumPy array
+    :py:class:`~numpy.ndarray`
         Location along the x-axis of the best slices
     """
     total_mass = stack.data.sum((0, 1))
@@ -55,20 +59,20 @@ def get_best_slices(stack, nslices):
     return best_slice_locations
 
 
-def get_coms(stack, slices):
+def get_coms(stack: TomoStack, slices: np.ndarray) -> np.ndarray:
     """
     Calculate the center of mass for indicated slices.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         Tilt series from which to calculate the centers of mass.
-    slices : NumPy array
+    slices
         Location of slices to use for center of mass calculation.
 
     Returns
     -------
-    coms : NumPy array
+    :py:class:`~numpy.ndarray`
         Center of mass as a function of tilt for each slice [ntilts, nslices].
     """
     sinos = stack.data[:, :, slices]
@@ -79,21 +83,21 @@ def get_coms(stack, slices):
     return coms
 
 
-def apply_shifts(stack, shifts):
+def apply_shifts(stack: TomoStack, shifts: np.ndarray) -> TomoStack:
     """
 
     Apply a series of shifts to a TomoStack.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         The image series to be aligned
-    shifts : NumPy array
+    shifts
         The X- and Y-shifts to be applied to each image
 
     Returns
     -------
-    shifted : TomoStack object
+    shifted : TomoStack
         Copy of input stack after shifts are applied
 
     """
@@ -113,21 +117,21 @@ def apply_shifts(stack, shifts):
     return shifted
 
 
-def pad_line(line, paddedsize):
+def pad_line(line: np.ndarray, paddedsize: int) -> np.ndarray:
     """
     Pad a 1D array for FFT treatment without altering center location.
 
     Parameters
     ----------
-    line : 1D NumPy array
-        The data to be padded
-    paddedsize : int
+    line
+        The data to be padded (should be 1D)
+    paddedsize
         The size of the desired padded data.
 
     Returns
     -------
-    padded : 1D NumPy array
-        Padded version of input data
+    padded : :py:class:`~numpy.ndarray`
+        Padded version of input data (1 dimensional)
 
     """
     npix = len(line)
@@ -138,30 +142,33 @@ def pad_line(line, paddedsize):
     return padded_line
 
 
-def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
+def calc_shifts_cl(
+    stack: TomoStack,
+    cl_ref_index: Optional[int],
+    cl_resolution: float,
+    cl_div_factor: int,
+) -> np.ndarray:
     """
-
     Calculate shifts using the common line method.
 
     Used to align stack in dimension parallel to the tilt axis
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         The stack on which to calculate shifts
-    cl_ref_index : int
+    cl_ref_index
         Tilt index of reference projection. If not provided the projection
         closest to the middle of the stack will be chosen.
-    cl_resolution : float
+    cl_resolution
         Degree of sub-pixel analysis
-    cl_div_factor : int
+    cl_div_factor
         Factor used to determine number of iterations of alignment.
 
     Returns
     -------
-    yshifts : NumPy array
+    yshifts : :py:class:`~numpy.ndarray`
         Shifts parallel to tilt axis for each projection
-
     """
 
     def align_line(ref_line, line, cl_resolution, cl_div_factor):
@@ -225,7 +232,11 @@ def calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor):
     return yshifts
 
 
-def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
+def calculate_shifts_conservation_of_mass(
+    stack: TomoStack,
+    xrange: Optional[Tuple[int, int]] = None,
+    p: int = 20,
+) -> np.ndarray:
     """
     Calculate shifts parallel to the tilt axis using conservation of mass.
 
@@ -234,26 +245,25 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         Tilt series to be aligned.
-    xrange : tuple
-        Defines range for performing alignment.
-    p : int
+    xrange
+        The range for performing alignment
+    p
         Padding element
 
     Returns
     -------
-    xshifts : NumPy array
+    xshifts : :py:class:`~numpy.ndarray`
         Calculated shifts parallel to tilt axis.
-
     """
     logger.info("Refinining X-shifts using conservation of mass method")
     [ntilts, ny, nx] = stack.data.shape
 
     if xrange is None:
-        xrange = [round(nx / 5), round(4 / 5 * nx)]
+        xrange = (round(nx / 5), round(4 / 5 * nx))
     else:
-        xrange = [round(xrange[0]) + p, round(xrange[1]) - p]
+        xrange = (round(xrange[0]) + p, round(xrange[1]) - p)
 
     xshifts = np.zeros([ntilts, 1])
     total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
@@ -276,7 +286,7 @@ def calculate_shifts_conservation_of_mass(stack, xrange=None, p=20):
     return xshifts[:, 0]
 
 
-def calculate_shifts_com(stack, nslices):
+def calculate_shifts_com(stack: TomoStack, nslices: int) -> np.ndarray:
     """
     Align stack using a center of mass method.
 
@@ -286,20 +296,16 @@ def calculate_shifts_com(stack, nslices):
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         The image series to be aligned
-    nslice : integer
-        Slice to use for the center of mass analysis.  If None, the slice
-        nearest the center of the tilt series will be used.
-    ratio : float
-        Value that determines the number of projections to use for the
-        center of mass analysis.  Must be less than or equal to 1.0.
+
+    nslices
+        Number of slices to return
 
     Returns
     -------
-    shifts : NumPy array
+    shifts : :py:class:`~numpy.ndarray`
         The X- and Y-shifts to be applied to each image
-
     """
     logger.info("Refinining Y-shifts using center of mass method")
     slices = get_best_slices(stack, nslices)
@@ -425,18 +431,32 @@ def _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor):
     return shifts
 
 
-def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
+def calculate_shifts_pc(
+    stack: TomoStack,
+    start: int,
+    show_progressbar: bool = False,
+    upsample_factor: int = 3,
+    cuda: bool = False,
+) -> np.ndarray:
     """
     Calculate shifts using the phase correlation algorithm.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         The image series to be aligned
+    start
+        Position in tilt series to use as starting point for the alignment
+    show_progressbar
+        Enable/disable progress bar
+    upsample_factor
+        Factor by which to resample the data
+    cuda
+        Enable/disable the use of GPU-accelerated processes using CUDA
 
     Returns
     -------
-    shifts : NumPy array
+    shifts : :py:class:`~numpy.ndarray`
         The X- and Y-shifts to be applied to each image
 
     """
@@ -471,18 +491,26 @@ def calculate_shifts_pc(stack, start, show_progressbar, upsample_factor, cuda):
     return shifts
 
 
-def calculate_shifts_stackreg(stack, start, show_progressbar):
+def calculate_shifts_stackreg(
+    stack: TomoStack,
+    start: int,
+    show_progressbar: bool,
+) -> np.ndarray:
     """
     Calculate shifts using PyStackReg.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         The image series to be aligned
+    start
+        Position in tilt series to use as starting point for the alignment.
+    show_progressbar
+        Enable/disable progress bar
 
     Returns
     -------
-    shifts : NumPy array
+    shifts : :py:class:`~numpy.ndarray`
         The X- and Y-shifts to be applied to each image
 
     """
@@ -515,43 +543,40 @@ def calculate_shifts_stackreg(stack, start, show_progressbar):
 
 
 def calc_shifts_com_cl(
-    stack,
-    com_ref_index,
-    cl_ref_index,
-    cl_resolution,
-    cl_div_factor,
-):
+    stack: TomoStack,
+    com_ref_index: int,
+    cl_ref_index: Optional[int] = None,
+    cl_resolution: float = 0.05,
+    cl_div_factor: int = 8,
+) -> np.ndarray:
     """
-    Align stack using combined center of mass and common line methods.
+    Calculate shifts using combined center of mass and common line methods.
 
     Center of mass aligns stack perpendicular to the tilt axis and
     common line is used to align the stack parallel to the tilt axis.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         Tilt series to be aligned
-    com_ref_index : integer
+    com_ref_index
         Reference slice for center of mass alignment.  All other slices
-        will be aligned to this reference.  If not provided, the midpoint
-        of the stack will be chosen.
-    cl_ref_index : integer
+        will be aligned to this reference.
+    cl_ref_index
         Reference slice for common line alignment.  All other slices
-        will be aligned to this reference.  If not provided, the midpoint
-        of the stack will be chosen.
-    cl_resolution : float
+        will be aligned to this reference. If not provided the projection
+        closest to the middle of the stack will be chosen.
+    cl_resolution
         Resolution for subpixel common line alignment. Default is 0.05.
         Should be less than 0.5.
-    cl_div_factor : integer
+    cl_div_factor
         Factor which determines the number of iterations of common line
         alignment to perform.  Default is 8.
 
     Returns
     -------
-    reg : TomoStack object
-        Copy of stack after spatial registration.  Shift values are stored
-        in reg.metadata.Tomography.shifts for later use.
-
+    reg : :py:class:`~numpy.ndarray`
+        The X- and Y-shifts to be applied to each image
     """
 
     def calc_yshifts(stack, com_ref):
@@ -580,7 +605,21 @@ def calc_shifts_com_cl(
     return shifts
 
 
-def align_stack(stack, method, start, show_progressbar, **kwargs):
+def align_stack(  # noqa: PLR0913
+    stack: TomoStack,
+    method: AlignmentMethod,
+    start: Optional[int],
+    show_progressbar: bool,
+    xrange: Optional[Tuple[int, int]] = None,
+    p: int = 20,
+    nslices: int = 20,
+    cuda: bool = False,
+    upsample_factor: int = 3,
+    com_ref_index: Optional[int] = None,
+    cl_ref_index: Optional[int] = None,
+    cl_resolution: float = 0.05,
+    cl_div_factor: int = 8,
+) -> TomoStack:
     """
     Compute the shifts for spatial registration.
 
@@ -617,20 +656,61 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
 
     Parameters
     ----------
-    stack : Numpy array
+    stack
         3-D numpy array containing the tilt series data
-    method : string
+    method
         Method by which to calculate the alignments. Valid options
-        are 'StackReg', 'PC', 'COM', or 'COM-CL'.
-    start : integer
+        are controlled by the :py:class:`etspy.align.AlignmentMethod` enum.
+    start
         Position in tilt series to use as starting point for the alignment.
         If None, the central projection is used.
-    show_progressbar : boolean
+    show_progressbar
         Enable/disable progress bar
+    xrange
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM`)
+        The range for performing alignment. See
+        :py:func:`~etspy.align.calculate_shifts_com` for more details.
+    p
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM`)
+        Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more
+        details.
+    nslices
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM`)
+        Number of slices to return. See
+        :py:func:`~etspy.align.calculate_shifts_com` for more details.
+    cuda
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.PC`)
+        Enable/disable the use of GPU-accelerated processes using CUDA. See
+        :py:func:`~etspy.align.calculate_shifts_pc` for more details.
+    upsample_factor
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.PC`)
+        Factor by which to resample the data. See
+        :py:func:`~etspy.align.calculate_shifts_pc` for more details.
+    com_ref_index
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        Reference slice for center of mass alignment.  All other slices will be aligned
+        to this reference. See :py:func:`~etspy.align.calc_shifts_com_cl` for more
+        details.
+    cl_ref_index
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        Reference slice for common line alignment.  All other slices
+        will be aligned to this reference. If not provided the projection
+        closest to the middle of the stack will be chosen. See
+        :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
+    cl_resolution
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        Resolution for subpixel common line alignment. Default is 0.05.
+        Should be less than 0.5. See :py:func:`~etspy.align.calc_shifts_com_cl` for
+        more details.
+    cl_div_factor
+        (Only used when ``method ==``:py:attr:`~etspy.align.AlignmentMethod.COM_CL`)
+        Factor which determines the number of iterations of common line
+        alignment to perform.  Default is 8. See
+        :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
 
     Returns
     -------
-    out : TomoStack object
+    out : TomoStack
         Spatially registered copy of the input stack
 
     """
@@ -638,18 +718,14 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
         start = (
             stack.data.shape[0] // 2
         )  # Use the slice closest to the midpoint if start is not provided
+    start = cast(int, start)  # explicit type cast for type checking
 
-    if method.lower() == "com":
+    if method == AlignmentMethod.COM:
         logger.info("Performing stack registration using center of mass method")
-        xrange = kwargs.get("xrange")
-        p = kwargs.get("p", 20)
-        nslices = kwargs.get("nslices", 20)
         shifts = np.zeros([stack.data.shape[0], 2])
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
-    elif method.lower() == "pc":
-        cuda = kwargs.get("cuda", False)
-        upsample_factor = kwargs.get("upsample_factor", 3)
+    elif method == AlignmentMethod.PC:
         if cuda:
             logger.info(
                 "Performing stack registration using "
@@ -664,18 +740,23 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
             upsample_factor,
             cuda,
         )
-    elif method.lower() in ["stackreg", "sr"]:
+    elif method == AlignmentMethod.STACK_REG:
         logger.info("Performing stack registration using PyStackReg")
         shifts = calculate_shifts_stackreg(stack, start, show_progressbar)
-    elif method.lower() == "com-cl":
+    elif method == AlignmentMethod.COM_CL:
         logger.info(
             "Performing stack registration using combined "
             "center of mass and common line methods",
         )
-        com_ref_index = kwargs.get("com_ref_index", stack.data.shape[1] // 2)
-        cl_ref_index = kwargs.get("cl_ref_index", stack.data.shape[0] // 2)
-        cl_resolution = kwargs.get("cl_resolution", 0.05)
-        cl_div_factor = kwargs.get("cl_div_factor", 8)
+        if com_ref_index is None:
+            com_ref_index = stack.data.shape[1] // 2
+        if cl_ref_index is None:
+            cl_ref_index = stack.data.shape[0] // 2
+
+        # explicit type casts for type checking
+        com_ref_index = cast(int, com_ref_index)
+        cl_ref_index = cast(int, cl_ref_index)
+
         shifts = calc_shifts_com_cl(
             stack,
             com_ref_index,
@@ -691,7 +772,11 @@ def align_stack(stack, method, start, show_progressbar, **kwargs):
     return aligned
 
 
-def tilt_com(stack, slices=None, nslices=None):
+def tilt_com(
+    stack: TomoStack,
+    slices: Optional[np.ndarray] = None,
+    nslices: Optional[int] = None,
+) -> TomoStack:
     """
     Perform tilt axis alignment using center of mass (CoM) tracking.
 
@@ -699,19 +784,20 @@ def tilt_com(stack, slices=None, nslices=None):
 
     Parameters
     ----------
-    stack : TomoStack object
-        3-D numpy array containing the tilt series data
-    slices : list
-        Locations at which to perform the CoM analysis
-    nslices : int
-        Nubmer of slices to suer for the analysis
+    stack
+        TomoStack containing the tilt series data
+    slices
+        Locations at which to perform the Center of Mass analysis. If not
+        provided, an appropriate list of slices will be automatically determined.
+    nslices
+        Nubmer of slices to use for the analysis (only used if the ``slices``
+        parameter is not specified)
 
     Returns
     -------
-    out : TomoStack object
+    out : TomoStack
         Copy of the input stack after rotation and translation to center and
         make the tilt axis vertical
-
     """
 
     def com_motion(theta, r, x0, z0):
@@ -781,13 +867,13 @@ def tilt_com(stack, slices=None, nslices=None):
 
 
 def tilt_maximage(
-    stack,
-    limit=10,
-    delta=0.1,
-    plot_results=False,
-    also_shift=False,
-    shift_limit=20,
-):
+    stack: TomoStack,
+    limit: float = 10,
+    delta: float = 0.1,
+    plot_results: bool = False,
+    also_shift: bool = False,
+    shift_limit: float = 20,
+) -> TomoStack:
     """
     Perform automated determination of the tilt axis of a TomoStack.
 
@@ -796,22 +882,24 @@ def tilt_maximage(
 
     Parameters
     ----------
-    stack : TomoStack object
-        3-D numpy array containing the tilt series data
-    limit : integer or float
+    stack
+        TomoStack array containing the tilt series data
+    limit
         Maximum rotation angle to use for calculation
-    delta : float
+    delta
         Angular increment for calculation
-    plot_results : boolean
-        If True, plot the maximum image along with the lines determined
+    plot_results
+        If ``True``, plot the maximum image along with the lines determined
         by Hough analysis
-    also_shift : boolean
-        If True, also calculate and apply the global shift perpendicular to the tilt
+    also_shift
+        If ``True``, also calculate and apply the global shift perpendicular to the tilt
         by minimizing the sum of the reconstruction
+    shift_limit
+        The limit of shifts applied if ``also_shift`` is set to ``True``
 
     Returns
     -------
-    rotated : TomoStack object
+    rotated : TomoStack
         Rotated version of the input stack
 
     """
@@ -859,20 +947,20 @@ def tilt_maximage(
     return ali
 
 
-def align_to_other(stack, other):
+def align_to_other(stack: TomoStack, other: TomoStack) -> TomoStack:
     """
     Spatially register a TomoStack using previously calculated shifts.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         TomoStack which was previously aligned
-    other : TomoStack object
+    other
         TomoStack to be aligned. Must be the same size as the primary stack
 
     Returns
     -------
-    out : TomoStack object
+    out : TomoStack
         Aligned copy of other TomoStack
 
     """
@@ -904,18 +992,18 @@ def align_to_other(stack, other):
     return out
 
 
-def shift_crop(stack):
+def shift_crop(stack: TomoStack) -> TomoStack:
     """
     Crop shifted stack to common area.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         TomoStack which was previously aligned
 
     Returns
     -------
-    out : TomoStack object
+    out : TomoStack
         Aligned copy of other TomoStack
 
     """

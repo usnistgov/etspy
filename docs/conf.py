@@ -17,10 +17,10 @@ PACKAGE_PATH = Path(__file__).parent.parent
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'ETSpy'
+project = "ETSpy"
 # copyright = '2024, Andrew Herzing, Joshua Taillon'
-author = 'Andrew Herzing, Joshua Taillon'
-release = '0.8.0'
+author = "Andrew Herzing, Joshua Taillon"
+release = "0.8.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -38,14 +38,16 @@ extensions = [
 ]
 
 master_doc = "index"
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 source_suffix = [".rst", ".md"]
 intersphinx_mapping = {
-    "exspy": ("https://hyperspy.org/exspy/", None),
-    "hyperspy": ("https://hyperspy.org/hyperspy-doc/current/", None),
-    "rsciio": ("https://hyperspy.org/rosettasciio/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "python": ("https://docs.python.org/3", None),
+    "exspy": ("https://hyperspy.org/exspy", None),
+    "hyperspy": ("https://hyperspy.org/hyperspy-doc/current", None),
+    "rsciio": ("https://hyperspy.org/rosettasciio", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
 }
 
 # Define a custom inline Python syntax highlighting literal
@@ -61,13 +63,13 @@ rst_prolog = """
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_immaterial'
-html_static_path = ['_static']
+html_theme = "sphinx_immaterial"
+html_static_path = ["_static"]
 html_logo = "_static/ETSpy_logo_trans.png"
 html_css_files = [
     "custom_css.css",
 ]
-html_favicon = '_static/favicon-64x64.png'
+html_favicon = "_static/favicon-64x64.png"
 
 
 html_theme_options = {
@@ -80,6 +82,7 @@ html_theme_options = {
     "repo_name": "ETSpy",
     "edit_uri": "blob/master/docs",
     "globaltoc_collapse": True,
+    "toc_title_is_page_title": True,
     "features": [
         "navigation.expand",
         # "navigation.tabs",
@@ -208,7 +211,7 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 
     if name == "__init__":
         return False
-    
+
     try:
         # get source file for property via fget
         if isinstance(obj, property):
@@ -223,15 +226,17 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 
     return skip
 
+
 def setup(app):
     app.connect("autodoc-skip-member", autodoc_skip_member)
     # app.connect("autodoc-process-bases", autodoc_process_bases)
     # app.connect("autodoc-process-signature", autodoc_process_signature)
-    
+
+
 # -- Link checking configs -------------------------------------------------
 
 linkcheck_ignore = [
-    "https://doi.org/10.1103/PhysRevB.72.052103" # 403 Client Error: Forbidden for url: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.72.052103
+    "https://doi.org/10.1103/PhysRevB.72.052103"  # 403 Client Error: Forbidden for url: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.72.052103
 ]
 
 linkcheck_exclude_documents = []
