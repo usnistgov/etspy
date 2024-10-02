@@ -10,6 +10,7 @@ import astra
 import matplotlib.pylab as plt
 import numpy as np
 import tqdm
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from pystackreg import StackReg
 from scipy import ndimage, optimize
 from skimage.feature import canny
@@ -124,7 +125,8 @@ def apply_shifts(stack: TomoStack, shifts: np.ndarray) -> TomoStack:
             shifted.data[i, :, :],
             shift=[shifts[i, 0], shifts[i, 1]],
         )
-    shifted.metadata.Tomography.shifts = shifted.metadata.Tomography.shifts + shifts
+    tomo_meta = cast(Dtb, shifted.metadata.Tomography)
+    tomo_meta.shifts = tomo_meta.shifts + shifts
     return shifted
 
 
@@ -336,9 +338,10 @@ def calculate_shifts_com(stack: TomoStack, nslices: int) -> np.ndarray:
     logger.info("Refinining Y-shifts using center of mass method")
     slices = get_best_slices(stack, nslices)
 
-    angles = stack.metadata.Tomography.tilts
+    tomo_meta = cast(Dtb, stack.metadata.Tomography)
+    angles = tomo_meta.tilts
     [ntilts, ydim, xdim] = stack.data.shape
-    thetas = np.pi * angles / 180
+    thetas = np.pi * cast(np.ndarray, angles) / 180
 
     coms = get_coms(stack, slices)
     i_tilts = np.eye(ntilts)
@@ -852,7 +855,7 @@ def tilt_com(
     _, ny, nx = stack.data.shape
     nx_threshold = 3
 
-    if stack.metadata.Tomography.tilts is None:
+    if cast(Dtb, stack.metadata.Tomography).tilts is None:
         msg = "Tilts are not defined in stack.metadata.Tomography"
         raise ValueError(msg)
 
@@ -886,7 +889,8 @@ def tilt_com(
     slices = np.sort(slices)
 
     coms = get_coms(stack, slices)
-    thetas = np.pi * stack.metadata.Tomography.tilts / 180.0
+    tomo_meta = cast(Dtb, stack.metadata.Tomography)
+    thetas = np.pi * cast(np.ndarray, tomo_meta.tilts) / 180.0
 
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 
@@ -977,7 +981,8 @@ def tilt_maximage(
         plt.tight_layout()
 
     ali = stack.trans_stack(angle=-rotation_angle)
-    ali.metadata.Tomography.tiltaxis = -rotation_angle
+    tomo_meta = cast(Dtb, ali.metadata.Tomography)
+    tomo_meta.tiltaxis = -rotation_angle
 
     if also_shift:
         idx = ali.data.shape[2] // 2
@@ -987,9 +992,9 @@ def tilt_maximage(
         for i in range(nshifts):
             shifted.data[:, :, i] = np.roll(ali.isig[idx, :].data, int(shifts[i]))
         shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
-        tilt_shift = shifts[shifted_rec.sum((1, 2)).data.argmin()]
+        tilt_shift = cast(float, shifts[shifted_rec.sum((1, 2)).data.argmin()])
         ali = ali.trans_stack(yshift=-tilt_shift)
-        ali.metadata.Tomography.yshift = -tilt_shift
+        tomo_meta.yshift = -tilt_shift
     return ali
 
 
@@ -1014,22 +1019,24 @@ def align_to_other(stack: TomoStack, other: TomoStack) -> TomoStack:
     align
     """
     out = copy.deepcopy(other)
+    stack_tomo_meta = cast(Dtb, stack.metadata.Tomography)
+    out_tomo_meta = cast(Dtb, out.metadata.Tomography)
 
-    shifts = stack.metadata.Tomography.shifts
-    out.metadata.Tomography.shifts = np.zeros([out.data.shape[0], 2])
+    shifts = cast(np.ndarray, stack_tomo_meta.shifts)
+    out_tomo_meta.shifts = np.zeros([out.data.shape[0], 2])
 
-    tiltaxis = stack.metadata.Tomography.tiltaxis
-    out.metadata.Tomography.tiltaxis = tiltaxis
+    tiltaxis = cast(float, stack_tomo_meta.tiltaxis)
+    out_tomo_meta.tiltaxis = tiltaxis
 
-    xshift = stack.metadata.Tomography.xshift
-    out.metadata.Tomography.xshift = stack.metadata.Tomography.xshift
+    xshift = cast(float, stack_tomo_meta.xshift)
+    out_tomo_meta.xshift = stack_tomo_meta.xshift
 
-    yshift = stack.metadata.Tomography.yshift
-    out.metadata.Tomography.yshift = stack.metadata.Tomography.yshift
+    yshift = cast(float, stack_tomo_meta.yshift)
+    out_tomo_meta.yshift = stack_tomo_meta.yshift
 
     out = apply_shifts(out, shifts)
 
-    if stack.metadata.Tomography.cropped:
+    if stack_tomo_meta.cropped:
         out = shift_crop(out)
 
     out = out.trans_stack(xshift, yshift, tiltaxis)
@@ -1060,7 +1067,7 @@ def shift_crop(stack: TomoStack) -> TomoStack:
     align
     """
     cropped = copy.deepcopy(stack)
-    shifts = stack.metadata.Tomography.shifts
+    shifts = cast(Dtb, stack.metadata.Tomography).shifts
     x_shifts = shifts[:, 0]
     y_shifts = shifts[:, 1]
     x_max = np.int32(np.floor(x_shifts.min()))

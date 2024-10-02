@@ -1,4 +1,4 @@
-"""Test dataset handling module for ETSpy package."""
+"""Module to provide example tomographic datasets."""
 
 import etspy.api as etspy
 from etspy.api import etspy_path
@@ -11,7 +11,7 @@ def get_needle_data(aligned: bool = False):
 
     Returns
     -------
-    needle : TomoStack object
+    needle : TomoStack
         TomoStack containing the simulated catalyst tilt series
 
     Group
@@ -55,15 +55,15 @@ def get_catalyst_data(
         Angle by which to rotate entire tilt series. Simulates non-vertical
         tilt axis.
     xonly
-        If True, shifts are only applied along the X-axis
+        If ``True``, shifts are only applied along the X-axis
     noise
-        If True, add Gaussian noise to the stack
+        If ``True``, add Gaussian noise to the stack
     noise_factor
         Percentage noise to be added. Must be between 0 and 1.
 
     Returns
     -------
-    catalyst : :py:class:`~etspy.TomoStack`
+    catalyst : TomoStack
         TomoStack containing the simulated catalyst tilt series
 
     Group
