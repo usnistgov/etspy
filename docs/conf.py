@@ -43,11 +43,12 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 source_suffix = [".rst", ".md"]
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "exspy": ("https://hyperspy.org/exspy", None),
     "hyperspy": ("https://hyperspy.org/hyperspy-doc/current", None),
     "rsciio": ("https://hyperspy.org/rosettasciio", None),
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "numpy": ("https://numpy.org/doc/stable", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
+    "astra": ("https://astra-toolbox.com", None)
 }
 
 # Define a custom inline Python syntax highlighting literal
@@ -156,6 +157,14 @@ autodoc_typehints = "signature"
 autodoc_typehints_description_target = "documented"
 autodoc_typehints_format = "short"
 
+# make sure "Examples", "Notes", etc. rubrics are included in right-side ToC 
+object_description_options = [
+    ("py:.*", dict(
+        include_object_type_in_xref_tooltip=False,
+        include_rubrics_in_toc=True,
+    )),
+]
+
 # -- Sphinx Immaterial configs -------------------------------------------------
 
 # Python apigen configuration
@@ -217,7 +226,7 @@ python_apigen_default_order = [
     ("property:.*", 60),
     (r".*:.*\.is_[a-z,_]*", 70),
 ]
-python_apigen_order_tiebreaker = "alphabetical"
+python_apigen_order_tiebreaker = "definition_order"
 python_apigen_case_insensitive_filesystem = False
 
 
@@ -249,11 +258,27 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
     return skip
 
 def autodoc_process_signature(app, what, name, obj, options, signature, return_annotation):
-    print(f"{what}, {name}, {obj}, {options}, {signature}, {return_annotation}")
+    if return_annotation == "~typing.Self":
+        print(f"SIGNATURE: {what}, {name}, {obj}, {options}, {signature}, {return_annotation}")
+    
+    # replace "Self" annotations with current class name
+    if return_annotation == "~typing.Self" and name[:11] == "etspy.base.TomoStack":
+        replaced_annotation = "~" + '.'.join(name.split('.')[:-1])
+        return signature, replaced_annotation
+    
+def autodoc_process_docstring(app, what, name, obj, options, lines):
+    if 'TomoStack' in name:
+        print(f"DOCSTRING: {what}, {name}, {obj}, {options}, {lines}")
+    pass
+
+def autodoc_process_bases(app, name, obj, options, bases):
+    print(f"BASES: {app}, {name}, {obj}, {options}, {bases}")
+    pass
 
 def setup(app):
     app.connect("autodoc-skip-member", autodoc_skip_member)
     # app.connect("autodoc-process-bases", autodoc_process_bases)
+    # app.connect("autodoc-process-docstring", autodoc_process_docstring)
     # app.connect("autodoc-process-signature", autodoc_process_signature)
 
 

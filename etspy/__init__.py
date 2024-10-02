@@ -49,3 +49,30 @@ AlignmentMethodType = Union[
     AlignmentMethod,
     Literal["PC", "COM", "COM-CL", "StackReg"],
 ]
+
+FbpMethodType = Literal[
+    "ram-lak",
+    "shepp-logan",
+    "cosine",
+    "hamming",
+    "hann",
+    "none",
+    "tukey",
+    "lanczos",
+    "triangular",
+    "gaussian",
+    "barlett-hann",
+    "blackman",
+    "nuttall",
+    "blackman-harris",
+    "blackman-nuttall",
+    "flat-top",
+    "kaiser",
+    "parzen",
+    "projection",
+    "sinogram",
+    "rprojection",
+    "rsinogram",
+]
+
+ReconMethodType = Literal["FBP", "SIRT", "SART", "DART"]

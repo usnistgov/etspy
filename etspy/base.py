@@ -5,65 +5,101 @@ Contains the TomoStack class and its methods.
 """
 
 import logging
+from abc import ABC
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Dict, Iterable, List, Literal, Optional, Self, Tuple, Union, cast
 
 import astra
 import matplotlib as mpl
 import numpy as np
 import pylab as plt
-from hyperspy.signals import Signal1D, Signal2D
+from hyperspy._signals.signal1d import Signal1D
+from hyperspy._signals.signal2d import Signal2D
+from hyperspy.axes import UniformDataAxis as Uda
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from matplotlib import animation
 from matplotlib.artist import Artist
+from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
 
-from etspy import AlignmentMethod, AlignmentMethodType, align, recon
+from etspy import (
+    AlignmentMethod,
+    AlignmentMethodType,
+    FbpMethodType,
+    ReconMethodType,
+    align,
+    recon,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class CommonStack(Signal2D):
+class CommonStack(Signal2D, ABC):
     """
-    Create a CommonStack object for tomography data.
+    An abstract base class for tomography data.
 
-    Note: All attributes are initialized with values of ``None`` or ``0.0``
-    in ``__init__`` unless they are already defined
+    .. abstract::
+
+       This class is intended to be subclassed (*e.g.* by
+       :py:class:`~etspy.base.TomoStack` and :py:class:`~etspy.base.RecStack`) and
+       should not be instantiated directly.
+
+    All arguments are passed to the :py:class:`~hyperspy.api.signals.Signal2D`
+    constructor and should be used as documented for that method.
+
+    Parameters
+    ----------
+    *args
+        Additional non-keyword arguments passed to
+        :py:class:`~hyperspy.api.signals.Signal2D`
+    **kwargs
+        Additional keyword arguments passed to
+        :py:class:`~hyperspy.api.signals.Signal2D`
 
     Group
     -----
     signals
     """
 
-    def plot(self, navigator="slider", *args, **kwargs):
-        """Plot function to set default navigator to 'slider'."""
-        super().plot(navigator, *args, **kwargs)
-
-    def change_data_type(self, dtype):
+    def plot(self, navigator: str = "slider", *args, **kwargs):
         """
-        Change data type.
+        Override of plot function to set default HyperSpy navigator to 'slider'.
+
+        Any other arguments (keyword and non-keyword) are passed to
+        :py:meth:`hyperspy.api.signals.Signal2D.plot`
+        """
+        super().plot(navigator=navigator, *args, **kwargs)  # noqa: B026
+
+    def change_data_type(self, dtype: Union[str, np.dtype]):
+        """
+        Change the data type of a stack.
 
         Use instead of the inherited change_dtype function of Hyperspy which results in
         conversion of the Stack to a Signal2D.
 
+        Parameters
+        ----------
+        dtype
+            A string that represents a NumPy data type, or a specific data type
         """
         self.data = self.data.astype(dtype)
 
-    def invert(self):
+    def invert(self) -> Self:
         """
-        Invert the contrast levels of an entire Stack.
+        Create a copy of a Stack with inverted contrast levels.
 
         Returns
         -------
-        inverted : CommonStack object
+        inverted : Self
             Copy of the input stack with contrast inverted
 
         Examples
         --------
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> s_inverted = stack.invert()
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> s_inverted = stack.invert()
         """
         maxvals = self.data.max(2).max(1)
         maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
@@ -85,27 +121,26 @@ class CommonStack(Signal2D):
 
         return inverted
 
-    def normalize(self, width=3):
+    def normalize(self, width: int = 3) -> Self:
         """
-        Normalize the contrast levels of an entire Stack.
+        Create a copy of a stack with normalized contrast levels.
 
         Parameters
         ----------
-        width : integer
+        width
             Number of standard deviations from the mean to set
             as maximum intensity level.
 
         Returns
         -------
-        normalized : CommonStack object
+        normalized : Self
             Copy of the input stack with intensities normalized
 
         Examples
         --------
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> s_normalized = stack.normalize()
-
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> s_normalized = stack.normalize()
         """
         normalized = self.deepcopy()
         minvals = np.reshape(
@@ -126,44 +161,44 @@ class CommonStack(Signal2D):
 
     def save_movie(
         self,
-        start,
-        stop,
-        axis="XY",
-        fps=15,
-        dpi=100,
-        outfile="output.avi",
-        title="output.avi",
-        clim=None,
-        cmap="afmhot",
+        start: int,
+        stop: int,
+        axis: str = "XY",
+        fps: int = 15,
+        dpi: int = 100,
+        outfile: str = "output.avi",
+        title: str = "output.avi",
+        clim: Optional[Tuple[float, float]] = None,
+        cmap: str = "afmhot",
     ):
         """
         Save the Stack as an AVI movie file.
 
         Parameters
         ----------
-        start : integer
+        start
          Filename for output. If None, a UI will prompt for a filename.
-        stop : integer
+        stop
          Filename for output. If None, a UI will prompt for a filename.
-        axis : string
+        axis
          Projection axis for the output movie.
-         Must be 'XY' (default), 'YZ' , or 'XZ'
-        fps : integer
+         Must be ``'XY'`` (default), ``'YZ'`` , or ``'XZ'``
+        fps
          Number of frames per second at which to create the movie.
-        dpi : integer
+        dpi
          Resolution to save the images in the movie.
-        outfile : string
+        outfile
          Filename for output.
-        title : string
+        title
          Title to add at the top of the movie
-        clim : tuple
+        clim
          Upper and lower contrast limit to use for movie
-        cmap : string
+        cmap
          Matplotlib colormap to use for movie
 
         """
         if clim is None:
-            clim = [self.data.min(), self.data.max()]
+            clim = (self.data.min(), self.data.max())
 
         fig, ax = plt.subplots(1, figsize=(8, 8))
 
@@ -235,15 +270,14 @@ class CommonStack(Signal2D):
 
         Parameters
         ----------
-        filname : string (optional)
+        filname
             Name of file to receive data. If not specified, the metadata will
             be used. Data dimensions and data type will be appended.
-
         """
         datashape = self.data.shape
 
         if filename is None:
-            filename = Path(self.metadata.General.title)
+            filename = Path(str(cast(Dtb, self.metadata.General).title))
         elif isinstance(filename, str):
             filename = Path(filename)
 
@@ -256,45 +290,50 @@ class CommonStack(Signal2D):
         self.save(filename)
 
     def stats(self):
-        """Print basic stats about Stack data to terminal."""
+        """Print some basic statistics about Stack data."""
         print(f"Mean: {self.data.mean():.1f}")  # noqa: T201
         print(f"Std: {self.data.std():.2f}")  # noqa: T201
         print(f"Max: {self.data.max():.1f}")  # noqa: T201
         print(f"Min: {self.data.min():.1f}\n")  # noqa: T201
 
-    def trans_stack(self, xshift=0.0, yshift=0.0, angle=0.0, interpolation="linear"):
+    def trans_stack(
+        self,
+        xshift: float = 0.0,
+        yshift: float = 0.0,
+        angle: float = 0.0,
+        interpolation: str = "linear",
+    ) -> Self:
         """
-        Transform the stack using the skimage Affine transform.
+        Create a copy of a Stack, transformed using the ``skimage`` Affine transform.
 
         Parameters
         ----------
-        xshift : float
+        xshift
             Number of pixels by which to shift in the X dimension
-        yshift : float
+        yshift
             Number of pixels by which to shift the stack in the Y dimension
-        angle : float
+        angle
             Angle in degrees by which to rotate the stack about the X-Y plane
-        interpolation : str
-            Mode of interpolation to employ. Must be either 'linear',
-            'cubic', 'nearest' or 'none'.  Note that 'nearest' and 'none'
-            are equivalent.  Default is 'linear'.
+        interpolation
+            Mode of interpolation to employ. Must be either ``'linear'``,
+            ``'cubic'``, ``'nearest'`` or ``'none'``.  Note that ``'nearest'``
+            and ``'none'`` are equivalent.  Default is ``'linear'``.
 
         Returns
         -------
-        out : CommonStack object
+        out : Self
             Transformed copy of the input stack
 
         Examples
         --------
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> xshift = 10.0
-        >>> yshift = 3.5
-        >>> angle = -15.2
-        >>> transformed = stack.trans_stack(xshift, yshift, angle)
-        >>> transformed
-        <TomoStack, title: , dimensions: (77|256, 256)>
-
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> xshift = 10.0
+            >>> yshift = 3.5
+            >>> angle = -15.2
+            >>> transformed = stack.trans_stack(xshift, yshift, angle)
+            >>> transformed
+            <TomoStack, title: , dimensions: (77|256, 256)>
         """
         transformed = self.deepcopy()
         theta = np.pi * angle / 180.0
@@ -344,49 +383,61 @@ class CommonStack(Signal2D):
                 order=interpolation_order,
             )
 
-        transformed.metadata.Tomography.xshift = (
-            self.metadata.Tomography.xshift + xshift
-        )
-
-        transformed.metadata.Tomography.yshift = (
-            self.metadata.Tomography.yshift + yshift
-        )
-
-        transformed.metadata.Tomography.tiltaxis = (
-            self.metadata.Tomography.tiltaxis + angle
-        )
+        trans_tomo_meta = cast(Dtb, transformed.metadata.Tomography)
+        self_tomo_meta = cast(Dtb, self.metadata.Tomography)
+        trans_tomo_meta.xshift = cast(float, self_tomo_meta.xshift) + xshift
+        trans_tomo_meta.yshift = cast(float, self_tomo_meta.yshift) + yshift
+        trans_tomo_meta.tiltaxis = cast(float, self_tomo_meta.tiltaxis) + angle
         return transformed
 
 
 class TomoStack(CommonStack):
     """
-    Create a TomoStack object for tomography data.
+    Create a TomoStack instance, used to represent tomographic tilt series data.
+
+    All arguments are passed to the :py:class:`~hyperspy.api.signals.Signal2D`
+    constructor and should be used as documented for that method.
 
     Parameters
     ----------
-    CommonStack : CommonStack
-        CommonStack class
+    *args
+        Additional non-keyword arguments passed to
+        :py:class:`~hyperspy.api.signals.Signal2D`
+    **kwargs
+        Additional keyword arguments passed to
+        :py:class:`~hyperspy.api.signals.Signal2D`
 
     Group
     -----
     signals
     """
 
-    def plot_sinos(self, *args, **kwargs):
-        """Plot the TomoStack in sinogram orientation."""
+    def plot_sinos(self, *args: Tuple, **kwargs: Dict):
+        """
+        Plot the TomoStack in sinogram orientation.
+
+        Parameters
+        ----------
+        *args
+            Additional non-keyword arguments passed to
+            :py:meth:`~hyperspy.api.signals.Signal2D.plot`
+        **kwargs
+            Additional keyword arguments passed to
+            :py:meth:`~hyperspy.api.signals.Signal2D.plot`
+        """
         self.swap_axes(1, 0).swap_axes(1, 2).plot(
             navigator="slider",
             *args,  # noqa: B026
             **kwargs,
         )
 
-    def remove_projections(self, projections=None):
+    def remove_projections(self, projections: Optional[List] = None) -> "TomoStack":
         """
-        Remove projections from tilt series.
+        Return a copy of the TomoStack with certain projections removed from the series.
 
         Parameters
         ----------
-        projections : list
+        projections
             List of projection indices in integers to remove
 
         Returns
@@ -394,34 +445,42 @@ class TomoStack(CommonStack):
         s_new : TomoStack
             Copy of self with indicated projections removed
 
+        Raises
+        ------
+        ValueError
+            If no projections are provided
         """
         if projections is None:
             msg = "No projections provided"
             raise ValueError(msg)
         nprojs = len(projections)
         s_new = self.deepcopy()
-        s_new.axes_manager[0].size -= nprojs
+        cast(Uda, s_new.axes_manager[0]).size -= nprojs
         mask = np.ones(self.data.shape[0], dtype=bool)
         mask[projections] = False
         s_new.data = self.data[mask]
-        s_new.metadata.Tomography.shifts = s_new.metadata.Tomography.shifts[mask]
-        s_new.metadata.Tomography.tilts = s_new.metadata.Tomography.tilts[mask]
+        s_new_tomo_meta = cast(Dtb, s_new.metadata.Tomography)
+        s_new_tomo_meta.shifts = s_new_tomo_meta.shifts[mask]
+        s_new_tomo_meta.tilts = s_new_tomo_meta.tilts[mask]
         return s_new
 
-    def test_correlation(self, images=None):
+    def test_correlation(
+        self,
+        images: Optional[Union[List[int], Tuple[int, int]]] = None,
+    ) -> Figure:
         """
         Test output of cross-correlation prior to alignment.
 
         Parameters
         ----------
-        images : list
-            List of two numbers indicating which projections to cross-correlate
+        images
+            List of two numbers indicating which projections to cross-correlate.
+            If ``None``, the first two images will be used.
 
         Returns
         -------
-        fig : Matplotlib Figure
+        fig : ~matplotlib.figure.Figure
             Figure showing the results
-
         """
         if not images:
             images = [0, 1]
@@ -450,7 +509,7 @@ class TomoStack(CommonStack):
         return fig
 
     # TODO: allow a list of signals for 'other'
-    def align_other(self, other):
+    def align_other(self, other: "TomoStack") -> "TomoStack":
         """
         Apply the alignment calculated for one dataset to another.
 
@@ -459,35 +518,35 @@ class TomoStack(CommonStack):
 
         Parameters
         ----------
-        other : TomoStack object
+        other
             The tilt series which is to be aligned using the previously
             calculated parameters. The data array in the TomoStack must be of
-            the same size as that in self.data
+            the same size as that in ``self.data``
 
         Returns
         -------
-        out : TomoStack object
+        out : TomoStack
             The result of applying the alignment to other
-
         """
         # Check if any transformations have been applied to the current stack
-        no_shifts = np.all(self.metadata.Tomography.shifts == 0)
+        tomo_meta = cast(Dtb, self.metadata.Tomography)
+        no_shifts = np.all(tomo_meta.shifts == 0)
         no_xshift = any(
             [
-                self.metadata.Tomography.xshift is None,
-                self.metadata.Tomography.xshift == 0.0,
+                tomo_meta.xshift is None,
+                tomo_meta.xshift == 0.0,
             ],
         )
         no_yshift = any(
             [
-                self.metadata.Tomography.xshift is None,
-                self.metadata.Tomography.xshift == 0.0,
+                tomo_meta.xshift is None,
+                tomo_meta.xshift == 0.0,
             ],
         )
         no_rotation = any(
             [
-                self.metadata.Tomography.tiltaxis is None,
-                self.metadata.Tomography.tiltaxis == 0.0,
+                tomo_meta.tiltaxis is None,
+                tomo_meta.tiltaxis == 0.0,
             ],
         )
 
@@ -499,30 +558,35 @@ class TomoStack(CommonStack):
 
         return out
 
-    def filter(self, method="median", size=5, taper=0.1):
+    def filter(
+        self,
+        method: str = "median",
+        size: int = 5,
+        taper: float = 0.1,
+    ) -> "TomoStack":
         """
         Apply one of several image filters to an entire TomoStack.
 
         Parameters
         ----------
-        method : string
-            Type of filter to apply. Must be 'median', 'bpf', 'both', or 'sobel'.
-        size : integer
+        method
+            Type of filter to apply. Must be ``'median'``, ``'bpf'``, ``'both'``, or
+            ``'sobel'``.
+        size
             Size of filtering neighborhood.
-        taper : float
+        taper
             Fraction of image size to pad to the mean.
 
         Returns
         -------
-        filtered : TomoStack object
+        filtered : TomoStack
             Filtered copy of the input stack
 
         Examples
         --------
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> filtered = stack.filter(method='median')
-
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> filtered = stack.filter(method='median')
         """
         filtered = self.deepcopy()
         if method == "median":
@@ -584,108 +648,139 @@ class TomoStack(CommonStack):
     def stack_register(
         self,
         method: AlignmentMethodType = AlignmentMethod.PC,
-        start=None,
-        show_progressbar=False,
-        crop=False,
-        **kwargs,
-    ):
+        start: Optional[int] = None,
+        show_progressbar: bool = False,
+        crop: bool = False,
+        nslices: int = 20,
+        com_ref_index: Optional[int] = None,
+        cl_ref_index: Optional[int] = None,
+        cl_resolution: float = 0.05,
+        cl_div_factor: int = 8,
+    ) -> "TomoStack":
         """
         Register stack spatially.
 
         Options are phase correlation (PC) maximization, StackReg, center of
         mass ('COM'), or combined center of mass and common line methods.
-        See docstring for etspy.align.align_stack for details.
+        See docstring for :py:func:`etspy.align.align_stack` for details.
 
         Parameters
         ----------
-        method : string
-            Algorithm to use for registration calculation. Must be either
-            'PC', 'StackReg', 'COM', or 'COM-CL'.
-        start : integer
+        method
+            Algorithm to use for registration calculation. Must be one of
+            the values specified by the :py:class:`etspy.AlignmentMethod` enum.
+        start
             Position in tilt series to use as starting point for the
-            alignment. If None, the central projection is used.
-        crop : boolean
+            alignment. If ``None``, the central projection is used.
+        show_progressbar
+            Enable/disable progress bar
+        crop
             If True, crop aligned stack to eliminate border pixels. Default is
             False.
-        show_progressbar : boolean
-            Enable/disable progress bar
-        nslice : int
-            Location of slice to use for alignment.  Only used for 'COM' method
-        ratio : float
-            Value between 0 and 1 used to assess quality of projections.
-            Only used for 'COM' method.
-        com_ref_index : integer
+        nslices
+            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
+            Number of slices to return. See
+            :py:func:`~etspy.align.calculate_shifts_com` for more details.
+        com_ref_index
+            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
             Reference slice for center of mass alignment.  All other slices
             will be aligned to this reference.  If not provided, the midpoint
-            of the stack will be chosen.
-        cl_ref_index : integer
+            of the stack will be chosen. See :py:func:`~etspy.align.calc_shifts_com_cl`
+            for more details.
+        cl_ref_index
+            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
             Reference slice for common line alignment.  All other slices
             will be aligned to this reference.  If not provided, the midpoint
             of the stack will be chosen.
-        cl_resolution : float
+        cl_resolution
+            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
             Resolution for subpixel common line alignment. Default is 0.05.
-            Should be less than 0.5.
-        cl_div_factor : integer
+            Should be less than 0.5. See
+            :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
+        cl_div_factor
+            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
             Factor which determines the number of iterations of common line
-            alignment to perform.  Default is 8.
+            alignment to perform.  Default is 8. See
+            :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
 
         Returns
         -------
-        out : TomoStack object
+        out : TomoStack
             Spatially registered copy of the input stack
 
         Examples
         --------
         Registration with phase correlation algorithm (PC)
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> regPC = stack.stack_register('PC')
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> regPC = stack.stack_register('PC')
 
         Registration with center of mass tracking (COM)
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> regCOM = stack.stack_register('COM')
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> regCOM = stack.stack_register('COM')
 
         Registration with StackReg
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> regSR = stack.stack_register('StackReg')
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> regSR = stack.stack_register('StackReg')
 
         Registration with center of mass and common line (COM-CL)
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> regCOMCL = stack.stack_register('COM-CL')
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> regCOMCL = stack.stack_register('COM-CL')
 
         """
-        method = method.lower()
-        if method in ["pc", "com", "stackreg", "com-cl"]:
-            out = align.align_stack(self, method, start, show_progressbar, **kwargs)
+        if AlignmentMethod.is_valid_value(method):
+            out = align.align_stack(
+                self,
+                method,
+                start,
+                show_progressbar,
+                nslices=nslices,
+                com_ref_index=com_ref_index,
+                cl_ref_index=cl_ref_index,
+                cl_resolution=cl_resolution,
+                cl_div_factor=cl_div_factor,
+            )
         else:
             msg = (
                 f"Unknown registration method: '{method}'. "
-                "Must be 'PC', 'StackReg', or 'COM'"
+                f"Must be one of {AlignmentMethod.values()}"
             )
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         if crop:
             out = align.shift_crop(out)
         return out
 
-    def tilt_align(self, method, **kwargs):
+    def tilt_align(
+        self,
+        method: Literal["CoM", "MaxImage"],
+        slices: Optional[np.ndarray] = None,
+        nslices: int = 20,
+        limit: float = 10,
+        delta: float = 0.1,
+        plot_results: bool = False,
+        also_shift: bool = False,
+        shift_limit: int = 20,
+    ):
         """
         Align the tilt axis of a TomoStack.
 
         Uses either a center-of-mass approach or a maximum image approach
 
-        Available options are 'CoM' and 'Error'
+        Available methods are ``'CoM'`` and ``'MaxImage'``:
 
-        CoM: track the center of mass (CoM) of the projections at three
+        **CoM:**
+        Track the center of mass (CoM) of the projections at three
         locations.  Fit the motion of the CoM as a function of tilt to that
         expected for an ideal cylinder to calculate an X-shift at each
         location. Perform a  linear fit of the three X-shifts to calculate an
         ideal rotation.
 
-        MaxImage: Perform automated determination of the tilt axis of a
+        **MaxImage:**
+        Perform automated determination of the tilt axis of a
         TomoStack by analyzing features in the projected maximum image.  A combination
         of edge detection and Hough transform analysis is used to determine the global
         rotation of the stack.  Optionally, the global shift of the tilt axis can also
@@ -693,53 +788,59 @@ class TomoStack(CommonStack):
 
         Parameters
         ----------
-        method : string
-            Algorithm to use for registration alignment. Must be either 'CoM' or
-            'MaxImage'.
-
-        **kwargs: Additional keyword arguments. Possible keys include:
-            - nslices (int): Number of slices to use for center of mass tilt alignment.
-            - locs (list): Location along tilt axis for center of mass tilt alignment.
-            - limit (integer or float): Maximum rotation angle for MaxImage calculation
-            - delta (float): Angular increment in degrees for MaxImage calculation
-            - plot_results (bool): if True, plot results of Hough line analysis
-            - also_shift (bool): if True, also calculate global shift of tilt axis
-            - shift_limit (int): Search range for global shift of tilt axis
+        method
+            Algorithm to use for registration alignment. Must be either ``'CoM'`` or
+            ``'MaxImage'``.
+        slices
+            (Only used when ``method == "CoM"``)
+            Locations at which to perform the Center of Mass analysis. If not
+            provided, an appropriate list of slices will be automatically determined.
+        nslices
+            (Only used when ``method == "CoM"``)
+            Nubmer of slices to use for the center of mass (only used if the ``slices``
+            parameter is not specified)
+        limit
+            (Only used when ``method == "MaxImage"``)
+            Maximum rotation angle for MaxImage calculation
+        delta
+            (Only used when ``method == "MaxImage"``)
+            Angular increment in degrees for MaxImage calculation
+        plot_results
+            (Only used when ``method == "MaxImage"``)
+            If ``True``, plot the maximum image along with the lines determined
+            by Hough analysis
+        also_shift
+            (Only used when ``method == "MaxImage"``)
+            If ``True``, also calculate and apply the global shift perpendicular to the
+            tilt by minimizing the sum of the reconstruction
+        shift_limit
+            (Only used when ``method == "MaxImage"``)
+            The limit of shifts applied if ``also_shift`` is set to ``True``
 
         Returns
         -------
-        out : TomoStack object
+        out : TomoStack
             Copy of the input stack rotated by calculated angle
 
         Examples
         --------
-        Align tilt axis using the center of mass (CoM) method
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> reg = stack.stack_register('PC',show_progressbar=False)
-        >>> method = 'CoM'
-        >>> ali = reg.tilt_align(method, locs=[50,100,160])
+        Align tilt axis using the center of mass (CoM) method:
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> reg = stack.stack_register('PC', show_progressbar=False)
+            >>> method = 'CoM'
+            >>> ali = reg.tilt_align(method, locs=[50,100,160])
 
-        Align tilt axis using the maximum image method
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data()
-        >>> reg = stack.stack_register('PC',show_progressbar=False)
-        >>> method = 'MaxImage'
-        >>> ali = reg.tilt_align(method)
-
+        Align tilt axis using the maximum image method:
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> reg = stack.stack_register('PC', show_progressbar=False)
+            >>> method = 'MaxImage'
+            >>> ali = reg.tilt_align(method)
         """
-        method = method.lower()
-
-        if method == "com":
-            nslices = kwargs.get("nslices", 20)
-            locs = kwargs.get("locs")
-            out = align.tilt_com(self, locs, nslices)
-        elif method == "maximage":
-            limit = kwargs.get("limit", 10)
-            delta = kwargs.get("delta", 0.3)
-            plot_results = kwargs.get("plot_results", False)
-            also_shift = kwargs.get("also_shift", False)
-            shift_limit = kwargs.get("shift_limit", 20)
+        if method == "CoM":
+            out = align.tilt_com(self, slices, nslices)
+        elif method == "MaxImage":
             out = align.tilt_maximage(
                 self,
                 limit,
@@ -753,88 +854,100 @@ class TomoStack(CommonStack):
             raise ValueError(msg)
         return out
 
-    def reconstruct(
+    def reconstruct(  # noqa: PLR0913
         self,
-        method="FBP",
-        iterations=5,
-        constrain=False,
-        thresh=0,
-        cuda=None,
-        thickness=None,
-        show_progressbar=True,
-        p=0.99,
-        **kwargs,
-    ):
+        method: ReconMethodType = "FBP",
+        iterations: int = 5,
+        constrain: bool = False,
+        thresh: float = 0,
+        cuda: Optional[bool] = None,
+        thickness: Optional[int] = None,
+        show_progressbar: bool = True,
+        p: float = 0.99,
+        ncores: Optional[int] = None,
+        sino_filter: FbpMethodType = "shepp-logan",
+        dart_iterations: Optional[int] = 5,
+        gray_levels: Optional[Union[List, np.ndarray]] = None,
+    ) -> "RecStack":
         """
         Reconstruct a TomoStack series using one of the available methods.
 
         Parameters
         ----------
-        method : string
-            Reconstruction algorithm to use.  Must be'FBP' (default),
-            'SIRT', 'SART', or 'DART'
-        iterations : integer
-            Number of iterations for the SIRT reconstruction (for astraSIRT
-            and astraSIRT_GPU, methods only) (default: 5)
-        constrain : boolean
-            If True, output reconstruction is constrained above value given
-            by 'thresh'
-        thresh : integer or float
+        method
+            Reconstruction algorithm to use.  Must be one of ``"FBP"`` (default),
+            ``"SIRT"``, ``"SART"``, or ``"DART"``
+        iterations
+            Number of iterations for the SIRT reconstruction (used with ``SIRT``,
+            ``SART``, and ``DART`` methods) (default: 5)
+        constrain
+            If ``True``, output reconstruction is constrained above value given
+            by ``thresh``
+        thresh
             Value above which to constrain the reconstructed data
-        cuda : boolean
-            If True, use the CUDA-accelerated reconstruction algorithm
-        thickness : integer
-            Size of the output volume (in pixels) in the projection direction.
-        show_progressbar : bool
-            If True, show a progress bar for the reconstruction. Default is True.
-        p : float
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms. If
+            ``None`` (the default), the decision to use CUDA will be left to
+            :py:func:`astra.astra.use_cuda`.
+        thickness
+            Size of the output volume (in pixels) in the projection direction. If
+            ``None``, the y-size of the stack is used.
+        show_progressbar
+            If ``True``, show a progress bar for the reconstruction. Default is
+            ``True``.
+        p
             Probability for setting free pixels in DART reconstruction (only used
             if the reconstruction method is DART, default: 0.99)
-        **kwargs: Additional keyword arguments. Possible keys include:
-        - ncores (int): Number of cores to use for multithreaded reconstructions.
-        - sino_filter (str): Filter for filtered backprojection. Default is shepp-logan.
-        - dart_iterations (int): Number of iterations to employ for DART reconstruction.
+        ncores
+            Number of cores to use for multithreaded reconstructions.
+        sino_filter
+            Filter for filtered backprojection. Default is ``"shepp-logan"``.
+            Available options are detailed in the Astra Toolbox documentation
+            under the ``cfg.FilterType`` option of
+            :external+astra:doc:`docs/algs/FBP_CUDA`.
+        dart_iterations
+            Number of iterations to employ for DART reconstruction
+        gray_levels
+            List of gray levels to use for DART reconstruction
 
         Returns
         -------
-        out : TomoStack object
-            TomoStack containing the reconstructed volume
+        rec : RecStack
+            RecStack containing the reconstructed volume
 
         Examples
         --------
-        Filtered backprojection (FBP) reconstruction
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(aligned=True)
-        >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> rec = slices.reconstruct('FBP', cuda=False, show_progressbar=False)
+        Filtered backprojection (FBP) reconstruction:
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data(aligned=True)
+            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> rec = slices.reconstruct('FBP', cuda=False, show_progressbar=False)
 
-        Simultaneous iterative reconstruction technique (SIRT) reconstruction
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(aligned=True)
-        >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> rec = slices.reconstruct('SIRT',iterations=5,
-        ...                          cuda=False, show_progressbar=False)
+        Simultaneous iterative reconstruction technique (SIRT) reconstruction:
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data(aligned=True)
+            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> rec = slices.reconstruct('SIRT',iterations=5,
+            ...                          cuda=False, show_progressbar=False)
 
-        Simultaneous iterative reconstruction technique (SIRT) reconstruction
-        with positivity constraint
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(aligned=True)
-        >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> iterations = 5
-        >>> constrain = True
-        >>> thresh = 0
-        >>> rec = slices.reconstruct('SIRT', iterations, constrain, thresh,
-        ...                          cuda=False, show_progressbar=False)
+        SIRT reconstruction with positivity constraint:
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data(aligned=True)
+            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> iterations = 5
+            >>> constrain = True
+            >>> thresh = 0
+            >>> rec = slices.reconstruct('SIRT', iterations, constrain, thresh,
+            ...                          cuda=False, show_progressbar=False)
 
-        Discreate algebraice reconstruction technique (DART) reconstruction
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(aligned=True)
-        >>> slices = stack.isig[:, 120:121].deepcopy()
-        >>> gray_levels = [0., slices.data.max()/2, slices.data.max()]
-        >>> rec = slices.reconstruct('DART', iterations=5, cuda=False,
-        ...                          gray_levels=gray_levels, p=0.99,
-        ...                          dart_iterations=5, show_progressbar=False)
-
+        Discreate algebraice reconstruction technique (DART) reconstruction:
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data(aligned=True)
+            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> gray_levels = [0., slices.data.max()/2, slices.data.max()]
+            >>> rec = slices.reconstruct('DART', iterations=5, cuda=False,
+            ...                          gray_levels=gray_levels, p=0.99,
+            ...                          dart_iterations=5, show_progressbar=False)
         """
         if method.lower() not in [
             "fbp",
@@ -849,23 +962,20 @@ class TomoStack(CommonStack):
                 logger.info("CUDA detected with Astra")
                 cuda = True
             else:
-                cuda = False
                 logger.info("CUDA not detected with Astra")
+                cuda = False
 
-        ncores = kwargs.get("ncores")
-        sino_filter = kwargs.get("sino_filter", "shepp-logan")
         if method.lower() == "dart":
-            dart_iterations = kwargs.get("dart_iterations", 5)
-            gray_levels = kwargs.get("gray_levels")
-            if not isinstance(gray_levels, (np.ndarray, list)):
-                msg = f"Unknown type ({type(gray_levels)}) for gray_levels"
-                raise ValueError(msg)
             if gray_levels is None:
                 msg = "gray_levels must be provided for DART"
+                raise ValueError(msg)
+            if not isinstance(gray_levels, (np.ndarray, list)):
+                msg = f"Unknown type ({type(gray_levels)}) for gray_levels"
                 raise ValueError(msg)
         else:
             dart_iterations = None
             gray_levels = None
+
         rec = recon.run(
             stack=self,
             method=method,
@@ -891,47 +1001,60 @@ class TomoStack(CommonStack):
         rec_axes_dict[1]["name"] = "z"
         rec_axes_dict[1]["size"] = rec.shape[1]
         rec = RecStack(rec, axes=rec_axes_dict)
+
         return rec
 
     def test_align(  # noqa: PLR0913
         self,
-        tilt_shift=0.0,
-        tilt_rotation=0.0,
-        slices=None,
-        thickness=None,
-        method="FBP",
-        iterations=50,
-        constrain=True,
-        cuda=None,
-        thresh=0,
-        vmin_std=0.1,
-        vmax_std=10,
+        tilt_shift: float = 0.0,
+        tilt_rotation: float = 0.0,
+        slices: Optional[np.ndarray] = None,
+        thickness: Optional[int] = None,
+        method: Literal["FBP", "SIRT", "SART"] = "FBP",
+        iterations: int = 50,
+        constrain: bool = True,
+        cuda: Optional[bool] = None,
+        thresh: float = 0,
+        vmin_std: float = 0.1,
+        vmax_std: float = 10,
     ):
         """
-        Reconstruct three slices from the input data for visual inspection.
+        Perform a reconstruction with limited slices for visual inspection.
+
+        This method is useful to quickly test the alignment of the stack prior
+        to a full reconstruction attempt.
 
         Parameters
         ----------
-        xshift : float
-            Number of pixels by which to shift the input data.
-        angle : float
+        tilt_shift
+            Number of pixels by which to shift the stack prior to reconstruction
+        tilt_rotation
             Angle by which to rotate stack prior to reconstruction
-        slices : list
-            Position of slices to use for the reconstruction.  If None,
-            positions at 1/4, 1/2, and 3/4 of the full size of the stack are
-            chosen.
-        thickness : integer
+        slices
+            Position of slices to use for the reconstruction.  If ``None`` (default),
+            three positions at 1/4, 1/2, and 3/4 of the full size of the stack are
+            automatically chosen.
+        thickness
             Size of the output volume (in pixels) in the projection direction.
-        method : str
-            Reconstruction algorithm to use.  Must be 'FBP', 'SIRT', or 'SART'.
-        cuda : bool
-            If True, use CUDA-accelerated Astra algorithms.  If None, use
-            CUDA if astra.use_cuda() is True.
-        thresh : float
-            Minimum value for reconstruction
-        vmin_std, vmax_std : float
-            Number of standard deviations from mean to use for
-            scaling the displayed slices
+            If ``None`` (default), the y-size of the stack is used.
+        method
+            Reconstruction algorithm to use.  Must be one of ``"FBP"`` (default),
+            ``"SIRT"``, or ``"SART"`` (inapplicable for the ``"DART"`` algorithm)
+        iterations
+            Number of iterations for the SIRT reconstruction (used with ``SIRT``,
+            and ``SART`` methods) (default: 50)
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms. If
+            ``None`` (the default), the decision to use CUDA will be left to
+            :py:func:`astra.astra.use_cuda`.
+        thresh
+            Value above which to constrain the reconstructed data
+        vmin_std
+            Number of standard deviations from mean (lower bound) to use for scaling the
+            displayed slices
+        vmax_std
+            Number of standard deviations from mean (upper bound) to use for scaling the
+            displayed slices
         """
         if slices is None:
             mid = np.array(self.data.shape[2] / 2, dtype=np.int32)
@@ -943,7 +1066,7 @@ class TomoStack(CommonStack):
             shifted = self.deepcopy()
         shifted.data = shifted.data[:, :, slices]
 
-        shifted.axes_manager[0].axis = self.axes_manager[0].axis
+        cast(Uda, shifted.axes_manager[0]).axis = cast(Uda, self.axes_manager[0]).axis
         if cuda is None:
             if astra.use_cuda():
                 logger.info("CUDA detected with Astra")
@@ -951,7 +1074,7 @@ class TomoStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        rec = shifted.reconstruct(
+        rec = cast(TomoStack, shifted).reconstruct(
             method=method,
             iterations=iterations,
             constrain=constrain,
@@ -985,54 +1108,60 @@ class TomoStack(CommonStack):
         ax3.set_axis_off()
         fig.tight_layout()
 
-    def set_tilts(self, start, increment):
+    def set_tilts(self, start: float, increment: float):
         """
         Calibrate the tilt axis of the image stack.
 
         Parameters
         ----------
-        start : float or integer
+        start
             Tilt angle of first image in stack
 
-        increment : float or integer
+        increment
             Tilt increment between images
-
         """
         nimages = self.data.shape[0]
-        self.axes_manager[0].name = "Tilt"
-        self.axes_manager[0].units = "degrees"
-        self.axes_manager[0].scale = increment
-        self.axes_manager[0].offset = start
+        ax = cast(Uda, self.axes_manager[0])
+        ax.name = "Tilt"
+        ax.units = "degrees"
+        ax.scale = increment
+        ax.offset = start
         tilts = np.arange(start, nimages * increment + start, increment)
 
         if not self.metadata.has_item("Tomography"):
             self.metadata.add_node("Tomography")
-            self.metadata.Tomography.set_item("tilts", tilts)
-            self.metadata.Tomography.set_item("tiltaxis", 0)
-            self.metadata.Tomography.set_item("xshift", 0)
-            self.metadata.Tomography.set_item("yshift", 0)
-            self.metadata.Tomography.set_item("shifts", None)
-            self.metadata.Tomography.set_item("cropped", value=False)
+            tomo_meta = cast(Dtb, self.metadata.Tomography)
+            tomo_meta.set_item("tilts", tilts)
+            tomo_meta.set_item("tiltaxis", 0)
+            tomo_meta.set_item("xshift", 0)
+            tomo_meta.set_item("yshift", 0)
+            tomo_meta.set_item("shifts", None)
+            tomo_meta.set_item("cropped", value=False)
         else:
-            self.metadata.Tomography.set_item("tilts", tilts)
+            cast(Dtb, self.metadata.Tomography).set_item("tilts", tilts)
 
-    def manual_align(self, nslice, xshift=0, yshift=0, display=False):  # noqa: PLR0915
+    def manual_align(  # noqa: PLR0915
+        self,
+        nslice: int,
+        xshift: int = 0,
+        yshift: int = 0,
+        display: bool = False,
+    ) -> "TomoStack":
         """
-        Manually shift one portion of a stack with respect to the other.
+        Manually shift part of a stack with respect to another and return it as a copy.
 
         Parameters
         ----------
-        nslice : integer
+        nslice
             Slice position at which to implement shift
-        xshift : integer
+        xshift
             Number of pixels with which to shift the second portion of the
             stack relative to the first in the X dimension.
-        yshift : integer
+        yshift
             Number of pixels with which to shift the second portion of the
             stack relative to the first in the Y dimension.
-        display : bool
+        display
             If True, display the result.
-
         """
         output = self.deepcopy()
         if yshift == 0:
@@ -1099,13 +1228,13 @@ class TomoStack(CommonStack):
 
     def recon_error(
         self,
-        nslice=None,
-        algorithm="SIRT",
-        iterations=50,
-        constrain=True,
-        cuda=None,
-        thresh=0,
-    ):
+        nslice: Optional[int] = None,
+        algorithm: Literal["SIRT", "SART"] = "SIRT",
+        iterations: int = 50,
+        constrain: bool = True,
+        cuda: Optional[bool] = None,
+        thresh: float = 0,
+    ) -> Tuple[Signal2D, Signal1D]:
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1115,36 +1244,37 @@ class TomoStack(CommonStack):
 
         Parameters
         ----------
-        algorithm : str
-            Reconstruction algorithm use.  Must be 'SIRT' (default) or 'SART'.
-        nslice : int
-            Location at which to perform the evaluation.
-        constrain : boolean
+        nslice
+            Slice location at which to perform the evaluation.
+        algorithm
+            Reconstruction algorithm use.  Must be either ``'SIRT'`` (default)
+            or ``'SART'`` (this method is inapplicable for ``'FBP'`` and ``'DART'``).
+        constrain
             If True, perform SIRT reconstruction with a non-negativity
-            constraint.  Default is True
-        cuda : boolean
-            If True, perform reconstruction using the GPU-accelrated algorithm.
-            Default is True
-        thresh : integer or float
+            constraint.  Default is ``True``
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms. If
+            ``None`` (the default), the decision to use CUDA will be left to
+            :py:func:`astra.astra.use_cuda`.
+        thresh
             Value above which to constrain the reconstructed data
 
         Returns
         -------
-        rec_stack : Hyperspy Signal2D
+        rec_stack : :py:class:`~hyperspy.api.signals.Signal2D`
             Signal containing the SIRT reconstruction at each iteration
             for visual inspection.
-        error : Hyperspy Signal1D
+        error : :py:class:`~hyperspy.api.signals.Signal1D`
             Sum of squared difference between the forward-projected
             reconstruction and the input sinogram at each iteration
 
         Examples
         --------
-        >>> import etspy.datasets as ds
-        >>> stack = ds.get_needle_data(aligned=True)
-        >>> rec_stack, error = stack.recon_error(iterations=5)
-
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data(aligned=True)
+            >>> rec_stack, error = stack.recon_error(iterations=5)
         """
-        if self.metadata.Tomography.tilts is None:
+        if cast(Dtb, self.metadata.Tomography).tilts is None:
             msg = "Tilt angles not defined"
             raise ValueError(msg)
 
@@ -1159,7 +1289,7 @@ class TomoStack(CommonStack):
                 cuda = False
                 logger.info("CUDA not detected with Astra")
         sinogram = self.isig[nslice, :].data
-        angles = self.metadata.Tomography.tilts
+        angles = cast(np.ndarray, cast(Dtb, self.metadata.Tomography).tilts)
         rec_stack, error = recon.astra_error(
             sinogram,
             angles,
@@ -1170,30 +1300,41 @@ class TomoStack(CommonStack):
             cuda=cuda,
         )
         rec_stack = Signal2D(rec_stack)
-        rec_stack.axes_manager[0].name = algorithm.upper() + " iteration"
-        rec_stack.axes_manager[0].scale = 1
-        rec_stack.axes_manager[1].name = self.axes_manager[2].name
-        rec_stack.axes_manager[1].scale = self.axes_manager[2].scale
-        rec_stack.axes_manager[1].units = self.axes_manager[2].units
-        rec_stack.axes_manager[2].name = "z"
-        rec_stack.axes_manager[2].scale = self.axes_manager[2].scale
-        rec_stack.axes_manager[2].units = self.axes_manager[2].units
+        rec_ax0, rec_ax1, rec_ax2 = (
+            cast(Uda, rec_stack.axes_manager[i]) for i in range(3)
+        )
+        self_ax2 = cast(Uda, self.axes_manager[2])
+        rec_ax0.name = algorithm.upper() + " iteration"
+        rec_ax0.scale = 1
+        rec_ax1.name = self_ax2.name
+        rec_ax1.scale = self_ax2.scale
+        rec_ax1.units = self_ax2.units
+        rec_ax2.name = "z"
+        rec_ax2.scale = self_ax2.scale
+        rec_ax2.units = self_ax2.units
         rec_stack.navigator = "slider"
 
         error = Signal1D(error)
-        error.axes_manager[0].name = algorithm.upper() + " Iteration"
-        error.metadata.Signal.quantity = "Sum of Squared Difference"
+        cast(Uda, error.axes_manager[0]).name = algorithm.upper() + " Iteration"
+        cast(Dtb, error.metadata.Signal).quantity = "Sum of Squared Difference"
         return rec_stack, error
 
 
 class RecStack(CommonStack):
     """
-    Create a RecStack object for tomography data.
+    Create a RecStack instance, used to hold the results of a reconstructed volume.
+
+    All arguments are passed to the :py:class:`~hyperspy.api.signals.Signal2D`
+    constructor and should be used as documented for that method.
 
     Parameters
     ----------
-    CommonStack : CommonStack
-        CommonStack class
+    *args
+        Additional non-keyword arguments passed to
+        :py:class:`~hyperspy.api.signals.Signal2D`
+    **kwargs
+        Additional keyword arguments passed to
+        :py:class:`~hyperspy.api.signals.Signal2D`
 
     Group
     -----
