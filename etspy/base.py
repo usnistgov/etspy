@@ -173,25 +173,24 @@ class CommonStack(Signal2D, ABC):
         Parameters
         ----------
         start
-         Filename for output. If None, a UI will prompt for a filename.
+            Starting slice number for animation
         stop
-         Filename for output. If None, a UI will prompt for a filename.
+            Ending slice number for animation
         axis
-         Projection axis for the output movie.
-         Must be ``'XY'`` (default), ``'YZ'`` , or ``'XZ'``
+            Projection axis for the output movie.
+            Must be ``'XY'`` (default), ``'YZ'`` , or ``'XZ'``
         fps
-         Number of frames per second at which to create the movie.
+            Number of frames per second at which to create the movie.
         dpi
-         Resolution to save the images in the movie.
+            Resolution to save the images in the movie.
         outfile
-         Filename for output.
+            Filename for output.
         title
-         Title to add at the top of the movie
+            Title to add at the top of the movie
         clim
-         Upper and lower contrast limit to use for movie
+            Upper and lower contrast limit to use for movie
         cmap
-         Matplotlib colormap to use for movie
-
+            Matplotlib colormap to use for movie
         """
         if clim is None:
             clim = (self.data.min(), self.data.max())
@@ -226,8 +225,8 @@ class CommonStack(Signal2D, ABC):
             )
         else:
             msg = (
-                f'Invalid axis "{axis}". Must be one of'
-                f"{_fmt(_get_lit(self.save_movie, "axis"))}."
+                f'Invalid axis "{axis}". Must be one of '
+                f"{_fmt(_get_lit(self.save_movie, 'axis'))}."
             )
             raise ValueError(msg)
         fig.tight_layout()
@@ -371,7 +370,7 @@ class CommonStack(Signal2D, ABC):
         else:
             msg = (
                 f'Invalid interpolation method "{interpolation}". Must be one of '
-                f"{_fmt(_get_lit(self.trans_stack, "interpolation"))}."
+                f"{_fmt(_get_lit(self.trans_stack, 'interpolation'))}."
             )
             raise ValueError(msg)
 
@@ -628,7 +627,7 @@ class TomoStack(CommonStack):
         else:
             msg = (
                 f'Invalid filter method "{method}". Must be one of '
-                f"{_fmt(_get_lit(self.filter, "method"))}."
+                f"{_fmt(_get_lit(self.filter, 'method'))}."
             )
             raise ValueError(msg)
         if taper:
@@ -745,7 +744,7 @@ class TomoStack(CommonStack):
         else:
             msg = (
                 f'Invalid registration method "{method}". '
-                f"Must be one of {AlignmentMethod.values()}."
+                f"Must be one of {_fmt(AlignmentMethod.values())}."
             )
             raise TypeError(msg)
 
@@ -757,7 +756,7 @@ class TomoStack(CommonStack):
         self,
         method: Literal["CoM", "MaxImage"],
         slices: Optional[np.ndarray] = None,
-        nslices: int = 20,
+        nslices: Optional[int] = None,
         limit: float = 10,
         delta: float = 0.1,
         plot_results: bool = False,
@@ -796,8 +795,10 @@ class TomoStack(CommonStack):
             provided, an appropriate list of slices will be automatically determined.
         nslices
             (Only used when ``method == "CoM"``)
-            Nubmer of slices to use for the center of mass (only used if the ``slices``
-            parameter is not specified)
+            Nubmer of slices to use for the center of mass analysis (only used if the
+            ``slices`` parameter is not specified). If ``None``, a value of 10% of the
+            x-axis size will be used, clamped to the range [3, 50], as calculated in
+            the :py:func:`~etspy.align.tilt_com` function.
         limit
             (Only used when ``method == "MaxImage"``)
             Maximum rotation angle for MaxImage calculation
@@ -825,10 +826,11 @@ class TomoStack(CommonStack):
         --------
         Align tilt axis using the center of mass (CoM) method:
             >>> import etspy.datasets as ds
+            >>> import numpy as np
             >>> stack = ds.get_needle_data()
             >>> reg = stack.stack_register('PC', show_progressbar=False)
             >>> method = 'CoM'
-            >>> ali = reg.tilt_align(method, locs=[50,100,160])
+            >>> ali = reg.tilt_align(method, slices=np.array([50,100,160]))
 
         Align tilt axis using the maximum image method:
             >>> import etspy.datasets as ds
@@ -851,7 +853,7 @@ class TomoStack(CommonStack):
         else:
             msg = (
                 f'Invalid alignment method "{method}". Must be one of '
-                f'{_fmt(_get_lit(self.tilt_align, "method"))}.'
+                f"{_fmt(_get_lit(self.tilt_align, 'method'))}."
             )
             raise ValueError(msg)
         return out
@@ -959,7 +961,7 @@ class TomoStack(CommonStack):
         ]:
             msg = (
                 f'Invalid reconstruction algorithm "{method}". Must be one of '
-                f"{_fmt(_get_lit(self.reconstruct, "method"))}."
+                f"{_fmt(_get_lit(self.reconstruct, 'method'))}."
             )
             raise ValueError(msg)
         if cuda is None:

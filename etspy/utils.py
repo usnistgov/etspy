@@ -179,8 +179,8 @@ def weight_stack(
             delta = 0.001
         else:
             msg = (
-                f'Invalid accuracy level "{accuracy}"). Must be one of '
-                f"{_fmt(_get_lit(weight_stack, "accuracy"))}."
+                f'Invalid accuracy level "{accuracy}". Must be one of '
+                f"{_fmt(_get_lit(weight_stack, 'accuracy'))}."
             )
             raise ValueError(msg)
 
@@ -396,7 +396,12 @@ def get_radial_mask(
 def filter_stack(
     stack: TomoStack,
     filter_name: Literal[
-        "ram-lak", "shepp-logan", "hanning", "hann", "cosine", "cos",
+        "ram-lak",
+        "shepp-logan",
+        "hanning",
+        "hann",
+        "cosine",
+        "cos",
     ] = "shepp-logan",
     cutoff: float = 0.5,
 ) -> TomoStack:
@@ -450,7 +455,7 @@ def filter_stack(
     else:
         msg = (
             f'Invalid filter type "{filter_name}". Must be one of '
-            f"{_fmt(_get_lit(filter_stack, "filter_name"))}."
+            f"{_fmt(_get_lit(filter_stack, 'filter_name'))}."
         )
         raise ValueError(msg)
 

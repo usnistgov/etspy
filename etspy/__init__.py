@@ -42,7 +42,7 @@ class AlignmentMethod(str, Enum):
     @classmethod
     def values(cls) -> List[str]:
         """Calculate a list of allowed values in the AlignmentMethod enum."""
-        return [v.value for k, v in cls.__members__.items()]
+        return [v.value for _, v in cls.__members__.items()]
 
 
 AlignmentMethodType = Union[
@@ -94,7 +94,8 @@ def _format_choices(choices: list | tuple) -> str:
     first_part = ", ".join(
         [f'"{i}"' if isinstance(i, str) else str(i) for i in choices[:-1]],
     )
-    last_part = ", or " + (
+    middle_part = ", " if len(choices[:-1]) > 1 else " "
+    last_part = "or " + (
         f'"{choices[-1]}"' if isinstance(choices[-1], str) else str(choices[-1])
     )
-    return f"[{first_part}{last_part}]"
+    return f"[{first_part}{middle_part}{last_part}]"

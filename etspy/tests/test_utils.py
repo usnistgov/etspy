@@ -1,5 +1,7 @@
 """Test utility functions of ETSpy."""
 
+import re
+
 import numpy as np
 import pytest
 
@@ -77,8 +79,10 @@ class TestWeightStack:
         bad_accuracy = "wrong"
         with pytest.raises(
             ValueError,
-            match=rf"Unknown accuracy level \('{bad_accuracy.lower()}'\).  "
-            "Must be 'low', 'medium', or 'high'.",
+            match=re.escape(
+                f'Invalid accuracy level "{bad_accuracy}". Must be one of '
+                '["low", "medium", or "high"]',
+            ),
         ):
             utils.weight_stack(
                 stack,
@@ -153,5 +157,15 @@ class TestWeightingFilter:
         stack = ds.get_needle_data(aligned=True)
         stack = stack.inav[0:3]
         bad_filter = "wrong"
-        with pytest.raises(ValueError, match=f"Invalid filter type: {bad_filter}"):
-            utils.filter_stack(stack, filter_name="wrong", cutoff=0.5)  # pyright: ignore[reportArgumentType]
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                f'Invalid filter type "{bad_filter}". Must be one of '
+                '["ram-lak", "shepp-logan", "hanning", "hann", "cosine", or "cos"]',
+            ),
+        ):
+            utils.filter_stack(
+                stack,
+                filter_name="wrong",  # pyright: ignore[reportArgumentType]
+                cutoff=0.5,
+            )

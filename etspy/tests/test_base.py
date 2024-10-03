@@ -236,8 +236,10 @@ class TestStackRegister:
         bad_method = "UNKNOWN"
         with pytest.raises(
             TypeError,
-            match=f"Unknown registration method: '{bad_method}'. "
-            r"Must be one of \['StackReg', 'PC', 'COM', 'COM\-CL'\]",
+            match=re.escape(
+                f'Invalid registration method "{bad_method}". '
+                'Must be one of ["StackReg", "PC", "COM", or "COM-CL"].',
+            ),
         ):
             stack.stack_register(bad_method)
 
@@ -360,8 +362,10 @@ class TestTiltAlign:
         bad_method = "UNKNOWN"
         with pytest.raises(
             ValueError,
-            match=f"Invalid alignment method: '{bad_method.lower()}'."
-            " Must be 'CoM' or 'MaxImage'",
+            match=re.escape(
+                f'Invalid alignment method "{bad_method}". '
+                'Must be one of ["CoM" or "MaxImage"]',
+            ),
         ):
             stack.tilt_align(bad_method)  # pyright: ignore[reportArgumentType]
 
@@ -389,12 +393,17 @@ class TestTransStack:
         bad_method = "UNKNOWN"
         with pytest.raises(
             ValueError,
-            match=f"Interpolation method '{bad_method}' unknown. "
-            "Must be 'nearest', 'linear', or 'cubic'",
+            match=re.escape(
+                f'Invalid interpolation method "{bad_method}". Must be one of '
+                '["linear", "cubic", "nearest", or "none"].',
+            ),
         ):
             stack.trans_stack(
-                1, 1, 1, bad_method
-            )  # pyright: ignore[reportArgumentType]
+                1,
+                1,
+                1,
+                bad_method,  # pyright: ignore[reportArgumentType]
+            )
 
 
 class TestReconstruct:

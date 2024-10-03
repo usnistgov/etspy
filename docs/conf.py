@@ -37,6 +37,7 @@ extensions = [
     "sphinx.ext.doctest",
 ]
 
+today_fmt = '%B %-d, %Y at %I:%M %p'
 master_doc = "index"
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]

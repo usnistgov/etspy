@@ -833,7 +833,8 @@ def tilt_com(
         provided, an appropriate list of slices will be automatically determined.
     nslices
         Nubmer of slices to use for the analysis (only used if the ``slices``
-        parameter is not specified)
+        parameter is not specified). If ``None``, a value of 10% of the x-axis
+        size will be used, clamped to the range [3, 50].
 
     Returns
     -------

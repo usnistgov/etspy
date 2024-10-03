@@ -1,9 +1,11 @@
 """Test the reconstruction module of ETSpy."""
 
+import re
 from typing import Tuple, cast
 
 import numpy as np
 import pytest
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 from etspy import datasets as ds
 from etspy import recon
@@ -15,7 +17,7 @@ class TestReconstruction:
 
     def test_recon_no_tilts(self):
         stack = ds.get_needle_data(aligned=True)
-        stack.metadata.Tomography.tilts = None
+        cast(Dtb, stack.metadata.Tomography).tilts = None
         slices = stack.isig[120:121, :].deepcopy()
         with pytest.raises(TypeError):
             slices.reconstruct("FBP")
@@ -36,7 +38,10 @@ class TestReconstruction:
         bad_method = "UNKNOWN"
         with pytest.raises(
             ValueError,
-            match=f"Unknown reconstruction algorithm: '{bad_method}'",
+            match=re.escape(
+                f'Invalid reconstruction algorithm "{bad_method}". Must be one of '
+                '["FBP", "SIRT", "SART", or "DART"]',
+            ),
         ):
             slices.reconstruct(bad_method)
 
@@ -171,7 +176,7 @@ class TestAstraError:
     def test_astra_sirt_error_cpu(self):
         stack = ds.get_needle_data(aligned=True)
         [ntilts, ny, nx] = stack.data.shape
-        angles = stack.metadata.Tomography.tilts
+        angles = cast(np.ndarray, cast(Dtb, stack.metadata.Tomography).tilts)
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_error(
             sino,
@@ -187,7 +192,7 @@ class TestAstraError:
     def test_astra_sart_error_cpu(self):
         stack = ds.get_needle_data(aligned=True)
         [ntilts, ny, nx] = stack.data.shape
-        angles = stack.metadata.Tomography.tilts
+        angles = cast(np.ndarray, cast(Dtb, stack.metadata.Tomography).tilts)
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_error(
             sino,

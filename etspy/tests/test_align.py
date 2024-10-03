@@ -1,7 +1,11 @@
 """Tests for the alignment features of ETSpy."""
 
+import re
+from typing import cast
+
 import numpy as np
 import pytest
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 import etspy.api as etspy
 from etspy import datasets as ds
@@ -51,7 +55,8 @@ class TestAlignStackRegister:
 
     def test_register_pc(self):
         stack = ds.get_needle_data()
-        stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
+        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        tomo_meta.shifts = tomo_meta.shifts[0:20]
         reg = stack.inav[0:20].stack_register("PC")
         assert isinstance(reg, etspy.TomoStack)
         assert (
@@ -64,8 +69,9 @@ class TestAlignStackRegister:
 
     def test_register_com(self):
         stack = ds.get_needle_data()
-        stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
-        stack.metadata.Tomography.tilts = stack.metadata.Tomography.tilts[0:20]
+        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        tomo_meta.shifts = tomo_meta.shifts[0:20]
+        tomo_meta.tilts = tomo_meta.tilts[0:20]
         reg = stack.inav[0:20].stack_register("COM")
         assert isinstance(reg, etspy.TomoStack)
         assert (
@@ -78,7 +84,8 @@ class TestAlignStackRegister:
 
     def test_register_stackreg(self):
         stack = ds.get_needle_data()
-        stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
+        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        tomo_meta.shifts = tomo_meta.shifts[0:20]
         reg = stack.inav[0:20].stack_register("StackReg")
         assert isinstance(reg, etspy.TomoStack)
         assert (
@@ -91,7 +98,8 @@ class TestAlignStackRegister:
 
     def test_register_com_cl(self):
         stack = ds.get_needle_data()
-        stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
+        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        tomo_meta.shifts = tomo_meta.shifts[0:20]
         reg = stack.inav[0:20].stack_register("COM-CL")
         assert isinstance(reg, etspy.TomoStack)
         assert (
@@ -104,12 +112,15 @@ class TestAlignStackRegister:
 
     def test_register_unknown_method(self):
         stack = ds.get_needle_data()
-        stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
+        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        tomo_meta.shifts = tomo_meta.shifts[0:20]
         bad_method = "WRONG"
         with pytest.raises(
             TypeError,
-            match=f"Unknown registration method: '{bad_method}'. "
-            r"Must be one of \['StackReg', 'PC', 'COM', 'COM\-CL'\]",
+            match=re.escape(
+                f'Invalid registration method "{bad_method}". '
+                'Must be one of ["StackReg", "PC", "COM", or "COM-CL"].',
+            ),
         ):
             stack.inav[0:20].stack_register(bad_method)
 
@@ -120,26 +131,26 @@ class TestTiltAlign:
     def test_tilt_align_com(self):
         stack = ds.get_needle_data()
         reg = stack.stack_register("PC")
-        ali = reg.tilt_align(method="CoM", locs=[64, 128, 192])
-        tilt_axis = ali.metadata.Tomography.tiltaxis
-        assert abs(-2.7 - tilt_axis) < 1.0
+        ali = reg.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
+        tilt_axis = cast(Dtb, ali.metadata.Tomography).tiltaxis
+        assert abs(-2.7 - cast(float, tilt_axis)) < 1.0
 
     def test_tilt_align_com_no_locs(self):
         stack = ds.get_needle_data()
         reg = stack.stack_register("PC")
-        ali = reg.tilt_align(method="CoM", locs=None, nslices=None)
-        tilt_axis = ali.metadata.Tomography.tiltaxis
-        assert abs(-2.7 - tilt_axis) < 1.0
+        ali = reg.tilt_align(method="CoM", slices=None, nslices=None)
+        tilt_axis = cast(Dtb, ali.metadata.Tomography).tiltaxis
+        assert abs(-2.7 - cast(float, tilt_axis)) < 1.0
 
     def test_tilt_align_com_no_tilts(self):
         stack = ds.get_needle_data()
         reg = stack.stack_register("PC")
-        reg.metadata.Tomography.tilts = None
+        cast(Dtb, reg.metadata.Tomography).tilts = None
         with pytest.raises(
             ValueError,
             match="Tilts are not defined in stack.metadata.Tomography",
         ):
-            reg.tilt_align(method="CoM", locs=[64, 128, 192])
+            reg.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
 
     def test_tilt_align_maximage(self):
         stack = ds.get_needle_data()
@@ -155,10 +166,12 @@ class TestTiltAlign:
         bad_method = "WRONG"
         with pytest.raises(
             ValueError,
-            match=f"Invalid alignment method: '{bad_method.lower()}'. "
-            "Must be 'CoM' or 'MaxImage'",
+            match=re.escape(
+                f'Invalid alignment method "{bad_method}". '
+                'Must be one of ["CoM" or "MaxImage"].',
+            ),
         ):
-            stack.tilt_align(method=bad_method)
+            stack.tilt_align(method=bad_method)  # pyright: ignore[reportArgumentType]
 
 
 class TestAlignOther:

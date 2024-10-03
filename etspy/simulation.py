@@ -5,6 +5,7 @@ from typing import Literal, Optional, Tuple, Union, cast
 import astra
 import hyperspy.api as hs
 import numpy as np
+from hyperspy._signals.signal2d import Signal2D
 from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from scipy import ndimage
 
@@ -206,11 +207,11 @@ def create_model_tilt_series(
     if cuda is None:
         cuda = astra.use_cuda()
 
-    if type(angles) is None:
+    if angles is None:
         angles = np.arange(0, 180, 2)
     angles = cast(np.ndarray, angles)
 
-    if type(model) is hs.signals.Signal2D:
+    if isinstance(model, Signal2D):
         model = model.data
 
     xdim, zdim, ydim = model.shape
@@ -353,7 +354,7 @@ def add_noise(
     else:
         msg = (
             f'Invalid noise type "{noise_type}". Must be one of '
-            f"{_fmt(_get_lit(add_noise, "noise_type"))}."
+            f"{_fmt(_get_lit(add_noise, 'noise_type'))}."
         )
         raise ValueError(msg)
 
