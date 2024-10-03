@@ -3,7 +3,7 @@
 __version__ = "0.8"
 
 from enum import Enum
-from typing import List, Literal, Union
+from typing import Callable, List, Literal, Union, get_args, get_type_hints
 
 
 class AlignmentMethod(str, Enum):
@@ -76,3 +76,25 @@ FbpMethodType = Literal[
 ]
 
 ReconMethodType = Literal["FBP", "SIRT", "SART", "DART"]
+
+
+def _get_literal_hint_values(function: Callable, param_name: str) -> tuple:
+    """Get values specified by a Literal type for a given function and parameter."""
+    return get_args(get_type_hints(function)[param_name])
+
+
+def _format_choices(choices: list | tuple) -> str:
+    """
+    Format a list of values as a string showing options.
+
+    For example, the tuple ("one", "two", "three") would be
+    formatted as '["one", "two", or "three"]'. This method is helpful
+    for printing context in error messages.
+    """
+    first_part = ", ".join(
+        [f'"{i}"' if isinstance(i, str) else str(i) for i in choices[:-1]],
+    )
+    last_part = ", or " + (
+        f'"{choices[-1]}"' if isinstance(choices[-1], str) else str(choices[-1])
+    )
+    return f"[{first_part}{last_part}]"

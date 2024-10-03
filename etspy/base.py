@@ -4,7 +4,7 @@ Primary module for ETSpy package.
 Contains the TomoStack class and its methods.
 """
 
-import logging
+import logging  # noqa: I001
 from abc import ABC
 from pathlib import Path
 from typing import Dict, Iterable, List, Literal, Optional, Self, Tuple, Union, cast
@@ -23,14 +23,10 @@ from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
 
-from etspy import (
-    AlignmentMethod,
-    AlignmentMethodType,
-    FbpMethodType,
-    ReconMethodType,
-    align,
-    recon,
-)
+from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMethodType
+from etspy import _format_choices as _fmt
+from etspy import _get_literal_hint_values as _get_lit
+from etspy import align, recon
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -163,7 +159,7 @@ class CommonStack(Signal2D, ABC):
         self,
         start: int,
         stop: int,
-        axis: str = "XY",
+        axis: Literal["XY", "YZ", "XZ"] = "XY",
         fps: int = 15,
         dpi: int = 100,
         outfile: str = "output.avi",
@@ -229,7 +225,10 @@ class CommonStack(Signal2D, ABC):
                 clim=clim,
             )
         else:
-            msg = "Unknown axis!"
+            msg = (
+                f'Invalid axis "{axis}". Must be one of'
+                f"{_fmt(_get_lit(self.save_movie, "axis"))}."
+            )
             raise ValueError(msg)
         fig.tight_layout()
 
@@ -301,7 +300,7 @@ class CommonStack(Signal2D, ABC):
         xshift: float = 0.0,
         yshift: float = 0.0,
         angle: float = 0.0,
-        interpolation: str = "linear",
+        interpolation: Literal["linear", "cubic", "nearest", "none"] = "linear",
     ) -> Self:
         """
         Create a copy of a Stack, transformed using the ``skimage`` Affine transform.
@@ -371,8 +370,8 @@ class CommonStack(Signal2D, ABC):
             interpolation_order = 3
         else:
             msg = (
-                f"Interpolation method '{interpolation}' unknown. "
-                "Must be 'nearest', 'linear', or 'cubic'"
+                f'Invalid interpolation method "{interpolation}". Must be one of '
+                f"{_fmt(_get_lit(self.trans_stack, "interpolation"))}."
             )
             raise ValueError(msg)
 
@@ -560,7 +559,7 @@ class TomoStack(CommonStack):
 
     def filter(
         self,
-        method: str = "median",
+        method: Literal["median", "bpf", "both", "sobel"] = "median",
         size: int = 5,
         taper: float = 0.1,
     ) -> "TomoStack":
@@ -628,8 +627,8 @@ class TomoStack(CommonStack):
             filtered.data = filtered.data * ham2d
         else:
             msg = (
-                f"Unknown filter method '{method}'. "
-                "Must be 'median', 'sobel', 'both', or 'bpf'"
+                f'Invalid filter method "{method}". Must be one of '
+                f"{_fmt(_get_lit(self.filter, "method"))}."
             )
             raise ValueError(msg)
         if taper:
@@ -745,8 +744,8 @@ class TomoStack(CommonStack):
             )
         else:
             msg = (
-                f"Unknown registration method: '{method}'. "
-                f"Must be one of {AlignmentMethod.values()}"
+                f'Invalid registration method "{method}". '
+                f"Must be one of {AlignmentMethod.values()}."
             )
             raise TypeError(msg)
 
@@ -850,7 +849,10 @@ class TomoStack(CommonStack):
                 shift_limit,
             )
         else:
-            msg = f"Invalid alignment method: '{method}'. Must be 'CoM' or 'MaxImage'"
+            msg = (
+                f'Invalid alignment method "{method}". Must be one of '
+                f'{_fmt(_get_lit(self.tilt_align, "method"))}.'
+            )
             raise ValueError(msg)
         return out
 
@@ -955,7 +957,10 @@ class TomoStack(CommonStack):
             "sart",
             "dart",
         ]:
-            msg = f"Unknown reconstruction algorithm: '{method}'"
+            msg = (
+                f'Invalid reconstruction algorithm "{method}". Must be one of '
+                f"{_fmt(_get_lit(self.reconstruct, "method"))}."
+            )
             raise ValueError(msg)
         if cuda is None:
             if astra.use_cuda():
@@ -972,6 +977,9 @@ class TomoStack(CommonStack):
             if not isinstance(gray_levels, (np.ndarray, list)):
                 msg = f"Unknown type ({type(gray_levels)}) for gray_levels"
                 raise ValueError(msg)
+            if dart_iterations is None:
+                logger.info("Using default number of DART iterations (5)")
+                dart_iterations = 5
         else:
             dart_iterations = None
             gray_levels = None
@@ -987,7 +995,7 @@ class TomoStack(CommonStack):
             ncores=ncores,
             bp_filter=sino_filter,
             gray_levels=gray_levels,
-            dart_iterations=dart_iterations,
+            dart_iterations=cast(int, dart_iterations),
             p=p,
             show_progressbar=show_progressbar,
         )

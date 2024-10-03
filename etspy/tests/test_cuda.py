@@ -6,6 +6,7 @@ import astra
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 import etspy.datasets as ds
 from etspy import recon
@@ -90,7 +91,7 @@ class TestAstraSIRTGPU:
     def test_astra_sirt_error_gpu(self):
         stack = ds.get_needle_data(aligned=True)
         [ntilts, ny, nx] = stack.data.shape
-        angles = stack.metadata.Tomography.tilts
+        angles = cast(np.ndarray, cast(Dtb, stack.metadata.Tomography).tilts)
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_error(
             sino,
@@ -159,7 +160,8 @@ class TestStackRegisterCUDA:
 
     def test_register_pc_cuda(self):
         stack = ds.get_needle_data(aligned=False)
-        stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
+        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        tomo_meta.shifts = tomo_meta.shifts[0:20]
         reg = stack.inav[0:20].stack_register("PC", cuda=True)
         assert isinstance(reg, TomoStack)
         assert (

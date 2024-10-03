@@ -107,9 +107,9 @@ class TestAlignStackRegister:
         stack.metadata.Tomography.shifts = stack.metadata.Tomography.shifts[0:20]
         bad_method = "WRONG"
         with pytest.raises(
-            ValueError,
-            match=f"Unknown registration method: '{bad_method.lower()}'. "
-            "Must be 'PC', 'StackReg', or 'COM'",
+            TypeError,
+            match=f"Unknown registration method: '{bad_method}'. "
+            r"Must be one of \['StackReg', 'PC', 'COM', 'COM\-CL'\]",
         ):
             stack.inav[0:20].stack_register(bad_method)
 

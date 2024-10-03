@@ -8,10 +8,11 @@ import numpy as np
 from hyperspy._signals.signal2d import (
     Signal2D,  # import from _signals for type-checking
 )
+from hyperspy.axes import UniformDataAxis as Uda
 from hyperspy.io import (
     load as hs_load,  # import load function directly for better type-checking
 )
-from hyperspy.misc.utils import DictionaryTreeBrowser
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from hyperspy.misc.utils import (
     stack as hs_stack,  # import stack function directly for better type-checking
 )
@@ -96,7 +97,7 @@ def create_stack(
             }
             stack.metadata.add_node("Tomography")
             # cast for type-checking:
-            tomo_meta_node = cast(DictionaryTreeBrowser, stack.metadata.Tomography)
+            tomo_meta_node = cast(Dtb, stack.metadata.Tomography)
             tomo_meta_node.add_dictionary(tomo_metadata)
         axes_list = [x for _, x in sorted(stack.axes_manager.as_dictionary().items())]
         metadata_dict = stack.metadata.as_dictionary()
@@ -124,12 +125,12 @@ def create_stack(
         }
         stack = TomoStack(stack)
         stack.metadata.add_node("Tomography")
-        stack.metadata.Tomography.add_dictionary(tomo_metadata)
+        cast(Dtb, stack.metadata.Tomography).add_dictionary(tomo_metadata)
     stack = cast(TomoStack, stack)  # type-checking cast
-    stack.axes_manager[0].name = "Tilt"
-    stack.axes_manager[0].units = "degrees"
-    stack.axes_manager[1].name = "x"
-    stack.axes_manager[2].name = "y"
+    cast(Uda, stack.axes_manager[0]).name = "Tilt"
+    cast(Uda, stack.axes_manager[0]).units = "degrees"
+    cast(Uda, stack.axes_manager[1]).name = "x"
+    cast(Uda, stack.axes_manager[2]).name = "y"
     if tilts is None:
         logger.info("Unable to find tilt angles. Calibrate axis 0.")
     return stack
@@ -150,7 +151,7 @@ def get_mrc_tilts(
 
     Returns
     -------
-    tilts: Optional[np_types.ArrayLike]
+    tilts: :py:class:`~numpy.ndarray` or None
         Tilt angles extracted from MRC file (or ``None`` if not present)
 
     Group
@@ -162,7 +163,7 @@ def get_mrc_tilts(
     tiltfile = filename.with_suffix(".rawtlt")
     tilts = None
     if stack.original_metadata.has_item("fei_header"):
-        fei_header = cast(DictionaryTreeBrowser, stack.original_metadata.fei_header)
+        fei_header = cast(Dtb, stack.original_metadata.fei_header)
         if fei_header.has_item("a_tilt"):
             tilts = fei_header["a_tilt"][0 : stack.data.shape[0]]
             logger.info("Tilts found in MRC file header")
@@ -195,7 +196,7 @@ def get_dm_tilts(s: Union[Signal2D, TomoStack]) -> np.ndarray:
 
     Returns
     -------
-    tilts: np.ndarray
+    tilts: :py:class:`~numpy.ndarray`
         Tilt angles extracted from the DM tags
 
     Group
@@ -235,7 +236,7 @@ def parse_mdoc(
     -------
     metadata : dict
         A dictionary containing the metadata read from the MDOC file
-    tilt : Union[np.ndarray, float]
+    tilt : :py:class:`~numpy.ndarray` or float
         If ``series`` is true, tilt will be a single float value, otherwise
         it will be an ndarray containing multiple tilt values.
 
@@ -345,9 +346,9 @@ def load_serialem_series(
 
     Returns
     -------
-    stack : TomoStack
+    stack : :py:class:`~etspy.base.TomoStack`
         Tilt series resulting by averaging frames at each tilt
-    tilts : np.ndarray
+    tilts : :py:class:`~numpy.ndarray`
         The tilt values for each image in the stack
 
     Group
