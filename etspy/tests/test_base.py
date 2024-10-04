@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from etspy import datasets as ds
-from etspy.base import CommonStack, RecStack, TomoStack
+from etspy.base import RecStack, TomoStack
 
 NUM_AXES_THREE = 3
 
@@ -118,7 +118,7 @@ class TestOperations:
     def test_stack_invert(self):
         im = np.zeros([10, 100, 100])
         im[:, 40:60, 40:60] = 10
-        stack = CommonStack(im)
+        stack = TomoStack(im)
         invert = stack.invert()
         hist, bins = np.histogram(stack.data)
         hist_inv, bins_inv = np.histogram(invert.data)

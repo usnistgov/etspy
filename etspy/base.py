@@ -40,7 +40,8 @@ class CommonStack(Signal2D, ABC):
 
        This class is intended to be subclassed (*e.g.* by
        :py:class:`~etspy.base.TomoStack` and :py:class:`~etspy.base.RecStack`) and
-       should not be instantiated directly.
+       should not be instantiated directly. Doing so will raise a
+       :py:exc:`NotImplementedError`.
 
     All arguments are passed to the :py:class:`~hyperspy.api.signals.Signal2D`
     constructor and should be used as documented for that method.
@@ -53,6 +54,26 @@ class CommonStack(Signal2D, ABC):
     -----
     3
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Create an ETSpy signal instance.
+
+        Raises
+        ------
+        NotImplementedError
+            :py:class:`~etspy.base.CommonStack` is not intended to be used directly.
+            One of its sub-classes (:py:class:`~etspy.base.TomoStack` or
+            :py:class:`~etspy.base.RecStack`) should be used instead.
+        """
+        if type(self) is CommonStack:
+            msg = (
+                "CommonStack should not be instantiated directly. Use one of its "
+                "sub-classes instead (TomoStack or RecStack)"
+            )
+            raise NotImplementedError(msg)
+
+        super().__init__(*args, **kwargs)
 
     def plot(self, navigator: str = "slider", *args, **kwargs):
         """
