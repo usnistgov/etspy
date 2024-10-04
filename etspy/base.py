@@ -45,18 +45,13 @@ class CommonStack(Signal2D, ABC):
     All arguments are passed to the :py:class:`~hyperspy.api.signals.Signal2D`
     constructor and should be used as documented for that method.
 
-    Parameters
-    ----------
-    *args
-        Additional non-keyword arguments passed to
-        :py:class:`~hyperspy.api.signals.Signal2D`
-    **kwargs
-        Additional keyword arguments passed to
-        :py:class:`~hyperspy.api.signals.Signal2D`
-
     Group
     -----
     signals
+
+    Order
+    -----
+    3
     """
 
     def plot(self, navigator: str = "slider", *args, **kwargs):
@@ -268,7 +263,7 @@ class CommonStack(Signal2D, ABC):
 
         Parameters
         ----------
-        filname
+        filename
             Name of file to receive data. If not specified, the metadata will
             be used. Data dimensions and data type will be appended.
         """
@@ -396,19 +391,29 @@ class TomoStack(CommonStack):
     All arguments are passed to the :py:class:`~hyperspy.api.signals.Signal2D`
     constructor and should be used as documented for that method.
 
-    Parameters
-    ----------
-    *args
-        Additional non-keyword arguments passed to
-        :py:class:`~hyperspy.api.signals.Signal2D`
-    **kwargs
-        Additional keyword arguments passed to
-        :py:class:`~hyperspy.api.signals.Signal2D`
-
     Group
     -----
     signals
+
+    Order
+    -----
+    1
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Create a TomoStack signal.
+
+        Parameters
+        ----------
+        args
+            Additional non-keyword arguments passed to
+            :py:class:`~hyperspy.api.signals.Signal2D`
+        kwargs
+            Additional keyword arguments passed to
+            :py:class:`~hyperspy.api.signals.Signal2D`
+        """
+        super().__init__(*args, **kwargs)
 
     def plot_sinos(self, *args: Tuple, **kwargs: Dict):
         """
@@ -416,10 +421,10 @@ class TomoStack(CommonStack):
 
         Parameters
         ----------
-        *args
+        args
             Additional non-keyword arguments passed to
             :py:meth:`~hyperspy.api.signals.Signal2D.plot`
-        **kwargs
+        kwargs
             Additional keyword arguments passed to
             :py:meth:`~hyperspy.api.signals.Signal2D.plot`
         """
@@ -1337,44 +1342,55 @@ class RecStack(CommonStack):
     All arguments are passed to the :py:class:`~hyperspy.api.signals.Signal2D`
     constructor and should be used as documented for that method.
 
-    Parameters
-    ----------
-    *args
-        Additional non-keyword arguments passed to
-        :py:class:`~hyperspy.api.signals.Signal2D`
-    **kwargs
-        Additional keyword arguments passed to
-        :py:class:`~hyperspy.api.signals.Signal2D`
-
     Group
     -----
     signals
+
+    Order
+    -----
+    2
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Create a RecStack signal.
+
+        Parameters
+        ----------
+        args
+            Additional non-keyword arguments passed to
+            :py:class:`~hyperspy.api.signals.Signal2D`
+        kwargs
+            Additional keyword arguments passed to
+            :py:class:`~hyperspy.api.signals.Signal2D`
+        """
+        super().__init__(*args, **kwargs)
 
     def plot_slices(
         self,
-        xslice=None,
-        yslice=None,
-        zslice=None,
-        vmin_std=0.1,
-        vmax_std=5,
+        xslice: Optional[int] = None,
+        yslice: Optional[int] = None,
+        zslice: Optional[int] = None,
+        vmin_std: float = 0.1,
+        vmax_std: float = 5,
     ):
         """
         Plot slices along all three axes of a reconstruction stack.
 
         Parameters
         ----------
-        yslice, zslice, xslice : int
-            Indices of slices to plot
+        xslice, yslice, zslice
+            Indices of slices to plot. If ``None`` (default), the middle
+            most slice will be used.
 
-        vmin_std, vmax_std : float
+        vmin_std, vmax_std
             Number of standard deviations from mean to use for
             scaling the displayed slices
 
         Returns
         -------
-        fig : Matplotlib Figure
-
+        fig : ~matplotlib.figure.Figure
+            The figure containing a view of the three slices
         """
         if xslice is None:
             xslice = np.uint16(self.data.shape[0] / 2)

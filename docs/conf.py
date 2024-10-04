@@ -30,6 +30,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
     "sphinx_immaterial",
     "sphinx_immaterial.apidoc.python.apigen",
     "myst_parser",
@@ -37,6 +38,24 @@ extensions = [
     "sphinx.ext.doctest",
 ]
 
+myst_enable_extensions = [
+    "amsmath",
+    "attrs_inline",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "fieldlist",
+    "html_admonition",
+    "html_image",
+    # "linkify",
+    "replacements",
+    "smartquotes",
+    "strikethrough",
+    "substitution",
+    "tasklist",
+]
+
+nitpicky = True
 today_fmt = '%B %-d, %Y at %I:%M %p'
 master_doc = "index"
 templates_path = ["_templates"]
@@ -51,16 +70,6 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable", None),
     "astra": ("https://astra-toolbox.com", None)
 }
-
-# Define a custom inline Python syntax highlighting literal
-rst_prolog = """
-.. role:: python(code)
-   :language: python
-   :class: highlight
-"""
-
-# Sets the default role of `content` to :python:`content`, which uses the custom Python syntax highlighting inline literal
-# default_role = "python"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -99,6 +108,7 @@ html_theme_options = {
         "toc.follow",
         "toc.sticky",
         "content.tabs.link",
+        "content.code.annotate",
         "announce.dismiss",
     ],
     "palette": [
@@ -181,6 +191,13 @@ python_apigen_modules = {
     "etspy.utils": "api/etspy.utils.",
 }
 python_apigen_show_base_classes = True
+
+# hide long base module names from display
+# (see https://sphinx-immaterial.readthedocs.io/en/latest/apidoc/python/index.html#python-domain-customization)
+python_module_names_to_strip_from_xrefs = [
+    "hyperspy._signals.signal2d",
+    "etspy.base"
+]
 
 # set up "automatic" groupings for members
 python_apigen_default_groups = [
@@ -273,12 +290,16 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
     pass
 
 def autodoc_process_bases(app, name, obj, options, bases):
-    print(f"BASES: {app}, {name}, {obj}, {options}, {bases}")
-    pass
+    # remove abc.ABC from displayed base class for CommonStack
+    from abc import ABC
+    if name == "etspy.base.CommonStack":
+        for cls in bases[:]:
+            if cls == ABC: 
+                bases.remove(cls)
 
 def setup(app):
     app.connect("autodoc-skip-member", autodoc_skip_member)
-    # app.connect("autodoc-process-bases", autodoc_process_bases)
+    app.connect("autodoc-process-bases", autodoc_process_bases)
     # app.connect("autodoc-process-docstring", autodoc_process_docstring)
     # app.connect("autodoc-process-signature", autodoc_process_signature)
 

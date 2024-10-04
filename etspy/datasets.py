@@ -51,11 +51,11 @@ def get_catalyst_data(
     tiltshift
         Number of pixels by which to shift entire tilt series. Simulates
         offset tilt axis.
-    rotate
+    tiltrotate
         Angle by which to rotate entire tilt series. Simulates non-vertical
         tilt axis.
-    xonly
-        If ``True``, shifts are only applied along the X-axis
+    yonly
+        If ``True``, shifts are only applied along the Y-axis
     noise
         If ``True``, add Gaussian noise to the stack
     noise_factor

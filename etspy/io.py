@@ -287,10 +287,10 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
 
     Parameters
     ----------
-    mrc_files
+    mrcfile
         Path to MRC file containing tilt series data.
 
-    mdoc_files
+    mdocfile
         Path to SerialEM metadata file for tilt series data.
 
     Returns
@@ -338,10 +338,10 @@ def load_serialem_series(
 
     Parameters
     ----------
-    mrc_files
+    mrcfiles
         List of MRC file paths containing multi-frame tilt series data.
 
-    mdoc_files
+    mdocfiles
         List of SerialEM metadata file paths for multi-frame tilt series data.
 
     Returns

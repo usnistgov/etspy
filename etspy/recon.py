@@ -246,7 +246,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
 
     Returns
     -------
-    rec : np.ndarray
+    rec : :py:class:`~numpy.ndarray`
         Containing the reconstructed volume
 
     Group

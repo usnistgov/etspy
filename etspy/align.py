@@ -4,7 +4,7 @@
 
 import copy
 import logging
-from typing import Optional, Tuple, cast
+from typing import TYPE_CHECKING, Optional, Tuple, cast
 
 import astra
 import matplotlib.pylab as plt
@@ -19,7 +19,9 @@ from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 
 from etspy import AlignmentMethod, AlignmentMethodType
-from etspy.base import TomoStack
+
+if TYPE_CHECKING:
+    from etspy.base import TomoStack
 
 has_cupy = True
 try:
@@ -33,7 +35,7 @@ logger.setLevel(logging.INFO)
 CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 
 
-def get_best_slices(stack: TomoStack, nslices: int) -> np.ndarray:
+def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
     """
     Get best nslices for center of mass analysis.
 
@@ -64,7 +66,7 @@ def get_best_slices(stack: TomoStack, nslices: int) -> np.ndarray:
     return best_slice_locations
 
 
-def get_coms(stack: TomoStack, slices: np.ndarray) -> np.ndarray:
+def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     """
     Calculate the center of mass for indicated slices.
 
@@ -92,7 +94,7 @@ def get_coms(stack: TomoStack, slices: np.ndarray) -> np.ndarray:
     return coms
 
 
-def apply_shifts(stack: TomoStack, shifts: np.ndarray) -> TomoStack:
+def apply_shifts(stack: "TomoStack", shifts: np.ndarray) -> "TomoStack":
     """
 
     Apply a series of shifts to a TomoStack.
@@ -159,7 +161,7 @@ def pad_line(line: np.ndarray, paddedsize: int) -> np.ndarray:
 
 
 def calc_shifts_cl(
-    stack: TomoStack,
+    stack: "TomoStack",
     cl_ref_index: Optional[int],
     cl_resolution: float,
     cl_div_factor: int,
@@ -253,7 +255,7 @@ def calc_shifts_cl(
 
 
 def calculate_shifts_conservation_of_mass(
-    stack: TomoStack,
+    stack: "TomoStack",
     xrange: Optional[Tuple[int, int]] = None,
     p: int = 20,
 ) -> np.ndarray:
@@ -310,7 +312,7 @@ def calculate_shifts_conservation_of_mass(
     return xshifts[:, 0]
 
 
-def calculate_shifts_com(stack: TomoStack, nslices: int) -> np.ndarray:
+def calculate_shifts_com(stack: "TomoStack", nslices: int) -> np.ndarray:
     """
     Align stack using a center of mass method.
 
@@ -461,7 +463,7 @@ def _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor):
 
 
 def calculate_shifts_pc(
-    stack: TomoStack,
+    stack: "TomoStack",
     start: int,
     show_progressbar: bool = False,
     upsample_factor: int = 3,
@@ -524,7 +526,7 @@ def calculate_shifts_pc(
 
 
 def calculate_shifts_stackreg(
-    stack: TomoStack,
+    stack: "TomoStack",
     start: int,
     show_progressbar: bool,
 ) -> np.ndarray:
@@ -578,7 +580,7 @@ def calculate_shifts_stackreg(
 
 
 def calc_shifts_com_cl(
-    stack: TomoStack,
+    stack: "TomoStack",
     com_ref_index: int,
     cl_ref_index: Optional[int] = None,
     cl_resolution: float = 0.05,
@@ -645,7 +647,7 @@ def calc_shifts_com_cl(
 
 
 def align_stack(  # noqa: PLR0913
-    stack: TomoStack,
+    stack: "TomoStack",
     method: AlignmentMethodType,
     start: Optional[int],
     show_progressbar: bool,
@@ -658,7 +660,7 @@ def align_stack(  # noqa: PLR0913
     cl_ref_index: Optional[int] = None,
     cl_resolution: float = 0.05,
     cl_div_factor: int = 8,
-) -> TomoStack:
+) -> "TomoStack":
     """
     Compute the shifts for spatial registration.
 
@@ -815,10 +817,10 @@ def align_stack(  # noqa: PLR0913
 
 
 def tilt_com(
-    stack: TomoStack,
+    stack: "TomoStack",
     slices: Optional[np.ndarray] = None,
     nslices: Optional[int] = None,
-) -> TomoStack:
+) -> "TomoStack":
     """
     Perform tilt axis alignment using center of mass (CoM) tracking.
 
@@ -915,13 +917,13 @@ def tilt_com(
 
 
 def tilt_maximage(
-    stack: TomoStack,
+    stack: "TomoStack",
     limit: float = 10,
     delta: float = 0.1,
     plot_results: bool = False,
     also_shift: bool = False,
     shift_limit: float = 20,
-) -> TomoStack:
+) -> "TomoStack":
     """
     Perform automated determination of the tilt axis of a TomoStack.
 
@@ -999,7 +1001,7 @@ def tilt_maximage(
     return ali
 
 
-def align_to_other(stack: TomoStack, other: TomoStack) -> TomoStack:
+def align_to_other(stack: "TomoStack", other: "TomoStack") -> "TomoStack":
     """
     Spatially register a TomoStack using previously calculated shifts.
 
@@ -1049,7 +1051,7 @@ def align_to_other(stack: TomoStack, other: TomoStack) -> TomoStack:
     return out
 
 
-def shift_crop(stack: TomoStack) -> TomoStack:
+def shift_crop(stack: "TomoStack") -> "TomoStack":
     """
     Crop shifted stack to common area.
 
