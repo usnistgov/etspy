@@ -1,7 +1,5 @@
 # ETSpy
 
-<!-- index.rst content start -->
-
 > ⚠️ ETSpy is still in a pre-release status, and the API may change with little warning, and
 > the documentation may not be 100% correct/complete!
 
@@ -9,7 +7,6 @@ ETSpy is a [HyperSpy](https://hyperspy.org) extension package package for the pr
 of electron tomography data from TEM/STEM instruments. Tools are provided for basic 
 tilt series data processing, stack alignment, and reconstruction using the
 [ASTRA Toolbox](https://astra-toolbox.com/).
-
 
 ## Installation
 
@@ -68,8 +65,9 @@ of whatever packages are required.
 
   *Works on Linux, with additional prerequisites*
 
-  Assuming you have the prequisite packages on your system (including CUDA libraries), ETSpy
-  should be able to be installed with a simple `pip` command (it is recommended to install
+  Assuming you have the prequisite packages on your system (including
+  the [CUDA libraries](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)),
+  ETSpy should be able to be installed with a simple `pip` command (it is recommended to install
   ETSpy in a dedicated virtual environment):
 
   * ```shell
@@ -91,11 +89,9 @@ of whatever packages are required.
     (etspy) $ python -m ipykernel install --user --name ETSpy
     ```
 
-  Some dependencies of ETSpy require compilation of C code or have limited binary distribution,
-  meaning using the Anaconda approach above will simplify things greatly if you have trouble with
-  "pure" `pip`.
+  Some dependencies of ETSpy require compilation of C code, meaning using the Anaconda approach
+  above will simplify things greatly if you have trouble with "pure" `pip`.
 
-  
 ### Removal
 
 The package can be removed with:
@@ -103,7 +99,6 @@ The package can be removed with:
 ```shell
 $ pip uninstall etspy
 ```
-
 
 ## Basic Usage
 
@@ -115,16 +110,9 @@ import etspy.api as etspy
 stack = etspy.load('TiltSeries.mrc')
 ```
 
-For more details, see the [documentation](https://pages.nist.gov/etspy).
-
-
-## Documentation
-
-Release: [https://github.com/usnistgov/etspy](https://github.com/usnistgov/etspy)
-
-A demo notebook is available in the resources folder.  More documentation
-will be made available over time.
-
+For more details, see the dedicated [documentation](https://pages.nist.gov/etspy), including
+the [example Jupyter notebook](https://pages.nist.gov/etspy/examples) and the more detailed
+[API Reference](https://pages.nist.gov/etspy/api).
 
 ## Related projects
 

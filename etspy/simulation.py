@@ -49,6 +49,10 @@ def create_catalyst_model(
     Group
     -----
     simulation
+
+    Order
+    -----
+    1
     """
     volsize_np = np.array(volsize)
     center = np.array(volsize_np / 2, dtype=np.int32)
@@ -128,6 +132,10 @@ def create_cylinder_model(
     Group
     -----
     simulation
+
+    Order
+    -----
+    2
     """
     vol_shape = np.array([400, 400, 400]) if add_others else np.array([200, 200, 200])
 
@@ -203,6 +211,10 @@ def create_model_tilt_series(
     Group
     -----
     simulation
+
+    Order
+    -----
+    3
     """
     if cuda is None:
         cuda = astra.use_cuda()
@@ -263,17 +275,20 @@ def misalign_stack(
         Default is False
     interp_order
         The order of spline interpolation used by the :py:func:`scipy.ndimage.shift`
-        or :py:function:`scipy.ndimage.rotate` function.
-        The order must be in the range 0-5.
+        or :py:func:`scipy.ndimage.rotate` function. The order must be in the range 0-5.
 
     Returns
     -------
-    misaligned
+    misaligned : TomoStack
         Misaligned copy of the input TomoStack
 
     Group
     -----
     simulation
+
+    Order
+    -----
+    5
     """
     misaligned = stack.deepcopy()
 
@@ -321,7 +336,7 @@ def add_noise(
         TomoStack simluation
     noise_type
         Type of noise. Must be ``"gaussian"`` or ``"poissonian"``/``"shot"``
-    factor
+    scale_factor
         Amount of noise to add
 
     Returns
@@ -332,6 +347,10 @@ def add_noise(
     Group
     -----
     simulation
+
+    Order
+    -----
+    4
     """
     noisy = stack.deepcopy()
 
