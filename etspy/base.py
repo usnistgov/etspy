@@ -4,12 +4,18 @@ Primary module for ETSpy package.
 Contains the TomoStack class and its methods.
 """
 
-import logging  # noqa: I001
+import logging
 from abc import ABC
 from pathlib import Path
-from typing import Dict, Iterable, List, Literal, Optional, Self, Tuple, Union, cast
+from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union, cast
 
-import astra
+try:
+    from typing import Self
+except ImportError:
+    # required to support Pyton 3.10 since Self was added in 3.11
+    from typing_extensions import Self
+
+import astra  # noqa: I001
 import matplotlib as mpl
 import numpy as np
 import pylab as plt

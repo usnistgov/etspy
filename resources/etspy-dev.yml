@@ -18,3 +18,4 @@ dependencies:
   - numpydoc
   - myst-parser
   - sphinx-immaterial
+  - typing_extensions

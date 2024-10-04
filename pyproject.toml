@@ -24,6 +24,7 @@ hyperspy-gui-ipywidgets = "^2.0.2"
 ipykernel = "^6.29.5"
 numba = "^0.60.0"
 numpy = "^1.22.4"
+typing-extensions = "^4.12.2"
 
 [tool.poetry.group.dev.dependencies]
 pydocstyle = "^6.3.0"
