@@ -991,8 +991,10 @@ class TomoStack(CommonStack):
             dart_iterations = None
             gray_levels = None
 
+        stack_tilts = cast(np.ndarray, cast(Dtb, self.metadata.Tomography).tilts)
         rec = recon.run(
-            stack=self,
+            stack=self.data,
+            tilts=stack_tilts,
             method=method,
             niterations=iterations,
             constrain=constrain,
@@ -1393,11 +1395,11 @@ class RecStack(CommonStack):
             The figure containing a view of the three slices
         """
         if xslice is None:
-            xslice = np.uint16(self.data.shape[0] / 2)
+            xslice = self.data.shape[0] // 2
         if yslice is None:
-            yslice = np.uint16(self.data.shape[1] / 2)
+            yslice = self.data.shape[1] // 2
         if zslice is None:
-            zslice = np.uint16(self.data.shape[2] / 2)
+            zslice = self.data.shape[2] // 2
 
         if "ipympl" in mpl.get_backend().lower():
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))

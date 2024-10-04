@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 import logging
 import multiprocessing as mp
-from typing import TYPE_CHECKING, Literal, Optional, Union, cast
+from typing import Literal, Optional, Union, cast
 
 import astra
 import numpy as np
@@ -14,11 +14,7 @@ import tqdm
 from dask.base import compute as dask_compute
 from dask.delayed import delayed as dask_delayed
 from dask.diagnostics.progress import ProgressBar
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from scipy.ndimage import convolve, gaussian_filter
-
-if TYPE_CHECKING:
-    from etspy.base import TomoStack
 
 ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
@@ -170,7 +166,8 @@ def run_dart(
 
 
 def run(  # noqa: PLR0912, PLR0913, PLR0915
-    stack: TomoStack,
+    stack: np.ndarray,
+    tilts: np.ndarray,
     method: Literal["FBP", "SIRT", "SART", "DART"],
     niterations: int = 20,
     constrain: bool = False,
@@ -213,7 +210,11 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     Parameters
     ----------
     stack
-       TomoStack containing the input tilt series
+       NumPy array containing the input tilt series for a
+       :py:class:`~etspy.base.TomoStack`
+    tilts
+        The tilt angles for the tilt series (usually found in the
+        ``TomoStack.metadata.Tomography.tilts`` metadata node)
     method
         Reconstruction algorithm to use.  Must be either 'FBP' (default), 'SIRT',
         'SART', or 'DART
@@ -253,15 +254,14 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     -----
     recon
     """
-    if len(stack.data.shape) == 2:  # noqa: PLR2004
-        nangles, ny = stack.data.shape
-        stack.data = stack.data[:, :, np.newaxis]
+    if len(stack.shape) == 2:  # noqa: PLR2004
+        nangles, ny = stack.shape
+        stack = stack[:, :, np.newaxis]
         nx = 1
     else:
-        nangles, ny, nx = stack.data.shape
+        nangles, ny, nx = stack.shape
 
-    tomo_meta = cast(Dtb, stack.metadata.Tomography)
-    thetas = np.pi * cast(np.ndarray, tomo_meta.tilts) / 180.0
+    thetas = np.pi * tilts / 180.0
     mask_id = None
     thresholds = []
 
@@ -330,12 +330,12 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         alg = astra.algorithm.create(cfg)
 
         for i in tqdm.tqdm(range(nx), disable=not (show_progressbar)):
-            astra.data2d.store(sino_id, stack.data[:, :, i])
+            astra.data2d.store(sino_id, stack[:, :, i])
             astra.data2d.store(rec_id, np.zeros([thickness, ny]))
             if method.lower() == "dart":
                 astra.data2d.store(mask_id, np.ones([thickness, ny]))
                 rec[i, :, :] = run_dart(
-                    stack.data[:, :, i],
+                    stack[:, :, i],
                     niterations,
                     dart_iterations,
                     p,
@@ -387,7 +387,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         if method.lower() in ["fbp", "sirt", "sart"]:
             tasks = [
                 dask_delayed(run_alg)(
-                    stack.data[:, :, i],
+                    stack[:, :, i],
                     niterations,
                     cfg,
                     vol_geom,
@@ -406,7 +406,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         elif method.lower() == "dart":
             tasks = [
                 dask_delayed(run_dart)(
-                    stack.data[:, :, i],
+                    stack[:, :, i],
                     niterations,
                     dart_iterations,
                     p,

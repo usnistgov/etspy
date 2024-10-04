@@ -25,7 +25,9 @@ class TestReconstruction:
     def test_recon_single_slice(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120, :]
-        rec = recon.run(slices, "FBP", cuda=False)
+        tomo_meta = cast(Dtb, slices.metadata.Tomography)
+        tilts = cast(np.ndarray, tomo_meta.tilts)
+        rec = recon.run(slices.data, tilts, "FBP", cuda=False)
         assert isinstance(stack, TomoStack)
         assert isinstance(rec, np.ndarray)
         data_shape = rec.data.shape
@@ -128,7 +130,9 @@ class TestReconRun:
     def test_run_fbp_no_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        rec = recon.run(slices, "FBP", cuda=False)
+        tomo_meta = cast(Dtb, slices.metadata.Tomography)
+        tilts = cast(np.ndarray, tomo_meta.tilts)
+        rec = recon.run(slices.data, tilts, "FBP", cuda=False)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
@@ -137,7 +141,9 @@ class TestReconRun:
     def test_run_sirt_no_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        rec = recon.run(slices, "SIRT", niterations=2, cuda=False)
+        tomo_meta = cast(Dtb, slices.metadata.Tomography)
+        tilts = cast(np.ndarray, tomo_meta.tilts)
+        rec = recon.run(slices.data, tilts, "SIRT", niterations=2, cuda=False)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
@@ -146,7 +152,9 @@ class TestReconRun:
     def test_run_sart_no_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        rec = recon.run(slices, "SART", niterations=2, cuda=False)
+        tomo_meta = cast(Dtb, slices.metadata.Tomography)
+        tilts = cast(np.ndarray, tomo_meta.tilts)
+        rec = recon.run(slices.data, tilts, "SART", niterations=2, cuda=False)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
@@ -156,8 +164,11 @@ class TestReconRun:
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
         gray_levels = [0.0, slices.data.max() / 2, slices.data.max()]
+        tomo_meta = cast(Dtb, slices.metadata.Tomography)
+        tilts = cast(np.ndarray, tomo_meta.tilts)
         rec = recon.run(
-            slices,
+            slices.data,
+            tilts,
             "DART",
             niterations=2,
             cuda=False,
