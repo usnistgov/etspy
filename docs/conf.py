@@ -33,9 +33,9 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_immaterial",
     "sphinx_immaterial.apidoc.python.apigen",
-    "myst_parser",
     "sphinx.ext.duration",
     "sphinx.ext.doctest",
+    "myst_nb"
 ]
 
 myst_enable_extensions = [
@@ -60,7 +60,7 @@ today_fmt = '%B %-d, %Y at %I:%M %p'
 master_doc = "index"
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
-source_suffix = [".rst", ".md"]
+source_suffix = [".rst", ".md", '.ipynb']
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "hyperspy": ("https://hyperspy.org/hyperspy-doc/current", None),
@@ -315,3 +315,6 @@ linkcheck_exclude_documents = []
 
 # Specify a standard user agent, as Sphinx default is blocked on some sites
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54"
+
+# prevent documentation from executing notebook:
+nb_execution_excludepatterns = ['etspy_demo.ipynb']

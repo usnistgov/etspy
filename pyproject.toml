@@ -35,6 +35,7 @@ sphinx = "^8.0.2"
 numpydoc = "^1.8.0"
 myst-parser = "^4.0.0"
 sphinx-immaterial = "^0.12.2"
+myst-nb = "^1.1.2"
 
 [tool.poetry.group.jupyter.dependencies]
 ipympl = "^0.9.4"

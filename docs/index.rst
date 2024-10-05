@@ -3,7 +3,12 @@
   :titlesonly:
 
   Home <self>
-  Example Usage <examples>
+
+.. toctree::
+     :hidden:
+     :maxdepth: 1
+
+     Example Usage <examples/etspy_demo.ipynb>
 
 .. toctree::
    :hidden:

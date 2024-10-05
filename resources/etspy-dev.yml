@@ -19,3 +19,4 @@ dependencies:
   - myst-parser
   - sphinx-immaterial
   - typing_extensions
+  - myst_nb

@@ -35,7 +35,7 @@ detailed control over how the resulting signal is created.
 
 :::{tip}
 For more examples, please consult the example notebook on the 
-[Example Usage](../examples) page.
+[Example Usage](examples/etspy_demo) page.
 :::
 
 (signals)=
