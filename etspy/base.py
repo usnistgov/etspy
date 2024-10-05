@@ -686,6 +686,7 @@ class TomoStack(CommonStack):
         cl_ref_index: Optional[int] = None,
         cl_resolution: float = 0.05,
         cl_div_factor: int = 8,
+        cuda: bool = False,
     ) -> "TomoStack":
         """
         Register stack spatially.
@@ -732,6 +733,8 @@ class TomoStack(CommonStack):
             Factor which determines the number of iterations of common line
             alignment to perform.  Default is 8. See
             :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms.
 
         Returns
         -------
@@ -772,6 +775,7 @@ class TomoStack(CommonStack):
                 cl_ref_index=cl_ref_index,
                 cl_resolution=cl_resolution,
                 cl_div_factor=cl_div_factor,
+                cuda=cuda,
             )
         else:
             msg = (

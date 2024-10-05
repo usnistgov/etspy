@@ -20,6 +20,9 @@ runs:
         auto-update-conda: true
         python-version: ${{ inputs.python-version }}
         auto-activate-base: false
+    - name: Conda list
+      run: conda list
+      shell: bash -el {0}
     - name: Install etspy development
       run: which pip && pip install -e ./
       shell: bash -el {0}
