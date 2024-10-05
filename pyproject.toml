@@ -17,13 +17,13 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pystackreg = "^0.2.7"
+pystackreg = "^0.2.8"
 astra-toolbox = "^2.2.0"
 hyperspy = "^2.1.1"
 hyperspy-gui-ipywidgets = "^2.0.2"
 ipykernel = "^6.29.5"
 numba = "^0.60.0"
-numpy = "^1.22.4"
+numpy = "^2.0.0"
 typing-extensions = "^4.12.2"
 
 [tool.poetry.group.dev.dependencies]
