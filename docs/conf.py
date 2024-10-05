@@ -308,7 +308,9 @@ def setup(app):
 
 linkcheck_ignore = [
     "https://doi.org/10.1103/PhysRevB.72.052103",  # 403 Client Error: Forbidden for url: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.72.052103
-    "https://pages.nist.gov/etspy" # temporarily not published
+    "https://pages.nist.gov/etspy", # temporarily not published
+    "https://pypi.org/project/etspy", # temporarily not published
+    "https://github.com/usnistgov/etspy/tree/master/docs/examples/etspy_demo.ipynb" # temporarily not published
 ]
 
 linkcheck_exclude_documents = []
