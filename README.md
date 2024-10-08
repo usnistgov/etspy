@@ -163,6 +163,90 @@ For more details, see the dedicated [documentation](https://pages.nist.gov/etspy
 the [example Jupyter notebook](https://pages.nist.gov/etspy/examples) and the more detailed
 [API Reference](https://pages.nist.gov/etspy/api).
 
+## Development tips (testing and coverage)
+
+ETSpy strives to have high code coverage through the use of tests in the `etspy/tests/` directory.
+When developing, you can run the tests from the main directory with the following command, which
+will output the coverage results to the terminal, as well as to a `etspy/tests/coverage.xml` file that can
+be interpreted by various editors to display the coverage stats interactively, and as html in the
+`etspy/tests/htmlcov` directory that can be viewed in a web browser:
+
+```shell
+$ poetry run pytest etspy/tests/
+```
+
+By default, this will exclude CUDA-related code from the coverage
+report (via the `[tool.coverage.report]` setting in `pyproject.toml`),
+since most CI/CD systems will not have CUDA enabled. If you would
+like to run the tests with coverage (including CUDA), you can use
+the `run_tests.sh` helper script (on Linux), which will detect whether
+or not CUDA is available, and choose whether or not to exclude those
+lines from the report depending:
+
+```shell
+$ poetry run ./run_tests.sh
+```
+
+### Matplotlib figure tests
+
+ETSpy uses the [`pytest-mpl`](https://pytest-mpl.readthedocs.io/) pytest
+plugin to compare the outputs of certain tests to a "baseline" reference
+to see if the output of the figure has changed since what was expected.
+This is configured under the `[tool.pytest.ini_options]` of the
+`pyproject.toml` file, so these tests should run automatically when
+using the above commands, but you will have to run a separate command
+the first time you write a test that checks a figure's output
+(or if a method has changed such that a new baseline image is required).
+First, follow the plugin's
+[docs](https://pytest-mpl.readthedocs.io/en/latest/usage.html) for
+writing tests (use the `mpl_image_compare` marker and make sure the
+test returns a Matplotlib `Figure`). Then, the first time you run
+the test, you will need to generate the baseline images that will
+be used to compare against on subsequent runs. To do so, run `pytest`
+with the `--mpl-generate-path=etspy/tests/test_data/pytest_mpl_figures`
+option (the `-m "mpl_image_compare"` flag limits pytest to only
+run the tests that involve figures, and the `--no-cov` flag
+disables coverage for this run, since it's not relevant):
+
+```shell
+$ poetry run pytest -m "mpl_image_compare" --mpl-generate-path=etspy/tests/test_data/pytest_mpl_figures --no-cov
+```
+
+This will run through the test suite, saving any figures that are
+required for the `pytest-mpl` tests. Make sure to commit these images
+to the repository, as they become part of the test suite and will
+be referenced the next time you use `./run_tests.sh`.
+
+### Debugging when using coverage
+
+ETSpy has the test suite configured to automatically run code coverage
+analysis when using `pytest`. This interferes when using interactive
+debuggers (such as PyCharm or VSCode), since they use the same mechanism
+under the hood to inspect what code is being run. This will manifest as
+your breakpoints never triggering when running a "Debug" configuration.
+For more information, see the following links:
+[one](https://github.com/microsoft/vscode-python/issues/693),
+[two](https://stackoverflow.com/a/67185092),
+[three](https://youtrack.jetbrains.com/issue/PY-20186). There are a
+few workarounds discussed in those threads, but the gist is that
+when debugging, you should disable the coverage plugin to ensure
+that breakpoints will be hit. This varies depending on your IDE/setup,
+but one option for VSCode is to put the following configuration
+in your project's `launch.json`, which will ensure coverage is disabled
+when running "Debug test" via the `PYTEST_ADDOPTS` environment variable:
+
+```json
+  {
+      "name": "Debug Tests",
+      "type": "debugpy",
+      "request": "launch",
+      "purpose": ["debug-test"],
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "env": {"PYTEST_ADDOPTS": "--no-cov"}
+  }
+```
+
 ## Related projects
 
 - [https://hyperspy.org/](https://hyperspy.org/)
