@@ -36,6 +36,8 @@ numpydoc = "^1.8.0"
 myst-parser = "^4.0.0"
 sphinx-immaterial = "^0.12.2"
 myst-nb = "^1.1.2"
+pytest-cov = "^5.0.0"
+pytest-mpl = "^0.17.0"
 
 [tool.poetry.group.jupyter.dependencies]
 ipympl = "^0.9.4"
@@ -69,3 +71,24 @@ max-args = 10
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.coverage.run]
+omit = [
+    "etspy/tests/*"
+]
+
+[tool.coverage.report]
+# the parts of code covered by CUDA tests are excluded
+# by default
+exclude_also = [
+    "def _upsampled_dft",
+    "def _cupy_phase_correlate",
+    "_cupy_calculate_shifts",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "etspy/tests"
+]
+addopts = "--mpl --cov=etspy --cov-report html:etspy/tests/htmlcov --cov-report=xml:etspy/tests/coverage.xml --cov-report term-missing --cov-append"
+mpl-baseline-path = "etspy/tests/test_data/pytest_mpl_figures"

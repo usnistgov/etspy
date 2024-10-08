@@ -20,3 +20,5 @@ dependencies:
   - sphinx-immaterial
   - typing_extensions
   - myst-nb
+  - pytest-cov
+  - pytest-mpl
