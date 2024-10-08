@@ -22,3 +22,6 @@ dependencies:
   - myst-nb
   - pytest-cov
   - pytest-mpl
+  # pin these versions to prevent issues with plot comparisons
+  - freetype=2.10
+  - matplotlib

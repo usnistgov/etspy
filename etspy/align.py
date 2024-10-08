@@ -21,7 +21,7 @@ from skimage.transform import hough_line, hough_line_peaks
 from etspy import AlignmentMethod, AlignmentMethodType
 
 if TYPE_CHECKING:
-    from etspy.base import TomoStack
+    from etspy.base import TomoStack  # pragma: no cover
 
 has_cupy = True
 try:
@@ -363,6 +363,7 @@ def _upsampled_dft(
     upsample_factor,
     axis_offsets,
 ):
+    # missing coverage because of CUDA
     upsampled_region_size = [
         upsampled_region_size,
     ] * data.ndim
@@ -384,6 +385,7 @@ def _upsampled_dft(
 
 
 def _cupy_phase_correlate(ref_cp, mov_cp, upsample_factor, shape):
+    # missing coverage b/c of CUDA
     ref_fft = cp.fft.fftn(ref_cp)
     mov_fft = cp.fft.fftn(mov_cp)
 
@@ -527,7 +529,7 @@ def calculate_shifts_pc(
 
 def calculate_shifts_stackreg(
     stack: "TomoStack",
-    start: int,
+    start: Optional[int],
     show_progressbar: bool,
 ) -> np.ndarray:
     """
@@ -538,7 +540,8 @@ def calculate_shifts_stackreg(
     stack
         The image series to be aligned
     start
-        Position in tilt series to use as starting point for the alignment.
+        Position in tilt series to use as starting point for the alignment. If ``None``,
+        the slice closest to the midpoint will be used.
     show_progressbar
         Enable/disable progress bar
 
@@ -555,6 +558,7 @@ def calculate_shifts_stackreg(
 
     if start is None:
         start = stack.data.shape[0] // 2  # Use the midpoint if start is not provided
+    start = cast(int, start)
 
     # Initialize pystackreg object with TranslationTransform2D
     reg = StackReg(StackReg.TRANSLATION)
@@ -771,7 +775,7 @@ def align_stack(  # noqa: PLR0913
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
     elif method == AlignmentMethod.PC:
         if cuda:
-            logger.info(
+            logger.info(  # pragma: no cover
                 "Performing stack registration using "
                 "CUDA-accelerated phase correlation",
             )

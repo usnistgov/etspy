@@ -200,7 +200,9 @@ the first time you write a test that checks a figure's output
 First, follow the plugin's
 [docs](https://pytest-mpl.readthedocs.io/en/latest/usage.html) for
 writing tests (use the `mpl_image_compare` marker and make sure the
-test returns a Matplotlib `Figure`). Then, the first time you run
+test returns a Matplotlib `Figure`; it's also recommended to use the
+`remove_text=True` option to prevent issues between different versions
+of the freetype library). Then, the first time you run
 the test, you will need to generate the baseline images that will
 be used to compare against on subsequent runs. To do so, run `pytest`
 with the `--mpl-generate-path=etspy/tests/test_data/pytest_mpl_figures`

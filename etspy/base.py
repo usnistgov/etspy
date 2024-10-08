@@ -675,12 +675,14 @@ class TomoStack(CommonStack):
             )
         return filtered
 
-    def stack_register(
+    def stack_register(  # noqa: PLR0913
         self,
         method: AlignmentMethodType = AlignmentMethod.PC,
         start: Optional[int] = None,
         show_progressbar: bool = False,
         crop: bool = False,
+        xrange: Optional[Tuple[int, int]] = None,
+        p: int = 20,
         nslices: int = 20,
         com_ref_index: Optional[int] = None,
         cl_ref_index: Optional[int] = None,
@@ -708,6 +710,14 @@ class TomoStack(CommonStack):
         crop
             If True, crop aligned stack to eliminate border pixels. Default is
             False.
+        xrange
+            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
+            The range for performing alignment. See
+            :py:func:`~etspy.align.calculate_shifts_com` for more details.
+        p
+            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
+            Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more
+            details.
         nslices
             (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
             Number of slices to return. See
@@ -770,6 +780,8 @@ class TomoStack(CommonStack):
                 method,
                 start,
                 show_progressbar,
+                xrange=xrange,
+                p=p,
                 nslices=nslices,
                 com_ref_index=com_ref_index,
                 cl_ref_index=cl_ref_index,
