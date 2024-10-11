@@ -8,16 +8,17 @@ dependencies:
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
+  - numba
   - pystackreg
   - pip
-  - numba
-  - pytest
-  - sphinx
-  - ruff
   - isort
-  - numpydoc
-  - myst-parser
-  - sphinx-immaterial
-  - typing_extensions
   - myst-nb
+  - myst-parser
+  - numpydoc
+  - pytest
   - pytest-cov
+  - ruff
+  - sphinx
+  - sphinx-immaterial
+  - tomli
+  - typing_extensions

@@ -1,6 +1,7 @@
 """ETSpy."""
+import importlib.metadata
 
-__version__ = "0.8"
+__version__ = importlib.metadata.version("etspy")
 
 from enum import Enum
 from typing import Callable, List, Literal, Union, get_args, get_type_hints
