@@ -1,0 +1,34 @@
+name: Install ETSpy with poetry
+description: Uses poetry and CUDA action to install ETSpy and its dependencies
+inputs:
+  python-version:
+    default: "3.12"
+    type: string
+    required: true
+  with-cuda:
+    default: false
+    type: boolean
+  poetry-options:
+    default: ""
+    type: string
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup python interpreter
+      uses: actions/setup-python@v5.2.0
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Setup poetry
+      uses: abatilo/actions-poetry@v3.0.0
+    - name: Install CUDA dependencies
+      if: ${{ inputs.with-cuda == 'true' }}
+      uses: Jimver/cuda-toolkit@v0.2.17
+      with:
+        method: network
+        sub-packages: '["cudart"]'
+        non-cuda-sub-packages: '["libcufft"]'
+    - name: Install ETSpy using poetry
+      run: poetry install ${{ inputs.poetry-options }}
+      shell: bash -el {0}

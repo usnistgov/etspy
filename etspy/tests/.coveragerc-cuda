@@ -1,0 +1,8 @@
+; use this COVERAGE_RCFILE when there is access to CUDA
+; so relevant lines are included in coverage calculation
+[run]
+omit = 
+    etspy/tests/*
+
+[report]
+exclude_also =

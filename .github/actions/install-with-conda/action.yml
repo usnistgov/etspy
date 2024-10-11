@@ -1,0 +1,28 @@
+name: Install ETSpy with conda
+description: Uses conda package manager to install ETSpy and its dependencies
+inputs:
+  conda-env-name:
+    default: etspy
+    type: string
+  python-version:
+    default: "3.12"
+    type: string
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup conda environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        activate-environment: ${{ inputs.conda-env-name }}
+        environment-file: resources/etspy-dev.yml
+        auto-update-conda: true
+        python-version: ${{ inputs.python-version }}
+        auto-activate-base: false
+    - name: Conda list
+      run: conda list
+      shell: bash -el {0}
+    - name: Install etspy development
+      run: which pip && pip install -e ./
+      shell: bash -el {0}

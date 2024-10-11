@@ -1,7 +1,7 @@
 name: etspy-dev
 channels:
-  - astra-toolbox
   - conda-forge
+  - nvidia
   - defaults
 dependencies:
   - astra-toolbox
@@ -9,9 +9,16 @@ dependencies:
   - hyperspy-gui-ipywidgets
   - ipykernel
   - numba
-  - pip
   - pystackreg
-  - pip:
-      - pydocstyle
-      - pytest
-      - git+https://github.com/usnistgov/etspy.git
+  - pip
+  - isort
+  - myst-nb
+  - myst-parser
+  - numpydoc
+  - pytest
+  - pytest-cov
+  - ruff
+  - sphinx==8.0.2
+  - sphinx-immaterial
+  - tomli
+  - typing_extensions
