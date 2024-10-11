@@ -1,0 +1,1155 @@
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../../_static/favicon-64x64.png">
+    
+    
+      
+        <title>etspy.io - ETSpy 0.9.0 documentation</title>
+      
+    
+    
+      
+        
+        
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.3625f807144f53acf.min.css?v=fbfc4466" />
+        <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/custom_css.css?v=3df925f6" />
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+<link rel="stylesheet" href="https://pages.nist.gov/nist-header-footer/css/nist-combined.css">
+  <script src="https://code.jquery.com/jquery-1.12.4.min.js" type="text/javascript"></script>
+  <script src="https://pages.nist.gov/nist-header-footer/js/nist-header-footer.js" type="text/javascript" defer="defer"></script>
+
+
+<script type="text/javascript" src="/etspy/_static/jquery.leaveNotice-nist.js"></script>
+<script>
+$(document).ready(function(){
+  // Mark external (non-nist.gov) A tags with class "external"
+  //If the adress start with https and ends with nist.gov
+  var re_nist = new RegExp('^https?:\/\/((^\/)*\.)*nist\\.gov(\/|$)');
+  var re_nist_github = new RegExp('^https:\/\/github.com\/usnistgov(\/|$)');
+  //Regex to find address that start with https
+  var re_absolute_address = new RegExp('^((https?:)?\/\/)');
+  $("a").each(function(){
+    var url=$(this).attr('href');
+    if(re_nist.test(url) || !re_absolute_address.test(url) || re_nist_github.test(url)){
+      $(this).addClass('leave_notice_local');
+    }else{
+      //This a href appears to be external, so tag it
+      $(this).addClass('leave_notice_external');
+    }
+  });
+  // Add leaveNotice to external A elements
+  $('a.leave_notice_external').leaveNotice();
+});
+</script>
+<link rel="stylesheet" type="text/css" href="https://pages.nist.gov/leaveNotice/css/jquery.leaveNotice.css" />
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="indigo">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../index.html" title="ETSpy 0.9.0 documentation" class="md-header__button md-logo" aria-label="ETSpy 0.9.0 documentation" data-md-component="logo">
+      <img src="../../_static/ETSpy_logo_trans.png" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ETSpy 0.9.0 documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              etspy.io
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          
+          <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5Z"/></svg>
+            </label>
+          
+        
+          
+          
+          <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91 1.61 0 2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08Z"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/usnistgov/etspy/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ETSpy
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../index.html" title="ETSpy 0.9.0 documentation" class="md-nav__button md-logo" aria-label="ETSpy 0.9.0 documentation" data-md-component="logo">
+      <img src="../../_static/ETSpy_logo_trans.png" alt="logo">
+    </a>
+    ETSpy 0.9.0 documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/usnistgov/etspy/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ETSpy
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.html" class="md-nav__link">
+        <span class="md-ellipsis">Home</span>
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/etspy_demo.html" class="md-nav__link">
+        <span class="md-ellipsis">Example Usage</span>
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_3" type="checkbox" id="__nav_3" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3">
+          <span class="md-ellipsis">API Reference</span>
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="API Reference" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          <span class="md-ellipsis">API Reference</span>
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html" class="md-nav__link">
+        <span class="md-ellipsis">General Information</span>
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html#signals" class="md-nav__link">
+        <span title="signals (reference label)" class="md-ellipsis">Signals</span>
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html#file-i-o" class="md-nav__link">
+        <span class="md-ellipsis">File I/O</span>
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html#alignment-methods" class="md-nav__link">
+        <span class="md-ellipsis">Alignment Methods</span>
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html#reconstruction" class="md-nav__link">
+        <span title="reconstruction (reference label)" class="md-ellipsis">Reconstruction</span>
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html#data-simulation" class="md-nav__link">
+        <span class="md-ellipsis">Data Simulation</span>
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html#example-datasets" class="md-nav__link">
+        <span class="md-ellipsis">Example Datasets</span>
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api.html#utilities" class="md-nav__link">
+        <span title="utilities (reference label)" class="md-ellipsis">Utilities</span>
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset" role="main">
+                  
+
+
+  <a href="https://github.com/usnistgov/etspy/blob/master/docs/_modules/etspy/io.rst" title="Edit this page" class="md-content__button md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+  </a>
+
+<h1>Source code for etspy.io</h1><div class="highlight"><pre>
+<span></span><code><span class="sd">&quot;&quot;&quot;Data input/output module for ETSpy package.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">hyperspy._signals.signal2d</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Signal2D</span><span class="p">,</span>  <span class="c1"># import from _signals for type-checking</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">hyperspy.axes</span> <span class="kn">import</span> <span class="n">UniformDataAxis</span> <span class="k">as</span> <span class="n">Uda</span>
+<span class="kn">from</span> <span class="nn">hyperspy.io</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">load</span> <span class="k">as</span> <span class="n">hs_load</span><span class="p">,</span>  <span class="c1"># import load function directly for better type-checking</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="n">DictionaryTreeBrowser</span> <span class="k">as</span> <span class="n">Dtb</span>
+<span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">stack</span> <span class="k">as</span> <span class="n">hs_stack</span><span class="p">,</span>  <span class="c1"># import stack function directly for better type-checking</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">etspy.base</span> <span class="kn">import</span> <span class="n">TomoStack</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">PathLike</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span>
+
+<span class="c1"># declare known file types for later use</span>
+<span class="n">hspy_file_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;.hdf5&quot;</span><span class="p">,</span> <span class="s2">&quot;.h5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hspy&quot;</span><span class="p">]</span>
+<span class="n">mrc_file_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;.mrc&quot;</span><span class="p">,</span> <span class="s2">&quot;.ali&quot;</span><span class="p">,</span> <span class="s2">&quot;.rec&quot;</span><span class="p">]</span>
+<span class="n">dm_file_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;.dm3&quot;</span><span class="p">,</span> <span class="s2">&quot;.dm4&quot;</span><span class="p">]</span>
+<span class="n">known_file_types</span> <span class="o">=</span> <span class="n">hspy_file_types</span> <span class="o">+</span> <span class="n">mrc_file_types</span> <span class="o">+</span> <span class="n">dm_file_types</span>
+
+
+<div class="viewcode-block" id="MismatchedTiltError">
+<a class="viewcode-back" href="../../api/etspy.io.MismatchedTiltError.html#etspy.io.MismatchedTiltError">[docs]</a>
+<span class="k">class</span> <span class="nc">MismatchedTiltError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Error for when number of tilts in signal does not match tilt dimension.</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_tilts</span><span class="p">,</span> <span class="n">tilt_dimension</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a MismatchedTiltError.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Number of tilts (</span><span class="si">{</span><span class="n">num_tilts</span><span class="si">}</span><span class="s2">) does not match &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;the tilt dimension of the data array (</span><span class="si">{</span><span class="n">tilt_dimension</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="create_stack">
+<a class="viewcode-back" href="../../api/etspy.io.create_stack.html#etspy.io.create_stack">[docs]</a>
+<span class="k">def</span> <span class="nf">create_stack</span><span class="p">(</span>
+    <span class="n">stack</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+    <span class="n">tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoStack</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a TomoStack from existing in-memory tilt series data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stack</span>
+<span class="sd">        Tilt series data (ntilts, ny, nx)</span>
+<span class="sd">    tilts</span>
+<span class="sd">        An (optional) array defining the tilt angles</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stack: TomoStack</span>
+<span class="sd">        A TomoStack instance containing the provided data</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+
+<span class="sd">    Order</span>
+<span class="sd">    -----</span>
+<span class="sd">    2</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">Signal2D</span><span class="p">):</span>
+        <span class="n">ntilts</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">tilts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ntilts</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ntilts</span> <span class="o">!=</span> <span class="n">tilts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="n">MismatchedTiltError</span><span class="p">(</span><span class="n">tilts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ntilts</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">):</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ntilts</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">tilts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ntilts</span><span class="p">)</span>
+            <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;cropped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;shifts&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">ntilts</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span>
+                <span class="s2">&quot;tiltaxis&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;tilts&quot;</span><span class="p">:</span> <span class="n">tilts</span><span class="p">,</span>
+                <span class="s2">&quot;xshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;yshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">)</span>
+            <span class="c1"># cast for type-checking:</span>
+            <span class="n">tomo_meta_node</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+            <span class="n">tomo_meta_node</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
+        <span class="n">axes_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">())]</span>
+        <span class="n">metadata_dict</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span>
+        <span class="n">original_metadata_dict</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">original_metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">TomoStack</span><span class="p">(</span>
+            <span class="n">stack</span><span class="p">,</span>
+            <span class="n">axes</span><span class="o">=</span><span class="n">axes_list</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata_dict</span><span class="p">,</span>
+            <span class="n">original_metadata</span><span class="o">=</span><span class="n">original_metadata_dict</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">ntilts</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">tilts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ntilts</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ntilts</span> <span class="o">!=</span> <span class="n">tilts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="n">MismatchedTiltError</span><span class="p">(</span><span class="n">tilts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ntilts</span><span class="p">)</span>
+
+        <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;cropped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">&quot;shifts&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">ntilts</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span>
+            <span class="s2">&quot;tiltaxis&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;tilts&quot;</span><span class="p">:</span> <span class="n">tilts</span><span class="p">,</span>
+            <span class="s2">&quot;xshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;yshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">TomoStack</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">)</span>
+        <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">TomoStack</span><span class="p">,</span> <span class="n">stack</span><span class="p">)</span>  <span class="c1"># type-checking cast</span>
+    <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Tilt&quot;</span>
+    <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;degrees&quot;</span>
+    <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span>
+    <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span>
+    <span class="k">if</span> <span class="n">tilts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Unable to find tilt angles. Calibrate axis 0.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stack</span></div>
+
+
+
+<div class="viewcode-block" id="get_mrc_tilts">
+<a class="viewcode-back" href="../../api/etspy.io.get_mrc_tilts.html#etspy.io.get_mrc_tilts">[docs]</a>
+<span class="k">def</span> <span class="nf">get_mrc_tilts</span><span class="p">(</span>
+    <span class="n">stack</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">TomoStack</span><span class="p">],</span>
+    <span class="n">filename</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract tilts from an MRC file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stack</span>
+<span class="sd">        A HyperSpy or TomoStack signal</span>
+<span class="sd">    filename</span>
+<span class="sd">        Name of MRC file from which to extract tilts</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tilts: :py:class:`~numpy.ndarray` or None</span>
+<span class="sd">        Tilt angles extracted from MRC file (or ``None`` if not present)</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">tiltfile</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.rawtlt&quot;</span><span class="p">)</span>
+    <span class="n">tilts</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">stack</span><span class="o">.</span><span class="n">original_metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;fei_header&quot;</span><span class="p">):</span>
+        <span class="n">fei_header</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">original_metadata</span><span class="o">.</span><span class="n">fei_header</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fei_header</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;a_tilt&quot;</span><span class="p">):</span>
+            <span class="n">tilts</span> <span class="o">=</span> <span class="n">fei_header</span><span class="p">[</span><span class="s2">&quot;a_tilt&quot;</span><span class="p">][</span><span class="mi">0</span> <span class="p">:</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Tilts found in MRC file header&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">stack</span><span class="o">.</span><span class="n">original_metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;std_header&quot;</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SerialEM generated MRC file detected&quot;</span><span class="p">)</span>
+        <span class="n">ext_header</span> <span class="o">=</span> <span class="n">parse_mrc_header</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="s2">&quot;ext_header&quot;</span><span class="p">]</span>
+        <span class="n">tilts</span> <span class="o">=</span> <span class="n">ext_header</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ext_header</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">7</span><span class="p">)][</span>
+            <span class="mi">0</span> <span class="p">:</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">]</span>
+        <span class="n">tilts</span> <span class="o">=</span> <span class="n">tilts</span> <span class="o">/</span> <span class="mi">100</span>
+    <span class="k">elif</span> <span class="n">tiltfile</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="n">tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">tiltfile</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;.rawtlt file detected.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span> <span class="o">==</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Tilts loaded from .rawtlt file&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Number of tilts in .rawtlt file inconsistent with data shape&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tilts</span></div>
+
+
+
+<div class="viewcode-block" id="get_dm_tilts">
+<a class="viewcode-back" href="../../api/etspy.io.get_dm_tilts.html#etspy.io.get_dm_tilts">[docs]</a>
+<span class="k">def</span> <span class="nf">get_dm_tilts</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">TomoStack</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract tilts from DM tags.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s</span>
+<span class="sd">        A HyperSpy or ETSpy signal containing DigitalMigrograph</span>
+<span class="sd">        metadata tags</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tilts: :py:class:`~numpy.ndarray`</span>
+<span class="sd">        Tilt angles extracted from the DM tags</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">maxtilt</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">original_metadata</span><span class="p">[</span><span class="s2">&quot;ImageList&quot;</span><span class="p">][</span><span class="s2">&quot;TagGroup0&quot;</span><span class="p">][</span><span class="s2">&quot;ImageTags&quot;</span><span class="p">][</span><span class="s2">&quot;Tomography&quot;</span><span class="p">][</span>
+        <span class="s2">&quot;Tomography_setup&quot;</span>
+    <span class="p">][</span><span class="s2">&quot;Tilt_angles&quot;</span><span class="p">][</span><span class="s2">&quot;Maximum_tilt_angle_deg&quot;</span><span class="p">]</span>
+
+    <span class="n">mintilt</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">original_metadata</span><span class="p">[</span><span class="s2">&quot;ImageList&quot;</span><span class="p">][</span><span class="s2">&quot;TagGroup0&quot;</span><span class="p">][</span><span class="s2">&quot;ImageTags&quot;</span><span class="p">][</span><span class="s2">&quot;Tomography&quot;</span><span class="p">][</span>
+        <span class="s2">&quot;Tomography_setup&quot;</span>
+    <span class="p">][</span><span class="s2">&quot;Tilt_angles&quot;</span><span class="p">][</span><span class="s2">&quot;Minimum_tilt_angle_deg&quot;</span><span class="p">]</span>
+
+    <span class="n">tiltstep</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">original_metadata</span><span class="p">[</span><span class="s2">&quot;ImageList&quot;</span><span class="p">][</span><span class="s2">&quot;TagGroup0&quot;</span><span class="p">][</span><span class="s2">&quot;ImageTags&quot;</span><span class="p">][</span><span class="s2">&quot;Tomography&quot;</span><span class="p">][</span>
+        <span class="s2">&quot;Tomography_setup&quot;</span>
+    <span class="p">][</span><span class="s2">&quot;Tilt_angles&quot;</span><span class="p">][</span><span class="s2">&quot;Tilt_angle_step_deg&quot;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">mintilt</span><span class="p">,</span> <span class="n">maxtilt</span> <span class="o">+</span> <span class="n">tiltstep</span><span class="p">,</span> <span class="n">tiltstep</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="parse_mdoc">
+<a class="viewcode-back" href="../../api/etspy.io.parse_mdoc.html#etspy.io.parse_mdoc">[docs]</a>
+<span class="k">def</span> <span class="nf">parse_mdoc</span><span class="p">(</span>
+    <span class="n">mdoc_file</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span>
+    <span class="n">series</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse experimental parameters from a SerialEM MDOC file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mdoc_file</span>
+<span class="sd">        Name of a SerialEM MDOC file</span>
+<span class="sd">    series</span>
+<span class="sd">        If ``True``, the MDOC files originated from a multiscan SerialEM acquisition.</span>
+<span class="sd">        If ``False``, the files originated from a single scan SerialEM acquisition.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    metadata : dict</span>
+<span class="sd">        A dictionary containing the metadata read from the MDOC file</span>
+<span class="sd">    tilt : :py:class:`~numpy.ndarray` or float</span>
+<span class="sd">        If ``series`` is true, tilt will be a single float value, otherwise</span>
+<span class="sd">        it will be an ndarray containing multiple tilt values.</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;PixelSpacing&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Voltage&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ImageFile&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Image Size&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataMode&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Magnification&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ExposureTime&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SpotSize&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Defocus&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">tilt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mdoc_file</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">mdoc_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">mdoc_file</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">mdoc_file</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">35</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;ImageFile&quot;</span><span class="p">:</span>
+                        <span class="n">metadata</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">metadata</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">series</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">35</span><span class="p">):</span>
+            <span class="k">if</span> <span class="s2">&quot;TiltAngle&quot;</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="n">tilt</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tilt</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;TiltAngle&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+                <span class="n">tilt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+        <span class="n">tilt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">tilt</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">tilt</span></div>
+
+
+
+<div class="viewcode-block" id="load_serialem">
+<a class="viewcode-back" href="../../api/etspy.io.load_serialem.html#etspy.io.load_serialem">[docs]</a>
+<span class="k">def</span> <span class="nf">load_serialem</span><span class="p">(</span><span class="n">mrcfile</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span> <span class="n">mdocfile</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoStack</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load a multi-frame series collected by SerialEM.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mrcfile</span>
+<span class="sd">        Path to MRC file containing tilt series data.</span>
+
+<span class="sd">    mdocfile</span>
+<span class="sd">        Path to SerialEM metadata file for tilt series data.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stack : TomoStack</span>
+<span class="sd">        Tilt series</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mrc_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;hyperspy.io_plugins.mrc&quot;</span><span class="p">)</span>
+    <span class="n">log_level</span> <span class="o">=</span> <span class="n">mrc_logger</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">()</span>
+    <span class="n">mrc_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+    <span class="n">meta</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">parse_mdoc</span><span class="p">(</span><span class="n">mdocfile</span><span class="p">)</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">mrcfile</span><span class="p">)</span>
+
+    <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">scale</span> <span class="o">/</span> <span class="mi">10</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">scale</span> <span class="o">/</span> <span class="mi">10</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;nm&quot;</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;nm&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Acquisition_instrument.TEM&quot;</span><span class="p">):</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Acquisition_instrument.TEM&quot;</span><span class="p">)</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">magnification</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;Magnification&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">beam_energy</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;Voltage&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">dwell_time</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;ExposureTime&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">spot_size</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;SpotSize&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">defocus</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;Defocus&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">General</span><span class="o">.</span><span class="n">original_filename</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;ImageFile&quot;</span><span class="p">]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SerialEM stack successfully loaded. &quot;</span><span class="p">)</span>
+    <span class="n">mrc_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stack</span></div>
+
+
+
+<div class="viewcode-block" id="load_serialem_series">
+<a class="viewcode-back" href="../../api/etspy.io.load_serialem_series.html#etspy.io.load_serialem_series">[docs]</a>
+<span class="k">def</span> <span class="nf">load_serialem_series</span><span class="p">(</span>
+    <span class="n">mrcfiles</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]],</span>
+    <span class="n">mdocfiles</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">TomoStack</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load a multi-frame series collected by SerialEM.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mrcfiles</span>
+<span class="sd">        List of MRC file paths containing multi-frame tilt series data.</span>
+
+<span class="sd">    mdocfiles</span>
+<span class="sd">        List of SerialEM metadata file paths for multi-frame tilt series data.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stack : :py:class:`~etspy.base.TomoStack`</span>
+<span class="sd">        Tilt series resulting by averaging frames at each tilt</span>
+<span class="sd">    tilts : :py:class:`~numpy.ndarray`</span>
+<span class="sd">        The tilt values for each image in the stack</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mrc_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;hyperspy.io_plugins.mrc&quot;</span><span class="p">)</span>
+    <span class="n">log_level</span> <span class="o">=</span> <span class="n">mrc_logger</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">()</span>
+    <span class="n">mrc_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+    <span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mdocfiles</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mdocfiles</span><span class="p">)):</span>
+        <span class="n">mdoc_output</span> <span class="o">=</span> <span class="n">parse_mdoc</span><span class="p">(</span><span class="n">mdocfiles</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">series</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mdoc_output</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">tilts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">mdoc_output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">tilts_sort</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span>
+    <span class="n">tilts</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mrcfiles</span><span class="p">)):</span>
+        <span class="n">mdoc_filename</span> <span class="o">=</span> <span class="n">mdocfiles</span><span class="p">[</span><span class="n">tilts_sort</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mdoc_filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">mdoc_filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">mdoc_filename</span><span class="p">)</span>
+
+        <span class="c1"># sometimes files are named &quot;filename.mrc.mdoc&quot;, other times</span>
+        <span class="c1"># &quot;filename.mrc&quot; and &quot;filename.mdoc&quot;, so need to handle both</span>
+        <span class="k">if</span> <span class="n">mdoc_filename</span><span class="o">.</span><span class="n">stem</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.mrc&quot;</span><span class="p">):</span>
+            <span class="c1"># &quot;filename.mrc.mdoc&quot; case</span>
+            <span class="n">mrc_filename</span> <span class="o">=</span> <span class="n">mdoc_filename</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">mdoc_filename</span><span class="o">.</span><span class="n">stem</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mrc_filename</span> <span class="o">=</span> <span class="n">mdoc_filename</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.mrc&quot;</span><span class="p">)</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">hs_load</span><span class="p">(</span><span class="n">mrc_filename</span><span class="p">))</span>
+
+    <span class="n">images_per_tilt</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_stack</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">show_progressbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Acquisition_instrument.TEM&quot;</span><span class="p">):</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Acquisition_instrument.TEM&quot;</span><span class="p">)</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">magnification</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;Magnification&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">beam_energy</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;Voltage&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">dwell_time</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">meta</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;ExposureTime&quot;</span><span class="p">]</span>
+        <span class="o">*</span> <span class="n">images_per_tilt</span>
+        <span class="o">/</span> <span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+    <span class="p">)</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">spot_size</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;SpotSize&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">defocus</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;Defocus&quot;</span><span class="p">]</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">General</span><span class="o">.</span><span class="n">original_filename</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;ImageFile&quot;</span><span class="p">]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">&quot;SerialEM Multiframe stack successfully loaded. &quot;</span>
+        <span class="s2">&quot;Use etspy.utils.register_serialem_stack to align frames.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">mrc_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stack</span><span class="p">,</span> <span class="n">tilts</span></div>
+
+
+
+<div class="viewcode-block" id="parse_mrc_header">
+<a class="viewcode-back" href="../../api/etspy.io.parse_mrc_header.html#etspy.io.parse_mrc_header">[docs]</a>
+<span class="k">def</span> <span class="nf">parse_mrc_header</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read the mrc header and return as dictionary.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename</span>
+<span class="sd">        Name of the MRC file to parse</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    header : dict</span>
+<span class="sd">        Dictionary with header values from an MRC file</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">filename</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">h</span><span class="p">:</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nx&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;ny&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;mode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nxstart&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nystart&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nzstart&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span>
+            <span class="n">h</span><span class="p">,</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span>
+            <span class="mi">3</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;mx&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;my&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;mz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;xlen&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;ylen&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;zlen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;amin&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;amax&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;amean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nextra&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">strbits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;ext_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">strbits</span><span class="p">])</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nversion&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nreal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;imodStamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;imodFlags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;idtype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;lens&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nd1&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nd2&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;vd1&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;vd2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span>
+            <span class="n">h</span><span class="p">,</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;xorg&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;yorg&quot;</span><span class="p">],</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;zorg&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">strbits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;cmap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">strbits</span><span class="p">])</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;stamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;rms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;nlabl&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">strbits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span> <span class="mi">800</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">strbits</span><span class="p">])</span>
+        <span class="n">header</span><span class="p">[</span><span class="s2">&quot;ext_header&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;nextra&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">header</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_load_single_file</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a HyperSpy signal and any tilts from a single file.&quot;&quot;&quot;</span>
+    <span class="n">ext</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">suffix</span>
+    <span class="n">tilts</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">hspy_file_types</span><span class="p">:</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="s2">&quot;HSPY&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">):</span>
+            <span class="n">tilts</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="o">.</span><span class="n">tilts</span>
+    <span class="k">elif</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">dm_file_types</span><span class="p">:</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">change_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">tilts</span> <span class="o">=</span> <span class="n">get_dm_tilts</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">mrc_file_types</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="s2">&quot;mrc&quot;</span><span class="p">)</span>
+            <span class="n">tilts</span> <span class="o">=</span> <span class="n">get_mrc_tilts</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Unable to read MRC with Hyperspy&quot;</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Unknown file type &quot;</span><span class="si">{</span><span class="n">ext</span><span class="si">}</span><span class="s1">&quot;. Must be one of </span><span class="si">{</span><span class="n">known_file_types</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">stack</span><span class="p">,</span> <span class="n">tilts</span>
+
+
+<div class="viewcode-block" id="load">
+<a class="viewcode-back" href="../../api/etspy.io.load.html#etspy.io.load">[docs]</a>
+<span class="k">def</span> <span class="nf">load</span><span class="p">(</span>
+    <span class="n">filename</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">PathLike</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]],</span>
+    <span class="n">tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mdocs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoStack</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a TomoStack object using data from a file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename</span>
+<span class="sd">        Name of file that contains data to be read.</span>
+<span class="sd">        Accepted formats (.MRC, .DM3, .DM4)</span>
+
+<span class="sd">    tilts</span>
+<span class="sd">        List of floats indicating the specimen tilt at each projection (optional)</span>
+
+<span class="sd">    mdocs</span>
+<span class="sd">        List of mdoc files for SerialEM data (optional)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stack : TomoStack</span>
+<span class="sd">        The resulting TomoStack object</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    io</span>
+
+<span class="sd">    Order</span>
+<span class="sd">    -----</span>
+<span class="sd">    1</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># coerce filename to Path</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">stack</span><span class="p">,</span> <span class="n">tilts</span> <span class="o">=</span> <span class="n">_load_single_file</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">first_filename</span> <span class="o">=</span> <span class="n">filename</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">first_filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">first_filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">first_filename</span><span class="p">)</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">first_filename</span><span class="o">.</span><span class="n">suffix</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">dm_file_types</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">tilts</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Acquisition_instrument</span><span class="o">.</span><span class="n">TEM</span><span class="o">.</span><span class="n">Stage</span><span class="o">.</span><span class="n">tilt_alpha</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">s</span><span class="p">]</span>
+            <span class="n">sorted_order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span>
+            <span class="n">tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span>
+            <span class="n">files_sorted</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="n">sorted_order</span><span class="p">])</span>
+            <span class="k">del</span> <span class="n">s</span>
+            <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">files_sorted</span><span class="p">,</span> <span class="n">stack</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;.mrc&quot;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Data appears to be a SerialEM multiframe series.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mdocs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mdoc_files</span> <span class="o">=</span> <span class="n">mdocs</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># generate mdoc filenames from mrc filenames</span>
+                <span class="n">mrc_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">filename</span><span class="p">]</span>  <span class="c1"># coerce to Path objects</span>
+                <span class="n">mdoc_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.mdoc&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">mrc_files</span><span class="p">]</span>
+            <span class="n">stack</span><span class="p">,</span> <span class="n">tilts</span> <span class="o">=</span> <span class="n">load_serialem_series</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">mdoc_files</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Unknown file type &quot;</span><span class="si">{</span><span class="n">ext</span><span class="si">}</span><span class="s1">&quot;. Must be one of </span><span class="si">{</span><span class="n">known_file_types</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Unknown filename type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="si">}</span><span class="s2">. &quot;</span>
+            <span class="s2">&quot;Must be either a string, Path, or list of either.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">create_stack</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">tilts</span><span class="p">)</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">change_data_type</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">stack</span></div>
+
+</code></pre></div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var tab,labels=set.querySelector(".tabbed-labels");for(tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+  
+        <footer class="md-footer">
+  
+  
+  
+  <div class="md-footer-meta md-typeset">
+    
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-footer-copyright__highlight">
+        &#169; Copyright .
+        
+    </div>
+  
+    Created using
+    <a href="https://www.sphinx-doc.org/" target="_blank" rel="noopener">Sphinx</a>
+    8.0.2.
+     and
+    <a href="https://github.com/jbms/sphinx-immaterial/" target="_blank" rel="noopener">Sphinx-Immaterial</a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    <a href="https://github.com/usnistgov/etspy" target="_blank" rel="noopener" title="Source on github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+    </a>
+  
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/etspy/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6zM286.2 404c11.1 0 20.1 9.1 20.1 20.3 0 11.3-9 20.4-20.1 20.4-11 0-20.1-9.2-20.1-20.4.1-11.3 9.1-20.3 20.1-20.3zM167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4zm-6.7-142.6c-11.1 0-20.1-9.1-20.1-20.3.1-11.3 9-20.4 20.1-20.4 11 0 20.1 9.2 20.1 20.4s-9 20.3-20.1 20.3z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+    
+  </div>
+</footer>
+      
+
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.expand", "navigation.instant", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "toc.follow", "toc.sticky", "content.tabs.link", "content.code.annotate", "announce.dismiss"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+      
+        <script src="../../_static/sphinx_immaterial_theme.f9d9eeeb247ace16c.min.js?v=8ec58cb5"></script>
+    
+  </body>
+</html>
