@@ -35,8 +35,6 @@ runs:
         ref: ${{ inputs.branch }} 
         # Need to specify token here to enable pushing to other repository
         token: ${{ env.ACCESS_TOKEN }}
-    - name: Git pull
-      shell: bash -el {0}
     - uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.artifact_name }}
