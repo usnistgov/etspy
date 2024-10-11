@@ -147,7 +147,7 @@ def weight_stack(
         tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
         https://doi.org/10.1186/s40679-015-0005-7
 
-    Parameters:
+    Parameters
     ----------
     stack
         The stack to be weighted.
