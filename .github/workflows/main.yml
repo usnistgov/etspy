@@ -1,9 +1,6 @@
 name: CI
 on: push
 
-env:
-  RESULT_IMAGES_FOLDER: 'result_images'
-
 jobs:
   format-checks:
     runs-on: ubuntu-latest
@@ -41,13 +38,7 @@ jobs:
       - name: Run full test suite
         id: full_conda_tests
         if: always()
-        run: pytest --mpl-results-path ${{ env.RESULT_IMAGES_FOLDER }} etspy/tests/
-      - name: Upload pytest-mpl image comparisons
-        if: steps.full_conda_tests.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          path: ${{ env.RESULT_IMAGES_FOLDER }}
-          name: pytest-mpl-comparison
+        run: pytest etspy/tests/
 
   poetry-pytest:
     name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
@@ -72,10 +63,4 @@ jobs:
       - name: Run full test suite
         id: full_poetry_tests
         if: always()
-        run: poetry run pytest --mpl-results-path ${{ env.RESULT_IMAGES_FOLDER }} etspy/tests/
-      - name: Upload pytest-mpl image comparisons
-        if: steps.full_poetry_tests.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          path: ${{ env.RESULT_IMAGES_FOLDER }}
-          name: pytest-mpl-comparison_${{ matrix.os }}_${{ matrix.python-version }}
+        run: poetry run pytest etspy/tests/

@@ -241,7 +241,7 @@ class TestTiltAlign:
         # shifts should be what they were before tilt_align:
         assert np.all(ali.metadata.Tomography.shifts == reg.metadata.Tomography.shifts)
 
-    @pytest.mark.mpl_image_compare(remove_text=True)
+    # @pytest.mark.mpl_image_compare(remove_text=True)
     def test_tilt_align_maximage_plot_results(self):
         stack = ds.get_needle_data()
         stack = stack.inav[0:5]

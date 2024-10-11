@@ -187,7 +187,7 @@ lines from the report depending:
 $ poetry run ./run_tests.sh
 ```
 
-### Matplotlib figure tests
+<!-- ### Matplotlib figure tests
 
 ETSpy uses the [`pytest-mpl`](https://pytest-mpl.readthedocs.io/) pytest
 plugin to compare the outputs of certain tests to a "baseline" reference
@@ -217,7 +217,7 @@ $ poetry run pytest -m "mpl_image_compare" --mpl-generate-path=etspy/tests/test_
 This will run through the test suite, saving any figures that are
 required for the `pytest-mpl` tests. Make sure to commit these images
 to the repository, as they become part of the test suite and will
-be referenced the next time you use `./run_tests.sh`.
+be referenced the next time you use `./run_tests.sh`. -->
 
 ### Debugging when using coverage
 

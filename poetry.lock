@@ -2722,28 +2722,6 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
-name = "pytest-mpl"
-version = "0.17.0"
-description = "pytest plugin to help with testing figures output from Matplotlib"
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "pytest-mpl-0.17.0.tar.gz", hash = "sha256:fbef05d7e664b4b33452fb698ac188e522791f327de34e7ea37dbdfe9d52cac6"},
-    {file = "pytest_mpl-0.17.0-py3-none-any.whl", hash = "sha256:2ee7cf902ef071e45ae14fe190b3d8a9839c2fd8933e0514bf58df310d8ed66b"},
-]
-
-[package.dependencies]
-Jinja2 = "*"
-matplotlib = "*"
-packaging = "*"
-Pillow = "*"
-pytest = "*"
-
-[package.extras]
-docs = ["matplotlib (==3.6)", "mpl-sphinx-theme (>=3.6.0.dev0)", "sphinx", "sphinx-design"]
-test = ["pytest-cov"]
-
-[[package]]
 name = "python-box"
 version = "7.2.0"
 description = "Advanced Python dictionaries with dot notation access"
@@ -3897,4 +3875,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "321c7d5f87a36fb01c129cda3cb39d40ca0feb38e46c4b3ff9c255ed7c799d56"
+content-hash = "7171c09a8516dcdb2851c93c82b2a94f65531d8c2cedcf455b5d2b96792f894b"
