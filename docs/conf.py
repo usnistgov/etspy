@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import cast
 
+import etspy
+
 sys.path.insert(0, os.path.abspath(".."))
 
 # PACKAGE_PATH used to exclude autodoc members not from ETSpy
@@ -20,7 +22,7 @@ PACKAGE_PATH = Path(__file__).parent.parent
 project = "ETSpy"
 # copyright = '2024, Andrew Herzing, Joshua Taillon'
 author = "Andrew Herzing, Joshua Taillon"
-release = "0.8.0"
+release = etspy.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
