@@ -1,8 +1,4 @@
-"""
-Data input/output module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Data input/output module for ETSpy package."""
 
 import logging
 from pathlib import Path
@@ -12,10 +8,11 @@ import numpy as np
 from hyperspy._signals.signal2d import (
     Signal2D,  # import from _signals for type-checking
 )
+from hyperspy.axes import UniformDataAxis as Uda
 from hyperspy.io import (
     load as hs_load,  # import load function directly for better type-checking
 )
-from hyperspy.misc.utils import DictionaryTreeBrowser
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from hyperspy.misc.utils import (
     stack as hs_stack,  # import stack function directly for better type-checking
 )
@@ -34,7 +31,13 @@ known_file_types = hspy_file_types + mrc_file_types + dm_file_types
 
 
 class MismatchedTiltError(ValueError):
-    """Error for when number of tilts in signal does not match tilt dimension."""
+    """
+    Error for when number of tilts in signal does not match tilt dimension.
+
+    Group
+    -----
+    io
+    """
 
     def __init__(self, num_tilts, tilt_dimension):
         """Create a MismatchedTiltError."""
@@ -62,6 +65,14 @@ def create_stack(
     -------
     stack: TomoStack
         A TomoStack instance containing the provided data
+
+    Group
+    -----
+    io
+
+    Order
+    -----
+    2
     """
     if isinstance(stack, Signal2D):
         ntilts = stack.data.shape[0]
@@ -86,7 +97,7 @@ def create_stack(
             }
             stack.metadata.add_node("Tomography")
             # cast for type-checking:
-            tomo_meta_node = cast(DictionaryTreeBrowser, stack.metadata.Tomography)
+            tomo_meta_node = cast(Dtb, stack.metadata.Tomography)
             tomo_meta_node.add_dictionary(tomo_metadata)
         axes_list = [x for _, x in sorted(stack.axes_manager.as_dictionary().items())]
         metadata_dict = stack.metadata.as_dictionary()
@@ -114,12 +125,12 @@ def create_stack(
         }
         stack = TomoStack(stack)
         stack.metadata.add_node("Tomography")
-        stack.metadata.Tomography.add_dictionary(tomo_metadata)
+        cast(Dtb, stack.metadata.Tomography).add_dictionary(tomo_metadata)
     stack = cast(TomoStack, stack)  # type-checking cast
-    stack.axes_manager[0].name = "Tilt"
-    stack.axes_manager[0].units = "degrees"
-    stack.axes_manager[1].name = "x"
-    stack.axes_manager[2].name = "y"
+    cast(Uda, stack.axes_manager[0]).name = "Tilt"
+    cast(Uda, stack.axes_manager[0]).units = "degrees"
+    cast(Uda, stack.axes_manager[1]).name = "x"
+    cast(Uda, stack.axes_manager[2]).name = "y"
     if tilts is None:
         logger.info("Unable to find tilt angles. Calibrate axis 0.")
     return stack
@@ -140,15 +151,19 @@ def get_mrc_tilts(
 
     Returns
     -------
-    tilts: Optional[np_types.ArrayLike]
+    tilts: :py:class:`~numpy.ndarray` or None
         Tilt angles extracted from MRC file (or ``None`` if not present)
+
+    Group
+    -----
+    io
     """
     if isinstance(filename, str):
         filename = Path(filename)
     tiltfile = filename.with_suffix(".rawtlt")
     tilts = None
     if stack.original_metadata.has_item("fei_header"):
-        fei_header = cast(DictionaryTreeBrowser, stack.original_metadata.fei_header)
+        fei_header = cast(Dtb, stack.original_metadata.fei_header)
         if fei_header.has_item("a_tilt"):
             tilts = fei_header["a_tilt"][0 : stack.data.shape[0]]
             logger.info("Tilts found in MRC file header")
@@ -181,8 +196,12 @@ def get_dm_tilts(s: Union[Signal2D, TomoStack]) -> np.ndarray:
 
     Returns
     -------
-    tilts: np.ndarray
+    tilts: :py:class:`~numpy.ndarray`
         Tilt angles extracted from the DM tags
+
+    Group
+    -----
+    io
     """
     maxtilt = s.original_metadata["ImageList"]["TagGroup0"]["ImageTags"]["Tomography"][
         "Tomography_setup"
@@ -217,9 +236,13 @@ def parse_mdoc(
     -------
     metadata : dict
         A dictionary containing the metadata read from the MDOC file
-    tilt : Union[np.ndarray, float]
+    tilt : :py:class:`~numpy.ndarray` or float
         If ``series`` is true, tilt will be a single float value, otherwise
         it will be an ndarray containing multiple tilt values.
+
+    Group
+    -----
+    io
     """
     keys = [
         "PixelSpacing",
@@ -264,10 +287,10 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
 
     Parameters
     ----------
-    mrc_files
+    mrcfile
         Path to MRC file containing tilt series data.
 
-    mdoc_files
+    mdocfile
         Path to SerialEM metadata file for tilt series data.
 
     Returns
@@ -275,6 +298,9 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
     stack : TomoStack
         Tilt series
 
+    Group
+    -----
+    io
     """
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
@@ -312,18 +338,22 @@ def load_serialem_series(
 
     Parameters
     ----------
-    mrc_files
+    mrcfiles
         List of MRC file paths containing multi-frame tilt series data.
 
-    mdoc_files
+    mdocfiles
         List of SerialEM metadata file paths for multi-frame tilt series data.
 
     Returns
     -------
-    stack : TomoStack
+    stack : :py:class:`~etspy.base.TomoStack`
         Tilt series resulting by averaging frames at each tilt
-    tilts : np.ndarray
+    tilts : :py:class:`~numpy.ndarray`
         The tilt values for each image in the stack
+
+    Group
+    -----
+    io
     """
     mrc_logger = logging.getLogger("hyperspy.io_plugins.mrc")
     log_level = mrc_logger.getEffectiveLevel()
@@ -381,7 +411,7 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
     """
     Read the mrc header and return as dictionary.
 
-    Args
+    Parameters
     ----------
     filename
         Name of the MRC file to parse
@@ -391,6 +421,9 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
     header : dict
         Dictionary with header values from an MRC file
 
+    Group
+    -----
+    io
     """
     header = {}
     if isinstance(filename, str):
@@ -490,6 +523,14 @@ def load(
     -------
     stack : TomoStack
         The resulting TomoStack object
+
+    Group
+    -----
+    io
+
+    Order
+    -----
+    1
     """
     if isinstance(filename, (str, Path)):
         if isinstance(filename, str):

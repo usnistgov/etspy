@@ -1,0 +1,11 @@
+; use this COVERAGE_RCFILE when there is NOT access to CUDA
+; so relevant lines are not included in coverage calculation
+[run]
+omit = 
+    etspy/tests/*
+
+[report]
+exclude_also =
+    def _upsampled_dft
+    def _cupy_phase_correlate
+    _cupy_calculate_shifts

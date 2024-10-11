@@ -1,16 +1,16 @@
-"""
-Simulation module for ETSpy package.
+"""Simulation module for ETSpy package."""
 
-@author: Andrew Herzing
-"""
-
-from typing import Tuple
+from typing import Literal, Optional, Tuple, Union, cast
 
 import astra
 import hyperspy.api as hs
 import numpy as np
+from hyperspy._signals.signal2d import Signal2D
+from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from scipy import ndimage
 
+from etspy import _format_choices as _fmt
+from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
 from etspy.io import create_stack
 
@@ -22,7 +22,7 @@ def create_catalyst_model(
     volsize: Tuple[int, int, int] = (600, 600, 600),
     support_radius: int = 200,
     size_interval: Tuple[int, int] = (5, 12),
-):
+) -> hs.signals.Signal2D:
     """
     Create a model data array that mimics a hetergeneous catalyst.
 
@@ -33,19 +33,26 @@ def create_catalyst_model(
     particle_density
         Grayscale value to assign to the particles
     support_density
-        Grayscale value to assign to the support
+        Grayscale value to assign to the support material
     volsize
         X, Y, Z shape (in that order) of the volume
     support_radius
-        Radius (in pixels) of the support
+        Radius (in pixels) of the support material
     size_interval
         Lower and upper bounds (in that order) of the particle size
 
     Returns
     -------
-    catalyst : Hyperspy Signal2D
+    catalyst : :py:class:`~hyperspy.api.signals.Signal2D`
         Simulated model
 
+    Group
+    -----
+    simulation
+
+    Order
+    -----
+    1
     """
     volsize_np = np.array(volsize)
     center = np.array(volsize_np / 2, dtype=np.int32)
@@ -95,30 +102,40 @@ def create_catalyst_model(
     return catalyst
 
 
-def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False):
+def create_cylinder_model(
+    radius: int = 30,
+    blur: bool = True,
+    blur_sigma: float = 1.5,
+    add_others: bool = False,
+) -> hs.signals.Signal2D:
     """
     Create a model data array that mimics a needle shaped sample.
 
     Parameters
     ----------
-    vol_size : int
-        Size of the volume for the model
-    radius : int
+    radius
         Radius of the cylinder to create
-    blur : bool
+    blur
         If True, apply a Gaussian blur to the volume
-    blur_sigma : float
+    blur_sigma
         Sigma value for the Gaussiuan blur
-    add_others : bool
-        If True, add a second and third cylinder to the model near the periphery.
+    add_others
+        If ``True``, add a second and third cylinder to the model near the periphery.
         This is useful for testing the effects of additional objects entering the
         tilt series field of view.
 
     Returns
     -------
-    cylinder : Signal2D
+    cylinder : :py:class:`~hyperspy.api.signals.Signal2D`
         Simulated cylinder object
 
+    Group
+    -----
+    simulation
+
+    Order
+    -----
+    2
     """
     vol_shape = np.array([400, 400, 400]) if add_others else np.array([200, 200, 200])
 
@@ -165,30 +182,48 @@ def create_cylinder_model(radius=30, blur=True, blur_sigma=1.5, add_others=False
     return cylinder
 
 
-def create_model_tilt_series(model, angles=None, cuda=None):
+def create_model_tilt_series(
+    model: Union[np.ndarray, hs.signals.Signal2D],
+    angles: Optional[np.ndarray] = None,
+    cuda: Optional[bool] = None,
+) -> TomoStack:
     """
     Create a tilt series from a 3D volume.
 
     Parameters
     ----------
-    model : NumPy array or Hyperspy Signal2D
-        3D array or signal containing the model volume to project to a tilt series
-    angles : NumPy array
-        Projection angles for tilt series in degrees
+    model
+        3D array or HyperSpy signal containing the model volume to project to
+        a tilt series
+    angles
+        Projection angles for tilt series in degrees (optional). If ``None``,
+        an evenly spaced range from 0 to 180 degrees will be used.
+    cuda
+        Whether or not to use CUDA-accelerated reconstruction algorithms. If
+        ``None`` (the default), the decision to use CUDA will be left to
+        :py:func:`astra.astra.use_cuda`.
 
     Returns
     -------
-    model : TomoStack object
+    model : TomoStack
         Tilt series of the model data
 
+    Group
+    -----
+    simulation
+
+    Order
+    -----
+    3
     """
     if cuda is None:
         cuda = astra.use_cuda()
 
-    if type(angles) is not np.ndarray:
+    if angles is None:
         angles = np.arange(0, 180, 2)
+    angles = cast(np.ndarray, angles)
 
-    if type(model) is hs.signals.Signal2D:
+    if isinstance(model, Signal2D):
         model = model.data
 
     xdim, zdim, ydim = model.shape
@@ -240,14 +275,20 @@ def misalign_stack(
         Default is False
     interp_order
         The order of spline interpolation used by the :py:func:`scipy.ndimage.shift`
-        or :py:function:`scipy.ndimage.rotate` function.
-        The order must be in the range 0-5.
+        or :py:func:`scipy.ndimage.rotate` function. The order must be in the range 0-5.
 
     Returns
     -------
-    misaligned
+    misaligned : TomoStack
         Misaligned copy of the input TomoStack
 
+    Group
+    -----
+    simulation
+
+    Order
+    -----
+    5
     """
     misaligned = stack.deepcopy()
 
@@ -277,28 +318,39 @@ def misalign_stack(
                 shift=[jitter[i, 0], jitter[i, 1]],
                 order=interp_order,
             )
-        misaligned.metadata.Tomography.shifts = jitter
+        cast(Dtb, misaligned.metadata.Tomography).shifts = jitter
     return misaligned
 
 
-def add_noise(stack, noise_type="gaussian", scale_factor=0.2):
+def add_noise(
+    stack: TomoStack,
+    noise_type: Literal["gaussian", "poissonian", "shot"] = "gaussian",
+    scale_factor: float = 0.2,
+):
     """
-    Apply misalignment to a model tilt series.
+    Apply misalignment to a model tilt series and return as a copy.
 
     Parameters
     ----------
-    stack : TomoStack object
+    stack
         TomoStack simluation
-    noise_type : str
-        Type of noise. Must be gaussian or poissonian/shot
-    factor : float
+    noise_type
+        Type of noise. Must be ``"gaussian"`` or ``"poissonian"``/``"shot"``
+    scale_factor
         Amount of noise to add
 
     Returns
     -------
-    noisy : TomoStack object
+    noisy : TomoStack
         Noisy copy of the input TomoStack
 
+    Group
+    -----
+    simulation
+
+    Order
+    -----
+    4
     """
     noisy = stack.deepcopy()
 
@@ -317,5 +369,12 @@ def add_noise(stack, noise_type="gaussian", scale_factor=0.2):
     elif noise_type in ["poissonian", "shot"]:
         noise = np.random.poisson(stack.data * scale_factor) / scale_factor
         noisy.data = noisy.data + noise
+
+    else:
+        msg = (
+            f'Invalid noise type "{noise_type}". Must be one of '
+            f"{_fmt(_get_lit(add_noise, 'noise_type'))}."
+        )
+        raise ValueError(msg)
 
     return noisy

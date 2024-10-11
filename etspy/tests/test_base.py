@@ -1,13 +1,17 @@
 """Tests for base functions of ETSpy."""
 
+import re
+from typing import cast
+
 import hyperspy.api as hs
 import numpy as np
 import pytest
+from hyperspy.axes import UniformDataAxis as Uda
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from etspy import datasets as ds
-from etspy.base import CommonStack, RecStack, TomoStack
+from etspy.base import RecStack, TomoStack
 
 NUM_AXES_THREE = 3
 
@@ -93,8 +97,10 @@ class TestFiltering:
         bad_name = "WRONG"
         with pytest.raises(
             ValueError,
-            match=f"Unknown filter method '{bad_name}'. "
-            "Must be 'median', 'sobel', 'both', or 'bpf'",
+            match=re.escape(
+                f'Invalid filter method "{bad_name}". '
+                'Must be one of ["median", "bpf", "both", or "sobel"]',
+            ),
         ):
             stack.inav[0:10].filter(method="WRONG")
 
@@ -112,7 +118,7 @@ class TestOperations:
     def test_stack_invert(self):
         im = np.zeros([10, 100, 100])
         im[:, 40:60, 40:60] = 10
-        stack = CommonStack(im)
+        stack = TomoStack(im)
         invert = stack.invert()
         hist, bins = np.histogram(stack.data)
         hist_inv, bins_inv = np.histogram(invert.data)
@@ -135,12 +141,13 @@ class TestOperations:
         stack = ds.get_needle_data()
         start, increment = -50, 5
         stack.set_tilts(start, increment)
-        assert stack.axes_manager[0].name == "Tilt"
-        assert stack.axes_manager[0].scale == increment
-        assert stack.axes_manager[0].units == "degrees"
-        assert stack.axes_manager[0].offset == start
+        ax = cast(Uda, stack.axes_manager[0])
+        assert ax.name == "Tilt"
+        assert ax.scale == increment
+        assert ax.units == "degrees"
+        assert ax.offset == start
         assert (
-            stack.axes_manager[0].axis.all()
+            ax.axis.all()
             == np.arange(
                 start,
                 stack.data.shape[0] * increment + start,
@@ -150,15 +157,16 @@ class TestOperations:
 
     def test_set_tilts_no_metadata(self):
         stack = ds.get_needle_data()
-        del stack.metadata.Tomography
+        del stack.metadata.Tomography  # pyright: ignore[reportAttributeAccessIssue]
         start, increment = -50, 5
         stack.set_tilts(start, increment)
-        assert stack.axes_manager[0].name == "Tilt"
-        assert stack.axes_manager[0].scale == increment
-        assert stack.axes_manager[0].units == "degrees"
-        assert stack.axes_manager[0].offset == start
+        ax = cast(Uda, stack.axes_manager[0])
+        assert ax.name == "Tilt"
+        assert ax.scale == increment
+        assert ax.units == "degrees"
+        assert ax.offset == start
         assert (
-            stack.axes_manager[0].axis.all()
+            ax.axis.all()
             == np.arange(
                 start,
                 stack.data.shape[0] * increment + start,
@@ -227,9 +235,11 @@ class TestStackRegister:
         stack = ds.get_needle_data(aligned=False).inav[0:5]
         bad_method = "UNKNOWN"
         with pytest.raises(
-            ValueError,
-            match=f"Unknown registration method: '{bad_method.lower()}'. "
-            "Must be 'PC', 'StackReg', or 'COM'",
+            TypeError,
+            match=re.escape(
+                f'Invalid registration method "{bad_method}". '
+                'Must be one of ["StackReg", "PC", "COM", or "COM-CL"].',
+            ),
         ):
             stack.stack_register(bad_method)
 
@@ -338,7 +348,7 @@ class TestTiltAlign:
 
     def test_tilt_align_com_axis_zero(self):
         stack = ds.get_needle_data(aligned=True)
-        ali = stack.tilt_align("CoM", locs=[64, 100, 114])
+        ali = stack.tilt_align("CoM", slices=np.array([64, 100, 114]))
         assert isinstance(ali, TomoStack)
 
     def test_tilt_align_maximage(self):
@@ -352,10 +362,12 @@ class TestTiltAlign:
         bad_method = "UNKNOWN"
         with pytest.raises(
             ValueError,
-            match=f"Invalid alignment method: '{bad_method.lower()}'."
-            " Must be 'CoM' or 'MaxImage'",
+            match=re.escape(
+                f'Invalid alignment method "{bad_method}". '
+                'Must be one of ["CoM" or "MaxImage"]',
+            ),
         ):
-            stack.tilt_align(bad_method)
+            stack.tilt_align(bad_method)  # pyright: ignore[reportArgumentType]
 
 
 class TestTransStack:
@@ -381,10 +393,17 @@ class TestTransStack:
         bad_method = "UNKNOWN"
         with pytest.raises(
             ValueError,
-            match=f"Interpolation method '{bad_method}' unknown. "
-            "Must be 'nearest', 'linear', or 'cubic'",
+            match=re.escape(
+                f'Invalid interpolation method "{bad_method}". Must be one of '
+                '["linear", "cubic", "nearest", or "none"].',
+            ),
         ):
-            stack.trans_stack(1, 1, 1, bad_method)
+            stack.trans_stack(
+                1,
+                1,
+                1,
+                bad_method,  # pyright: ignore[reportArgumentType]
+            )
 
 
 class TestReconstruct:

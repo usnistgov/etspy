@@ -1,40 +1,46 @@
-"""
-Utility module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Utility module for ETSpy package."""
 
 import logging
 from multiprocessing import Pool
+from typing import Literal, Optional, cast
 
 import numpy as np
 import tqdm
+from hyperspy._signals.signal2d import Signal2D
+from hyperspy.axes import UniformDataAxis as Uda
 from pystackreg import StackReg
 from scipy import ndimage
 
+from etspy import _format_choices as _fmt
+from etspy import _get_literal_hint_values as _get_lit
 from etspy.align import calculate_shifts_stackreg
+from etspy.base import TomoStack
 from etspy.io import create_stack
 
 
-def multiaverage(stack, nframes, ny, nx):
+def multiaverage(stack: np.ndarray, nframes: int, ny: int, nx: int) -> np.ndarray:
     """
     Register a multi-frame series collected by SerialEM.
 
     Parameters
     ----------
-    stack : NumPy array
+    stack
         Array of shape [nframes, ny, nx].
-    nframes : int
+    nframes
         Number of frames per tilt.
-    ny : int
+    ny
         Pixels in y-dimension.
-    nx : int
+    nx
         Pixels in x-dimension.
 
     Returns
     -------
-    average : NumPy array
+    average : :py:class:`~numpy.ndarray`
         Average of all frames at given tilt
+
+    Group
+    -----
+    utilities
     """
 
     def _calc_sr_shifts(stack):
@@ -54,20 +60,23 @@ def multiaverage(stack, nframes, ny, nx):
     return average
 
 
-def register_serialem_stack(stack, ncpus=1):
+def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
     """
     Register a multi-frame series collected by SerialEM.
 
     Parameters
     ----------
-    stack : Hyperspy Signal2D
+    stack
         Signal of shape [ntilts, nframes, ny, nx].
 
     Returns
     -------
-    reg : TomoStack object
+    reg : TomoStack
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
+    Group
+    -----
+    utilities
     """
     align_logger = logging.getLogger("etspy.align")
     log_level = align_logger.getEffectiveLevel()
@@ -99,17 +108,21 @@ def register_serialem_stack(stack, ncpus=1):
         reg = np.array(reg)
 
     reg = create_stack(reg)
-    reg.axes_manager[0].scale = stack.axes_manager[1].scale
-    reg.axes_manager[0].offset = stack.axes_manager[1].offset
-    reg.axes_manager[0].units = stack.axes_manager[1].units
+    reg_ax_0, reg_ax_1, reg_ax_2 = (cast(Uda, reg.axes_manager[i]) for i in range(3))
+    stack_ax_1, stack_ax_2, stack_ax_3 = (
+        cast(Uda, stack.axes_manager[i]) for i in range(1, 4)
+    )
+    reg_ax_0.scale = stack_ax_1.scale
+    reg_ax_0.offset = stack_ax_1.offset
+    reg_ax_0.units = stack_ax_1.units
 
-    reg.axes_manager[1].scale = stack.axes_manager[2].scale
-    reg.axes_manager[1].offset = stack.axes_manager[2].offset
-    reg.axes_manager[1].units = stack.axes_manager[2].units
+    reg_ax_1.scale = stack_ax_2.scale
+    reg_ax_1.offset = stack_ax_2.offset
+    reg_ax_1.units = stack_ax_2.units
 
-    reg.axes_manager[2].scale = stack.axes_manager[3].scale
-    reg.axes_manager[2].offset = stack.axes_manager[3].offset
-    reg.axes_manager[2].units = stack.axes_manager[3].units
+    reg_ax_2.scale = stack_ax_3.scale
+    reg_ax_2.offset = stack_ax_3.offset
+    reg_ax_2.units = stack_ax_3.units
 
     if stack.metadata.has_item("Acquisition_instrument"):
         reg.metadata.Acquisition_instrument = stack.metadata.Acquisition_instrument
@@ -119,7 +132,10 @@ def register_serialem_stack(stack, ncpus=1):
     return reg
 
 
-def weight_stack(stack, accuracy="medium"):
+def weight_stack(
+    stack: TomoStack,
+    accuracy: Literal["low", "medium", "high"] = "medium",
+) -> TomoStack:
     """
     Apply a weighting window to a stack perpendicular to the tilt axis.
 
@@ -127,23 +143,26 @@ def weight_stack(stack, accuracy="medium"):
     edges of as stack when determining alignments based on the center of mass.
     As described in:
 
-            T. Sanders. Physically motivated global alignment method for electron
-            tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
-            https://doi.org/10.1186/s40679-015-0005-7
+        T. Sanders. Physically motivated global alignment method for electron
+        tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
+        https://doi.org/10.1186/s40679-015-0005-7
 
     Parameters
     ----------
-    stack : TomoStack
+    stack
         The stack to be weighted.
-    accuracy : str, optional
+    accuracy
         A string indicating the accuracy level for weighting. Options are:
-        'low', 'medium', 'high', or any other string for default. Default is 'medium'.
+        'low', 'medium' (default), or 'high'.
 
     Returns
     -------
-    stackw : object
+    stackw : TomoStack
         The weighted version of the input stack.
 
+    Group
+    -----
+    utilities
     """
     # Set the parameters based on the accuracy input
     # with default of "medium"
@@ -160,8 +179,8 @@ def weight_stack(stack, accuracy="medium"):
             delta = 0.001
         else:
             msg = (
-                f"Unknown accuracy level ('{accuracy.lower()}').  "
-                "Must be 'low', 'medium', or 'high'."
+                f'Invalid accuracy level "{accuracy}". Must be one of '
+                f"{_fmt(_get_lit(weight_stack, 'accuracy'))}."
             )
             raise ValueError(msg)
 
@@ -172,9 +191,12 @@ def weight_stack(stack, accuracy="medium"):
 
     # Compute the minimum total projected mass and the corresponding
     # slice index (min_slice)
-    min_mass, min_slice = np.min(
-        np.sum(np.sum(weighted_stack.data, axis=2), axis=1),
-    ), np.argmin(np.sum(np.sum(weighted_stack.data, axis=2), axis=1))
+    min_mass, min_slice = (
+        np.min(
+            np.sum(np.sum(weighted_stack.data, axis=2), axis=1),
+        ),
+        np.argmin(np.sum(np.sum(weighted_stack.data, axis=2), axis=1)),
+    )
 
     # Initialize the window array
     window = np.zeros([ny, nx])
@@ -206,7 +228,8 @@ def weight_stack(stack, accuracy="medium"):
 
         # Compute the weighted sum for all slices at once using vectorization
         weighted_mass = np.sum(
-            weighted_stack.data * window[np.newaxis, :, :], axis=(1, 2),
+            weighted_stack.data * window[np.newaxis, :, :],
+            axis=(1, 2),
         )
 
         # Update the status and adjustments for slices with weighted sums below min_mass
@@ -253,25 +276,28 @@ def weight_stack(stack, accuracy="medium"):
     return weighted_stack
 
 
-def calc_est_angles(num_points):
+def calc_est_angles(num_points: int) -> np.ndarray:
     """
     Caculate angles used for equally sloped tomography (EST).
 
     See:
-            J. Miao, F. Forster, and O. Levi. Equally sloped tomography with
-            oversampling reconstruction. Phys. Rev. B, 72 (2005) 052103.
-            https://doi.org/10.1103/PhysRevB.72.052103
+        J. Miao, F. Forster, and O. Levi. Equally sloped tomography with
+        oversampling reconstruction. Phys. Rev. B, 72 (2005) 052103.
+        https://doi.org/10.1103/PhysRevB.72.052103
 
     Parameters
     ----------
-    num_points : integer
+    num_points
         Number of points in scan.
 
     Returns
     -------
-    angles : Numpy array
+    angles : :py:class:`~numpy.ndarray`
         Angles in degrees for equally sloped tomography.
 
+    Group
+    -----
+    utilities
     """
     if np.mod(num_points, 2) != 0:
         msg = "N must be an even number"
@@ -295,28 +321,31 @@ def calc_est_angles(num_points):
     return angles
 
 
-def calc_golden_ratio_angles(tilt_range, nangles):
+def calc_golden_ratio_angles(tilt_range: int, nangles: int) -> np.ndarray:
     """
     Calculate golden ratio angles for a given tilt range.
 
     See:
 
-            A. P. Kaestner, B. Munch and P. Trtik, Opt. Eng., 2011, 50, 123201.
-            https://doi.org/10.1117/1.3660298
+        A. P. Kaestner, B. Munch and P. Trtik, Opt. Eng., 2011, 50, 123201.
+        https://doi.org/10.1117/1.3660298
 
     Parameters
     ----------
-    tilt_range : integer
+    tilt_range
         Tilt range in degrees.
 
-    nangles : integer
+    nangles
         Number of angles to calculate.
 
     Returns
     -------
-    thetas : Numpy Array
+    thetas : :py:class:`~numpy.ndarray`
         Angles in degrees for golden ratio sampling over the provided tilt range.
 
+    Group
+    -----
+    utilities
     """
     alpha = tilt_range / 180 * np.pi
     i = np.arange(nangles) + 1
@@ -325,26 +354,33 @@ def calc_golden_ratio_angles(tilt_range, nangles):
     return thetas
 
 
-def get_radial_mask(mask_shape, center=None):
+def get_radial_mask(
+    mask_shape: tuple[int, int],
+    center: Optional[tuple[int, int]] = None,
+) -> np.ndarray:
     """
     Calculate a radial mask given a shape and center position.
 
     Parameters
     ----------
-    mask_shape : list
+    mask_shape
         Shape (rows, cols) of the resulting mask.
 
-    center : list
-        Location of mask center (x,y).
+    center
+        (x, y) location of mask center, optional. If ``None``, the center of
+        the ``mask_shape`` will be used by default.
 
     Returns
     -------
-    mask : Numpy Array
+    mask : :py:class:`~numpy.ndarray`
         Logical array that is True in the masked region and False outside of it.
 
+    Group
+    -----
+    utilities
     """
     if center is None:
-        center = [int(i / 2) for i in mask_shape]
+        center = cast(tuple[int, int], tuple(int(i / 2) for i in mask_shape))
     radius = min(
         center[0],
         center[1],
@@ -357,17 +393,28 @@ def get_radial_mask(mask_shape, center=None):
     return mask
 
 
-def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
+def filter_stack(
+    stack: TomoStack,
+    filter_name: Literal[
+        "ram-lak",
+        "shepp-logan",
+        "hanning",
+        "hann",
+        "cosine",
+        "cos",
+    ] = "shepp-logan",
+    cutoff: float = 0.5,
+) -> TomoStack:
     """
     Apply a Fourier filter to a sinogram or series of sinograms.
 
     Parameters
     ----------
-    stack : TomoStack
+    stack
         TomoStack with projection data
-    filter_name : string
+    filter_name
         Type of filter to apply.
-    cutoff : float
+    cutoff
         Factor of sampling rate to use as the cutoff.  Default is 0.5 which
         corresponds to the Nyquist frequency.
 
@@ -376,8 +423,11 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
     result : TomoStack
         Filtered version of the input TomoStack.
 
+    Group
+    -----
+    utilities
     """
-    nangles, ny = stack.data.shape[0:2]
+    _, ny = stack.data.shape[0:2]
 
     filter_length = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
     freq_indices = np.arange(filter_length // 2 + 1)
@@ -403,7 +453,10 @@ def filter_stack(stack, filter_name="shepp-logan", cutoff=0.5):
     ]:
         ffilter[1:] = ffilter[1:] * np.cos(omega[1:] / 2)
     else:
-        msg = f"Invalid filter type: {filter_name}"
+        msg = (
+            f'Invalid filter type "{filter_name}". Must be one of '
+            f"{_fmt(_get_lit(filter_stack, 'filter_name'))}."
+        )
         raise ValueError(msg)
 
     ffilter = np.concatenate((ffilter, ffilter[-2:0:-1]))

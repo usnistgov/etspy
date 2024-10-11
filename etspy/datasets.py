@@ -1,8 +1,4 @@
-"""
-Test dataset handling module for ETSpy package.
-
-@author: Andrew Herzing
-"""
+"""Module to provide example tomographic datasets."""
 
 import etspy.api as etspy
 from etspy.api import etspy_path
@@ -15,9 +11,12 @@ def get_needle_data(aligned: bool = False):
 
     Returns
     -------
-    needle : TomoStack object
+    needle : TomoStack
         TomoStack containing the simulated catalyst tilt series
 
+    Group
+    -----
+    datasets
     """
     if aligned:
         filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hdf5"
@@ -41,7 +40,7 @@ def get_catalyst_data(
     """
     Load a model-simulated catalyst tilt series.
 
-    Arguments
+    Parameters
     ----------
     misalign
         If True, apply random shifts to each projection to simulated drift
@@ -52,21 +51,24 @@ def get_catalyst_data(
     tiltshift
         Number of pixels by which to shift entire tilt series. Simulates
         offset tilt axis.
-    rotate
+    tiltrotate
         Angle by which to rotate entire tilt series. Simulates non-vertical
         tilt axis.
-    xonly
-        If True, shifts are only applied along the X-axis
+    yonly
+        If ``True``, shifts are only applied along the Y-axis
     noise
-        If True, add Gaussian noise to the stack
+        If ``True``, add Gaussian noise to the stack
     noise_factor
         Percentage noise to be added. Must be between 0 and 1.
 
     Returns
     -------
-    catalyst : :py:class:`~etspy.TomoStack`
+    catalyst : TomoStack
         TomoStack containing the simulated catalyst tilt series
 
+    Group
+    -----
+    datasets
     """
     filename = etspy_path / "tests" / "test_data" / "Catalyst3DModel_TiltSeries180.hdf5"
     catalyst = etspy.load(filename)

@@ -1,13 +1,12 @@
-"""
-Reconstruction module for ETSpy package.
+# ruff: noqa: UP007
+"""Reconstruction module for ETSpy package."""
 
-@author: Andrew Herzing
-"""
+from __future__ import annotations
 
 import copy
 import logging
 import multiprocessing as mp
-from typing import cast
+from typing import Literal, Optional, Union, cast
 
 import astra
 import numpy as np
@@ -22,28 +21,40 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def run_alg(sino, iters, cfg, vol_geom, proj_geom):
+def run_alg(
+    sino: np.ndarray,
+    iters: int,
+    cfg: dict,
+    vol_geom: dict,
+    proj_geom: dict,
+) -> np.ndarray:
     """
     Run CPU-based FBP, SIRT, or SART reconstruction algorithm using dask.
 
     Parameters
     ----------
-    sino : NumPy array
+    sino
        Sinogram of shape (nangles, ny)
-    iters : int
+    iters
         Number of iterations for the reconstruction
-    cfg : dict
-        ASTRA algorithm configuration
-    vol_geom : dict
-        ASTRA volume geometry
-    proj_geom : dict
-        ASTRA projection geometry
+    cfg
+        ASTRA algorithm configuration, as described for each of the algorithms present
+        in the :external+astra:doc:`ASTRA docs (Algorithms)<docs/algs/index>`
+    vol_geom
+        ASTRA volume geometry, as described in the
+        :external+astra:doc:`ASTRA docs (Toolbox concepts)<docs/concepts>`
+    proj_geom
+        ASTRA projection geometry, as described in the
+        :external+astra:doc:`ASTRA docs (Toolbox concepts)<docs/concepts>`
 
     Returns
     -------
-    Numpy array
+    :py:class:`~numpy.ndarray`
         Reconstruction of input sinogram
 
+    Group
+    -----
+    recon
     """
     proj_id = astra.create_projector("strip", proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
@@ -58,16 +69,16 @@ def run_alg(sino, iters, cfg, vol_geom, proj_geom):
 
 
 def run_dart(
-    sino,
-    iters,
-    dart_iters,
-    p,
-    thresholds,
-    gray_levels,
-    cfg,
-    vol_geom,
-    proj_geom,
-):
+    sino: np.ndarray,
+    iters: int,
+    dart_iters: int,
+    p: float,
+    thresholds: Union[list, np.ndarray],
+    gray_levels: Union[list, np.ndarray],
+    cfg: dict,
+    vol_geom: dict,
+    proj_geom: dict,
+) -> np.ndarray:
     """
     Run discrete algebraic reoncsturction technique (DART) algorithm.
 
@@ -77,30 +88,33 @@ def run_dart(
 
     Parameters
     ----------
-    sino : NumPy array
+    sino
        Sinogram of shape (nangles, ny)
-    iters : int
+    iters
         Number of iterations for the SART reconstruction
-    dart_iters : int
+    dart_iters
         Number of iterations for the DART reconstruction
-    p : float
+    p
         Probability for free pixel determination
-    thresholds : list or NumPy array
+    thresholds
         Thresholds for DART reconstruction
-    gray_levels : list or NumPy array
+    gray_levels
         Gray levels for DART reconstruction
-    cfg : dict
+    cfg
         ASTRA algorithm configuration
-    vol_geom : dict
+    vol_geom
         ASTRA volume geometry
-    proj_geom : dict
+    proj_geom
         ASTRA projection geometry
 
     Returns
     -------
-    Numpy array
+    :py:class:`~numpy.ndarray`
         Reconstruction of input sinogram
 
+    Group
+    -----
+    recon
     """
     proj_id = astra.create_projector("strip", proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
@@ -152,76 +166,110 @@ def run_dart(
 
 
 def run(  # noqa: PLR0912, PLR0913, PLR0915
-    stack,
-    method,
-    niterations=20,
-    constrain=None,
-    thresh=0,
-    cuda=None,
-    thickness=None,
-    ncores=None,
-    bp_filter="shepp-logan",
-    gray_levels=None,
-    dart_iterations=None,
-    p=0.99,
-    show_progressbar=True,
+    stack: np.ndarray,
+    tilts: np.ndarray,
+    method: Literal["FBP", "SIRT", "SART", "DART"],
+    niterations: int = 20,
+    constrain: bool = False,
+    thresh: float = 0,
+    cuda: Optional[bool] = None,
+    thickness: Optional[int] = None,
+    ncores: Optional[int] = None,
+    bp_filter: Literal[
+        "ram-lak",
+        "shepp-logan",
+        "cosine",
+        "hamming",
+        "hann",
+        "none",
+        "tukey",
+        "lanczos",
+        "triangular",
+        "gaussian",
+        "barlett-hann",
+        "blackman",
+        "nuttall",
+        "blackman-harris",
+        "blackman-nuttall",
+        "flat-top",
+        "kaiser",
+        "parzen",
+        "projection",
+        "sinogram",
+        "rprojection",
+        "rsinogram",
+    ] = "shepp-logan",
+    gray_levels: Optional[Union[list, np.ndarray]] = None,
+    dart_iterations: int = 2,
+    p: float = 0.99,
+    show_progressbar: bool = True,
 ) -> np.ndarray:
     """
     Perform reconstruction of input tilt series.
 
     Parameters
     ----------
-    stack :TomoStack object
-       TomoStack containing the input tilt series
-    method : string
+    stack
+       NumPy array containing the input tilt series for a
+       :py:class:`~etspy.base.TomoStack`
+    tilts
+        The tilt angles for the tilt series (usually found in the
+        ``TomoStack.metadata.Tomography.tilts`` metadata node)
+    method
         Reconstruction algorithm to use.  Must be either 'FBP' (default), 'SIRT',
         'SART', or 'DART
-    niterations : integer
-        Number of iterations for reconstruction
-    constrain : boolean
+    niterations
+        Number of iterations for reconstruction (used with ``SIRT``, ``SART``, and
+        ``DART`` methods)
+    constrain
         If True, output reconstruction is constrained above value given by
         'thresh'
-    thresh : integer or float
+    thresh
         Value above which to constrain the reconstructed data
-    cuda : boolean
+    cuda
         If True, use the CUDA-accelerated Astra algorithms. Otherwise,
         use the CPU-based algorithms
-    thickness : int
-        Limit for the height of the reconstruction
-    ncores : int
+    thickness
+        Limit for the height of the reconstruction. If ``None``, the y-size
+        of the stack is used.
+    ncores
         Number of cores to use for multithreaded CPU-based reconstructions
-    bp_filter : str
+    bp_filter
         Filter to use for filtered backprojection
-    gray_levels : list or NumPy array
+    gray_levels
         Gray levels for DART reconstruction
-    dart_iterations : int
+    dart_iterations
         Number of DART iterations
-    p : float
+    p
         Probability for setting free pixels in DART reconstruction
-    show_progressbar : bool
+    show_progressbar
         If True, show a progress bar for the reconstruction. Default is True.
 
     Returns
     -------
-    rec : Numpy array
+    rec : :py:class:`~numpy.ndarray`
         Containing the reconstructed volume
 
+    Group
+    -----
+    recon
     """
-    if len(stack.data.shape) == 2:  # noqa: PLR2004
-        nangles, ny = stack.data.shape
-        stack.data = stack.data[:, :, np.newaxis]
+    if len(stack.shape) == 2:  # noqa: PLR2004
+        nangles, ny = stack.shape
+        stack = stack[:, :, np.newaxis]
         nx = 1
     else:
-        nangles, ny, nx = stack.data.shape
+        nangles, ny, nx = stack.shape
 
-    thetas = np.pi * stack.metadata.Tomography.tilts / 180.0
+    thetas = np.pi * tilts / 180.0
     mask_id = None
     thresholds = []
 
     if thickness is None:
         thickness = ny
+    thickness = cast(int, thickness)
 
-    rec = np.zeros([nx, thickness, ny], np.float32)
+    rec = np.zeros((nx, thickness, ny), np.float32)
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((thickness, ny))
@@ -260,7 +308,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
             if gray_levels is None:
                 msg = "gray_levels must be provided for DART"
                 raise ValueError(msg)
-            gray_levels = cast(np.ndarray, gray_levels)  # explicit type-checking cast
+            gray_levels = cast(Union[list, np.ndarray], gray_levels)
             thresholds = [
                 (gray_levels[i] + gray_levels[i + 1]) // 2
                 for i in range(len(gray_levels) - 1)
@@ -282,17 +330,17 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         alg = astra.algorithm.create(cfg)
 
         for i in tqdm.tqdm(range(nx), disable=not (show_progressbar)):
-            astra.data2d.store(sino_id, stack.data[:, :, i])
+            astra.data2d.store(sino_id, stack[:, :, i])
             astra.data2d.store(rec_id, np.zeros([thickness, ny]))
             if method.lower() == "dart":
                 astra.data2d.store(mask_id, np.ones([thickness, ny]))
                 rec[i, :, :] = run_dart(
-                    stack.data[:, :, i],
+                    stack[:, :, i],
                     niterations,
                     dart_iterations,
                     p,
                     thresholds,
-                    gray_levels,
+                    cast(Union[list, np.ndarray], gray_levels),
                     cfg,
                     vol_geom,
                     proj_geom,
@@ -339,7 +387,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         if method.lower() in ["fbp", "sirt", "sart"]:
             tasks = [
                 dask_delayed(run_alg)(
-                    stack.data[:, :, i],
+                    stack[:, :, i],
                     niterations,
                     cfg,
                     vol_geom,
@@ -358,7 +406,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         elif method.lower() == "dart":
             tasks = [
                 dask_delayed(run_dart)(
-                    stack.data[:, :, i],
+                    stack[:, :, i],
                     niterations,
                     dart_iterations,
                     p,
@@ -383,44 +431,54 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     return rec
 
 
-def dart_segment(rec, thresholds, gray_vals):
+def dart_segment(
+    rec: np.ndarray,
+    thresholds: Union[list, np.ndarray],
+    gray_vals: Union[list, np.ndarray],
+) -> np.ndarray:
     """
     Segmentation step for DART Reconstruction.
 
     Parameters
     ----------
-    rec : NumPy array
+    rec
        Tomographic reconstruction.
-    thresholds : list or NumPy array
+    thresholds
         Threshold values for segmentation.
-    gray_vals : list or NumPy array
+    gray_vals
         Grayscale values to assign the segmented regions.
 
     Returns
     -------
-    segmented : NumPy array
+    segmented : :py:class:`~numpy.ndarray`
         Segmented version of the reconstruction.
 
+    Group
+    -----
+    recon
     """
     bins = np.digitize(rec, bins=thresholds, right=False)
     segmented = np.array(gray_vals)[bins]
     return segmented
 
 
-def get_dart_boundaries(segmented):
+def get_dart_boundaries(segmented: np.ndarray) -> np.ndarray:
     """
     Boundary step for DART Reconstruction.
 
     Parameters
     ----------
-    segmented : NumPy array
+    segmented
         Segmented reconstruction.
 
     Returns
     -------
-    boundaries : NumPy array
+    boundaries : :py:class:`~numpy.ndarray`
         Boundaries of the segmented reconstruction.
 
+    Group
+    -----
+    recon
     """
     kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]])
     edges = convolve(segmented.astype(np.int32), kernel, mode="constant", cval=0)
@@ -429,43 +487,48 @@ def get_dart_boundaries(segmented):
 
 
 def astra_error(
-    sinogram,
-    angles,
-    method="sirt",
-    iterations=50,
-    constrain=True,
-    thresh=0,
+    sinogram: np.ndarray,
+    angles: np.ndarray,
+    method: Literal["SIRT", "SART"] = "SIRT",
+    iterations: int = 50,
+    constrain: bool = True,
+    thresh: float = 0,
     cuda=False,
-):
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Perform SIRT reconstruction using the Astra toolbox algorithms.
 
     Parameters
     ----------
-    sinogram : NumPy array
+    sinogram
        Tilt series data either of the form [angles, x] or [angles, y, x] where
        y is the tilt axis and x is the projection axis.
-    angles : list or NumPy array
+    angles
         Projection angles in degrees.
-    method : str
+    method
         Reconstruction algorithm use.  Must be 'SIRT' or 'SART'.
-    iterations : integer
+    iterations
         Number of iterations for the SIRT reconstruction.
-    constrain : boolean
+    constrain
         If True, output reconstruction is constrained above value given by
         'thresh'. Default is True.
-    thresh : integer or float
-        Value above which to constrain the reconstructed data if 'constrain'
-        is True.
-    cuda : boolean
+    thresh
+        Value above which to constrain the reconstructed data if ``constrain``
+        is ``True``.
+    cuda
         If True, use the CUDA-accelerated Astra algorithms. Otherwise,
         use the CPU-based algorithms
 
     Returns
     -------
-    rec : Numpy array
+    rec : :py:class:`~numpy.ndarray`
         3D array of the form [y, z, x] containing the reconstructed object.
+    residual_error : :py:class:`~numpy.ndarray`
+        A 1D array of the residual error after each iteration
 
+    Group
+    -----
+    recon
     """
     thetas = angles * np.pi / 180
 
@@ -507,4 +570,5 @@ def astra_error(
             curr_id, curr = astra.create_sino(rec[i], proj_id)
             residual_error[i] = np.linalg.norm(sinogram - curr)
     astra.clear()
+
     return rec, residual_error
