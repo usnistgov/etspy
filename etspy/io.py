@@ -219,15 +219,19 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
     stack.metadata.General.original_filename = meta["ImageFile"]
     logger.info("SerialEM stack successfully loaded. ")
     mrc_logger.setLevel(log_level)
-    return stack
+    return TomoStack(stack)
 
 
 def load_serialem_series(
     mrcfiles: Union[List[str], List[Path]],
     mdocfiles: Union[List[str], List[Path]],
-) -> Tuple[TomoStack, np.ndarray]:
+) -> Tuple[Signal2D, np.ndarray]:
     """
     Load a multi-frame series collected by SerialEM.
+
+    A multi-frame series is a tilt series with multiple frames at each tilt.
+    The resulting signal will have two navigation axes, ``"Frames"`` and
+    ``"Projections"``.
 
     Parameters
     ----------
@@ -278,11 +282,26 @@ def load_serialem_series(
             mrc_filename = mdoc_filename.parent / mdoc_filename.stem
         else:
             mrc_filename = mdoc_filename.with_suffix(".mrc")
-        stack.append(hs_load(mrc_filename))
+        frames = hs_load(mrc_filename)
+        nav = frames.axes_manager.navigation_axes[0]
+        del nav.scale
+        nav.name = "Frames"
+        nav.units = "images"
 
-    images_per_tilt = stack[0].data.shape[0]
-    stack = hs_stack(stack, show_progressbar=False)
+        stack.append(frames)
 
+    # build hyperspy signal from stack along a new Tilt axis
+    # shape will be (ntilts, nframes, x, y)
+    stack = hs_stack(stack, show_progressbar=False, new_axis_name="Projections")
+    stack.axes_manager["Projections"].units = "degrees"
+    stack.axes_manager["Projections"].offset = tilts[0]
+    stack.axes_manager["Projections"].scale = np.diff(tilts).mean()
+
+    # tile tilts array to match frames
+    # shape will be (ntilts, nframes)
+    tilts = np.tile(tilts, (stack.axes_manager["Frames"].size, 1)).T
+
+    images_per_tilt = stack.axes_manager["Frames"].size
     if not stack.metadata.has_item("Acquisition_instrument.TEM"):
         stack.metadata.add_node("Acquisition_instrument.TEM")
     stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]["Magnification"]
