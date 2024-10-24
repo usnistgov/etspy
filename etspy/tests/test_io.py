@@ -9,15 +9,12 @@ import pytest
 from h5py import Dataset
 from hyperspy.axes import UniformDataAxis as Uda
 from hyperspy.io import load as hs_load
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
-from hyperspy.signals import Signal2D
 
 import etspy.api as etspy
 from etspy.api import etspy_path
-from etspy.base import TomoStack
-from etspy.io import MismatchedTiltError
+from etspy.base import MismatchedTiltError, TomoShifts, TomoStack, TomoTilts
 
-from . import hspy_mrc_reader_check
+from . import hspy_mrc_reader_check, load_serialem_multiframe_data
 
 try:
     hspy_mrc_reader_check()
@@ -34,15 +31,15 @@ class TestLoadMRC:
         filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
         stack_orig = hs_load(filename)
         stack = etspy.io.load(filename)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
         ax_list = cast(List[Uda], stack.axes_manager)
 
         assert stack.axes_manager.signal_shape == (256, 256)
         assert stack.axes_manager.navigation_shape == (77,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts.shape[0] == stack.data.shape[0]
-        assert tomo_meta.tilts[0] == -76  # noqa: PLR2004
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.tilts.data.shape[0] == stack.data.shape[0]
+        assert stack.tilts.data[0] == -76  # noqa: PLR2004
         assert isinstance(stack, TomoStack)
         assert ax_list[1].scale == stack_orig.axes_manager[1].scale
         assert ax_list[1].units == stack_orig.axes_manager[1].units
@@ -51,15 +48,15 @@ class TestLoadMRC:
         filename = etspy_path / "tests" / "test_data" / "HAADF.ali"
         stack_orig = hs_load(filename)
         stack = etspy.io.load(filename)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
         ax_list = cast(List[Uda], stack.axes_manager)
 
         assert stack.axes_manager.signal_shape == (256, 256)
         assert stack.axes_manager.navigation_shape == (77,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts.shape[0] == stack.data.shape[0]
-        assert tomo_meta.tilts[0] == -76  # noqa: PLR2004
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.tilts.data.shape[0] == stack.data.shape[0]
+        assert stack.tilts.data[0][0] == -76  # noqa: PLR2004
         assert isinstance(stack, TomoStack)
         assert ax_list[1].scale == stack_orig.axes_manager[1].scale
         assert ax_list[1].units == stack_orig.axes_manager[1].units
@@ -72,6 +69,9 @@ class TestLoadMRC:
         tilts = etspy.io.get_mrc_tilts(stack, filename)
         assert isinstance(tilts, np.ndarray)
         assert tilts.shape[0] == stack.data.shape[0]
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert np.all(stack.tilts.data.squeeze() == tilts)
 
     def test_load_mrc_with_bad_rawtlt(self):
         filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
@@ -96,21 +96,20 @@ class TestHspy:
     def test_convert_signal2d(self):
         tilts = np.arange(-10, 10, 2)
         data = hs.signals.Signal2D(np.zeros([10, 100, 100]))
-        stack = etspy.io.create_stack(data, tilts=tilts)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        stack = TomoStack(data, tilts=tilts)
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (10,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts.shape[0] == stack.data.shape[0]
-        assert tomo_meta.tilts[0] == -10  # noqa: PLR2004
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.tilts.data.shape[0] == stack.data.shape[0]
+        assert stack.tilts.data[0][0] == -10  # noqa: PLR2004
         assert isinstance(stack, TomoStack)
 
     def test_load_hspy_hdf5(self):
         filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hdf5"
         stack_orig = hs_load(filename, reader="HSPY")
         stack = etspy.io.load(filename)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
         ax_list = cast(List[Uda], stack.axes_manager)
         with h5py.File(filename, "r") as h5:
             h5_data = h5.get("/Experiments/__unnamed__/data")
@@ -119,8 +118,11 @@ class TestHspy:
         assert stack.data.shape[1:] == h5_shape[1:]
         assert stack.data.shape[0] == h5_shape[0]
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] == -76  # noqa: PLR2004
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.tilts.axes_manager.shape == (77, 1)
+        assert stack.shifts.axes_manager.shape == (77, 2)
+        assert stack.tilts.data[0][0] == -76  # noqa: PLR2004
         assert isinstance(stack, TomoStack)
         assert ax_list[1].scale == stack_orig.axes_manager[1].scale
         assert ax_list[1].units == stack_orig.axes_manager[1].units
@@ -130,51 +132,48 @@ class TestNumpy:
     """Test creating a TomoStack from NumPy arrays."""
 
     def test_numpy_to_stack_no_tilts(self):
-        stack = etspy.io.create_stack(np.random.random([50, 100, 100]), tilts=None)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
-        assert isinstance(stack, etspy.TomoStack)
+        stack = TomoStack(np.random.random([50, 100, 100]), tilts=None)
+        assert isinstance(stack, TomoStack)
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (50,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] == 0
-        assert tomo_meta.tilts.shape[0] == stack.data.shape[0]
-        assert isinstance(stack, TomoStack)
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.tilts.data[0][0] == 0
+        assert stack.tilts.data.shape[0] == stack.data.shape[0]
 
     def test_numpy_to_stack_with_bad_tilts(self):
         tilts = np.arange(-50, 50, 2)
         data = np.random.random([25, 100, 100])
         with pytest.raises(MismatchedTiltError):
-            etspy.io.create_stack(data, tilts=tilts)
+            TomoStack(data, tilts=tilts)
 
     def test_numpy_to_stack_with_tilts(self):
         tilts = np.arange(-50, 50, 2)
-        stack = etspy.io.create_stack(np.random.random([50, 100, 100]), tilts=tilts)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        stack = TomoStack(np.random.random([50, 100, 100]), tilts=tilts)
         assert isinstance(stack, etspy.TomoStack)
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (50,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] == -50  # noqa: PLR2004
-        assert tomo_meta.tilts.shape[0] == stack.data.shape[0]
-        assert isinstance(stack, TomoStack)
-
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert np.all(stack.tilts.data.squeeze() == np.arange(-50, 50, 2))
+        assert stack.tilts.data.shape[0] == stack.data.shape[0]
 
 class TestSignal:
     """Test creating stacks from HyperSpy signals."""
 
     def test_signal_to_stack(self):
         signal = hs.signals.Signal2D(np.random.random([50, 100, 100]))
-        stack = etspy.io.create_stack(signal)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+        stack = TomoStack(signal)
         ax_list = cast(List[Uda], stack.axes_manager)
-        assert ax_list[0].name == "Tilt"
+        assert ax_list[0].name == "Projections"
         assert stack.axes_manager.signal_shape == (100, 100)
         assert stack.axes_manager.navigation_shape == (50,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] == 0
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert np.all(stack.tilts.data == 0)
         assert isinstance(stack, TomoStack)
         assert ax_list[1].scale == signal.axes_manager[1].scale
         assert ax_list[1].units == signal.axes_manager[1].units
@@ -183,7 +182,7 @@ class TestSignal:
         signal = hs.signals.Signal2D(np.random.random([50, 100, 100]))
         tilts = np.zeros(20)
         with pytest.raises(MismatchedTiltError):
-            etspy.io.create_stack(signal, tilts)
+            TomoStack(signal, tilts)
 
 
 class TestDM:
@@ -193,14 +192,15 @@ class TestDM:
         filename = etspy_path / "tests" / "test_data" / "HAADF.dm3"
         signal = hs_load(filename)
         stack = etspy.load(filename)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
         ax_list = cast(List[Uda], stack.axes_manager)
-        assert ax_list[0].name == "Tilt"
+        assert ax_list[0].name == "Projections"
+        assert ax_list[0].units == "degrees"
         assert stack.axes_manager.signal_shape == (64, 64)
         assert stack.axes_manager.navigation_shape == (91,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] < 0
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.tilts.data[0][0] == -90  # noqa: PLR2004
         assert isinstance(stack, TomoStack)
         assert ax_list[1].scale == signal.axes_manager[1].scale
         assert ax_list[1].units == signal.axes_manager[1].units
@@ -212,14 +212,19 @@ class TestDM:
         files = list(dirname.glob("*.dm3"))
         signal = hs_load(files, stack=True)
         stack = etspy.load(files)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
         ax_list = cast(List[Uda], stack.axes_manager)
-        assert ax_list[0].name == "Tilt"
+        assert ax_list[0].name == "Projections"
+        assert ax_list[0].units == "degrees"
+        assert ax_list[0].scale == pytest.approx(3, abs=0.1)
         assert stack.axes_manager.signal_shape == (128, 128)
         assert stack.axes_manager.navigation_shape == (3,)
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] < 0
+        assert isinstance(stack.tilts, TomoTilts)
+        assert stack.tilts.data[0][0] == pytest.approx(-72, abs=0.01)
+        assert stack.tilts.data[1][0] == pytest.approx(-69, abs=0.01)
+        assert stack.tilts.data[2][0] == pytest.approx(-66, abs=0.01)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert np.all(stack.shifts.data == 0)
         assert isinstance(stack, TomoStack)
         assert ax_list[1].scale == signal.axes_manager[1].scale
         assert ax_list[1].units == signal.axes_manager[1].units
@@ -231,27 +236,72 @@ class TestDM:
 class TestSerialEM:
     """Test loading SerialEM data."""
 
-    def test_load_serialem_series(self):
-        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
-        files = list(dirname.glob("*.mrc"))
-        stack = etspy.load(files)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
+    def test_load_serialem_multiframe_series(self):
+        stack = load_serialem_multiframe_data()
         assert stack.axes_manager.signal_shape == (1024, 1024)
         assert stack.axes_manager.navigation_shape == (2, 3)
+        assert stack.data.shape == (3, 2, 1024, 1024)
+
+        ax_dict = stack.axes_manager.as_dictionary()
+        assert ax_dict["axis-0"]["name"] == "Projections"
+        assert ax_dict["axis-0"]["units"] == "degrees"
+        assert ax_dict["axis-0"]["navigate"]
+        assert ax_dict["axis-0"]["size"] == 3  # noqa: PLR2004
+        assert ax_dict["axis-1"]["name"] == "Frames"
+        assert ax_dict["axis-1"]["units"] == "images"
+        assert ax_dict["axis-1"]["navigate"]
+        assert ax_dict["axis-1"]["size"] == 2  # noqa: PLR2004
+        assert ax_dict["axis-2"]["name"] == "y"
+        assert ax_dict["axis-2"]["units"] == "nm"
+        assert not ax_dict["axis-2"]["navigate"]
+        assert ax_dict["axis-2"]["size"] == 1024  # noqa: PLR2004
+        assert ax_dict["axis-3"]["name"] == "x"
+        assert ax_dict["axis-3"]["units"] == "nm"
+        assert not ax_dict["axis-3"]["navigate"]
+        assert ax_dict["axis-3"]["size"] == 1024  # noqa: PLR2004
+
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] < 0
+        assert isinstance(stack.tilts, TomoTilts)
+        assert stack.tilts.data.shape == (3, 2, 1)
+        assert stack.tilts.axes_manager.navigation_shape == (2, 3)
+        assert np.allclose(
+            stack.tilts.data,
+            np.array([
+                [[-5.00151e+00],[-5.00151e+00]],
+                [[-4.88000e-04],[-4.88000e-04]],
+                [[ 5.00054e+00],[ 5.00054e+00]],
+            ]),
+        )
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.shifts.data.shape == (3, 2, 2)
+        assert np.all(stack.shifts.data == 0)
         assert isinstance(stack, TomoStack)
 
-    def test_load_serialem(self):
-        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
+    def test_load_serialem_multi_tilt_single_file(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_MultiTilt_Test"
         stack = etspy.load(dirname / "test_000.mrc")
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
         assert stack.axes_manager.signal_shape == (1024, 1024)
         assert stack.axes_manager.navigation_shape == (2,)
+
+        ax_dict = stack.axes_manager.as_dictionary()
+        assert ax_dict["axis-0"]["name"] == "Projections"
+        assert ax_dict["axis-0"]["units"] == "degrees"
+        assert ax_dict["axis-0"]["navigate"]
+        assert ax_dict["axis-0"]["size"] == 2  # noqa: PLR2004
+        assert ax_dict["axis-1"]["name"] == "y"
+        assert ax_dict["axis-1"]["units"] == "nm"
+        assert not ax_dict["axis-1"]["navigate"]
+        assert ax_dict["axis-1"]["size"] == 1024  # noqa: PLR2004
+        assert ax_dict["axis-2"]["name"] == "x"
+        assert ax_dict["axis-2"]["units"] == "nm"
+        assert not ax_dict["axis-2"]["navigate"]
+        assert ax_dict["axis-2"]["size"] == 1024  # noqa: PLR2004
+
         assert stack.metadata.has_item("Tomography")
-        assert isinstance(tomo_meta.tilts, np.ndarray)
-        assert tomo_meta.tilts[0] == 0.0
+        # TODO(jat): update tilts when Andy updates new file
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert stack.tilts.data[0][0] == 0.0
         assert isinstance(stack, TomoStack)
 
     def test_load_serial_em_explicit(self):
@@ -259,7 +309,10 @@ class TestSerialEM:
         mrcfile = next(dirname.glob("*.mrc"))
         mdocfile = mrcfile.with_suffix(".mdoc")
         stack = etspy.io.load_serialem(mrcfile, mdocfile)
-        assert isinstance(stack, Signal2D)
+        assert isinstance(stack, TomoStack)
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+
 
 
 class TestUnknown:

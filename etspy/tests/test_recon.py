@@ -5,7 +5,6 @@ from typing import Tuple, cast
 
 import numpy as np
 import pytest
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 from etspy import datasets as ds
 from etspy import recon
@@ -17,16 +16,19 @@ class TestReconstruction:
 
     def test_recon_no_tilts(self):
         stack = ds.get_needle_data(aligned=True)
-        cast(Dtb, stack.metadata.Tomography).tilts = None
+        del stack.tilts
         slices = stack.isig[120:121, :].deepcopy()
-        with pytest.raises(TypeError):
+        with pytest.raises(
+            ValueError,
+            match=r"Tilts are not defined in stack.tilts \(values were all zeros\). "
+                  r"Please set tilt values before alignment.",
+        ):
             slices.reconstruct("FBP")
 
     def test_recon_single_slice(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120, :]
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = stack.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "FBP", cuda=False)
         assert isinstance(stack, TomoStack)
         assert isinstance(rec, np.ndarray)
@@ -45,7 +47,7 @@ class TestReconstruction:
                 '["FBP", "SIRT", "SART", or "DART"]',
             ),
         ):
-            slices.reconstruct(bad_method)
+            slices.reconstruct(bad_method)  # type: ignore
 
     def test_recon_fbp_cpu(self):
         stack = ds.get_needle_data(aligned=True)
@@ -130,8 +132,7 @@ class TestReconRun:
     def test_run_fbp_no_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "FBP", cuda=False)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
@@ -141,8 +142,7 @@ class TestReconRun:
     def test_run_sirt_no_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SIRT", niterations=2, cuda=False)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
@@ -152,8 +152,7 @@ class TestReconRun:
     def test_run_sart_no_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SART", niterations=2, cuda=False)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
@@ -164,8 +163,7 @@ class TestReconRun:
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
         gray_levels = [0.0, slices.data.max() / 2, slices.data.max()]
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(
             slices.data,
             tilts,
@@ -186,8 +184,8 @@ class TestAstraError:
 
     def test_astra_sirt_error_cpu(self):
         stack = ds.get_needle_data(aligned=True)
-        [ntilts, ny, nx] = stack.data.shape
-        angles = cast(np.ndarray, cast(Dtb, stack.metadata.Tomography).tilts)
+        _, ny, _ = stack.data.shape
+        angles = stack.tilts.data.squeeze()
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_error(
             sino,
@@ -202,8 +200,8 @@ class TestAstraError:
 
     def test_astra_sart_error_cpu(self):
         stack = ds.get_needle_data(aligned=True)
-        [ntilts, ny, nx] = stack.data.shape
-        angles = cast(np.ndarray, cast(Dtb, stack.metadata.Tomography).tilts)
+        _, ny, _ = stack.data.shape
+        angles = stack.tilts.data.squeeze()
         sino = stack.isig[120, :].data
         rec_stack, error = recon.astra_error(
             sino,

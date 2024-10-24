@@ -1,5 +1,6 @@
 """Tests for base functions of ETSpy."""
 
+import logging
 import re
 from typing import cast
 
@@ -11,7 +12,9 @@ from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from etspy import datasets as ds
-from etspy.base import RecStack, TomoStack
+from etspy.base import RecStack, TomoShifts, TomoStack, TomoTilts
+
+from . import load_serialem_multiframe_data
 
 NUM_AXES_THREE = 3
 
@@ -37,7 +40,145 @@ class TestTomoStack:
         s = hs.signals.Signal2D(np.random.random([10, 100, 100]))
         stack = TomoStack(s)
         assert isinstance(stack, TomoStack)
+        assert hasattr(stack, "tilts")
+        assert hasattr(stack, "shifts")
 
+    def test_remove_projections(self):
+        s = ds.get_needle_data(aligned=True)
+        s_new = s.remove_projections([0, 5, 10, 15, 20])
+        # original shape is (77, 256, 256)
+        assert s_new.data.shape == (72, 256, 256)
+        assert s_new.tilts.data.shape == (72, 1)
+        assert s_new.shifts.data.shape == (72, 2)
+        for t in [-76, -66, -56, -46, -36]:
+            assert t not in s_new.tilts.data
+
+    def test_remove_projections_none(self):
+        s = ds.get_needle_data(aligned=True)
+        with pytest.raises(ValueError, match="No projections provided"):
+            s.remove_projections(None)
+
+    def test_slicing(self):
+        s = ds.get_needle_data()
+        s2 = s.inav[:5]
+        assert s2.data.shape == (5, 256, 256)
+        assert s2.shifts.data.shape == (5, 2)
+        assert s2.tilts.data.shape == (5, 1)
+
+    def test_property_deleters(self):
+        s = ds.get_needle_data()
+
+        # tilts
+        assert np.all(s.tilts.data.squeeze() == np.arange(-76, 78, 2))
+        del s.tilts
+        assert np.all(s.tilts.data.squeeze() == np.zeros((77, 1)))
+
+        # shifts
+        s.shifts = np.random.rand(77,2) + 2  # offset to ensure non-zero
+        assert np.all(s.shifts.data != np.zeros((77, 2)))
+        del s.shifts
+        assert np.all(s.shifts.data == np.zeros((77, 2)))
+
+class TestSlicers:
+    """Test inav/isig slicers."""
+
+    def test_tilt_nav_slicer(self):
+        stack = ds.get_needle_data()
+        t = stack.tilts.inav[:5]
+        assert isinstance(t, TomoTilts)
+        assert t.data.shape == (5, 1)
+
+    def test_tilt_sig_slicer(self, caplog):
+        stack = ds.get_needle_data()
+        with caplog.at_level(logging.WARNING):
+            t = stack.tilts.isig[:5]
+            assert "TomoTilts does not support 'isig' slicing" in caplog.text
+        assert isinstance(t, TomoTilts)
+        assert t.data.shape == (77, 1)
+
+    def test_shift_nav_slicer(self):
+        stack = ds.get_needle_data()
+        t = stack.shifts.inav[:5]
+        assert isinstance(t, TomoShifts)
+        assert t.data.shape == (5, 2)
+
+    def test_shift_sig_slicer(self, caplog):
+        stack = ds.get_needle_data()
+        with caplog.at_level(logging.WARNING):
+            t = stack.shifts.isig[:5]
+            # warning should be triggered when slicing the TomoTilts directly
+            assert "TomoShifts does not support 'isig' slicing" in caplog.text
+        assert isinstance(t, TomoShifts)
+        assert t.data.shape == (77, 2)
+
+    def test_tomostack_nav_slicer(self):
+        stack = ds.get_needle_data()
+        t = stack.inav[:5]
+        assert t.data.shape == (5, 256, 256)
+        assert t.tilts.data.shape == (5, 1)
+        assert t.shifts.data.shape == (5, 2)
+        assert isinstance(t, TomoStack)
+        assert isinstance(t.tilts, TomoTilts)
+        assert isinstance(t.shifts, TomoShifts)
+
+    def test_tomostack_sig_slicer(self, caplog):
+        stack = ds.get_needle_data()
+        with caplog.at_level(logging.WARNING):
+            t = stack.isig[:5, :10]
+            # warning should not be triggered when slicing the TomoStack
+            assert "TomoShifts does not support 'isig' slicing" not in caplog.text
+        assert t.data.shape == (77, 10, 5)
+        assert t.tilts.data.shape == (77, 1)
+        assert t.shifts.data.shape == (77, 2)
+        assert isinstance(t, TomoStack)
+        assert isinstance(t.tilts, TomoTilts)
+        assert isinstance(t.shifts, TomoShifts)
+
+    def test_two_d_tomo_stack_slicing(self):
+        stack = load_serialem_multiframe_data()
+        assert stack.axes_manager.shape == (2, 3, 1024, 1024)
+        assert stack.data.shape == (3, 2, 1024, 1024)
+        assert stack.axes_manager[0].name == "Frames"       # type: ignore
+        assert stack.axes_manager[0].units == "images"      # type: ignore
+        assert stack.axes_manager[1].name == "Projections"  # type: ignore
+        assert stack.axes_manager[1].units == "degrees"     # type: ignore
+        assert stack.axes_manager[2].name == "x"            # type: ignore
+        assert stack.axes_manager[2].units == "nm"          # type: ignore
+        assert stack.axes_manager[3].name == "y"            # type: ignore
+        assert stack.axes_manager[3].units == "nm"          # type: ignore
+
+        # test inav and isig together with ranges
+        t = stack.inav[:1, :2].isig[:20, :120]
+        assert t.axes_manager.shape == (1, 2, 20, 120)
+        assert t.data.shape == (2, 1, 120, 20)
+        assert t.tilts.axes_manager.shape == (1, 2, 1)
+        assert t.shifts.axes_manager.shape == (1, 2, 2)
+
+        # test extracting single projection
+        t2 = stack.isig[:20, :120].inav[:, 2]
+        assert t2.axes_manager.shape == (2, 20, 120)
+        assert t2.data.shape == (2, 120, 20)
+        assert t2.axes_manager[0].name == "Frames" # type: ignore
+        assert t2.tilts.axes_manager.navigation_shape == (2,)
+        assert t2.shifts.axes_manager.navigation_shape == (2,)
+
+        # test extracting single frame
+        t3 = stack.isig[:20, :120].inav[1, :]
+        assert t3.axes_manager.shape == (3, 20, 120)
+        assert t3.data.shape == (3, 120, 20)
+        assert t3.axes_manager[0].name == "Projections" # type: ignore
+        assert t3.tilts.axes_manager.navigation_shape == (3,)
+        assert t3.shifts.axes_manager.navigation_shape == (3,)
+
+        # test extracting single frame and projection
+        t4 = stack.isig[:20, :120].inav[1, 1]
+        assert t4.axes_manager.shape == (20, 120)
+        assert t4.data.shape == (120, 20)
+        assert t4.axes_manager[0].name == "x" # type: ignore
+        assert t4.axes_manager[1].name == "y" # type: ignore
+        assert t4.tilts.axes_manager.navigation_shape == ()
+        assert t4.shifts.axes_manager.navigation_shape == ()
+        assert t4.tilts.data[0] == pytest.approx(-0.000488)
 
 class TestFiltering:
     """Test filtering of TomoStack data."""
@@ -102,7 +243,7 @@ class TestFiltering:
                 'Must be one of ["median", "bpf", "both", or "sobel"]',
             ),
         ):
-            stack.inav[0:10].filter(method="WRONG")
+            stack.inav[0:10].filter(method="WRONG") # type: ignore
 
 
 class TestOperations:
@@ -142,7 +283,7 @@ class TestOperations:
         start, increment = -50, 5
         stack.set_tilts(start, increment)
         ax = cast(Uda, stack.axes_manager[0])
-        assert ax.name == "Tilt"
+        assert ax.name == "Projections"
         assert ax.scale == increment
         assert ax.units == "degrees"
         assert ax.offset == start
@@ -161,7 +302,7 @@ class TestOperations:
         start, increment = -50, 5
         stack.set_tilts(start, increment)
         ax = cast(Uda, stack.axes_manager[0])
-        assert ax.name == "Tilt"
+        assert ax.name == "Projections"
         assert ax.scale == increment
         assert ax.units == "degrees"
         assert ax.offset == start
@@ -226,6 +367,12 @@ class TestAlignOther:
         stack2 = stack.deepcopy()
         stack3 = stack.align_other(stack2)
         assert isinstance(stack3, TomoStack)
+        assert (
+            stack.metadata.Tomography.xshift == stack2.metadata.Tomography.xshift # type: ignore
+        )
+        assert (
+            stack3.metadata.Tomography.xshift == 2 * stack2.metadata.Tomography.xshift # type: ignore
+        )
 
 
 class TestStackRegister:
@@ -241,30 +388,25 @@ class TestStackRegister:
                 'Must be one of ["StackReg", "PC", "COM", or "COM-CL"].',
             ),
         ):
-            stack.stack_register(bad_method)
+            stack.stack_register(bad_method) # type: ignore
 
     def test_stack_register_pc(self):
         stack = ds.get_needle_data(aligned=False).inav[0:5]
-        stack.metadata.Tomography.shifts = np.zeros([5, 2])
         reg = stack.stack_register("PC")
         assert isinstance(reg, TomoStack)
 
     def test_stack_register_com(self):
         stack = ds.get_needle_data(aligned=False).inav[0:5]
-        stack.metadata.Tomography.shifts = np.zeros([5, 2])
-        stack.metadata.Tomography.tilts = stack.metadata.Tomography.tilts[0:5]
         reg = stack.stack_register("COM")
         assert isinstance(reg, TomoStack)
 
     def test_stack_register_stackreg(self):
         stack = ds.get_needle_data(aligned=False).inav[0:5]
-        stack.metadata.Tomography.shifts = np.zeros([5, 2])
         reg = stack.stack_register("COM-CL")
         assert isinstance(reg, TomoStack)
 
     def test_stack_register_with_crop(self):
         stack = ds.get_needle_data(aligned=False).inav[0:5]
-        stack.metadata.Tomography.shifts = np.zeros([5, 2])
         reg = stack.stack_register("PC", crop=True)
         assert isinstance(reg, TomoStack)
         assert np.sum(reg.data.shape) < np.sum(stack.data.shape)
