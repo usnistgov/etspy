@@ -14,7 +14,7 @@ from etspy.base import RecStack, TomoStack
 
 NUM_FIG_AXES = 3
 
-
+#TODO(jat) test cuda functionality and coverage
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestAlignCUDA:
     """Test alignment of a TomoStack using CUDA."""

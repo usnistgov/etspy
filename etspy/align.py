@@ -100,7 +100,6 @@ def apply_shifts(
     shifts: Union["TomoShifts", np.ndarray],
 ) -> "TomoStack":
     """
-
     Apply a series of shifts to a TomoStack.
 
     Parameters
@@ -109,7 +108,8 @@ def apply_shifts(
         The image series to be aligned
     shifts
         The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
-        each image. Should be of size (*stack.axes_manager.navigation_shape[::-1], 2),
+        each image. Should be of size
+        ``(*stack.axes_manager.navigation_shape[::-1], 2)``,
         with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
         position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
 

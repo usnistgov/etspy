@@ -12,7 +12,7 @@ Running this command is approximately equivalent to running:
 ```
 from etspy import align, io, utils  # (1)!
 from etspy.base import TomoStack
-from etspy.io import create_stack, load
+from etspy.io import load
 ```
 
 ```{eval-rst}
@@ -27,11 +27,9 @@ from etspy.io import create_stack, load
 The `etspy.api` module exposes the most commonly used features of ETSpy in a
 convenient interface. In particular, it provides access tothe [`align`](alignment),
 [`io`](io), and [`utils`](utilities) sub-modules. It also directly exposes
-the [`create_stack`](#etspy.io.create_stack) and [`load`](#etspy.io.load) methods,
+the [`TomoStack`](#etspy.base.TomoStack) constructor and the [`load`](#etspy.io.load) method,
 which allow for creation of [`TomoStack`](#etspy.base.TomoStack) objects either directly
-from NumPy arrays, or by loading data from `.mrc`, `.dm3`, or `.dm4` files. One
-can also use the [`TomoStack`](#etspy.base.TomoStack) constructor for more
-detailed control over how the resulting signal is created.
+from NumPy arrays, or by loading data from `.mrc`, `.dm3`, or `.dm4` files.
 
 :::{tip}
 For more examples, please consult the example notebook on the 
@@ -62,8 +60,8 @@ please consult the following pages:
 Experimental data files can be easily loaded into ETSpy using the
 [`load`](#etspy.io.load) function. If your data is already held
 in memory as a NumPy array, a [`TomoStack`](#etspy.base.TomoStack)
-signal can be created using the [`create_stack`](#etspy.io.create_stack)
-method. Additionally, the [`io`](io) module provides a number of
+signal can also be created directly using [`TomoStack()`](#etspy.base.TomoStack)
+constructor. Additionally, the [`io`](io) module provides a number of
 other helper functions:
 
 ```{eval-rst}

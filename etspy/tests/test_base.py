@@ -65,6 +65,8 @@ class TestTomoStack:
         assert s2.shifts.data.shape == (5, 2)
         assert s2.tilts.data.shape == (5, 1)
 
+# TODO(jat) add detailed tests for property setters and TomoTilts/Shifts constructors
+
     def test_property_deleters(self):
         s = ds.get_needle_data()
 

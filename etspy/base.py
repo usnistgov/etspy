@@ -52,7 +52,7 @@ class MismatchedTiltError(ValueError):
 
     Order
     -----
-    4
+    6
     """
 
     def __init__(self, num_tilts, tilt_dimension):
@@ -91,10 +91,35 @@ class TomoShifts(Signal1D):
 
     Order
     -----
-    3
+    4
     """
 
     def __init__(self, data, *args, **kwargs):
+        """
+        Create a TomoShifts signal instance.
+
+        ``TomoShifts`` is a specialized sub-class of
+        :py:class:`~hyperspy.api.signals.Signal1D` used to hold information
+        about the `x` and `y` image shifts in a :py:class:`~etspy.base.TomoStack`.
+
+        Parameters
+        ----------
+        data
+            The signal data. Can be provided as either a HyperSpy
+            :py:class:`hyperspy.api.signals.Signal1D` or a Numpy array
+            of the shape `(ntilts, 2)`.
+        args
+            Additional non-keyword arguments passed to the
+            :py:class:`~hyperspy.api.signals.Signal1D` constructor.
+        kwargs
+            Additional keyword arguments passed to the
+            :py:class:`hyperspy.api.signals.Signal1D` constructor.
+
+        Raises
+        ------
+        ValueError
+            If the data provided does not result in a Signal with signal shape (2,).
+        """
         super().__init__(data, *args, **kwargs)
         if self.axes_manager.signal_shape != (2,):
             msg = (
@@ -136,10 +161,35 @@ class TomoTilts(Signal1D):
 
     Order
     -----
-    4
+    5
     """
 
     def __init__(self, data, *args, **kwargs):
+        """
+        Create a TomoTilts signal instance.
+
+        ``TomoTilts`` is a specialized sub-class of
+        :py:class:`~hyperspy.api.signals.Signal1D` used to hold information
+        about the tilt values of each projection in a :py:class:`~etspy.base.TomoStack`.
+
+        Parameters
+        ----------
+        data
+            The signal data. Can be provided as either a HyperSpy
+            :py:class:`hyperspy.api.signals.Signal1D` or a Numpy array
+            of the shape `(ntilts, 1)`.
+        args
+            Additional non-keyword arguments passed to the
+            :py:class:`~hyperspy.api.signals.Signal1D` constructor.
+        kwargs
+            Additional keyword arguments passed to the
+            :py:class:`hyperspy.api.signals.Signal1D` constructor.
+
+        Raises
+        ------
+        ValueError
+            If the data provided does not result in a Signal with signal shape (1,).
+        """
         super().__init__(data, *args, **kwargs)
         if self.axes_manager.signal_shape != (1,):
             msg = (
@@ -276,8 +326,8 @@ class CommonStack(Signal2D, ABC):
         ----------
         data
             The signal data. Can be provided as either a HyperSpy
-            :py:class:`~hyperspy.signals.Signal2D` or a Numpy array
-            of the shape `(tilt, x, y)`.
+            :py:class:`hyperspy.api.signals.Signal2D` or a Numpy array
+            of the shape `(tilt, y, x)`.
         tilts
             A :py:class:`~etspy.base.TomoTilts` containing the
             tilt value (in degrees) for each projection in the stack.
@@ -297,7 +347,7 @@ class CommonStack(Signal2D, ABC):
             :py:class:`~hyperspy.api.signals.Signal2D` constructor
         kwargs
             Additional keyword arguments passed to the
-            :py:meth:`~hyperspy.api.signals.Signal2D` constructor
+            :py:class:`hyperspy.api.signals.Signal2D` constructor
 
         Raises
         ------
@@ -397,16 +447,18 @@ class CommonStack(Signal2D, ABC):
             raise ValueError(msg)
         return array
 
-    def _shift_and_tilt_setter(
+    def shift_and_tilt_setter(
         self,
         mode: Literal["shifts", "tilts"],
         value: Optional[Union[TomoShifts, TomoTilts, np.ndarray]],
     ) -> Union[TomoShifts, TomoTilts]:
         """
-        Set either self._tilts or self._shifts to an array.
+        Set either ``self._tilts`` or ``self._shifts`` to an array.
 
         This method is split out to reduce duplication of code between the
-        ``self.tilts`` and ``self.shifts`` setter functions, since they have significant
+        :py:attr:`~etspy.base.CommonStack.tilts` and
+        :py:attr:`~etspy.base.CommonStack.shifts`
+        property setter functions, since they have significant
         overlap.
 
         Parameters
@@ -414,9 +466,10 @@ class CommonStack(Signal2D, ABC):
         mode
             Whether to work on the ``_shifts`` or the ``_tilts`` of the stack
         value:
-            The values to set, as either an array or
-            :py:class:`~hyperspy.signal.BaseSignal`. If ``None``, the values
-            will be initialized to an array of zeros of the appropriate shape
+            The values to set, as either an array, or
+            :py:class:`~etspy.base.TomoShifts`, or :py:class:`~etspy.base.TomoTilts`.
+            If ``None``, the values will be initialized to an array of zeros of the
+            appropriate shape.
 
         Returns
         -------
@@ -493,14 +546,14 @@ class CommonStack(Signal2D, ABC):
     def shifts(self, new_shifts: Optional[Union[TomoShifts, np.ndarray]]):
         self._shifts = cast(
             TomoShifts,
-            self._shift_and_tilt_setter("shifts", new_shifts),
+            self.shift_and_tilt_setter("shifts", new_shifts),
         )
 
     @shifts.deleter
     def shifts(self):
         self._shifts = cast(
             TomoShifts,
-            self._shift_and_tilt_setter("shifts", np.zeros_like(self.shifts.data)),
+            self.shift_and_tilt_setter("shifts", np.zeros_like(self.shifts.data)),
         )
 
     @property
@@ -518,14 +571,14 @@ class CommonStack(Signal2D, ABC):
     def tilts(self, new_tilts: Optional[Union[TomoTilts, np.ndarray]]):
         self._tilts = cast(
             TomoTilts,
-            self._shift_and_tilt_setter("tilts", new_tilts),
+            self.shift_and_tilt_setter("tilts", new_tilts),
         )
 
     @tilts.deleter
     def tilts(self):
         self._tilts = cast(
             TomoTilts,
-            self._shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
+            self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
         )
 
     def plot(self, navigator: str = "slider", *args, **kwargs):
