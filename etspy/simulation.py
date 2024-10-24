@@ -12,7 +12,6 @@ from scipy import ndimage
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
-from etspy.io import create_stack
 
 
 def create_catalyst_model(
@@ -242,7 +241,7 @@ def create_model_tilt_series(
     for i in range(model.shape[0]):
         sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
 
-    stack = create_stack(proj_data, angles)
+    stack = TomoStack(proj_data, angles)
     return stack
 
 

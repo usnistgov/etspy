@@ -94,7 +94,10 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     return coms
 
 
-def apply_shifts(stack: "TomoStack", shifts: np.ndarray) -> "TomoStack":
+def apply_shifts(
+    stack: "TomoStack",
+    shifts: Union["TomoShifts", np.ndarray],
+) -> "TomoStack":
     """
 
     Apply a series of shifts to a TomoStack.
@@ -116,7 +119,11 @@ def apply_shifts(stack: "TomoStack", shifts: np.ndarray) -> "TomoStack":
     align
     """
     shifted = stack.deepcopy()
-    if len(shifts) != stack.data.shape[0]:
+    if isinstance(shifts, BaseSignal):
+        shifts = shifts.data
+    shifts = cast(np.ndarray, shifts)
+
+    if len(shifts.data) != stack.data.shape[0]:
         msg = (
             f"Number of shifts ({len(shifts)}) is not consistent "
             f"with number of images in the stack ({stack.data.shape[0]})"
@@ -127,8 +134,8 @@ def apply_shifts(stack: "TomoStack", shifts: np.ndarray) -> "TomoStack":
             shifted.data[i, :, :],
             shift=[shifts[i, 0], shifts[i, 1]],
         )
-    tomo_meta = cast(Dtb, shifted.metadata.Tomography)
-    tomo_meta.shifts = tomo_meta.shifts + shifts
+
+    shifted.shifts.data = shifted.shifts.data + shifts
     return shifted
 
 
@@ -340,9 +347,8 @@ def calculate_shifts_com(stack: "TomoStack", nslices: int) -> np.ndarray:
     logger.info("Refinining Y-shifts using center of mass method")
     slices = get_best_slices(stack, nslices)
 
-    tomo_meta = cast(Dtb, stack.metadata.Tomography)
-    angles = tomo_meta.tilts
-    [ntilts, ydim, xdim] = stack.data.shape
+    angles = stack.tilts.data.squeeze()
+    ntilts, _, _ = stack.data.shape
     thetas = np.pi * cast(np.ndarray, angles) / 180
 
     coms = get_coms(stack, slices)
@@ -862,8 +868,11 @@ def tilt_com(
     _, ny, nx = stack.data.shape
     nx_threshold = 3
 
-    if cast(Dtb, stack.metadata.Tomography).tilts is None:
-        msg = "Tilts are not defined in stack.metadata.Tomography"
+    if np.all(stack.tilts.data == 0):
+        msg = (
+            "Tilts are not defined in stack.tilts (values were all zeros). "
+            "Please set tilt values before alignment."
+        )
         raise ValueError(msg)
 
     if nx < nx_threshold:
@@ -896,8 +905,7 @@ def tilt_com(
     slices = np.sort(slices)
 
     coms = get_coms(stack, slices)
-    tomo_meta = cast(Dtb, stack.metadata.Tomography)
-    thetas = np.pi * cast(np.ndarray, tomo_meta.tilts) / 180.0
+    thetas = np.pi * stack.tilts.data.squeeze() / 180.0 # remove length 1 dimension
 
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 
@@ -1029,8 +1037,7 @@ def align_to_other(stack: "TomoStack", other: "TomoStack") -> "TomoStack":
     stack_tomo_meta = cast(Dtb, stack.metadata.Tomography)
     out_tomo_meta = cast(Dtb, out.metadata.Tomography)
 
-    shifts = cast(np.ndarray, stack_tomo_meta.shifts)
-    out_tomo_meta.shifts = np.zeros([out.data.shape[0], 2])
+    out.shifts = np.zeros([out.data.shape[0], 2])
 
     tiltaxis = cast(float, stack_tomo_meta.tiltaxis)
     out_tomo_meta.tiltaxis = tiltaxis
@@ -1041,7 +1048,7 @@ def align_to_other(stack: "TomoStack", other: "TomoStack") -> "TomoStack":
     yshift = cast(float, stack_tomo_meta.yshift)
     out_tomo_meta.yshift = stack_tomo_meta.yshift
 
-    out = apply_shifts(out, shifts)
+    out = apply_shifts(out, stack.shifts)
 
     if stack_tomo_meta.cropped:
         out = shift_crop(out)
@@ -1073,14 +1080,13 @@ def shift_crop(stack: "TomoStack") -> "TomoStack":
     -----
     align
     """
-    cropped = copy.deepcopy(stack)
-    shifts = cast(Dtb, stack.metadata.Tomography).shifts
-    x_shifts = shifts[:, 0]
-    y_shifts = shifts[:, 1]
+    cropped = stack.deepcopy()
+    x_shifts = stack.shifts.data[:, 0]
+    y_shifts = stack.shifts.data[:, 1]
     x_max = np.int32(np.floor(x_shifts.min()))
     x_min = np.int32(np.ceil(x_shifts.max()))
     y_max = np.int32(np.floor(y_shifts.min()))
     y_min = np.int32(np.ceil(y_shifts.max()))
     cropped = cropped.isig[x_min:x_max, y_min:y_max]
-    cropped.metadata.Tomography.cropped = True
+    cropped.metadata.set_item("Tomography.cropped", value=True)
     return cropped

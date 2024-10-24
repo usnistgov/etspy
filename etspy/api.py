@@ -6,7 +6,7 @@ from pathlib import Path as _Path
 
 from etspy import align, io, utils
 from etspy.base import TomoStack
-from etspy.io import create_stack, load
+from etspy.io import load
 
 from . import __version__
 
@@ -20,6 +20,5 @@ __all__ = [
     "io",
     "utils",
     "TomoStack",
-    "create_stack",
     "load",
 ]

@@ -214,7 +214,9 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
        :py:class:`~etspy.base.TomoStack`
     tilts
         The tilt angles for the tilt series (usually found in the
-        ``TomoStack.metadata.Tomography.tilts`` metadata node)
+        ``TomoStack.tilts.data`` property). Should be a one-dimensional array,
+        so it may be necessary to use the :py:meth:`~numpy.ndarray.squeeze` method
+        (`e.g.` ``tilts=stack.tilts.data.squeeze()``).
     method
         Reconstruction algorithm to use.  Must be either 'FBP' (default), 'SIRT',
         'SART', or 'DART
