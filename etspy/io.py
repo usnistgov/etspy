@@ -239,10 +239,13 @@ def load_serialem_series(
 
     Returns
     -------
-    stack : :py:class:`~etspy.base.TomoStack`
-        Tilt series resulting by averaging frames at each tilt
+    stack : :py:class:`~hyperspy.api.signals.Signal2D`
+        Tilt series with multiple frames at each tilt. Will have navigation shape
+        (`nframes`, `ntilts`) and signal shape (`x`, `y`). The underlying data
+        array will be of shape (`ntilts`, `nframes`, `y`, `x`).
     tilts : :py:class:`~numpy.ndarray`
-        The tilt values for each image in the stack
+        The tilt values for each image in the stack. Will be of size
+        (`ntilts`, `nframes`).
 
     Group
     -----

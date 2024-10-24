@@ -4,13 +4,14 @@
 
 import copy
 import logging
-from typing import TYPE_CHECKING, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
 
 import astra
 import matplotlib.pylab as plt
 import numpy as np
 import tqdm
 from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
+from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
 from scipy import ndimage, optimize
 from skimage.feature import canny
@@ -21,7 +22,7 @@ from skimage.transform import hough_line, hough_line_peaks
 from etspy import AlignmentMethod, AlignmentMethodType
 
 if TYPE_CHECKING:
-    from etspy.base import TomoStack  # pragma: no cover
+    from etspy.base import TomoShifts, TomoStack  # pragma: no cover
 
 has_cupy = True
 try:
@@ -107,7 +108,10 @@ def apply_shifts(
     stack
         The image series to be aligned
     shifts
-        The X- and Y-shifts to be applied to each image
+        The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
+        each image. Should be of size (*stack.axes_manager.navigation_shape[::-1], 2),
+        with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
+        position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
 
     Returns
     -------
@@ -291,7 +295,7 @@ def calculate_shifts_conservation_of_mass(
     align
     """
     logger.info("Refinining X-shifts using conservation of mass method")
-    [ntilts, ny, nx] = stack.data.shape
+    ntilts, _, nx = stack.data.shape
 
     if xrange is None:
         xrange = (round(nx / 5), round(4 / 5 * nx))
@@ -777,6 +781,8 @@ def align_stack(  # noqa: PLR0913
     if method == AlignmentMethod.COM:
         logger.info("Performing stack registration using center of mass method")
         shifts = np.zeros([stack.data.shape[0], 2])
+        # calculate_shifts_conservation_of_mass returns x-shifts (parallel to tilt axis)
+        # calculate_shifts_com returns y-shifts (perpendicular to tilt axis)
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
     elif method == AlignmentMethod.PC:
@@ -1007,7 +1013,9 @@ def tilt_maximage(
         for i in range(nshifts):
             shifted.data[:, :, i] = np.roll(ali.isig[idx, :].data, int(shifts[i]))
         shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
-        tilt_shift = cast(float, shifts[shifted_rec.sum((1, 2)).data.argmin()])
+        image_sum = cast(BaseSignal, shifted_rec.sum(axis=(1, 2)))
+        tilt_shift = shifts[image_sum.data.argmin()]
+        tilt_shift = cast(float, tilt_shift)
         ali = ali.trans_stack(yshift=-tilt_shift)
         tomo_meta.yshift = -tilt_shift
     return ali

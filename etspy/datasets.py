@@ -33,7 +33,7 @@ def get_catalyst_data(
     maxshift: int = 5,
     tiltshift: int = 0,
     tiltrotate: int = 0,
-    yonly: bool = False,
+    y_only: bool = False,
     noise: bool = False,
     noise_factor: float = 0.2,
 ) -> etspy.TomoStack:
@@ -54,7 +54,7 @@ def get_catalyst_data(
     tiltrotate
         Angle by which to rotate entire tilt series. Simulates non-vertical
         tilt axis.
-    yonly
+    y_only
         If ``True``, shifts are only applied along the Y-axis
     noise
         If ``True``, add Gaussian noise to the stack
@@ -79,7 +79,7 @@ def get_catalyst_data(
             max_shift=maxshift,
             tilt_shift=tiltshift,
             tilt_rotate=tiltrotate,
-            y_only=yonly,
+            y_only=y_only,
         )
     if noise:
         catalyst = add_noise(catalyst, "gaussian", noise_factor)
