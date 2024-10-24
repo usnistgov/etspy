@@ -314,7 +314,7 @@ linkcheck_ignore = [
     "https://pypi.org/project/etspy", # temporarily not published
     "https://github.com/usnistgov/etspy/tree/master/docs/examples/etspy_demo.ipynb" # temporarily not published
 ]
-
+linkcheck_retries = 3
 linkcheck_exclude_documents = []
 
 # Specify a standard user agent, as Sphinx default is blocked on some sites

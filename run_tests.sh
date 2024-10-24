@@ -8,8 +8,10 @@ CUDA=$(python -c "import astra; print(1 if astra.astra.use_cuda() else 0)")
 PYTEST="pytest"
 
 if ((CUDA==1)); then
-    COVERAGE_RCFILE="etspy/tests/.coveragerc-cuda" $PYTEST
+    export COVERAGE_RCFILE="etspy/tests/.coveragerc-cuda"
 else
-    COVERAGE_RCFILE="etspy/tests/.coveragerc-nocuda" $PYTEST
+    export COVERAGE_RCFILE="etspy/tests/.coveragerc-nocuda"
 fi
 
+echo "Using ${COVERAGE_RCFILE}"
+$PYTEST
