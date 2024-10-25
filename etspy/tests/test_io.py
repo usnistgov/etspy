@@ -1,6 +1,7 @@
 """Tests for the IO functionality of ETSpy."""
 
 from typing import List, cast
+from unittest.mock import patch
 
 import h5py
 import hyperspy.api as hs
@@ -23,6 +24,9 @@ except TypeError:
 else:
     hspy_mrc_broken = False
 
+def _type_error_mock(_, reader):  # noqa: ARG001
+    msg = "Mocked type error for broken MRC reader"
+    raise TypeError(msg)
 
 class TestLoadMRC:
     """Test loading an MRC file."""
@@ -43,6 +47,12 @@ class TestLoadMRC:
         assert isinstance(stack, TomoStack)
         assert ax_list[1].scale == stack_orig.axes_manager[1].scale
         assert ax_list[1].units == stack_orig.axes_manager[1].units
+
+    @patch("etspy.io.hs_load", new=_type_error_mock)
+    def test_load_mrc_broken_hyperspy_mrc(self):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        with pytest.raises(RuntimeError, match="Unable to read MRC with Hyperspy"):
+            etspy.io.load(filename)
 
     def test_load_ali(self):
         filename = etspy_path / "tests" / "test_data" / "HAADF.ali"
@@ -67,6 +77,18 @@ class TestLoadMRC:
         del stack.original_metadata.fei_header # pyright: ignore[reportAttributeAccessIssue]
         del stack.original_metadata.std_header # pyright: ignore[reportAttributeAccessIssue]
         tilts = etspy.io.get_mrc_tilts(stack, filename)
+        assert isinstance(tilts, np.ndarray)
+        assert tilts.shape[0] == stack.data.shape[0]
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+        assert np.all(stack.tilts.data.squeeze() == tilts)
+
+    def test_load_mrc_with_rawtlt_str_filename(self):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        stack = etspy.io.load(str(filename))
+        del stack.original_metadata.fei_header # pyright: ignore[reportAttributeAccessIssue]
+        del stack.original_metadata.std_header # pyright: ignore[reportAttributeAccessIssue]
+        tilts = etspy.io.get_mrc_tilts(stack, str(filename))
         assert isinstance(tilts, np.ndarray)
         assert tilts.shape[0] == stack.data.shape[0]
         assert isinstance(stack.tilts, TomoTilts)
@@ -277,6 +299,29 @@ class TestSerialEM:
         assert np.all(stack.shifts.data == 0)
         assert isinstance(stack, TomoStack)
 
+    def test_load_serialem_multiframe_str_fnames(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
+        files = list(dirname.glob("*.mrc"))
+        etspy.load([str(f) for f in files])
+
+    def test_load_serialem_multiframe_str_fnames_with_mdocs(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
+        files = list(dirname.glob("*.mrc"))
+        mdoc_files = [i.with_suffix(".mdoc") for i in files]
+        etspy.load([str(f) for f in files], mdocs=mdoc_files)
+
+    def test_load_serialem_multiframe_str_fnames_with_mdocs_str(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
+        files = list(dirname.glob("*.mrc"))
+        mdoc_files = [str(i.with_suffix(".mdoc")) for i in files]
+        etspy.load([str(f) for f in files], mdocs=mdoc_files)
+
+    def test_load_serialem_multiframe_add_mrc_to_mdoc_names(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
+        files = list(dirname.glob("*.mrc"))
+        mdoc_files = [str(i.with_suffix(".mrc.mdoc")) for i in files]
+        etspy.load([str(f) for f in files], mdocs=mdoc_files)
+
     def test_load_serialem_multi_tilt_single_file(self):
         dirname = etspy_path / "tests" / "test_data" / "SerialEM_MultiTilt_Test"
         stack = etspy.load(dirname / "test_000.mrc")
@@ -313,6 +358,15 @@ class TestSerialEM:
         assert isinstance(stack.tilts, TomoTilts)
         assert isinstance(stack.shifts, TomoShifts)
 
+    def test_load_serial_em_explicit_str_filename(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
+        mrcfile = next(dirname.glob("*.mrc"))
+        mdocfile = mrcfile.with_suffix(".mdoc")
+        stack = etspy.io.load_serialem(str(mrcfile), str(mdocfile))
+        assert isinstance(stack, TomoStack)
+        assert isinstance(stack.tilts, TomoTilts)
+        assert isinstance(stack.shifts, TomoShifts)
+
 
 
 class TestUnknown:
@@ -341,6 +395,17 @@ class TestMRCHeader:
     def test_mrc_header_parser(self):
         filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
         header = etspy.io.parse_mrc_header(filename)
+        expected = {
+            "nx": 256,
+            "nextra": 131072,
+        }
+        assert isinstance(header, dict)
+        assert header["nx"] == expected["nx"]
+        assert header["nextra"] == expected["nextra"]
+
+    def test_mrc_header_parser_str_filename(self):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        header = etspy.io.parse_mrc_header(str(filename))
         expected = {
             "nx": 256,
             "nextra": 131072,

@@ -6,7 +6,6 @@ import astra
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 import etspy.datasets as ds
 from etspy import recon
@@ -90,11 +89,11 @@ class TestAstraSIRTGPU:
 
     def test_astra_sirt_error_gpu(self):
         stack = ds.get_needle_data(aligned=True)
-        [ntilts, ny, nx] = stack.data.shape
-        angles = cast(np.ndarray, cast(Dtb, stack.metadata.Tomography).tilts)
-        sino = stack.isig[120, :].data
+        _, ny, _ = stack.data.shape
+        angles = stack.tilts.data.squeeze()
+        stack = stack.isig[120, :]
         rec_stack, error = recon.astra_error(
-            sino,
+            stack.data,
             angles,
             iterations=2,
             constrain=True,
@@ -112,8 +111,7 @@ class TestReconRunCUDA:
     def test_run_fbp_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "FBP", cuda=True)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
@@ -123,8 +121,7 @@ class TestReconRunCUDA:
     def test_run_sirt_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SIRT", niterations=2, cuda=True)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
@@ -134,8 +131,7 @@ class TestReconRunCUDA:
     def test_run_sart_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SART", niterations=2, cuda=True)
         data_shape = cast(Tuple[int, int, int], rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
@@ -146,8 +142,7 @@ class TestReconRunCUDA:
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
         gray_levels = [0.0, slices.data.max() / 2, slices.data.max()]
-        tomo_meta = cast(Dtb, slices.metadata.Tomography)
-        tilts = cast(np.ndarray, tomo_meta.tilts)
+        tilts = slices.tilts.data.squeeze()
         rec = recon.run(
             slices.data,
             tilts,
@@ -169,8 +164,6 @@ class TestStackRegisterCUDA:
 
     def test_register_pc_cuda(self):
         stack = ds.get_needle_data(aligned=False)
-        tomo_meta = cast(Dtb, stack.metadata.Tomography)
-        tomo_meta.shifts = tomo_meta.shifts[0:20]
         reg = stack.inav[0:20].stack_register("PC", cuda=True)
         assert isinstance(reg, TomoStack)
         assert (

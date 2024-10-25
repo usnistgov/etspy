@@ -1,7 +1,11 @@
 """Tests for the alignment features of ETSpy."""
 
 import re
+import sys
+from importlib import reload
+from importlib.util import find_spec
 from typing import cast
+from unittest.mock import patch
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +15,7 @@ from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 import etspy.api as etspy
 from etspy import datasets as ds
 
+cupy_in_test_env = find_spec("cupy") is not None
 
 class TestAlignFunctions:
     """Test alignment functions."""
@@ -112,6 +117,21 @@ class TestAlignFunctions:
                 cl_resolution=0.9,
             )
 
+@pytest.mark.skipif(not cupy_in_test_env, reason="cupy not available")
+class TestCUDAAlignFunctions:
+    """Test alignment functions using CUDA functionality."""
+
+    def test_stack_reg_pc_cuda(self):
+        stack = ds.get_needle_data()
+        stack.stack_register("PC", cuda=True)
+
+    def test_no_cupy(self):
+        assert etspy.align.has_cupy
+        with patch.dict(sys.modules, {"cupy": None}):
+            reload(sys.modules["etspy.align"])
+            assert not etspy.align.has_cupy
+        reload(sys.modules["etspy.align"])
+        assert etspy.align.has_cupy
 
 class TestAlignStackRegister:
     """Test alignment using stack reg."""
@@ -303,7 +323,7 @@ class TestAlignOther:
         stack = stack.inav[0:5]
         stack2 = stack.deepcopy()
         reg = stack.stack_register("PC")
-        reg = reg.trans_stack(xshift=10, yshift=5, angle=2)
+        reg = cast(etspy.TomoStack, reg.trans_stack(xshift=10, yshift=5, angle=2))
         reg2 = reg.align_other(stack2)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0

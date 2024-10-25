@@ -3,6 +3,7 @@
 import re
 from typing import Tuple, cast
 
+import astra
 import numpy as np
 import pytest
 
@@ -178,6 +179,55 @@ class TestReconRun:
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
 
+    @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+    def test_run_dart_no_gray_levels_cuda(self):
+        stack = ds.get_needle_data(aligned=True)
+        slices = stack.isig[120:121, :].deepcopy()
+        tilts = slices.tilts.data.squeeze()
+        with pytest.raises(ValueError, match="gray_levels must be provided for DART"):
+            recon.run(
+                slices.data,
+                tilts,
+                "DART",
+                niterations=2,
+                cuda=True,
+                gray_levels=None,
+                dart_iterations=1,
+            )
+
+    def test_run_dart_no_gray_levels_no_cuda(self):
+        stack = ds.get_needle_data(aligned=True)
+        slices = stack.isig[120:121, :].deepcopy()
+        tilts = slices.tilts.data.squeeze()
+        with pytest.raises(ValueError, match="gray_levels must be provided for DART"):
+            recon.run(
+                slices.data,
+                tilts,
+                "DART",
+                niterations=2,
+                cuda=False,
+                gray_levels=None,
+                dart_iterations=1,
+            )
+
+    def test_run_dart_no_cuda_no_progress(self):
+        stack = ds.get_needle_data(aligned=True)
+        slices = stack.isig[120:121, :].deepcopy()
+        tilts = slices.tilts.data.squeeze()
+        rec = recon.run(
+            slices.data,
+            tilts,
+            "DART",
+            niterations=2,
+            cuda=False,
+            gray_levels=[0.0, slices.data.max() / 2, slices.data.max()],
+            dart_iterations=1,
+            show_progressbar=False,
+        )
+        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
+        assert data_shape[0] == slices.data.shape[2]
+        assert isinstance(rec, np.ndarray)
 
 class TestAstraError:
     """Test Astra toolbox errors."""

@@ -390,7 +390,7 @@ def _upsampled_dft(
         kernel = cp.exp(-im2pi * kernel)
         # use kernel with same precision as the data
         kernel = kernel.astype(data.dtype, copy=False)
-        data = cp.tensordot(kernel, data, axes=(1, -1))
+        data = cp.tensordot(kernel, data, axes=(1, -1)) # type: ignore
     return data
 
 
@@ -926,7 +926,7 @@ def tilt_com(
     tilt_shift = (ny / 2 - intercept) / slope
     tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
 
-    final = stack.trans_stack(yshift=tilt_shift, angle=tilt_rotation)
+    final = cast("TomoStack", stack.trans_stack(yshift=tilt_shift, angle=tilt_rotation))
 
     logger.info("Calculated tilt-axis shift %.2f", tilt_shift)
     logger.info("Calculated tilt-axis rotation %.2f", tilt_rotation)
@@ -1001,7 +1001,7 @@ def tilt_maximage(
 
         plt.tight_layout()
 
-    ali = stack.trans_stack(angle=-rotation_angle)
+    ali = cast("TomoStack", stack.trans_stack(angle=-rotation_angle))
     tomo_meta = cast(Dtb, ali.metadata.Tomography)
     tomo_meta.tiltaxis = -rotation_angle
 
@@ -1016,7 +1016,7 @@ def tilt_maximage(
         image_sum = cast(BaseSignal, shifted_rec.sum(axis=(1, 2)))
         tilt_shift = shifts[image_sum.data.argmin()]
         tilt_shift = cast(float, tilt_shift)
-        ali = ali.trans_stack(yshift=-tilt_shift)
+        ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
         tomo_meta.yshift = -tilt_shift
     return ali
 
@@ -1061,7 +1061,7 @@ def align_to_other(stack: "TomoStack", other: "TomoStack") -> "TomoStack":
     if stack_tomo_meta.cropped:
         out = shift_crop(out)
 
-    out = out.trans_stack(xshift, yshift, tiltaxis)
+    out = cast("TomoStack", out.trans_stack(xshift, yshift, tiltaxis))
 
     logger.info("TomoStack alignment applied")
     logger.info("X-shift: %.1f", xshift)

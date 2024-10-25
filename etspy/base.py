@@ -13,7 +13,7 @@ from types import FrameType
 from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union, cast
 
 try:
-    from typing import Self
+    from typing import Self  # type: ignore
 except ImportError:     # pragma: no cover
     # required to support Pyton 3.10 since Self was added in 3.11
     from typing_extensions import Self
@@ -193,7 +193,7 @@ class TomoTilts(Signal1D):
         super().__init__(data, *args, **kwargs)
         if self.axes_manager.signal_shape != (1,):
             msg = (
-                f"Shift values must have a signal shape of (1,), "
+                f"Tilt values must have a signal shape of (1,), "
                 f"but was {self.axes_manager.signal_shape}"
             )
             raise ValueError(msg)
@@ -258,28 +258,48 @@ class CommonStack(Signal2D, ABC):
         if (tilts is not None) and (ntilts != tilts.data.shape[0]):
             raise MismatchedTiltError(tilts.data.shape[0], ntilts)
 
+        tomo_metadata = {
+            "Tomography": {
+                "cropped": False,
+                "tiltaxis": 0,
+                "xshift": 0,
+                "yshift": 0,
+            },
+        }
+        # metadata may already be present in data
         if data.metadata.has_item("Tomography"):
+            # don't do anything if the signal already has Tomography metadata
             pass
         else:
-            if "metadata" in kwargs and "Tomography" in kwargs["metadata"]:
-                tomo_metadata = kwargs["metadata"]["Tomogoraphy"]
-            else:
-                tomo_metadata = {
-                    "cropped": False,
-                    "tiltaxis": 0,
-                    "xshift": 0,
-                    "yshift": 0,
-                }
-            data.metadata.add_node("Tomography")
-            # cast for type-checking:
-            tomo_meta_node = cast(Dtb, data.metadata.Tomography)
-            tomo_meta_node.add_dictionary(tomo_metadata)
+            # if not, create default one
+            data.metadata.add_dictionary(tomo_metadata)
+        metadata_dict = data.metadata.as_dictionary()
+
+        # metadata may be supplied in kwargs; if so, overwrite
+        # any existing metadata:
+        if "metadata" in kwargs:
+            metadata_dict = kwargs["metadata"]
+            # add default Tomo metadata if not present
+            if "Tomography" not in metadata_dict:
+                metadata_dict["Tomography"] = tomo_metadata["Tomography"]
+            # remove from kwargs so we don't supply it twice
+            del kwargs["metadata"]
+
+        # do similar check for original metadata
+        original_metadata_dict = data.original_metadata.as_dictionary()
+        if "original_metadata" in kwargs:
+            original_metadata_dict = kwargs["original_metadata"]
+            del kwargs["original_metadata"]
+
+        # similar for axes
         axes_list = [
             x for _, x in
             sorted(data.axes_manager.as_dictionary().items())
         ]
-        metadata_dict = data.metadata.as_dictionary()
-        original_metadata_dict = data.original_metadata.as_dictionary()
+        if "axes" in kwargs:
+            axes_list = kwargs["axes"]
+            del kwargs["axes"]
+
         super().__init__(
             data,
             axes=axes_list,
@@ -441,8 +461,8 @@ class CommonStack(Signal2D, ABC):
         elif to_check.shape != (*self.axes_manager.navigation_shape[::-1], signal_size):
             msg = (
                 f"Shape of {mode} array must be "
-                f"{(*self.axes_manager.navigation_shape , signal_size)} to match the "
-                f"navigation size of the stack (was {to_check.shape})"
+                f"{(*self.axes_manager.navigation_shape[::-1] , signal_size)} to match "
+                f"the navigation size of the stack (was {to_check.shape})"
             )
             raise ValueError(msg)
         return array
@@ -512,7 +532,7 @@ class CommonStack(Signal2D, ABC):
             if target.metadata.get_item("General.title") == "":
                 target.metadata.set_item("General.title", f"Image {mode[:-1]} values")
 
-        # set metdata in the case value was None or Numpy array:
+        # set metadata in the case value was None or Numpy array:
         if value is None or isinstance(value, np.ndarray):
             target.metadata.set_item("General.title", f"Image {mode[:-1]} values")
 
@@ -749,7 +769,7 @@ class CommonStack(Signal2D, ABC):
         axis: Literal["XY", "YZ", "XZ"] = "XY",
         fps: int = 15,
         dpi: int = 100,
-        outfile: str = "output.avi",
+        outfile: Union[str, Path] = "output.avi",
         title: str = "output.avi",
         clim: Optional[Tuple[float, float]] = None,
         cmap: str = "afmhot",
@@ -791,14 +811,14 @@ class CommonStack(Signal2D, ABC):
 
         if axis == "XY":
             im = ax.imshow(
-                self.data[:, start, :],
+                self.data[start, :, :],
                 interpolation="none",
                 cmap=cmap,
                 clim=clim,
             )
         elif axis == "XZ":
             im = ax.imshow(
-                self.data[start, :, :],
+                self.data[:, start, :],
                 interpolation="none",
                 cmap=cmap,
                 clim=clim,
@@ -819,12 +839,12 @@ class CommonStack(Signal2D, ABC):
         fig.tight_layout()
 
         def updatexy(n) -> Iterable[Artist]:
-            tmp = self.data[:, n, :]
+            tmp = self.data[n, :, :]
             im.set_data(tmp)
             return [im]
 
         def updatexz(n) -> Iterable[Artist]:
-            tmp = self.data[n, :, :]
+            tmp = self.data[:, n, :]
             im.set_data(tmp)
             return [im]
 
@@ -838,18 +858,15 @@ class CommonStack(Signal2D, ABC):
         if axis == "XY":
             ani = animation.FuncAnimation(fig=fig, func=updatexy, frames=frames)
         elif axis == "XZ":
-            ani = animation.FuncAnimation(fig, updatexz, frames)
+            ani = animation.FuncAnimation(fig=fig, func=updatexz, frames=frames)
         elif axis == "YZ":
-            ani = animation.FuncAnimation(fig, updateyz, frames)
-        else:
-            msg = "Axis not understood!"
-            raise ValueError(msg)
+            ani = animation.FuncAnimation(fig=fig, func=updateyz, frames=frames)
 
         writer = animation.writers["ffmpeg"](fps=fps)
         ani.save(outfile, writer=writer, dpi=dpi)
         plt.close()
 
-    def save_raw(self, filename: Optional[Union[str, Path]] = None):
+    def save_raw(self, filename: Optional[Union[str, Path]] = None) -> Path:
         """
         Save Stack data as a .raw/.rpl file pair.
 
@@ -858,6 +875,11 @@ class CommonStack(Signal2D, ABC):
         filename
             Name of file to receive data. If not specified, the metadata will
             be used. Data dimensions and data type will be appended.
+
+        Returns
+        -------
+        filename : Path
+            The path to the file that was saved
         """
         datashape = self.data.shape
 
@@ -873,6 +895,7 @@ class CommonStack(Signal2D, ABC):
             f"{self.data.dtype.name}.rpl"
         )
         self.save(filename)
+        return filename
 
     def stats(self):
         """Print some basic statistics about Stack data."""
@@ -1022,7 +1045,10 @@ class TomoStack(CommonStack):
             Additional keyword arguments passed to
             :py:meth:`~hyperspy.api.signals.Signal2D.plot`
         """
-        self.swap_axes(1, 0).swap_axes(1, 2).plot(
+        Signal2D(
+            data=self.data,
+            axes=[v for k,v in self.axes_manager.as_dictionary().items()],
+        ).swap_axes(1, 0).swap_axes(1, 2).plot(
             navigator="slider",
             *args,  # noqa: B026
             **kwargs,
@@ -1656,7 +1682,7 @@ class TomoStack(CommonStack):
         thresh: float = 0,
         vmin_std: float = 0.1,
         vmax_std: float = 10,
-    ):
+    ) -> Figure:
         """
         Perform a reconstruction with limited slices for visual inspection.
 
@@ -1694,6 +1720,10 @@ class TomoStack(CommonStack):
         vmax_std
             Number of standard deviations from mean (upper bound) to use for scaling the
             displayed slices
+
+        Returns
+        -------
+        fig : :py:class:`~matplotlib.figure.Figure`
         """
         if slices is None:
             mid = np.array(self.data.shape[2] / 2, dtype=np.int32)
@@ -1703,6 +1733,7 @@ class TomoStack(CommonStack):
             shifted = self.trans_stack(xshift=0, yshift=tilt_shift, angle=tilt_rotation)
         else:
             shifted = self.deepcopy()
+        shifted = cast(TomoStack, shifted)
         shifted.data = shifted.data[:, :, slices]
 
         cast(Uda, shifted.axes_manager[0]).axis = cast(Uda, self.axes_manager[0]).axis
@@ -1746,6 +1777,7 @@ class TomoStack(CommonStack):
         ax3.set_title(f"Slice {slices[2]}")
         ax3.set_axis_off()
         fig.tight_layout()
+        return fig
 
     def set_tilts(self, start: float, increment: float):
         """
@@ -1802,42 +1834,41 @@ class TomoStack(CommonStack):
         """
         output = self.deepcopy()
         if yshift == 0:
-            if xshift > 0:
+            if xshift > 0:                  # x+ , y0
                 output.data = output.data[:, :, :-xshift]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :, xshift:]
                 output.data[nslice:, :, :] = self.data[nslice:, :, :-xshift]
-            elif xshift < 0:
+            elif xshift < 0:                # x- , y0
                 output.data = output.data[:, :, :xshift]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :, :xshift]
                 output.data[nslice:, :, :] = self.data[nslice:, :, -xshift:]
 
         elif xshift == 0:
-            if yshift > 0:
+            if yshift > 0:                  # x0 , y+
                 output.data = output.data[:, :-yshift, :]
                 output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :]
                 output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :]
-            elif yshift < 0:
+            elif yshift < 0:                # x0 , y-
                 output.data = output.data[:, :yshift, :]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :]
                 output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :]
-        elif (xshift > 0) and (yshift > 0):
+        elif (xshift > 0) and (yshift > 0): # x+ , y+
             output.data = output.data[:, :-yshift, :-xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, xshift:]
             output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :-xshift]
-        elif (xshift > 0) and (yshift < 0):
+        elif (xshift > 0) and (yshift < 0): # x+ , y-
             output.data = output.data[:, :yshift, :-xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, xshift:]
             output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :-xshift]
-        elif (xshift < 0) and (yshift > 0):
+        elif (xshift < 0) and (yshift > 0): # x- , y +
             output.data = output.data[:, :-yshift, :xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :xshift]
             output.data[nslice:, :, :] = self.data[nslice:, :-yshift, -xshift:]
-        elif (xshift < 0) and (yshift < 0):
+        elif (xshift < 0) and (yshift < 0): # x- , x-
             output.data = output.data[:, :yshift, :xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :xshift]
             output.data[nslice:, :, :] = self.data[nslice:, -yshift:, -xshift:]
-        else:
-            pass
+
         if display:
             old_im1 = self.data[nslice - 1, :, :]
             old_im2 = self.data[nslice, :, :]

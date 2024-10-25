@@ -19,7 +19,7 @@ jobs:
         uses: ./.github/actions/install-with-poetry
         with:
           with-cuda: true
-          poetry-options: "--with=dev"
+          poetry-options: "--with=dev --without=gpu"
           python-version: "3.11"   # use 3.11 due to flaky pystackreg install on 3.12
       - name: Check links
         run: |

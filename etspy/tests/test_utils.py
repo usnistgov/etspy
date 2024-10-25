@@ -19,7 +19,6 @@ except TypeError:
 else:
     hspy_mrc_broken = False
 
-
 @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestMultiframeAverage:
     """Test taking a multiframe average of a stack."""
