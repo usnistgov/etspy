@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - astra-toolbox
+  - cupy
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel

@@ -43,6 +43,10 @@ tomli = "^2.0.2"
 ipympl = "^0.9.4"
 ipykernel = "^6.29.5"
 
+
+[tool.poetry.group.gpu.dependencies]
+cupy = "^13.3.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -84,6 +88,7 @@ exclude_also = [
     "def _upsampled_dft",
     "def _cupy_phase_correlate",
     "_cupy_calculate_shifts",
+    "if cuda",
 ]
 
 [tool.pytest.ini_options]
