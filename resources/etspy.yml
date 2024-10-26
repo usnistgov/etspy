@@ -6,6 +6,7 @@ channels:
 dependencies:
   - astra-toolbox
   - cupy
+  - ffmpeg
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
