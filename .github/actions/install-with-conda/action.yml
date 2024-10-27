@@ -20,7 +20,7 @@ runs:
       uses: conda-incubator/setup-miniconda@v3
       with:
         activate-environment: ${{ inputs.conda-env-name }}
-        environment-file: ${{ inputs.macos && 'resources/etspy-dev-macos.yml' || 'resources/etspy-dev.yml' }}
+        environment-file: ${{ inputs.macos == 'true' && 'resources/etspy-dev-macos.yml' || 'resources/etspy-dev.yml' }}
         auto-update-conda: true
         python-version: ${{ inputs.python-version }}
         auto-activate-base: false
