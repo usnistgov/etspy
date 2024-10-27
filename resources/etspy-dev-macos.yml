@@ -1,0 +1,26 @@
+name: etspy-dev
+channels:
+  - conda-forge
+  - nvidia
+  - defaults
+dependencies:
+  - astra-toolbox
+  # - cupy
+  - hyperspy-base
+  - hyperspy-gui-ipywidgets
+  - ipykernel
+  - numba
+  - pystackreg
+  - ffmpeg
+  - pip
+  - isort
+  - myst-nb
+  - myst-parser
+  - numpydoc
+  - pytest
+  - pytest-cov
+  - ruff
+  - sphinx==8.0.2
+  - sphinx-immaterial
+  - tomli
+  - typing_extensions

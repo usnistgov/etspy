@@ -1,0 +1,16 @@
+name: etspy
+channels:
+  - conda-forge
+  - nvidia
+  - defaults
+dependencies:
+  - astra-toolbox
+  # - cupy
+  - ffmpeg
+  - hyperspy-base
+  - hyperspy-gui-ipywidgets
+  - ipykernel
+  - pystackreg
+  - pip
+  - numba
+  - typing_extensions
