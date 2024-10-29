@@ -1,10 +1,13 @@
-# environment file for the standard (non-GPU) development environment
+# environment file for the CUDA-enabled (GPU) development environment
 name: etspy-dev
 channels:
   - conda-forge
+  - nvidia
   - defaults
 dependencies:
-  - astra-toolbox
+# ensure that cuda version of astra gets installed
+  - astra-toolbox=*=*cuda*
+  - cupy
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
