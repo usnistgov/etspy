@@ -4,7 +4,7 @@ channels:
   - nvidia
   - defaults
 dependencies:
-  - astra-toolbox<=2.1
+  - astra-toolbox<=2.1=*cuda*
   - cupy
   - ffmpeg
   - hyperspy-base
@@ -13,4 +13,5 @@ dependencies:
   - pystackreg
   - pip
   - numba
+  - numpy<2.0
   - typing_extensions

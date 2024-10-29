@@ -4,12 +4,14 @@ channels:
   - nvidia
   - defaults
 dependencies:
-  - astra-toolbox<=2.1
+# ensure that cuda version of astra gets installed
+  - astra-toolbox<=2.1=*cuda*
   - cupy
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
   - numba
+  - numpy<2.0
   - pystackreg
   - ffmpeg
   - pip

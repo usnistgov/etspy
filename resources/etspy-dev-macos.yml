@@ -1,14 +1,16 @@
+# omits cupy, since it is not supported on MacOS
 name: etspy-dev
 channels:
   - conda-forge
   - nvidia
   - defaults
 dependencies:
-  - astra-toolbox<=2.1
+  - astra-toolbox<=2.1=*cuda*
   # - cupy
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
+  - numpy<2.0
   - numba
   - pystackreg
   - ffmpeg
