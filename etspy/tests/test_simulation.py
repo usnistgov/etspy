@@ -107,12 +107,12 @@ class TestModifications:
         stack = sim.create_model_tilt_series(model)
         # omit the first image because its std is 0
         stack_snr = (
-            stack.data.mean(axis=(1,2)) / stack.data.std(axis=(1,2))
-        )[1:].mean()
+            stack.data[1:].mean(axis=(1,2)) / stack.data[1:].std(axis=(1,2))
+        ).mean()
         noisy = sim.add_noise(stack, "gaussian")
         noisy_snr = (
-            noisy.data.mean(axis=(1,2)) / noisy.data.std(axis=(1,2))
-        )[1:].mean()
+            noisy.data[1:].mean(axis=(1,2)) / noisy.data[1:].std(axis=(1,2))
+        ).mean()
         assert noisy.data.shape == (90, 10, 10)
         # ensure signal to noise is higher for non-noisy signal
         assert stack_snr > noisy_snr
@@ -121,12 +121,12 @@ class TestModifications:
         model = sim.create_catalyst_model(0, volsize=(10, 10, 10))
         stack = sim.create_model_tilt_series(model)
         stack_snr = (
-            stack.data.mean(axis=(1,2)) / stack.data.std(axis=(1,2))
-        )[1:].mean()
+            stack.data[1:].mean(axis=(1,2)) / stack.data[1:].std(axis=(1,2))
+        ).mean()
         noisy = sim.add_noise(stack, "poissonian")
         noisy_snr = (
-            noisy.data.mean(axis=(1,2)) / noisy.data.std(axis=(1,2))
-        )[1:].mean()
+            noisy.data[1:].mean(axis=(1,2)) / noisy.data[1:].std(axis=(1,2))
+        ).mean()
         assert noisy.data.shape == (90, 10, 10)
         # ensure signal to noise is higher for non-noisy signal
         assert stack_snr > noisy_snr

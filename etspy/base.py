@@ -1619,7 +1619,7 @@ class TomoStack(CommonStack):
             )
             raise ValueError(msg)
         if cuda is None:
-            if astra.use_cuda():
+            if astra.use_cuda():  # coverage: nocuda
                 logger.info("CUDA detected with Astra")
                 cuda = True
             else:
@@ -1738,7 +1738,7 @@ class TomoStack(CommonStack):
 
         cast(Uda, shifted.axes_manager[0]).axis = cast(Uda, self.axes_manager[0]).axis
         if cuda is None:
-            if astra.use_cuda():
+            if astra.use_cuda():  # coverage: nocuda
                 logger.info("CUDA detected with Astra")
                 cuda = True
             else:
@@ -1950,7 +1950,7 @@ class TomoStack(CommonStack):
             nslice = int(self.data.shape[2] / 2)
 
         if cuda is None:
-            if astra.use_cuda():
+            if astra.use_cuda():  # coverage: nocuda
                 logger.info("CUDA detected with Astra")
                 cuda = True
             else:

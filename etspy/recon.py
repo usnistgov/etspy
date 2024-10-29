@@ -278,7 +278,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     cfg = {}
     cfg["option"] = {}
 
-    if cuda:
+    if cuda:  # coverage: nocuda
         if method.lower() == "fbp":
             logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
             cfg["type"] = "FBP_CUDA"
@@ -541,7 +541,7 @@ def astra_error(
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
 
-    if cuda:
+    if cuda:  # coverage: nocuda
         alg_name = method.upper() + "_CUDA"
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
     else:
@@ -566,7 +566,7 @@ def astra_error(
     for i in tqdm.tqdm(range(iterations)):
         astra.algorithm.run(alg, 1)
         rec[i] = astra.data2d.get(rec_id)
-        if cuda:
+        if cuda:  # coverage: nocuda
             residual_error[i] = astra.algorithm.get_res_norm(alg)
         else:
             curr_id, curr = astra.create_sino(rec[i], proj_id)

@@ -1,4 +1,5 @@
 # environment file for the standard (non-GPU) runtime environment
+# (though if CUDA is detected on the system, conda will install those packages)
 name: etspy
 channels:
   - conda-forge

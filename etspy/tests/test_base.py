@@ -93,7 +93,8 @@ class TestCommonStack:
     def test_plot(self):
         s = ds.get_needle_data()
         s.plot()
-        plt.close("all")
+        f = plt.gcf()
+        plt.close(f)
 
     def test_save(self, tmp_path):
         s = ds.get_needle_data()
@@ -315,6 +316,7 @@ class TestTomoStack:
         assert f.axes[0].title.get_text() == " Signal"
         assert f.axes[0].get_xlabel() == "y axis (nm)"
         assert f.axes[0].get_ylabel() == "Projections axis (degrees)"
+        plt.close(f)
 
 class TestProperties:
     """Test tilt and shift properties."""

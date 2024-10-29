@@ -235,7 +235,7 @@ def create_model_tilt_series(
     if cuda is False:
         proj_id = astra.create_projector("linear", proj_geom, vol_geom)
     else:
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+        proj_id = astra.create_projector("cuda", proj_geom, vol_geom) # coverage: nocuda
 
     for i in range(model.shape[0]):
         sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)

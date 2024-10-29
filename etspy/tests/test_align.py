@@ -7,7 +7,6 @@ from importlib.util import find_spec
 from typing import cast
 from unittest.mock import patch
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
@@ -259,7 +258,6 @@ class TestTiltAlign:
         stack = stack.inav[0:5]
         reg = stack.stack_register("PC")
         reg.tilt_align(method="MaxImage", plot_results=True)
-        return plt.gcf()
 
     def test_tilt_align_maximage_also_shift(self):
         stack = ds.get_needle_data()

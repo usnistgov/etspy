@@ -23,6 +23,7 @@ class TestAlignCUDA:
         stack.test_align(thickness=200, cuda=True)
         fig = plt.gcf()
         assert len(fig.axes) == NUM_FIG_AXES
+        plt.close(fig)
 
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")

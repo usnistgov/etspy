@@ -9,4 +9,4 @@ exclude_also =
     def _upsampled_dft
     def _cupy_phase_correlate
     _cupy_calculate_shifts
-    if cuda
+    nocuda
