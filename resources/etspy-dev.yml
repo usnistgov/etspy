@@ -5,7 +5,10 @@ channels:
   - defaults
 dependencies:
 # ensure that cuda version of astra gets installed
-  - astra-toolbox=*=*cuda*
+  - astra-toolbox=2.2*=*cuda*
+  - libastra=2.2*=cuda12*
+  - cuda-cudart>=12.0.107
+  - cuda-version >=12.0
   - cupy
   - hyperspy-base
   - hyperspy-gui-ipywidgets

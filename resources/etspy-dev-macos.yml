@@ -5,7 +5,7 @@ channels:
   - nvidia
   - defaults
 dependencies:
-  - astra-toolbox=*=*cuda*
+  - astra-toolbox
   # - cupy
   - hyperspy-base
   - hyperspy-gui-ipywidgets

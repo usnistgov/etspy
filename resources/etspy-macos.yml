@@ -5,7 +5,7 @@ channels:
   - nvidia
   - defaults
 dependencies:
-  - astra-toolbox=*=*cuda*
+  - astra-toolbox
   # - cupy
   - ffmpeg
   - hyperspy-base
