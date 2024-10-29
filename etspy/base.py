@@ -878,7 +878,7 @@ class CommonStack(Signal2D, ABC):
 
         Returns
         -------
-        filename : Path
+        filename : pathlib.Path
             The path to the file that was saved
         """
         datashape = self.data.shape
