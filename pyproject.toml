@@ -23,7 +23,6 @@ hyperspy = "^2.1.1"
 hyperspy-gui-ipywidgets = "^2.0.2"
 ipykernel = "^6.29.5"
 numba = "^0.60.0"
-numpy = "~1"
 typing-extensions = "^4.12.2"
 
 [tool.poetry.group.dev.dependencies]
@@ -43,6 +42,8 @@ tomli = "^2.0.2"
 ipympl = "^0.9.4"
 ipykernel = "^6.29.5"
 
+[tool.poetry.group.gpu]
+optional = true
 
 [tool.poetry.group.gpu.dependencies]
 cupy = "^13.3.0"
@@ -97,3 +98,9 @@ testpaths = [
 ]
 addopts = "--cov=etspy --cov-report html:etspy/tests/htmlcov --cov-report=xml:etspy/tests/coverage.xml --cov-report term-missing --cov-append"
 #mpl-baseline-path = "etspy/tests/test_data/pytest_mpl_figures"
+
+[tool.mypy]
+disable_error_code = "import-untyped"
+exclude = [
+    '^docs/conf\.py$'
+]
