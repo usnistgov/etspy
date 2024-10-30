@@ -94,6 +94,9 @@ class TomoShifts(Signal1D):
     4
     """
 
+    _signal_type = "TomoShifts"
+    _signal_dimension = 1
+
     def __init__(self, data, *args, **kwargs):
         """
         Create a TomoShifts signal instance.
@@ -163,6 +166,9 @@ class TomoTilts(Signal1D):
     -----
     5
     """
+
+    _signal_type = "TomoTilts"
+    _signal_dimension = 1
 
     def __init__(self, data, *args, **kwargs):
         """
@@ -240,6 +246,9 @@ class CommonStack(Signal2D, ABC):
     -----
     3
     """
+
+    _signal_type = "CommonStack"
+    _signal_dimension = 2
 
     def _create_from_signal(self, data, tilts, *args, **kwargs):
         """Create stack from HyperSpy signal (helper method for __init__)."""
@@ -1014,6 +1023,9 @@ class TomoStack(CommonStack):
     -----
     1
     """
+
+    _signal_type = "TomoStack"
+    _signal_dimension = 2
 
     def __init__(self, *args, **kwargs):
         """
@@ -2002,6 +2014,9 @@ class RecStack(CommonStack):
     -----
     2
     """
+
+    _signal_type = "RecStack"
+    _signal_dimension = 2
 
     def __init__(self, *args, **kwargs):
         """
