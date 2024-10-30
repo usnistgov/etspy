@@ -197,6 +197,7 @@ python_apigen_show_base_classes = True
 # hide long base module names from display
 # (see https://sphinx-immaterial.readthedocs.io/en/latest/apidoc/python/index.html#python-domain-customization)
 python_module_names_to_strip_from_xrefs = [
+    "hyperspy._signals.signal1d",
     "hyperspy._signals.signal2d",
     "etspy.base"
 ]
@@ -314,7 +315,7 @@ linkcheck_ignore = [
     "https://pypi.org/project/etspy", # temporarily not published
     "https://github.com/usnistgov/etspy/tree/master/docs/examples/etspy_demo.ipynb" # temporarily not published
 ]
-
+linkcheck_retries = 3
 linkcheck_exclude_documents = []
 
 # Specify a standard user agent, as Sphinx default is blocked on some sites

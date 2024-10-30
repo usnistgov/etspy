@@ -6,13 +6,11 @@ import astra
 import hyperspy.api as hs
 import numpy as np
 from hyperspy._signals.signal2d import Signal2D
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from scipy import ndimage
 
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
-from etspy.io import create_stack
 
 
 def create_catalyst_model(
@@ -237,12 +235,12 @@ def create_model_tilt_series(
     if cuda is False:
         proj_id = astra.create_projector("linear", proj_geom, vol_geom)
     else:
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+        proj_id = astra.create_projector("cuda", proj_geom, vol_geom) # coverage: nocuda
 
     for i in range(model.shape[0]):
         sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
 
-    stack = create_stack(proj_data, angles)
+    stack = TomoStack(proj_data, angles)
     return stack
 
 
@@ -271,7 +269,7 @@ def misalign_stack(
     tilt_rotate
         Amount of rotation to apply to the stack
     y_only
-        If True, limit the application of jitter to the x-direction only.
+        If True, limit the application of jitter to the y-direction only.
         Default is False
     interp_order
         The order of spline interpolation used by the :py:func:`scipy.ndimage.shift`
@@ -311,14 +309,14 @@ def misalign_stack(
         jitter = np.random.uniform(min_shift, max_shift, size=(stack.data.shape[0], 2))
         for i in range(stack.data.shape[0]):
             if y_only:
-                jitter[i, 1] = 0
+                jitter[i, 1] = 0  # set the x jitter to 0
 
             misaligned.data[i, :, :] = ndimage.shift(
                 misaligned.data[i, :, :],
                 shift=[jitter[i, 0], jitter[i, 1]],
                 order=interp_order,
             )
-        cast(Dtb, misaligned.metadata.Tomography).shifts = jitter
+        misaligned.shifts = jitter
     return misaligned
 
 
@@ -328,7 +326,7 @@ def add_noise(
     scale_factor: float = 0.2,
 ):
     """
-    Apply misalignment to a model tilt series and return as a copy.
+    Apply noise to a model tilt series and return as a copy.
 
     Parameters
     ----------

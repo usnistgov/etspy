@@ -10,7 +10,7 @@ from etspy import io, utils
 from etspy.api import etspy_path
 from etspy.base import TomoStack
 
-from . import hspy_mrc_reader_check
+from . import hspy_mrc_reader_check, load_serialem_multiframe_data
 
 try:
     hspy_mrc_reader_check()
@@ -18,7 +18,6 @@ except TypeError:
     hspy_mrc_broken = True
 else:
     hspy_mrc_broken = False
-
 
 @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestMultiframeAverage:
@@ -169,3 +168,11 @@ class TestWeightingFilter:
                 filter_name="wrong",  # pyright: ignore[reportArgumentType]
                 cutoff=0.5,
             )
+
+    def test_weighting_filter_bad_stack_shape(self):
+        stack = load_serialem_multiframe_data()
+        with pytest.raises(
+            ValueError,
+            match="Method can only be applied to 2 or 3-dimensional stacks",
+        ):
+            utils.filter_stack(stack)

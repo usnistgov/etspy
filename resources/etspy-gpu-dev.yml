@@ -1,0 +1,29 @@
+# environment file for the CUDA-enabled (GPU) development environment
+name: etspy-dev
+channels:
+  - conda-forge
+  - nvidia
+  - defaults
+dependencies:
+# ensure that cuda version of astra gets installed
+  - astra-toolbox=*=*cuda*
+  - cupy
+  - hyperspy-base
+  - hyperspy-gui-ipywidgets
+  - ipykernel
+  - numba
+  - numpy<2.0
+  - pystackreg
+  - ffmpeg
+  - pip
+  - isort
+  - myst-nb
+  - myst-parser
+  - numpydoc
+  - pytest
+  - pytest-cov
+  - ruff
+  - sphinx==8.0.2
+  - sphinx-immaterial
+  - tomli
+  - typing_extensions

@@ -1,14 +1,17 @@
+# environment file for the standard (non-GPU) runtime environment
+# (though if CUDA is detected on the system, conda will install those packages)
 name: etspy
 channels:
   - conda-forge
-  - nvidia
   - defaults
 dependencies:
   - astra-toolbox
+  - ffmpeg
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
   - pystackreg
   - pip
   - numba
+  - numpy<2.0
   - typing_extensions

@@ -1,0 +1,19 @@
+# environment file for the standard (non-GPU) runtime environment
+name: etspy
+channels:
+  - conda-forge
+  - nvidia
+  - defaults
+dependencies:
+# ensure that cuda version of astra gets installed
+  - astra-toolbox=*=*cuda*
+  - cupy
+  - ffmpeg
+  - hyperspy-base
+  - hyperspy-gui-ipywidgets
+  - ipykernel
+  - pystackreg
+  - pip
+  - numba
+  - numpy<2.0
+  - typing_extensions

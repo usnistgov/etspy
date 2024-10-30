@@ -15,7 +15,6 @@ from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.align import calculate_shifts_stackreg
 from etspy.base import TomoStack
-from etspy.io import create_stack
 
 
 def multiaverage(stack: np.ndarray, nframes: int, ny: int, nx: int) -> np.ndarray:
@@ -85,12 +84,11 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
 
     if ncpus == 1:
         reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
-        start = stack.data.shape[0] // 2
         for i in tqdm.tqdm(range(ntilts)):
             shifted = np.zeros([nframes, ny, nx])
             shifts = calculate_shifts_stackreg(
                 stack.inav[:, i],
-                start,
+                start=None,
                 show_progressbar=False,
             )
             for k in range(nframes):
@@ -107,7 +105,7 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
             )
         reg = np.array(reg)
 
-    reg = create_stack(reg)
+    reg = TomoStack(reg)
     reg_ax_0, reg_ax_1, reg_ax_2 = (cast(Uda, reg.axes_manager[i]) for i in range(3))
     stack_ax_1, stack_ax_2, stack_ax_3 = (
         cast(Uda, stack.axes_manager[i]) for i in range(1, 4)

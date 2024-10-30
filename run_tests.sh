@@ -7,9 +7,15 @@
 CUDA=$(python -c "import astra; print(1 if astra.astra.use_cuda() else 0)")
 PYTEST="pytest"
 
+rm .coverage || true
+rm etspy/tests/coverage.xml || true
+rm -r etspy/tests/htmlcov || true
+
 if ((CUDA==1)); then
-    COVERAGE_RCFILE="etspy/tests/.coveragerc-cuda" $PYTEST
+    export COVERAGE_RCFILE="etspy/tests/.coveragerc-cuda"
 else
-    COVERAGE_RCFILE="etspy/tests/.coveragerc-nocuda" $PYTEST
+    export COVERAGE_RCFILE="etspy/tests/.coveragerc-nocuda"
 fi
 
+echo "Using ${COVERAGE_RCFILE}"
+$PYTEST

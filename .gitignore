@@ -119,3 +119,9 @@ hyperspy_log.py
 # VS Code
 .vscode/
 .vscode/settings.json
+
+# jetbrains
+.idea/
+
+# poetry
+poetry.toml
