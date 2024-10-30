@@ -2,15 +2,13 @@
 name: etspy-dev
 channels:
   - conda-forge
-  - nvidia
-  - defaults
 dependencies:
   - astra-toolbox
   # - cupy
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
-  - numpy<2.0
+  - numpy
   - numba
   - pystackreg
   - ffmpeg

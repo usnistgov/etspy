@@ -3,7 +3,6 @@
 name: etspy
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - astra-toolbox
   - ffmpeg
@@ -13,5 +12,5 @@ dependencies:
   - pystackreg
   - pip
   - numba
-  - numpy<2.0
+  - numpy
   - typing_extensions

@@ -14,5 +14,5 @@ dependencies:
   - pystackreg
   - pip
   - numba
-  - numpy<2.0
+  - numpy
   - typing_extensions
