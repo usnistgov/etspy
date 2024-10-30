@@ -20,6 +20,9 @@ libraries, [conda](https://anaconda.org/anaconda/conda) is the simplest way to
 get started. It will auto-detect CUDA-capable GPUs and install the correct version
 of whatever packages are required.
 
+> ⚠️ ETSpy requires a Python version `>= 3.10` and `< 3.13` (3.13 and above are not supported due to dependencies).
+> If installing manually using `pip`, please ensure you are using a supported version.
+
 ### Anaconda (Preferred)
 
   *Works on Windows, MacOS, and Linux*
@@ -47,13 +50,12 @@ of whatever packages are required.
 
 ####  Optional Jupyter components (higly recommended)
 
-  * To use ETSpy from within a Jupyter Lab/Notebook environment, a few other optional 
-    dependencies are required.
-    * `ipympl` enables interactive plotting in Jupyter Lab or Notebook.  
+  * To use ETSpy from within a Jupyter Lab/Notebook environment, a other optional 
+    dependencies are required:
     * `ipykernel` allows use of the the etspy kernel with Jupyter installed in a different environment. 
 
     ```shell
-    (etspy) $ conda install ipympl ipykernel
+    (etspy) $ conda install ipykernel
     ```
 
   * To "register" the python kernel associated with the `etspy` conda environment, run
@@ -68,12 +70,12 @@ of whatever packages are required.
 
 ###  Using pip
 
-  *Works on Linux, with additional prerequisites*
+  *Works on Linux only, with additional prerequisites*
 
   Assuming you have the prequisite packages on your system (including
   the [CUDA libraries](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)),
   ETSpy should be able to be installed with a simple `pip` command (it is recommended to install
-  ETSpy in a dedicated virtual environment):
+  ETSpy in a dedicated virtual environment). Pick one of the following options depending on your needs:
 
   ```{tip}
   On Ubuntu-based systems, the NVIDIA/CUDA dependencies installed via the system-provided `nvidia-cuda-toolkit` apt package may be out of date and incompatible with the ASTRA toolkit. We recommend installing the version directly from NVIDIA.
@@ -84,12 +86,25 @@ of whatever packages are required.
     ```
 
   * To use ETSpy in Jupyter interface from within a dedicated virtual environment, installing
-    `ipykernel` and `ipympl` are necessary (as with Anaconda). This can be done by specifying
+    `ipykernel` is necessary (as with Anaconda). This can be done by specifying
     the `[jupyter]` group when installing ETSpy:
 
     ```shell
     $ pip install etspy[jupyter]
     ```
+
+  * To use the `cupy` accelerated code in ETSpy, you will need to install `cupy`. 
+    This can be done by specifying the `[gpu]` group when installing ETSpy:
+
+    ```shell
+    $ pip install etspy[gpu]
+    ```
+
+  * A shortcut for doing both of the above is to install the `[all]` target:
+
+    ```shell
+    $ pip install etspy[all]
+    ```  
 
   * To register the ETSpy virtual environment as a Jupyter kernel, run the following with
     the virtual environment enabled:
@@ -132,7 +147,7 @@ CUDA libraries installed, clone the `etspy` repository, and run the install comm
 ```shell
 $ git clone https://github.com/usnistgov/etspy
 $ cd etspy
-$ poetry install
+$ poetry install   # (to get the cupy dependency add "--with=gpu" to the install command)
 ```
 
 ```{note}
@@ -248,6 +263,27 @@ when running "Debug test" via the `PYTEST_ADDOPTS` environment variable:
       "env": {"PYTEST_ADDOPTS": "--no-cov"}
   }
 ```
+
+### Releasing a version
+
+*Note: this is primarily documentation for the developers. Feel free to ignore if you just wish to use ETSpy.*
+
+#### Testing a pre-release
+
+```bash
+# bump version using poetry
+$ poetry version prerelease  # this will append the version number and a pre-release indicator e.g ".a0"
+$ poetry lock  # ensure you've updated the lockfile and any dependencies
+$ poetry build  # buildssource and binary "wheel" distributions
+$ poetry publish  # requires registering poetry with tokens for your PyPI account (see https://python-poetry.org/docs/repositories/#configuring-credentials )
+```
+
+You should then be able to install from PyPI with the new version (e.g. `pip install etspy==0.9.3a2`)
+
+#### Releasing a new version
+
+- Basically the same as above, but run `poetry version patch` rather than `prerelease`.
+- Should also create a git tag for the version, and create a release on GitHub. This may be done automatically in the future.
 
 ## Related projects
 

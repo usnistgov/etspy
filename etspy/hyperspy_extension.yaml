@@ -1,0 +1,19 @@
+signals:
+    TomoStack:
+        signal_type: "TomoStack"
+        signal_type_aliases:
+            - Tomography
+            - Tomography stack
+            - TiltStack
+        signal_dimension: 2
+        dtype: real
+        lazy: False
+        module: etspy.base
+    RecStack:
+        signal_type: "RecStack"
+        signal_type_aliases:
+            - Reconstructed stack
+        signal_dimension: 2
+        dtype: real
+        lazy: False
+        module: etspy.base

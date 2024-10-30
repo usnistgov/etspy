@@ -537,7 +537,7 @@ toml = ["tomli"]
 name = "cupy"
 version = "13.3.0"
 description = "CuPy: NumPy & SciPy for GPU"
-optional = false
+optional = true
 python-versions = ">=3.9"
 files = [
     {file = "cupy-13.3.0.tar.gz", hash = "sha256:9a2a17af2b99cce91dd1366939c3805e3f51f9de5046df64f29ccbad3bdf78ed"},
@@ -700,7 +700,7 @@ devel = ["colorama", "json-spec", "jsonschema", "pylint", "pytest", "pytest-benc
 name = "fastrlock"
 version = "0.8.2"
 description = "Fast, re-entrant optimistic lock implemented in Cython"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "fastrlock-0.8.2-cp27-cp27m-macosx_10_15_x86_64.whl", hash = "sha256:94e348c72a1fd1f8191f25ea056448e4f5a87b8fbf005b39d290dcb0581a48cd"},
@@ -2437,13 +2437,13 @@ xxhash = ["xxhash (>=1.4.3)"]
 
 [[package]]
 name = "prettytable"
-version = "3.11.0"
+version = "3.12.0"
 description = "A simple Python library for easily displaying tabular data in a visually appealing ASCII table format"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "prettytable-3.11.0-py3-none-any.whl", hash = "sha256:aa17083feb6c71da11a68b2c213b04675c4af4ce9c541762632ca3f2cb3546dd"},
-    {file = "prettytable-3.11.0.tar.gz", hash = "sha256:7e23ca1e68bbfd06ba8de98bf553bf3493264c96d5e8a615c0471025deeba722"},
+    {file = "prettytable-3.12.0-py3-none-any.whl", hash = "sha256:77ca0ad1c435b6e363d7e8623d7cc4fcf2cf15513bf77a1c1b2e814930ac57cc"},
+    {file = "prettytable-3.12.0.tar.gz", hash = "sha256:f04b3e1ba35747ac86e96ec33e3bb9748ce08e254dc2a1c6253945901beec804"},
 ]
 
 [package.dependencies]
@@ -2546,10 +2546,7 @@ files = [
 [package.dependencies]
 annotated-types = ">=0.6.0"
 pydantic-core = "2.23.4"
-typing-extensions = [
-    {version = ">=4.12.2", markers = "python_version >= \"3.13\""},
-    {version = ">=4.6.1", markers = "python_version < \"3.13\""},
-]
+typing-extensions = {version = ">=4.6.1", markers = "python_version < \"3.13\""}
 
 [package.extras]
 email = ["email-validator (>=2.0.0)"]
@@ -3990,7 +3987,12 @@ enabler = ["pytest-enabler (>=2.2)"]
 test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-itertools", "pytest (>=6,!=8.1.*)", "pytest-ignore-flaky"]
 type = ["pytest-mypy"]
 
+[extras]
+all = ["cupy", "ipykernel"]
+gpu = ["cupy"]
+jupyter = ["ipykernel"]
+
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.10"
-content-hash = "de068bf636f67a4b5cf3902f2e5eeea3f1ae24ee7acbd126c303322ce48fec79"
+python-versions = ">=3.10, <3.13"
+content-hash = "4252c15bb255c7bc63f1f58896f4731e875d94399151e99f150d5c8e8336ee6d"
