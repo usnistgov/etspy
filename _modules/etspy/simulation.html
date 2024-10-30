@@ -14,7 +14,7 @@
     
     
       
-        <title>etspy.simulation - ETSpy 0.9.0 documentation</title>
+        <title>etspy.simulation - ETSpy 0.9.1 documentation</title>
       
     
     
@@ -33,7 +33,7 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.3625f807144f53acf.min.css?v=fbfc4466" />
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.4b4a8c74e2ff2ab5b.min.css?v=afa97f93" />
         <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/custom_css.css?v=3df925f6" />
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
@@ -103,7 +103,7 @@ $(document).ready(function(){
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../index.html" title="ETSpy 0.9.0 documentation" class="md-header__button md-logo" aria-label="ETSpy 0.9.0 documentation" data-md-component="logo">
+    <a href="../../index.html" title="ETSpy 0.9.1 documentation" class="md-header__button md-logo" aria-label="ETSpy 0.9.1 documentation" data-md-component="logo">
       <img src="../../_static/ETSpy_logo_trans.png" alt="logo">
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -113,7 +113,7 @@ $(document).ready(function(){
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            ETSpy 0.9.0 documentation
+            ETSpy 0.9.1 documentation
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -226,10 +226,10 @@ $(document).ready(function(){
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../index.html" title="ETSpy 0.9.0 documentation" class="md-nav__button md-logo" aria-label="ETSpy 0.9.0 documentation" data-md-component="logo">
+    <a href="../../index.html" title="ETSpy 0.9.1 documentation" class="md-nav__button md-logo" aria-label="ETSpy 0.9.1 documentation" data-md-component="logo">
       <img src="../../_static/ETSpy_logo_trans.png" alt="logo">
     </a>
-    ETSpy 0.9.0 documentation
+    ETSpy 0.9.1 documentation
   </label>
   
     <div class="md-nav__source">
@@ -475,13 +475,11 @@ $(document).ready(function(){
 <span class="kn">import</span> <span class="nn">hyperspy.api</span> <span class="k">as</span> <span class="nn">hs</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">hyperspy._signals.signal2d</span> <span class="kn">import</span> <span class="n">Signal2D</span>
-<span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="n">DictionaryTreeBrowser</span> <span class="k">as</span> <span class="n">Dtb</span>
 <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
 
 <span class="kn">from</span> <span class="nn">etspy</span> <span class="kn">import</span> <span class="n">_format_choices</span> <span class="k">as</span> <span class="n">_fmt</span>
 <span class="kn">from</span> <span class="nn">etspy</span> <span class="kn">import</span> <span class="n">_get_literal_hint_values</span> <span class="k">as</span> <span class="n">_get_lit</span>
 <span class="kn">from</span> <span class="nn">etspy.api</span> <span class="kn">import</span> <span class="n">TomoStack</span>
-<span class="kn">from</span> <span class="nn">etspy.io</span> <span class="kn">import</span> <span class="n">create_stack</span>
 
 
 <div class="viewcode-block" id="create_catalyst_model">
@@ -714,12 +712,12 @@ $(document).ready(function(){
     <span class="k">if</span> <span class="n">cuda</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
         <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
+        <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span> <span class="c1"># coverage: nocuda</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
         <span class="n">sino_id</span><span class="p">,</span> <span class="n">proj_data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_sino</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">proj_id</span><span class="p">)</span>
 
-    <span class="n">stack</span> <span class="o">=</span> <span class="n">create_stack</span><span class="p">(</span><span class="n">proj_data</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">TomoStack</span><span class="p">(</span><span class="n">proj_data</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">stack</span></div>
 
 
@@ -751,7 +749,7 @@ $(document).ready(function(){
 <span class="sd">    tilt_rotate</span>
 <span class="sd">        Amount of rotation to apply to the stack</span>
 <span class="sd">    y_only</span>
-<span class="sd">        If True, limit the application of jitter to the x-direction only.</span>
+<span class="sd">        If True, limit the application of jitter to the y-direction only.</span>
 <span class="sd">        Default is False</span>
 <span class="sd">    interp_order</span>
 <span class="sd">        The order of spline interpolation used by the :py:func:`scipy.ndimage.shift`</span>
@@ -791,14 +789,14 @@ $(document).ready(function(){
         <span class="n">jitter</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">min_shift</span><span class="p">,</span> <span class="n">max_shift</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">))</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
             <span class="k">if</span> <span class="n">y_only</span><span class="p">:</span>
-                <span class="n">jitter</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">jitter</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># set the x jitter to 0</span>
 
             <span class="n">misaligned</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span>
                 <span class="n">misaligned</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span>
                 <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="n">jitter</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">jitter</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
                 <span class="n">order</span><span class="o">=</span><span class="n">interp_order</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">misaligned</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">jitter</span>
+        <span class="n">misaligned</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">jitter</span>
     <span class="k">return</span> <span class="n">misaligned</span></div>
 
 
@@ -811,7 +809,7 @@ $(document).ready(function(){
     <span class="n">scale_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Apply misalignment to a model tilt series and return as a copy.</span>
+<span class="sd">    Apply noise to a model tilt series and return as a copy.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>

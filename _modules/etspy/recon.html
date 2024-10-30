@@ -14,7 +14,7 @@
     
     
       
-        <title>etspy.recon - ETSpy 0.9.0 documentation</title>
+        <title>etspy.recon - ETSpy 0.9.1 documentation</title>
       
     
     
@@ -33,7 +33,7 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.3625f807144f53acf.min.css?v=fbfc4466" />
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.4b4a8c74e2ff2ab5b.min.css?v=afa97f93" />
         <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/custom_css.css?v=3df925f6" />
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
@@ -103,7 +103,7 @@ $(document).ready(function(){
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../index.html" title="ETSpy 0.9.0 documentation" class="md-header__button md-logo" aria-label="ETSpy 0.9.0 documentation" data-md-component="logo">
+    <a href="../../index.html" title="ETSpy 0.9.1 documentation" class="md-header__button md-logo" aria-label="ETSpy 0.9.1 documentation" data-md-component="logo">
       <img src="../../_static/ETSpy_logo_trans.png" alt="logo">
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -113,7 +113,7 @@ $(document).ready(function(){
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            ETSpy 0.9.0 documentation
+            ETSpy 0.9.1 documentation
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -226,10 +226,10 @@ $(document).ready(function(){
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../index.html" title="ETSpy 0.9.0 documentation" class="md-nav__button md-logo" aria-label="ETSpy 0.9.0 documentation" data-md-component="logo">
+    <a href="../../index.html" title="ETSpy 0.9.1 documentation" class="md-nav__button md-logo" aria-label="ETSpy 0.9.1 documentation" data-md-component="logo">
       <img src="../../_static/ETSpy_logo_trans.png" alt="logo">
     </a>
-    ETSpy 0.9.0 documentation
+    ETSpy 0.9.1 documentation
   </label>
   
     <div class="md-nav__source">
@@ -691,7 +691,9 @@ $(document).ready(function(){
 <span class="sd">       :py:class:`~etspy.base.TomoStack`</span>
 <span class="sd">    tilts</span>
 <span class="sd">        The tilt angles for the tilt series (usually found in the</span>
-<span class="sd">        ``TomoStack.metadata.Tomography.tilts`` metadata node)</span>
+<span class="sd">        ``TomoStack.tilts.data`` property). Should be a one-dimensional array,</span>
+<span class="sd">        so it may be necessary to use the :py:meth:`~numpy.ndarray.squeeze` method</span>
+<span class="sd">        (`e.g.` ``tilts=stack.tilts.data.squeeze()``).</span>
 <span class="sd">    method</span>
 <span class="sd">        Reconstruction algorithm to use.  Must be either &#39;FBP&#39; (default), &#39;SIRT&#39;,</span>
 <span class="sd">        &#39;SART&#39;, or &#39;DART</span>
@@ -753,7 +755,7 @@ $(document).ready(function(){
     <span class="n">cfg</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;option&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
 
-    <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>  <span class="c1"># coverage: nocuda</span>
         <span class="k">if</span> <span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;fbp&quot;</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reconstructing with CUDA-accelerated FBP algorithm&quot;</span><span class="p">)</span>
             <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;FBP_CUDA&quot;</span>
@@ -1025,7 +1027,7 @@ $(document).ready(function(){
     <span class="n">rec_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">data2d</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;-vol&quot;</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
     <span class="n">sino_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">data2d</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;-sino&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">nangles</span><span class="p">,</span> <span class="n">ny</span><span class="p">]))</span>
 
-    <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>  <span class="c1"># coverage: nocuda</span>
         <span class="n">alg_name</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;_CUDA&quot;</span>
         <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
@@ -1050,7 +1052,7 @@ $(document).ready(function(){
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">iterations</span><span class="p">)):</span>
         <span class="n">astra</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">alg</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">rec</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">data2d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rec_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>  <span class="c1"># coverage: nocuda</span>
             <span class="n">residual_error</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">get_res_norm</span><span class="p">(</span><span class="n">alg</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">curr_id</span><span class="p">,</span> <span class="n">curr</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_sino</span><span class="p">(</span><span class="n">rec</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">proj_id</span><span class="p">)</span>
