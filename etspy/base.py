@@ -708,7 +708,7 @@ class TomoStack(CommonStack):
     _signal_type = "TomoStack"
     _signal_dimension = 2
 
-    def _create_from_signal(self, data, tilts, *args, **kwargs):
+    def _create_tomostack_from_signal(self, data, tilts, *args, **kwargs):
         """Create stack from HyperSpy signal (helper method for __init__)."""
         if data.axes_manager.navigation_dimension == 1:
             ntilts = data.axes_manager[0].size
@@ -773,7 +773,7 @@ class TomoStack(CommonStack):
             **kwargs,
         )
 
-    def _create_from_ndarray(self, data, tilts, *args, **kwargs):
+    def _create_tomostack_from_ndarray(self, data, tilts, *args, **kwargs):
         """Create stack from Numpy array (helper method for __init__)."""
         ntilts = data.shape[0]
         if (tilts is not None) and (ntilts != tilts.data.shape[0]):
@@ -842,9 +842,9 @@ class TomoStack(CommonStack):
         """
         # copy axes and metadata if input was already a signal
         if isinstance(data, Signal2D):
-            self._create_from_signal(data, tilts, *args, **kwargs)
+            self._create_tomostack_from_signal(data, tilts, *args, **kwargs)
         elif isinstance(data, np.ndarray):
-            self._create_from_ndarray(data, tilts, *args, **kwargs)
+            self._create_tomostack_from_ndarray(data, tilts, *args, **kwargs)
 
         self.shifts = shifts
         self.tilts = tilts
