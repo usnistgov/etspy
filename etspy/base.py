@@ -2059,7 +2059,7 @@ class RecStack(CommonStack):
     _signal_type = "RecStack"
     _signal_dimension = 2
 
-    def _create_recstack_from_signal(self, data, tilts, *args, **kwargs):
+    def _create_recstack_from_signal(self, data, *args, **kwargs):
         """Create stack from HyperSpy signal (helper method for __init__)."""
         if data.axes_manager.navigation_dimension > 1:
             msg = "RecStack objects are currently limited to a single navigation axis."
@@ -2117,7 +2117,7 @@ class RecStack(CommonStack):
             **kwargs,
         )
 
-    def _create_recstack_from_ndarray(self, data, tilts, *args, **kwargs):
+    def _create_recstack_from_ndarray(self, data, *args, **kwargs):
         """Create stack from Numpy array (helper method for __init__)."""
         if "metadata" in kwargs and "Tomography" in kwargs["metadata"]:
             tomo_metadata = kwargs["metadata"]["Tomography"]
@@ -2129,7 +2129,6 @@ class RecStack(CommonStack):
             }
         super().__init__(
             data,
-            tilts=tilts,
             *args,  # noqa: B026
             **kwargs,
         )
