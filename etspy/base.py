@@ -323,8 +323,10 @@ class CommonStack(Signal2D, ABC):
         :py:meth:`~etspy.base.CommonStack.copy`
         """
         s = copy.deepcopy(self)
-        s.tilts = copy.deepcopy(self.tilts)
-        s.shifts = copy.deepcopy(self.shifts)
+        if self.tilts:
+            s.tilts = copy.deepcopy(self.tilts)
+        if self.shifts:
+            s.shifts = copy.deepcopy(self.shifts)
         return s
 
     def copy(self):
