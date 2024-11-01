@@ -453,39 +453,6 @@ class CommonStack(Signal2D, ABC):
             "_tilts",
         ]
 
-    def _check_array_shape(
-        self,
-        array: Union[TomoShifts, TomoTilts, np.ndarray],
-        mode: Literal["shifts", "tilts"],
-    ) -> Union[TomoShifts, TomoTilts, np.ndarray]:
-        """
-        Check if a signal or array shape is appropriate for the current stack.
-
-        Used by the shifts and tilts setter methods as a sanity check on the
-        size of the arrays that are provided.
-        """
-        to_check = array.data if isinstance(array, BaseSignal) else array
-        signal_size = 2 if mode == "shifts" else 1
-        # if we have more than one navigation dimension, an ndarray should be
-        # of shape (N, M, 1|2) if the signal's navigation shape is (M, N | X)
-
-        # allow a numpy tilt array to be (*self.axes_manager.navigation_shape,), but if
-        # it is, reshape it to (*self.axes_manager.navigation_shape, 1)
-        if (
-            isinstance(array, np.ndarray)
-            and (mode == "tilts")
-            and (array.shape == (*self.axes_manager.navigation_shape[::-1],))
-        ):
-            array = array.reshape((*self.axes_manager.navigation_shape[::-1], 1))
-        elif to_check.shape != (*self.axes_manager.navigation_shape[::-1], signal_size):
-            msg = (
-                f"Shape of {mode} array must be "
-                f"{(*self.axes_manager.navigation_shape[::-1] , signal_size)} to match "
-                f"the navigation size of the stack (was {to_check.shape})"
-            )
-            raise ValueError(msg)
-        return array
-
     def plot(self, navigator: str = "slider", *args, **kwargs):
         """
         Override of plot function to set default HyperSpy navigator to 'slider'.
