@@ -276,20 +276,6 @@ class CommonStack(Signal2D, ABC):
             The signal data. Can be provided as either a HyperSpy
             :py:class:`hyperspy.api.signals.Signal2D` or a Numpy array
             of the shape `(tilt, y, x)`.
-        tilts
-            A :py:class:`~etspy.base.TomoTilts` containing the
-            tilt value (in degrees) for each projection in the stack.
-            The navigation dimension should match the navigation dimension of the
-            stack (one value per tilt image).
-        shifts
-            A :py:class:`~etspy.base.TomoShifts` or :py:class:`~numpy.ndarray`
-            containing the x/y image shift value (in pixels) for each projection in
-            the stack. A signal should have the same navigation dimension as the stack.
-            A Numpy array should have shape `(nav_size, 2)`. If ``None``, the ``shifts``
-            will be initialized to zero-valued signal.  If shifts are supplied as an
-            :py:class:`~numpy.ndarray`, the Y-shifts (perpendicular to the tilt axis)
-            should be in the ``shifts[:, 0]`` position and X-shifts (parallel to the
-            tilt axis) in ``shifts[:, 1]``.
         args
             Additional non-keyword arguments passed to the
             :py:class:`~hyperspy.api.signals.Signal2D` constructor
@@ -303,10 +289,6 @@ class CommonStack(Signal2D, ABC):
             :py:class:`~etspy.base.CommonStack` is not intended to be used directly.
             One of its sub-classes (:py:class:`~etspy.base.TomoStack` or
             :py:class:`~etspy.base.RecStack`) should be used instead.
-
-        ValueError
-            If the ``tilts`` or ``shifts`` signals provided do not have the correct
-            dimensions.
         """
         if type(self) is CommonStack:
             msg = (
