@@ -869,8 +869,13 @@ class TomoStack(CommonStack):
             "_shifts",
             "_tilts",
         ]
-
-        super().__init__(data, *args, **kwargs)
+        axes_list = [x for _, x in sorted(self.axes_manager.as_dictionary().items())]
+        super().__init__(
+            data,
+            axes=axes_list,
+            *args,  # noqa: B026
+            **kwargs,
+        )
         self.inav = _TomoStackSlicer(self, isNavigation=True)
         self.isig = _TomoStackSlicer(self, isNavigation=False)
 
@@ -2111,7 +2116,7 @@ class RecStack(CommonStack):
             }
         super().__init__(
             data,
-            *args,  # noqa: B026
+            *args,
             **kwargs,
         )
         self.metadata.add_node("Tomography")
