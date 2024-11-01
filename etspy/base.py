@@ -777,6 +777,21 @@ class TomoStack(CommonStack):
         self.metadata.add_node("Tomography")
         cast(Dtb, self.metadata.Tomography).add_dictionary(tomo_metadata)
 
+        if (self.axes_manager[0].name == Undefined) or (
+            self.axes_manager[0].name == "z"
+        ):
+            self.axes_manager[0].name = "Projections"
+        if self.axes_manager[0].units == Undefined:
+            self.axes_manager[0].units = "degrees"
+            del self.axes_manager[0].scale
+        self.axes_manager[1].name = "x"
+        if self.axes_manager[1].units == Undefined:
+            self.axes_manager[1].units = "pixels"
+
+        self.axes_manager[2].name = "y"
+        if self.axes_manager[2].units == Undefined:
+            self.axes_manager[2].units = "pixels"
+
     def __init__(
         self,
         data: Union[np.ndarray, Signal2D],
@@ -868,13 +883,7 @@ class TomoStack(CommonStack):
             "_shifts",
             "_tilts",
         ]
-        axes_list = [x for _, x in sorted(self.axes_manager.as_dictionary().items())]
-        super().__init__(
-            data,
-            axes=axes_list,
-            *args,  # noqa: B026
-            **kwargs,
-        )
+
         self.inav = _TomoStackSlicer(self, isNavigation=True)
         self.isig = _TomoStackSlicer(self, isNavigation=False)
 
