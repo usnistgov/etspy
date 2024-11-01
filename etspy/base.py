@@ -668,32 +668,6 @@ class CommonStack(Signal2D, ABC):
         s.shifts = copy.copy(self.shifts)
         return s
 
-    def save(
-        self,
-        filename=None,
-        overwrite=None,
-        extension=None,
-        file_format=None,
-        **kwargs,
-    ):
-        """
-        Save the signal in the specified format.
-
-        Overloads the HyperSpy :py:meth:`~hyperspy.api.signals.BaseSignal.save` method
-        so that tilts and shifts are written to metadata prior to saving. All arguments
-        are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`, so please
-        consult that method's documentation for details.
-        """
-        self.metadata.set_item("Tomography.tilts", self.tilts)
-        self.metadata.set_item("Tomography.shifts", self.shifts)
-        super().save(
-            filename=filename,
-            overwrite=overwrite,
-            extension=extension,
-            file_format=file_format,
-            **kwargs,
-        )
-
     def change_data_type(self, dtype: Union[str, np.dtype]):
         """
         Change the data type of a stack.
@@ -1449,6 +1423,32 @@ class TomoStack(CommonStack):
         s_new.tilts.data = self.tilts.data[mask]
         s_new.shifts.data = self.shifts.data[mask]
         return s_new
+
+    def save(
+        self,
+        filename=None,
+        overwrite=None,
+        extension=None,
+        file_format=None,
+        **kwargs,
+    ):
+        """
+        Save the signal in the specified format.
+
+        Overloads the HyperSpy :py:meth:`~hyperspy.api.signals.BaseSignal.save` method
+        so that tilts and shifts are written to metadata prior to saving. All arguments
+        are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`, so please
+        consult that method's documentation for details.
+        """
+        self.metadata.set_item("Tomography.tilts", self.tilts)
+        self.metadata.set_item("Tomography.shifts", self.shifts)
+        super().save(
+            filename=filename,
+            overwrite=overwrite,
+            extension=extension,
+            file_format=file_format,
+            **kwargs,
+        )
 
     def test_correlation(
         self,
