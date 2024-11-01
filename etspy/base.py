@@ -888,7 +888,7 @@ class TomoStack(CommonStack):
             "_tilts",
         ]
 
-        super().__init__(*args, **kwargs)
+        super().__init__(data, *args, **kwargs)
         self.inav = _TomoStackSlicer(self, isNavigation=True)
         self.isig = _TomoStackSlicer(self, isNavigation=False)
 
