@@ -264,8 +264,6 @@ class CommonStack(Signal2D, ABC):
     def __init__(
         self,
         data: Union[np.ndarray, Signal2D],
-        tilts: Optional[TomoTilts] = None,
-        shifts: Optional[Union[TomoShifts, np.ndarray]] = None,
         *args,
         **kwargs,
     ):
@@ -317,53 +315,7 @@ class CommonStack(Signal2D, ABC):
             )
             raise NotImplementedError(msg)
 
-        # copy axes and metadata if input was already a signal
-        if isinstance(data, Signal2D):
-            self._create_from_signal(data, tilts, *args, **kwargs)
-        elif isinstance(data, np.ndarray):
-            self._create_from_ndarray(data, tilts, *args, **kwargs)
-
-        self.shifts = shifts
-        self.tilts = tilts
-        if self.axes_manager.navigation_axes:
-            # normal single-frame mode:
-            if (
-                # only set axis information if it is undefined
-                self.axes_manager.navigation_dimension == 1
-                and (
-                    self.axes_manager.navigation_axes[0].units == Undefined
-                    or self.axes_manager.navigation_axes[0].units == ""
-                )
-            ):
-                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
-                nav_ax_0.name = "Projections"
-                nav_ax_0.units = "degrees"
-            # multiframe (special SerialEM case)
-            elif self.axes_manager.navigation_dimension == 2:  # noqa: PLR2004
-                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
-                nav_ax_1 = cast(Uda, self.axes_manager.navigation_axes[1])
-                nav_ax_0.name = (
-                    "Frames" if nav_ax_0.name == Undefined else nav_ax_0.name
-                )
-                nav_ax_0.units = (
-                    "images" if nav_ax_0.units == Undefined else nav_ax_0.units
-                )
-                nav_ax_1.name = (
-                    "Projections" if nav_ax_1.name == Undefined else nav_ax_1.name
-                )
-                nav_ax_1.units = (
-                    "degrees" if nav_ax_1.units == Undefined else nav_ax_1.units
-                )
-        if self.axes_manager.signal_axes:
-            cast(Uda, self.axes_manager.signal_axes[0]).name = "x"
-            cast(Uda, self.axes_manager.signal_axes[1]).name = "y"
-
-        # ensure that shifts and tilts will be sliced when the Signal is
-        self._additional_slicing_targets = [
-            "metadata.Signal.Noise_properties.variance",
-            "_shifts",
-            "_tilts",
-        ]
+        super().__init__(data, *args, **kwargs)
 
     def plot(self, navigator: str = "slider", *args, **kwargs):
         """
