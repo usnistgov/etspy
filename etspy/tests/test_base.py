@@ -120,7 +120,7 @@ class TestCommonStack:
         with pytest.raises(
             ValueError,
             match=re.escape(
-                'Invalid axis "not valid". Must be one of ' '["XY", "YZ", or "XZ"].',
+                "Invalid axis 'not valid'. Must be one of ['XY', 'YZ', or 'XZ'].",
             ),
         ):
             s.save_movie(start=0, stop=100, outfile="", axis="not valid")  # type: ignore
@@ -344,7 +344,7 @@ class TestProperties:
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "Tilt values must have a signal shape of " "(1,), but was (5,)",
+                "Tilt values must have a signal shape of (1,), but was (5,)",
             ),
         ):
             TomoTilts(sig)
@@ -354,7 +354,7 @@ class TestProperties:
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "Tilt values must have a signal shape of " "(1,), but was (5,)",
+                "Tilt values must have a signal shape of (1,), but was (5,)",
             ),
         ):
             TomoTilts(n)
@@ -380,7 +380,7 @@ class TestProperties:
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "Shift values must have a signal shape of " "(2,), but was (1,)",
+                "Shift values must have a signal shape of (2,), but was (1,)",
             ),
         ):
             TomoShifts(sig)
@@ -390,7 +390,7 @@ class TestProperties:
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "Shift values must have a signal shape of " "(2,), but was (1,)",
+                "Shift values must have a signal shape of (2,), but was (1,)",
             ),
         ):
             TomoShifts(n)
