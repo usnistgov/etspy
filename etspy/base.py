@@ -771,8 +771,7 @@ class TomoStack(CommonStack):
             }
         super().__init__(
             data,
-            tilts=tilts,
-            *args,  # noqa: B026
+            *args,
             **kwargs,
         )
         self.metadata.add_node("Tomography")
