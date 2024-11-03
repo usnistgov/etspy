@@ -120,7 +120,7 @@ class TestCommonStack:
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "Invalid axis 'not valid'. Must be one of ['XY', 'YZ', or 'XZ'].",
+                'Invalid axis "not valid". Must be one of ["XY", "YZ", or "XZ"].',
             ),
         ):
             s.save_movie(start=0, stop=100, outfile="", axis="not valid")  # type: ignore

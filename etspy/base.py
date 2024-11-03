@@ -77,6 +77,32 @@ class _TomoTiltSlicer(SpecialSlicersSignal):
 
 class _TomoStackSlicer(SpecialSlicersSignal):
     def __getitem__(self, slices, out=None) -> "TomoStack":
+        # if self.isNavigation is False, we're doing isig,
+        # which should only be allowed if both axes have a size
+        # greater than one
+        if not self.isNavigation:
+            new_slices = []
+            # slices will be a tuple of int (single pixel-based slice),
+            # float (single unit-based slice), or slice class (range).
+            # since TomoStacks are Signal2Ds, it should always be length 2
+            for i, s in enumerate(slices):
+                if isinstance(s, (int, float)):
+                    # don't allow a single slice
+                    scale = self.obj.axes_manager.signal_axes[i].scale
+                    if isinstance(s, int):
+                        # if integer, set scale to 1 to just add one pixel
+                        scale = 1
+                    new_slices.append(slice(s, s + scale, None))
+                    ax_name = self.obj.axes_manager.signal_axes[i].name
+                    logger.warning(
+                        "Slicing a TomoStack signal axis with a single pixel "
+                        'is not supported. Returning a single pixel on the "%s" '
+                        "axis instead",
+                        ax_name,
+                    )
+                else:
+                    new_slices.append(s)
+            slices = tuple(new_slices)
         return super().__getitem__(slices, out=out)
 
 
@@ -2035,6 +2061,79 @@ class TomoStack(CommonStack):
         cast(Uda, error.axes_manager[0]).name = algorithm.upper() + " Iteration"
         cast(Dtb, error.metadata.Signal).quantity = "Sum of Squared Difference"
         return rec_stack, error
+
+    def extract_sinogram(
+        self,
+        column: Optional[Union[int, float]] = None,
+        row: Optional[Union[int, float]] = None,
+    ) -> Signal2D:
+        """
+        Extract a sinogram from a single row or column of the TomoStack.
+
+        Exactly one of either "column" (x-axis location) or "row" (y-axis
+        location) must be provided. The value to use can be supplied as either
+        an integer for pixel-based indexing, or as a float for unit-based
+        indexing. The resulting image will have the stack's projection axis
+        oriented vertically and the opposite axis horizontally.
+
+        Parameters
+        ----------
+        column
+            The x-axis position to use for computing the sinogram. If an integer,
+            pixel-basd indexing will be used. If a float, unit-based indexing will
+            be used.
+        row
+            The y-axis position to use for computing the sinogram. If an integer,
+            pixel-basd indexing will be used. If a float, unit-based indexing will
+            be used.
+
+        Returns
+        -------
+        sino : Signal2D
+            A single image representing the row or column data over the range of
+            projections in the original TomoStack.
+
+        Raises
+        ------
+        ValueError
+            Raised if both column and row arguments are provided, or if neither
+            are provided.
+        """
+        if (column is not None) and (row is not None):
+            msg = 'Only one of "column" or "row" may be provided.'
+            raise ValueError(msg)
+        if (column is None) and (row is None):
+            msg = 'One of "column" or "row" must be provided.'
+            raise ValueError(msg)
+
+        # hide isig warning from TomoStackSlicer
+        orig_logger_state = logger.disabled
+        logger.disabled = True
+        try:
+            sino = self
+            if row:
+                sino = cast(Signal2D, self.isig[:, row].as_signal2D((1,0)))
+                if isinstance(row, float):
+                    title = f"Sinogram at y = {row} {self.axes_manager[2].units}" # type: ignore
+                else:
+                    title = f"Sinogram at row {row}"
+            else:
+                sino = cast(Signal2D, self.isig[column, :].as_signal2D((2,0)))
+                if isinstance(column, float):
+                    title = f"Sinogram at x = {column} {self.axes_manager[1].units}" # type: ignore
+                else:
+                    title = f"Sinogram at column {column}"
+        except Exception:
+            # if there was an error above, reset the logger state
+            # before raising it
+            logger.disabled = orig_logger_state
+            raise
+
+        logger.disabled = orig_logger_state
+        sino = sino.squeeze()
+        sino.metadata.set_item("General.title", title)
+        sino.metadata.set_item("Signal.signal_type", "")
+        return sino
 
 
 class RecStack(CommonStack):
