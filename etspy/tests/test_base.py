@@ -862,29 +862,9 @@ class TestSlicers:
 class TestExtractSinogram:
     """Test extract_sinogram method."""
 
-    def test_extract_sinogram_row(self):
+    def test_extract_sinogram(self):
         stack = ds.get_catalyst_data()
-        sino = stack.extract_sinogram(row=300)
-        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
-        assert sino.axes_manager.shape == (600, 90)
-        assert sino.metadata.get_item("Signal.signal_type") == ""
-        assert ax_0.name == "x"
-        assert ax_1.name == "Projections"
-        assert sino.metadata.get_item("General.title") == "Sinogram at row 300"
-
-    def test_extract_sinogram_row_float(self):
-        stack = ds.get_catalyst_data()
-        sino = stack.extract_sinogram(row=102.3)
-        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
-        assert sino.axes_manager.shape == (600, 90)
-        assert sino.metadata.get_item("Signal.signal_type") == ""
-        assert ax_0.name == "x"
-        assert ax_1.name == "Projections"
-        assert sino.metadata.get_item("General.title") == "Sinogram at y = 102.3 nm"
-
-    def test_extract_sinogram_column(self):
-        stack = ds.get_catalyst_data()
-        sino = stack.extract_sinogram(column=300)
+        sino = stack.extract_sinogram(300)
         ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
         assert sino.axes_manager.shape == (600, 90)
         assert sino.metadata.get_item("Signal.signal_type") == ""
@@ -892,9 +872,9 @@ class TestExtractSinogram:
         assert ax_1.name == "Projections"
         assert sino.metadata.get_item("General.title") == "Sinogram at column 300"
 
-    def test_extract_sinogram_column_float(self):
+    def test_extract_sinogram_float(self):
         stack = ds.get_catalyst_data()
-        sino = stack.extract_sinogram(column=106.32)
+        sino = stack.extract_sinogram(106.32)
         ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
         assert sino.axes_manager.shape == (600, 90)
         assert sino.metadata.get_item("Signal.signal_type") == ""
@@ -902,28 +882,25 @@ class TestExtractSinogram:
         assert ax_1.name == "Projections"
         assert sino.metadata.get_item("General.title") == "Sinogram at x = 106.32 nm"
 
-    def test_extract_sinogram_neither_row_nor_column(self):
+    def test_extract_sinogram_bad_argument_type(self):
         stack = ds.get_catalyst_data()
         with pytest.raises(
-            ValueError,
-            match=re.escape('One of "column" or "row" must be provided.'),
+            TypeError,
+            match=re.escape(
+                '"column" argument must be either a float or an integer '
+                "(was <class 'str'>)",
+            ),
         ):
-            stack.extract_sinogram()
+            stack.extract_sinogram("bad_val") # type: ignore
 
-    def test_extract_sinogram_both_row_and_column(self):
-        stack = ds.get_catalyst_data()
-        with pytest.raises(
-            ValueError,
-            match=re.escape('Only one of "column" or "row" may be provided.'),
-        ):
-            stack.extract_sinogram(row=300, column=200)
 
     def test_extract_sinogram_exception_handling(self):
         # test that on exception, logger is still enabled
         stack = ds.get_catalyst_data()
         assert logging.getLogger("etspy.base").disabled is False
         with pytest.raises(IndexError):
-            stack.extract_sinogram(column="weird") # type: ignore
+            # using too large of a value should trigger an error
+            stack.extract_sinogram(column=10000)
         assert logging.getLogger("etspy.base").disabled is False
 
 class TestFiltering:

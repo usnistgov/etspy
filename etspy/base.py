@@ -2085,17 +2085,15 @@ class TomoStack(CommonStack):
 
     def extract_sinogram(
         self,
-        column: Optional[Union[int, float]] = None,
-        row: Optional[Union[int, float]] = None,
+        column: Union[int, float],  # noqa: PYI041
     ) -> Signal2D:
         """
-        Extract a sinogram from a single row or column of the TomoStack.
+        Extract a sinogram from a single column of the TomoStack.
 
-        Exactly one of either "column" (x-axis location) or "row" (y-axis
-        location) must be provided. The value to use can be supplied as either
+        The value to use for ``column`` can be supplied as either
         an integer for pixel-based indexing, or as a float for unit-based
         indexing. The resulting image will have the stack's projection axis
-        oriented vertically and the opposite axis horizontally.
+        oriented vertically and the y-axis horizontally.
 
         Parameters
         ----------
@@ -2103,51 +2101,36 @@ class TomoStack(CommonStack):
             The x-axis position to use for computing the sinogram. If an integer,
             pixel-basd indexing will be used. If a float, unit-based indexing will
             be used.
-        row
-            The y-axis position to use for computing the sinogram. If an integer,
-            pixel-basd indexing will be used. If a float, unit-based indexing will
-            be used.
 
         Returns
         -------
         sino : Signal2D
-            A single image representing the row or column data over the range of
+            A single image representing the single column data over the range of
             projections in the original TomoStack.
 
         Raises
         ------
-        ValueError
-            Raised if both column and row arguments are provided, or if neither
-            are provided.
+        TypeError
+            Raised if column is neither a float or int
         """
-        if (column is not None) and (row is not None):
-            msg = 'Only one of "column" or "row" may be provided.'
-            raise ValueError(msg)
-        if (column is None) and (row is None):
-            msg = 'One of "column" or "row" must be provided.'
-            raise ValueError(msg)
+        if not isinstance(column, (float, int)):
+            msg = (
+                '"column" argument must be either a float or an integer '
+                f"(was {type(column)})"
+            )
+            raise TypeError(msg)
 
         # hide isig warning from TomoStackSlicer
         orig_logger_state = logger.disabled
         logger.disabled = True
         try:
-            sino = self
-            if row:
-                sino = self.isig[:, row]
-                sino.set_signal_type("")
-                sino = cast(Signal2D, sino.as_signal2D((1, 0)))
-                if isinstance(row, float):
-                    title = f"Sinogram at y = {row} {self.axes_manager[2].units}" # type: ignore
-                else:
-                    title = f"Sinogram at row {row}"
+            sino = self.isig[column, :]
+            sino.set_signal_type("")
+            sino = cast(Signal2D, sino.as_signal2D((2, 0)))
+            if isinstance(column, float):
+                title = f"Sinogram at x = {column} {self.axes_manager[1].units}" # type: ignore
             else:
-                sino = self.isig[column, :]
-                sino.set_signal_type("")
-                sino = cast(Signal2D, sino.as_signal2D((2, 0)))
-                if isinstance(column, float):
-                    title = f"Sinogram at x = {column} {self.axes_manager[1].units}" # type: ignore
-                else:
-                    title = f"Sinogram at column {column}"
+                title = f"Sinogram at column {column}"
         except Exception:
             # if there was an error above, reset the logger state
             # before raising it
