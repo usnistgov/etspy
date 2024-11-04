@@ -9,6 +9,8 @@ def get_needle_data(aligned: bool = False):
     """
     Load an experimental tilt series of needle-shaped specimen.
 
+    Data size is 77 tilt projections and 256 x 256 pixel images.
+
     Returns
     -------
     needle : TomoStack
@@ -39,6 +41,8 @@ def get_catalyst_data(
 ) -> etspy.TomoStack:
     """
     Load a model-simulated catalyst tilt series.
+
+    Data size is 90 tilt projections and 600 x 600 pixel images.
 
     Parameters
     ----------

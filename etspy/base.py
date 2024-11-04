@@ -722,14 +722,6 @@ class TomoStack(CommonStack):
         """Create stack from HyperSpy signal (helper method for __init__)."""
         if data.axes_manager.navigation_dimension == 1:
             ntilts = data.axes_manager[0].size
-            if (
-                data.axes_manager[0].name == Undefined
-                or data.axes_manager[0].name == "z"
-            ):
-                data.axes_manager[0].name = "Projections"
-            if data.axes_manager[0].units == Undefined:
-                data.axes_manager[0].units = "degrees"
-                del data.axes_manager[0].scale
         else:
             ntilts = data.axes_manager["Projections"].size
         if (tilts is not None) and (ntilts != tilts.data.shape[0]):
@@ -783,6 +775,22 @@ class TomoStack(CommonStack):
             **kwargs,
         )
 
+    def _fix_projection_axis(self, axis_number: int):
+        ax = cast(Uda, self.axes_manager[axis_number])
+        if ax.name in (Undefined, "z"):
+            ax.name = "Projections"
+        if ax.units == Undefined:
+            ax.units = "degrees"
+            del ax.scale
+
+    def _fix_frames_axis(self, axis_number: int):
+        ax = cast(Uda, self.axes_manager[axis_number])
+        if ax.name in (Undefined, "z"):
+            ax.name = "Frames"
+        if ax.units == Undefined:
+            ax.units = "images"
+            del ax.scale
+
     def _create_tomostack_from_ndarray(self, data, tilts, *args, **kwargs):
         """Create stack from Numpy array (helper method for __init__)."""
         ntilts = data.shape[0]
@@ -805,20 +813,34 @@ class TomoStack(CommonStack):
         self.metadata.add_node("Tomography")
         cast(Dtb, self.metadata.Tomography).add_dictionary(tomo_metadata)
 
-        if (self.axes_manager[0].name == Undefined) or (
-            self.axes_manager[0].name == "z"
-        ):
-            self.axes_manager[0].name = "Projections"
-        if self.axes_manager[0].units == Undefined:
-            self.axes_manager[0].units = "degrees"
-            del self.axes_manager[0].scale
-        self.axes_manager[1].name = "x"
-        if self.axes_manager[1].units == Undefined:
-            self.axes_manager[1].units = "pixels"
+        # need to handle navigation_dimension == 1 (normal case) or == 2 (multiframe)
+        if self.axes_manager.navigation_dimension == 0:
+            # single projection (rare case, but should allow)
+            pass
+        elif self.axes_manager.navigation_dimension == 1:
+            # normal case
+            self._fix_projection_axis(0)
+        elif self.axes_manager.navigation_dimension == 2:  # noqa: PLR2004
+            # multiframe
+            self._fix_projection_axis(1)
+            self._fix_frames_axis(0)
+        else:
+            msg = (
+                "Invalid number of navigation dimensions for a TomoStack ("
+                f"{self.axes_manager.navigation_dimension}). Must be either 0, 1, or 2."
+            )
+            raise ValueError(msg)
 
-        self.axes_manager[2].name = "y"
-        if self.axes_manager[2].units == Undefined:
-            self.axes_manager[2].units = "pixels"
+        signal_axes = cast(tuple[Uda, Uda], self.axes_manager.signal_axes)
+        x_axis = signal_axes[0]
+        x_axis.name = "x"
+        if x_axis.units == Undefined:
+            x_axis.units = "pixels"
+
+        y_axis = signal_axes[1]
+        y_axis.name = "y"
+        if y_axis.units == Undefined:
+            y_axis.units = "pixels"
 
     def __init__(
         self,
@@ -2032,7 +2054,7 @@ class TomoStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        sinogram = self.isig[nslice, :].data
+        sinogram = self.isig[nslice, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
             angles=self.tilts.data,
@@ -2112,13 +2134,17 @@ class TomoStack(CommonStack):
         try:
             sino = self
             if row:
-                sino = cast(Signal2D, self.isig[:, row].as_signal2D((1,0)))
+                sino = self.isig[:, row]
+                sino.set_signal_type("")
+                sino = cast(Signal2D, sino.as_signal2D((1, 0)))
                 if isinstance(row, float):
                     title = f"Sinogram at y = {row} {self.axes_manager[2].units}" # type: ignore
                 else:
                     title = f"Sinogram at row {row}"
             else:
-                sino = cast(Signal2D, self.isig[column, :].as_signal2D((2,0)))
+                sino = self.isig[column, :]
+                sino.set_signal_type("")
+                sino = cast(Signal2D, sino.as_signal2D((2, 0)))
                 if isinstance(column, float):
                     title = f"Sinogram at x = {column} {self.axes_manager[1].units}" # type: ignore
                 else:
@@ -2132,7 +2158,6 @@ class TomoStack(CommonStack):
         logger.disabled = orig_logger_state
         sino = sino.squeeze()
         sino.metadata.set_item("General.title", title)
-        sino.metadata.set_item("Signal.signal_type", "")
         return sino
 
 

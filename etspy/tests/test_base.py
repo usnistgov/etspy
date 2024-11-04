@@ -291,6 +291,44 @@ class TestTomoStack:
         assert stack.axes_manager[-1].name == "y"  # type: ignore
         assert stack.axes_manager[-1].scale == 0.123  # type: ignore  # noqa: PLR2004
 
+    def test_tomostack_create_by_signal_undefined_axes(self):
+        s = cast(Signal2D, hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        axes = [
+            {"size": 10, "name": "Axis0", "units": ""},
+            {"size": 100, "name": "Axis1", "units": ""},
+            {"size": 100, "name": "Axis2", "units": ""},
+        ]
+        stack = TomoStack(s, axes=axes)
+        assert stack.axes_manager[0].name == "Projections"  # type: ignore
+        assert stack.axes_manager[0].units == "degrees"  # type: ignore
+
+    def test_tomostack_create_by_array_multiframe(self):
+        n = np.random.random([20, 5, 110, 120])
+        stack = TomoStack(n)
+        ax0, ax1, ax2, ax3 = (cast(Uda, stack.axes_manager[i]) for i in range(4))
+        assert ax0.name == "Frames"
+        assert ax1.name == "Projections"
+        assert ax2.name == "x"
+        assert ax3.name == "y"
+        assert ax0.units == "images"
+        assert ax1.units == "degrees"
+        assert ax2.units == "pixels"
+        assert ax3.units == "pixels"
+        assert ax0.size == 5
+        assert ax1.size == 20
+        assert ax2.size == 120
+        assert ax3.size == 110
+
+    def test_tomostack_create_by_array_too_many_dims(self):
+        n = np.random.rand(2, 3, 5, 2, 1, 3)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Invalid number of navigation dimensions for a TomoStack (4). "
+                "Must be either 0, 1, or 2."),
+        ):
+            TomoStack(n)
+
     def test_remove_projections(self):
         s = ds.get_needle_data(aligned=True)
         s_new = s.remove_projections([0, 5, 10, 15, 20])
@@ -821,6 +859,72 @@ class TestSlicers:
         assert t.data.shape == (77, 10, 5)
         assert isinstance(t, RecStack)
 
+class TestExtractSinogram:
+    """Test extract_sinogram method."""
+
+    def test_extract_sinogram_row(self):
+        stack = ds.get_catalyst_data()
+        sino = stack.extract_sinogram(row=300)
+        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
+        assert sino.axes_manager.shape == (600, 90)
+        assert sino.metadata.get_item("Signal.signal_type") == ""
+        assert ax_0.name == "x"
+        assert ax_1.name == "Projections"
+        assert sino.metadata.get_item("General.title") == "Sinogram at row 300"
+
+    def test_extract_sinogram_row_float(self):
+        stack = ds.get_catalyst_data()
+        sino = stack.extract_sinogram(row=102.3)
+        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
+        assert sino.axes_manager.shape == (600, 90)
+        assert sino.metadata.get_item("Signal.signal_type") == ""
+        assert ax_0.name == "x"
+        assert ax_1.name == "Projections"
+        assert sino.metadata.get_item("General.title") == "Sinogram at y = 102.3 nm"
+
+    def test_extract_sinogram_column(self):
+        stack = ds.get_catalyst_data()
+        sino = stack.extract_sinogram(column=300)
+        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
+        assert sino.axes_manager.shape == (600, 90)
+        assert sino.metadata.get_item("Signal.signal_type") == ""
+        assert ax_0.name == "y"
+        assert ax_1.name == "Projections"
+        assert sino.metadata.get_item("General.title") == "Sinogram at column 300"
+
+    def test_extract_sinogram_column_float(self):
+        stack = ds.get_catalyst_data()
+        sino = stack.extract_sinogram(column=106.32)
+        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
+        assert sino.axes_manager.shape == (600, 90)
+        assert sino.metadata.get_item("Signal.signal_type") == ""
+        assert ax_0.name == "y"
+        assert ax_1.name == "Projections"
+        assert sino.metadata.get_item("General.title") == "Sinogram at x = 106.32 nm"
+
+    def test_extract_sinogram_neither_row_nor_column(self):
+        stack = ds.get_catalyst_data()
+        with pytest.raises(
+            ValueError,
+            match=re.escape('One of "column" or "row" must be provided.'),
+        ):
+            stack.extract_sinogram()
+
+    def test_extract_sinogram_both_row_and_column(self):
+        stack = ds.get_catalyst_data()
+        with pytest.raises(
+            ValueError,
+            match=re.escape('Only one of "column" or "row" may be provided.'),
+        ):
+            stack.extract_sinogram(row=300, column=200)
+
+    def test_extract_sinogram_exception_handling(self):
+        # test that on exception, logger is still enabled
+        stack = ds.get_catalyst_data()
+        assert logging.getLogger("etspy.base").disabled is False
+        with pytest.raises(IndexError):
+            stack.extract_sinogram(column="weird") # type: ignore
+        assert logging.getLogger("etspy.base").disabled is False
 
 class TestFiltering:
     """Test filtering of TomoStack data."""

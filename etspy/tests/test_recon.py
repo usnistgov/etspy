@@ -140,6 +140,16 @@ class TestReconRun:
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
 
+    def test_run_fbp_no_cuda_2d_array(self):
+        stack = ds.get_needle_data(aligned=True)
+        slices = stack.isig[120:121, :].deepcopy()
+        tilts = slices.tilts.data.squeeze()
+        rec = recon.run(slices.data.squeeze(), tilts, "FBP", cuda=False)
+        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
+        assert data_shape[0] == slices.data.shape[2]
+        assert isinstance(rec, np.ndarray)
+
     def test_run_sirt_no_cuda(self):
         stack = ds.get_needle_data(aligned=True)
         slices = stack.isig[120:121, :].deepcopy()
@@ -236,7 +246,7 @@ class TestAstraError:
         stack = ds.get_needle_data(aligned=True)
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
-        sino = stack.isig[120, :].data
+        sino = stack.isig[120, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sino,
             angles,
@@ -252,7 +262,7 @@ class TestAstraError:
         stack = ds.get_needle_data(aligned=True)
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
-        sino = stack.isig[120, :].data
+        sino = stack.isig[120, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sino,
             angles,
