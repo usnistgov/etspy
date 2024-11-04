@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 """Tests for base functions of ETSpy."""
 
 import logging
@@ -671,27 +673,29 @@ class TestSlicers:
         assert isinstance(t.shifts, TomoShifts)
 
     def test_two_d_tomo_stack_slicing(self):
-        stack = load_serialem_multiframe_data()
-        assert stack.axes_manager.shape == (2, 3, 1024, 1024)
-        assert stack.data.shape == (3, 2, 1024, 1024)
-        assert stack.axes_manager[0].name == "Frames"  # type: ignore
-        assert stack.axes_manager[0].units == "images"  # type: ignore
-        assert stack.axes_manager[1].name == "Projections"  # type: ignore
-        assert stack.axes_manager[1].units == "degrees"  # type: ignore
-        assert stack.axes_manager[2].name == "x"  # type: ignore
-        assert stack.axes_manager[2].units == "nm"  # type: ignore
-        assert stack.axes_manager[3].name == "y"  # type: ignore
-        assert stack.axes_manager[3].units == "nm"  # type: ignore
+        """Test handling of multi-frame TomoStack with 2 navigation dimensions."""
+        s = load_serialem_multiframe_data()
+        assert s.axes_manager.shape == (2, 3, 1024, 1024)
+        assert s.data.shape == (3, 2, 1024, 1024)
+        ax_0, ax_1, ax_2, ax_3 = cast(list[Uda], [s.axes_manager[i] for i in range(4)])
+        assert ax_0.name == "Frames"
+        assert ax_0.units == "images"
+        assert ax_1.name == "Projections"
+        assert ax_1.units == "degrees"
+        assert ax_2.name == "x"
+        assert ax_2.units == "nm"
+        assert ax_3.name == "y"
+        assert ax_3.units == "nm"
 
         # test inav and isig together with ranges
-        t = stack.inav[:1, :2].isig[:20, :120]
+        t = s.inav[:1, :2].isig[:20, :120]
         assert t.axes_manager.shape == (1, 2, 20, 120)
         assert t.data.shape == (2, 1, 120, 20)
         assert t.tilts.axes_manager.shape == (1, 2, 1)
         assert t.shifts.axes_manager.shape == (1, 2, 2)
 
         # test extracting single projection
-        t2 = stack.isig[:20, :120].inav[:, 2]
+        t2 = s.isig[:20, :120].inav[:, 2]
         assert t2.axes_manager.shape == (2, 20, 120)
         assert t2.data.shape == (2, 120, 20)
         assert t2.axes_manager[0].name == "Frames"  # type: ignore
@@ -699,7 +703,7 @@ class TestSlicers:
         assert t2.shifts.axes_manager.navigation_shape == (2,)
 
         # test extracting single frame
-        t3 = stack.isig[:20, :120].inav[1, :]
+        t3 = s.isig[:20, :120].inav[1, :]
         assert t3.axes_manager.shape == (3, 20, 120)
         assert t3.data.shape == (3, 120, 20)
         assert t3.axes_manager[0].name == "Projections"  # type: ignore
@@ -707,7 +711,7 @@ class TestSlicers:
         assert t3.shifts.axes_manager.navigation_shape == (3,)
 
         # test extracting single frame and projection
-        t4 = stack.isig[:20, :120].inav[1, 1]
+        t4 = s.isig[:20, :120].inav[1, 1]
         assert t4.axes_manager.shape == (20, 120)
         assert t4.data.shape == (120, 20)
         assert t4.axes_manager[0].name == "x"  # type: ignore
@@ -715,6 +719,92 @@ class TestSlicers:
         assert t4.tilts.axes_manager.navigation_shape == ()
         assert t4.shifts.axes_manager.navigation_shape == ()
         assert t4.tilts.data[0] == pytest.approx(-0.000488)
+
+    def test_single_pixel_nav_slicer(self):
+        stack = ds.get_needle_data()
+        t = stack.inav[30]
+        ax = t.axes_manager
+        assert t.data.shape == (256, 256)
+        assert ax.navigation_shape == ()
+        assert ax.shape == (256, 256)
+
+    def test_single_pixel_sig_slicer_x(self, caplog): # type: ignore
+        stack = ds.get_needle_data()
+        with caplog.at_level(logging.WARNING):
+            # warning should be triggered and shape should be (77, 1, 256)
+            t = stack.isig[5, :]
+            assert (
+                "Slicing a TomoStack signal axis with a single pixel "
+                'is not supported. Returning a single pixel on the "x" '
+                "axis instead"
+            ) in caplog.text
+        assert t.data.shape == (77, 256, 1)
+        assert t.axes_manager.shape == (77, 1, 256)
+        ax_0, ax_1, ax_2 = cast(list[Uda], [t.axes_manager[i] for i in range(3)])
+        assert ax_0.name == "Projections"
+        assert ax_1.name == "x"
+        assert ax_2.name == "y"
+        assert ax_0.size == 77
+        assert ax_1.size == 1
+        assert ax_2.size == 256
+        assert ax_0.units == "degrees"
+        assert ax_1.units == "nm"
+        assert ax_2.units == "nm"
+        assert ax_1.offset == pytest.approx(ax_1.scale * 5)
+        assert ax_2.offset == 0
+
+    def test_single_pixel_sig_slicer_y(self, caplog):
+        stack = ds.get_needle_data()
+        with caplog.at_level(logging.WARNING):
+            # warning should be triggered and shape should be (77, 256, 1)
+            t = stack.isig[:, 128]
+            assert (
+                "Slicing a TomoStack signal axis with a single pixel "
+                'is not supported. Returning a single pixel on the "y" '
+                "axis instead"
+            ) in caplog.text
+        assert t.data.shape == (77, 1, 256)
+        assert t.axes_manager.shape == (77, 256, 1)
+        ax_0, ax_1, ax_2 = cast(list[Uda], [t.axes_manager[i] for i in range(3)])
+        assert ax_0.name == "Projections"
+        assert ax_1.name == "x"
+        assert ax_2.name == "y"
+        assert ax_0.size == 77
+        assert ax_1.size == 256
+        assert ax_2.size == 1
+        assert ax_0.units == "degrees"
+        assert ax_1.units == "nm"
+        assert ax_2.units == "nm"
+        assert ax_1.offset == 0
+        assert ax_2.offset == pytest.approx(ax_2.scale * 128)
+
+    def test_single_pixel_sig_slicer_float(self, caplog):
+        stack = ds.get_needle_data()
+        with caplog.at_level(logging.WARNING):
+            # warning should be triggered and shape should be (77, 256, 1)
+            t = stack.isig[:, 30.4]
+            assert (
+                "Slicing a TomoStack signal axis with a single pixel "
+                'is not supported. Returning a single pixel on the "y" '
+                "axis instead"
+            ) in caplog.text
+        assert t.data.shape == (77, 1, 256)
+        assert t.axes_manager.shape == (77, 256, 1)
+        ax_0, ax_1, ax_2 = cast(list[Uda], [t.axes_manager[i] for i in range(3)])
+        assert ax_0.name == "Projections"
+        assert ax_1.name == "x"
+        assert ax_2.name == "y"
+        assert ax_0.size == 77
+        assert ax_1.size == 256
+        assert ax_2.size == 1
+        assert ax_0.units == "degrees"
+        assert ax_1.units == "nm"
+        assert ax_2.units == "nm"
+        assert ax_1.offset == 0
+        assert ax_2.offset == pytest.approx(30.24)
+
+    # def test_single_pixel_nav_slicer(self):
+    #     pass
 
     def test_recstack_nav_slicer(self):
         stack = RecStack(ds.get_needle_data())
