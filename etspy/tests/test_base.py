@@ -63,36 +63,6 @@ class TestCommonStack:
         assert s2.shifts.data.shape == (5, 2)
         assert s2.tilts.data.shape == (5, 1)
 
-    def test_deepcopy(self):
-        s = ds.get_needle_data()
-        s2 = s.deepcopy()
-        assert np.all(s.data == s2.data)
-        assert np.all(s.tilts.data == s2.tilts.data)
-        assert np.all(s.shifts.data == s2.shifts.data)
-        assert s is not s2
-        assert s.data is not s2.data
-        assert s.tilts.data is not s2.tilts.data
-        assert s.shifts.data is not s2.shifts.data
-        np.testing.assert_equal(
-            s.metadata.as_dictionary(),
-            s2.metadata.as_dictionary(),
-        )
-
-    def test_copy(self):
-        s = ds.get_needle_data()
-        s2 = s.copy()
-        assert np.all(s.data == s2.data)
-        assert np.all(s.tilts.data == s2.tilts.data)
-        assert np.all(s.shifts.data == s2.shifts.data)
-        assert s is not s2
-        assert s.data is s2.data
-        assert s.tilts.data is s2.tilts.data
-        assert s.shifts.data is s2.shifts.data
-        np.testing.assert_equal(
-            s.metadata.as_dictionary(),
-            s2.metadata.as_dictionary(),
-        )
-
     def test_plot(self):
         s = ds.get_needle_data()
         s.plot()
@@ -328,6 +298,36 @@ class TestTomoStack:
                 "Must be either 0, 1, or 2."),
         ):
             TomoStack(n)
+
+    def test_deepcopy(self):
+        s = ds.get_needle_data()
+        s2 = s.deepcopy()
+        assert np.all(s.data == s2.data)
+        assert np.all(s.tilts.data == s2.tilts.data)
+        assert np.all(s.shifts.data == s2.shifts.data)
+        assert s is not s2
+        assert s.data is not s2.data
+        assert s.tilts.data is not s2.tilts.data
+        assert s.shifts.data is not s2.shifts.data
+        np.testing.assert_equal(
+            s.metadata.as_dictionary(),
+            s2.metadata.as_dictionary(),
+        )
+
+    def test_copy(self):
+        s = ds.get_needle_data()
+        s2 = s.copy()
+        assert np.all(s.data == s2.data)
+        assert np.all(s.tilts.data == s2.tilts.data)
+        assert np.all(s.shifts.data == s2.shifts.data)
+        assert s is not s2
+        assert s.data is s2.data
+        assert s.tilts.data is s2.tilts.data
+        assert s.shifts.data is s2.shifts.data
+        np.testing.assert_equal(
+            s.metadata.as_dictionary(),
+            s2.metadata.as_dictionary(),
+        )
 
     def test_remove_projections(self):
         s = ds.get_needle_data(aligned=True)

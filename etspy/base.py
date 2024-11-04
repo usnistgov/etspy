@@ -334,47 +334,6 @@ class CommonStack(Signal2D, ABC):
         """
         super().plot(navigator=navigator, *args, **kwargs)  # noqa: B026
 
-    def deepcopy(self):
-        """
-        Return a "deep copy" of this Stack.
-
-        Uses the standard library's :func:`~copy.deepcopy` function. Note: this means
-        the underlying data structure will be duplicated in memory.
-
-        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.deepcopy`
-        method to ensure the ``tilts`` and ``shifts`` properties are also copied
-
-        See Also
-        --------
-        :py:meth:`~etspy.base.CommonStack.copy`
-        """
-        s = copy.deepcopy(self)
-        if hasattr(self, "tilts"):
-            s.tilts = copy.deepcopy(self.tilts)
-        if hasattr(self, "shifts"):
-            s.shifts = copy.deepcopy(self.shifts)
-        return s
-
-    def copy(self):
-        """
-        Return a "shallow copy" of this Stack.
-
-        Uses the standard library's :func:`~copy.copy` function. Note: this will
-        return a copy of the, Stack, but it will not duplicate the underlying
-        data in memory, and both Stacks will reference the same data.
-
-        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.copy`
-        method to ensure the ``tilts`` and ``shifts`` properties are also copied
-
-        See Also
-        --------
-        :py:meth:`~etspy.base.CommonStack.deepcopy`
-        """
-        s = copy.copy(self)
-        s.tilts = copy.copy(self.tilts)
-        s.shifts = copy.copy(self.shifts)
-        return s
-
     def change_data_type(self, dtype: Union[str, np.dtype]):
         """
         Change the data type of a stack.
@@ -1103,6 +1062,46 @@ class TomoStack(CommonStack):
             TomoTilts,
             self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
         )
+
+
+    def deepcopy(self):
+        """
+        Return a "deep copy" of this Stack.
+
+        Uses the standard library's :func:`~copy.deepcopy` function. Note: this means
+        the underlying data structure will be duplicated in memory.
+
+        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.deepcopy`
+        method to ensure the ``tilts`` and ``shifts`` properties are also copied
+
+        See Also
+        --------
+        :py:meth:`~etspy.base.TomoStack.copy`
+        """
+        s = copy.deepcopy(self)
+        s.tilts = copy.deepcopy(self.tilts)
+        s.shifts = copy.deepcopy(self.shifts)
+        return s
+
+    def copy(self):
+        """
+        Return a "shallow copy" of this Stack.
+
+        Uses the standard library's :func:`~copy.copy` function. Note: this will
+        return a copy of the, Stack, but it will not duplicate the underlying
+        data in memory, and both Stacks will reference the same data.
+
+        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.copy`
+        method to ensure the ``tilts`` and ``shifts`` properties are also copied
+
+        See Also
+        --------
+        :py:meth:`~etspy.base.TomoStack.deepcopy`
+        """
+        s = copy.copy(self)
+        s.tilts = copy.copy(self.tilts)
+        s.shifts = copy.copy(self.shifts)
+        return s
 
     def plot_sinos(self, *args: Tuple, **kwargs: Dict):
         """
