@@ -3,6 +3,7 @@
   :titlesonly:
 
   Home <self>
+  Development <development>
 
 .. toctree::
      :hidden:
