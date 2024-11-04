@@ -1,5 +1,6 @@
 """Tests for the CUDA-enabled functionality of ETSpy."""
 
+import re
 from typing import Tuple, cast
 
 import astra
@@ -92,7 +93,7 @@ class TestAstraSIRTGPU:
         stack = ds.get_needle_data(aligned=True)
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
-        stack = stack.isig[120, :]
+        stack = stack.isig[120, :].squeeze()
         rec_stack, error = recon.astra_error(
             stack.data,
             angles,
@@ -104,6 +105,23 @@ class TestAstraSIRTGPU:
         assert isinstance(error, np.ndarray)
         assert rec_stack.shape == (2, ny, ny)
 
+    def test_astra_sirt_error_gpu_bad_dims(self):
+        stack = ds.get_needle_data(aligned=True)
+        _, ny, _ = stack.data.shape
+        angles = stack.tilts.data.squeeze()
+        stack = stack.isig[120, :]
+        with pytest.raises(ValueError, match=re.escape(
+            "Sinogram must be two-dimensional (ntilts, y). "
+            "Provided shape was (77, 256, 1).",
+        )):
+            recon.astra_error(
+                stack.data,
+                angles,
+                iterations=2,
+                constrain=True,
+                thresh=0,
+                cuda=True,
+            )
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestReconRunCUDA:

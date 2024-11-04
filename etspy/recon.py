@@ -503,8 +503,8 @@ def astra_error(
     Parameters
     ----------
     sinogram
-       Tilt series data either of the form [angles, x] or [angles, y, x] where
-       y is the tilt axis and x is the projection axis.
+       Tilt series data of the shape ``(n_angles, n_y)``, where
+       y is the axis perpendicular to the tilt axis.
     angles
         Projection angles in degrees.
     method
@@ -533,6 +533,13 @@ def astra_error(
     recon
     """
     thetas = angles * np.pi / 180
+
+    if len(sinogram.shape) != 2:  # noqa: PLR2004
+        msg = (
+            "Sinogram must be two-dimensional (ntilts, y). Provided shape "
+            f"was {sinogram.shape}."
+        )
+        raise ValueError(msg)
 
     nangles, ny = sinogram.shape
 
