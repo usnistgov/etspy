@@ -2,7 +2,7 @@
 
 [![Documentation link](https://img.shields.io/badge/Documentation-blue?logo=readthedocs&logoColor=white&labelColor=gray)](https://pages.nist.gov/etspy)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/etspy?label=pypi%2Fetspy)](https://pypi.org/project/etspy/)
-[![Conda versions](https://img.shields.io/conda/pn/conda-forge/etspy?label=conda-forge%2Fetspy)](https://anaconda.org/conda-forge/etspy)
+[![Conda versions](https://anaconda.org/conda-forge/etspy/badges/version.svg)](https://anaconda.org/conda-forge/etspy)
 
 ETSpy is a [HyperSpy](https://hyperspy.org) extension package package for the processing, aligment, and reconstruction
 of electron tomography data from TEM/STEM instruments. Tools are provided for basic 
