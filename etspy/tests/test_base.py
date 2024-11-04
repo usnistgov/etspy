@@ -154,8 +154,8 @@ class TestTomoStack:
         assert hasattr(stack, "tilts")
         assert hasattr(stack, "shifts")
         assert not stack.metadata.get_item("Tomography.cropped")
-        assert stack.metadata.get_item("Tomography.xshift") == 2  # noqa: PLR2004
-        assert stack.metadata.get_item("Tomography.yshift") == 3  # noqa: PLR2004
+        assert stack.metadata.get_item("Tomography.xshift") == 2
+        assert stack.metadata.get_item("Tomography.yshift") == 3
         assert stack.metadata.get_item("Tomography.tiltaxis") == 1
         assert stack.metadata.get_item("General.title") == "Test title"
 
@@ -175,9 +175,9 @@ class TestTomoStack:
         assert hasattr(stack, "tilts")
         assert hasattr(stack, "shifts")
         assert not stack.metadata.get_item("Tomography.cropped")
-        assert stack.metadata.get_item("Tomography.xshift") == 10  # noqa: PLR2004
-        assert stack.metadata.get_item("Tomography.yshift") == 20  # noqa: PLR2004
-        assert stack.metadata.get_item("Tomography.tiltaxis") == -5  # noqa: PLR2004
+        assert stack.metadata.get_item("Tomography.xshift") == 10
+        assert stack.metadata.get_item("Tomography.yshift") == 20
+        assert stack.metadata.get_item("Tomography.tiltaxis") == -5
         assert stack.metadata.get_item("General.title") == "test signal"
 
     def test_tomostack_create_by_signal_without_tomometa_dict(self):
@@ -259,7 +259,7 @@ class TestTomoStack:
         assert stack.axes_manager[0].units == "test units"  # type: ignore
         # signal dimensions are always renamed to just "x" and "y":
         assert stack.axes_manager[-1].name == "y"  # type: ignore
-        assert stack.axes_manager[-1].scale == 0.123  # type: ignore  # noqa: PLR2004
+        assert stack.axes_manager[-1].scale == 0.123  # type: ignore
 
     def test_tomostack_create_by_signal_undefined_axes(self):
         s = cast(Signal2D, hs.signals.Signal2D(np.random.random([10, 100, 100])))
@@ -1426,9 +1426,27 @@ class TestManualAlign:
         shifted = stack.manual_align(64, display=True)
         assert isinstance(shifted, TomoStack)
 
+class TestRecStack:
+    """Test creating RecStacks."""
 
-class TestPlotSlices:
-    """Test plotting slices of a TomoStack."""
+    def test_rec_stack_init(self):
+        rec = RecStack(np.random.rand(10, 11, 12))
+        assert isinstance(rec, RecStack)
+        assert rec.metadata.get_item("Signal.signal_type") == "RecStack"
+        assert rec.axes_manager.shape == (10, 12, 11)
+
+    def test_rec_stack_init_bad_dims(self):
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "A RecStack must have a singular navigation axis. "
+                "Navigation shape was: (8, 10)",
+            ),
+        ):
+            RecStack(np.random.rand(10, 8, 11, 12))
+
+class TestRecStackPlotSlices:
+    """Test plotting slices of a RecStack."""
 
     def test_plot_slices(self):
         rec = RecStack(np.zeros([10, 10, 10]))

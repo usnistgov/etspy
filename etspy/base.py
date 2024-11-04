@@ -2179,82 +2179,6 @@ class RecStack(CommonStack):
     _signal_type = "RecStack"
     _signal_dimension = 2
 
-    def _create_recstack_from_signal(self, data, *args, **kwargs):
-        """Create stack from HyperSpy signal (helper method for __init__)."""
-        if data.axes_manager.navigation_dimension > 1:
-            msg = "RecStack objects are currently limited to a single navigation axis."
-            raise NotImplementedError(msg)
-        if data.axes_manager[0].name == Undefined or data.axes_manager[0].name == "z":
-            data.axes_manager[0].name = "x"
-        if data.axes_manager[0].units == Undefined:
-            data.axes_manager[0].units = "pixels"
-            del data.axes_manager[0].scale
-
-        tomo_metadata = {
-            "Tomography": {
-                "cropped": False,
-                "xshift": 0,
-                "yshift": 0,
-            },
-        }
-        # metadata may already be present in data
-        if data.metadata.has_item("Tomography"):
-            # don't do anything if the signal already has Tomography metadata
-            pass
-        else:
-            # if not, create default one
-            data.metadata.add_dictionary(tomo_metadata)
-        metadata_dict = data.metadata.as_dictionary()
-
-        # metadata may be supplied in kwargs; if so, overwrite
-        # any existing metadata:
-        if "metadata" in kwargs:
-            metadata_dict = kwargs["metadata"]
-            # add default Tomo metadata if not present
-            if "Tomography" not in metadata_dict:
-                metadata_dict["Tomography"] = tomo_metadata["Tomography"]
-            # remove from kwargs so we don't supply it twice
-            del kwargs["metadata"]
-
-        # do similar check for original metadata
-        original_metadata_dict = data.original_metadata.as_dictionary()
-        if "original_metadata" in kwargs:
-            original_metadata_dict = kwargs["original_metadata"]
-            del kwargs["original_metadata"]
-
-        # similar for axes
-        axes_list = [x for _, x in sorted(data.axes_manager.as_dictionary().items())]
-        if "axes" in kwargs:
-            axes_list = kwargs["axes"]
-            del kwargs["axes"]
-
-        super().__init__(
-            data,
-            axes=axes_list,
-            metadata=metadata_dict,
-            original_metadata=original_metadata_dict,
-            *args,  # noqa: B026
-            **kwargs,
-        )
-
-    def _create_recstack_from_ndarray(self, data, *args, **kwargs):
-        """Create stack from Numpy array (helper method for __init__)."""
-        if "metadata" in kwargs and "Tomography" in kwargs["metadata"]:
-            tomo_metadata = kwargs["metadata"]["Tomography"]
-        else:
-            tomo_metadata = {
-                "cropped": False,
-                "xshift": 0,
-                "yshift": 0,
-            }
-        super().__init__(
-            data,
-            *args,
-            **kwargs,
-        )
-        self.metadata.add_node("Tomography")
-        cast(Dtb, self.metadata.Tomography).add_dictionary(tomo_metadata)
-
     def __init__(self, *args, **kwargs):
         """
         Create a RecStack signal.
@@ -2269,6 +2193,12 @@ class RecStack(CommonStack):
             :py:class:`~hyperspy.api.signals.Signal2D`
         """
         super().__init__(*args, **kwargs)
+
+        if self.axes_manager.navigation_dimension != 1:
+            msg = ("A RecStack must have a singular navigation axis. Navigation "
+                   f"shape was: {self.axes_manager.navigation_shape}")
+            raise ValueError(msg)
+
         self.inav = _RecStackSlicer(self, isNavigation=True)
         self.isig = _RecStackSlicer(self, isNavigation=False)
 
