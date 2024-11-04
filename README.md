@@ -1,11 +1,8 @@
 # ETSpy
 
-> ⚠️ ETSpy is still in a pre-release status, and the API may change with little warning, and
-> the documentation may not be 100% correct/complete!
-
 [![Documentation link](https://img.shields.io/badge/Documentation-blue?logo=readthedocs&logoColor=white&labelColor=gray)](https://pages.nist.gov/etspy)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/etspy)](https://pypi.org/project/etspy/)
-[![Conda versions](https://img.shields.io/conda/pn/conda-forge/etspy)](https://anaconda.org/conda-forge/etspy)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/etspy?label=pypi%2Fetspy)](https://pypi.org/project/etspy/)
+[![Conda versions](https://img.shields.io/conda/pn/conda-forge/etspy?label=conda-forge%2Fetspy)](https://anaconda.org/conda-forge/etspy)
 
 ETSpy is a [HyperSpy](https://hyperspy.org) extension package package for the processing, aligment, and reconstruction
 of electron tomography data from TEM/STEM instruments. Tools are provided for basic 
@@ -30,35 +27,26 @@ of whatever packages are required.
   * First, ensure you have either [Anaconda](https://www.anaconda.com/download/success)
     or [Miniconda](https://docs.anaconda.com/miniconda/) installed on your system.
 
-  * Run the following command to create a new environment based on the contents
-    of the ETSpy YAML specification file, which will install the required dependencies,
-    and then activate the newly created environment:
+  * Run the following command to create a new environment then activate the newly created
+    environment:
     
     ```shell
-    $ conda env create -f https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy.yml
     # if you would like your environment to be stored in a specific place, use the "-p <path>" option
-    
+    $ conda create -n etspy
     $ conda activate etspy
     ```
 
   * Finally, (with the `etspy` environment activated), install the ETSpy package
-    from PyPI:
+    from the `conda-forge` repo:
 
     ```shell
-    (etspy) $ pip install etspy
+    (etspy) $ conda install -c conda-forge etspy
     ``` 
 
 ####  Optional Jupyter components (higly recommended)
 
-  * To use ETSpy from within a Jupyter Lab/Notebook environment, a other optional 
-    dependencies are required:
-    * `ipykernel` allows use of the the etspy kernel with Jupyter installed in a different environment. 
-
-    ```shell
-    (etspy) $ conda install ipykernel
-    ```
-
-  * To "register" the python kernel associated with the `etspy` conda environment, run
+  * To use ETSpy from within a Jupyter Lab/Notebook environment, you will need to
+    "register" the python kernel associated with the `etspy` conda environment. Run
     the following after ensuring that environment is activated (with `conda activate etspy`):
 
     ```shell
@@ -136,7 +124,7 @@ stack = etspy.load('TiltSeries.mrc')
 
 For more details, see the dedicated [documentation](https://pages.nist.gov/etspy), including
 the [example Jupyter notebook](https://pages.nist.gov/etspy/examples/etspy_demo.html) and the more detailed
-[API Reference](https://pages.nist.gov/etspy/api).
+[API Reference](https://pages.nist.gov/etspy/api.html).
 
 ## Developer documentation
 
