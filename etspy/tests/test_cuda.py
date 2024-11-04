@@ -93,7 +93,7 @@ class TestAstraSIRTGPU:
         stack = ds.get_needle_data(aligned=True)
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
-        stack = stack.isig[120, :].squeeze()
+        stack = stack.isig[120:121, :].squeeze()
         rec_stack, error = recon.astra_error(
             stack.data,
             angles,
@@ -109,7 +109,7 @@ class TestAstraSIRTGPU:
         stack = ds.get_needle_data(aligned=True)
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
-        stack = stack.isig[120, :]
+        stack = stack.isig[120:121, :]
         with pytest.raises(ValueError, match=re.escape(
             "Sinogram must be two-dimensional (ntilts, y). "
             "Provided shape was (77, 256, 1).",

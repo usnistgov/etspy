@@ -1012,7 +1012,7 @@ def tilt_maximage(
         shifted = ali.isig[0:nshifts, :].deepcopy()
         for i in range(nshifts):
             shifted.data[:, :, i] = np.roll(
-                ali.isig[idx, :].data.squeeze(),
+                ali.isig[idx:idx+1, :].data.squeeze(),
                 int(shifts[i]),
             )
         shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)

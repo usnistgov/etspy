@@ -2053,7 +2053,7 @@ class TomoStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        sinogram = self.isig[nslice, :].data.squeeze()
+        sinogram = self.isig[nslice:nslice+1, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
             angles=self.tilts.data,
@@ -2104,7 +2104,7 @@ class TomoStack(CommonStack):
 
         Returns
         -------
-        sino : Signal2D
+        sino : :py:class:`~hyperspy.api.signals.Signal2D`
             A single image representing the single column data over the range of
             projections in the original TomoStack.
 
@@ -2177,9 +2177,9 @@ class RecStack(CommonStack):
         """
         super().__init__(*args, **kwargs)
 
-        if self.axes_manager.navigation_dimension != 1:
-            msg = ("A RecStack must have a singular navigation axis. Navigation "
-                   f"shape was: {self.axes_manager.navigation_shape}")
+        if self.axes_manager.navigation_dimension not in (0, 1):
+            msg = ("A RecStack must have a singular (or no) navigation axis. "
+                   f"Navigation shape was: {self.axes_manager.navigation_shape}")
             raise ValueError(msg)
 
         self.inav = _RecStackSlicer(self, isNavigation=True)

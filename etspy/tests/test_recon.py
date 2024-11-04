@@ -28,7 +28,7 @@ class TestReconstruction:
 
     def test_recon_single_slice(self):
         stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120, :]
+        slices = stack.isig[120:121, :]
         tilts = stack.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "FBP", cuda=False)
         assert isinstance(stack, TomoStack)
@@ -246,7 +246,7 @@ class TestAstraError:
         stack = ds.get_needle_data(aligned=True)
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
-        sino = stack.isig[120, :].data.squeeze()
+        sino = stack.isig[120:121, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sino,
             angles,
@@ -262,7 +262,7 @@ class TestAstraError:
         stack = ds.get_needle_data(aligned=True)
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
-        sino = stack.isig[120, :].data.squeeze()
+        sino = stack.isig[120:121, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sino,
             angles,

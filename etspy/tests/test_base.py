@@ -1416,7 +1416,7 @@ class TestRecStack:
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "A RecStack must have a singular navigation axis. "
+                "A RecStack must have a singular (or no) navigation axis. "
                 "Navigation shape was: (8, 10)",
             ),
         ):
