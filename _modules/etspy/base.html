@@ -483,7 +483,7 @@ $(document).ready(function(){
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Self</span>  <span class="c1"># type: ignore</span>
-<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>     <span class="c1"># pragma: no cover</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
     <span class="c1"># required to support Pyton 3.10 since Self was added in 3.11</span>
     <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Self</span>
 
@@ -511,6 +511,7 @@ $(document).ready(function(){
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 
+
 <div class="viewcode-block" id="MismatchedTiltError">
 <a class="viewcode-back" href="../../api/etspy.base.MismatchedTiltError.html#etspy.base.MismatchedTiltError">[docs]</a>
 <span class="k">class</span> <span class="nc">MismatchedTiltError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
@@ -534,21 +535,53 @@ $(document).ready(function(){
         <span class="p">)</span></div>
 
 
+
 <span class="c1"># The following private classes are used to allow type hinting on inav and isig</span>
 <span class="k">class</span> <span class="nc">_TomoShiftSlicer</span><span class="p">(</span><span class="n">SpecialSlicersSignal</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoShifts&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="p">)</span>
 
+
 <span class="k">class</span> <span class="nc">_TomoTiltSlicer</span><span class="p">(</span><span class="n">SpecialSlicersSignal</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoTilts&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="p">)</span>
+
+
 <span class="k">class</span> <span class="nc">_TomoStackSlicer</span><span class="p">(</span><span class="n">SpecialSlicersSignal</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
+        <span class="c1"># if self.isNavigation is False, we&#39;re doing isig,</span>
+        <span class="c1"># which should only be allowed if both axes have a size</span>
+        <span class="c1"># greater than one</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">isNavigation</span><span class="p">:</span>
+            <span class="n">new_slices</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="c1"># slices will be a tuple of int (single pixel-based slice),</span>
+            <span class="c1"># float (single unit-based slice), or slice class (range).</span>
+            <span class="c1"># since TomoStacks are Signal2Ds, it should always be length 2</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">slices</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+                    <span class="c1"># don&#39;t allow a single slice</span>
+                    <span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">scale</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                        <span class="c1"># if integer, set scale to 1 to just add one pixel</span>
+                        <span class="n">scale</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">new_slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span> <span class="o">+</span> <span class="n">scale</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+                    <span class="n">ax_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="s2">&quot;Slicing a TomoStack signal axis with a single pixel &quot;</span>
+                        <span class="s1">&#39;is not supported. Returning a single pixel on the &quot;</span><span class="si">%s</span><span class="s1">&quot; &#39;</span>
+                        <span class="s2">&quot;axis instead&quot;</span><span class="p">,</span>
+                        <span class="n">ax_name</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">new_slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+            <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">new_slices</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="p">)</span>
+
 
 <span class="k">class</span> <span class="nc">_RecStackSlicer</span><span class="p">(</span><span class="n">SpecialSlicersSignal</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;RecStack&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">slices</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="TomoShifts">
 <a class="viewcode-back" href="../../api/etspy.base.TomoShifts.html#etspy.base.TomoShifts">[docs]</a>
@@ -622,11 +655,13 @@ $(document).ready(function(){
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                     <span class="s2">&quot;TomoShifts does not support &#39;isig&#39; slicing, as signal shape must &quot;</span>
                     <span class="s2">&quot;be (2,). Signal was returned with its original &quot;</span>
-                    <span class="s2">&quot;shape: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span>
+                    <span class="s2">&quot;shape: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span>
 
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_slicer</span><span class="p">(</span><span class="n">slices</span><span class="p">,</span> <span class="n">isNavigation</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="TomoTilts">
@@ -700,11 +735,13 @@ $(document).ready(function(){
                 <span class="c1"># in this case, since it happens so frequently</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                     <span class="s2">&quot;TomoTilts does not support &#39;isig&#39; slicing, as signal shape must &quot;</span>
-                    <span class="s2">&quot;be (1,). Signal was returned with its original shape: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span>
+                    <span class="s2">&quot;be (1,). Signal was returned with its original shape: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span>
 
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_slicer</span><span class="p">(</span><span class="n">slices</span><span class="p">,</span> <span class="n">isNavigation</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="CommonStack">
@@ -736,105 +773,13 @@ $(document).ready(function(){
     <span class="n">_signal_type</span> <span class="o">=</span> <span class="s2">&quot;CommonStack&quot;</span>
     <span class="n">_signal_dimension</span> <span class="o">=</span> <span class="mi">2</span>
 
-    <span class="k">def</span> <span class="nf">_create_from_signal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create stack from HyperSpy signal (helper method for __init__).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">ntilts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
-            <span class="k">if</span> <span class="p">(</span>
-                <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="ow">or</span>
-                <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;z&quot;</span>
-            <span class="p">):</span>
-                <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Projections&quot;</span>
-            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
-                <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;degrees&quot;</span>
-                <span class="k">del</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">scale</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">ntilts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="s2">&quot;Projections&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">tilts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ntilts</span> <span class="o">!=</span> <span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-            <span class="k">raise</span> <span class="n">MismatchedTiltError</span><span class="p">(</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ntilts</span><span class="p">)</span>
-
-        <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;Tomography&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;cropped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-                <span class="s2">&quot;tiltaxis&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;xshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;yshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-            <span class="p">},</span>
-        <span class="p">}</span>
-        <span class="c1"># metadata may already be present in data</span>
-        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">):</span>
-            <span class="c1"># don&#39;t do anything if the signal already has Tomography metadata</span>
-            <span class="k">pass</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># if not, create default one</span>
-            <span class="n">data</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
-        <span class="n">metadata_dict</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span>
-
-        <span class="c1"># metadata may be supplied in kwargs; if so, overwrite</span>
-        <span class="c1"># any existing metadata:</span>
-        <span class="k">if</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-            <span class="n">metadata_dict</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
-            <span class="c1"># add default Tomo metadata if not present</span>
-            <span class="k">if</span> <span class="s2">&quot;Tomography&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">metadata_dict</span><span class="p">:</span>
-                <span class="n">metadata_dict</span><span class="p">[</span><span class="s2">&quot;Tomography&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tomo_metadata</span><span class="p">[</span><span class="s2">&quot;Tomography&quot;</span><span class="p">]</span>
-            <span class="c1"># remove from kwargs so we don&#39;t supply it twice</span>
-            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
-
-        <span class="c1"># do similar check for original metadata</span>
-        <span class="n">original_metadata_dict</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">original_metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span>
-        <span class="k">if</span> <span class="s2">&quot;original_metadata&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-            <span class="n">original_metadata_dict</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;original_metadata&quot;</span><span class="p">]</span>
-            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;original_metadata&quot;</span><span class="p">]</span>
-
-        <span class="c1"># similar for axes</span>
-        <span class="n">axes_list</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">x</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span>
-            <span class="nb">sorted</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
-        <span class="p">]</span>
-        <span class="k">if</span> <span class="s2">&quot;axes&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-            <span class="n">axes_list</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;axes&quot;</span><span class="p">]</span>
-            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;axes&quot;</span><span class="p">]</span>
-
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">data</span><span class="p">,</span>
-            <span class="n">axes</span><span class="o">=</span><span class="n">axes_list</span><span class="p">,</span>
-            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata_dict</span><span class="p">,</span>
-            <span class="n">original_metadata</span><span class="o">=</span><span class="n">original_metadata_dict</span><span class="p">,</span>
-            <span class="o">*</span><span class="n">args</span><span class="p">,</span>  <span class="c1"># noqa: B026</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_create_from_ndarray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create stack from Numpy array (helper method for __init__).&quot;&quot;&quot;</span>
-        <span class="n">ntilts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">tilts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ntilts</span> <span class="o">!=</span> <span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-            <span class="k">raise</span> <span class="n">MismatchedTiltError</span><span class="p">(</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ntilts</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="s2">&quot;Tomography&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]:</span>
-            <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;Tomography&quot;</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;cropped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-                <span class="s2">&quot;tiltaxis&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;xshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;yshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-            <span class="p">}</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">data</span><span class="p">,</span>
-            <span class="n">tilts</span><span class="o">=</span><span class="n">tilts</span><span class="p">,</span>
-            <span class="o">*</span><span class="n">args</span><span class="p">,</span>  <span class="c1"># noqa: B026</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">)</span>
-        <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
-
 <div class="viewcode-block" id="CommonStack.__init__">
 <a class="viewcode-back" href="../../api/etspy.base.CommonStack.__init__.html#etspy.base.CommonStack.__init__">[docs]</a>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Signal2D</span><span class="p">],</span>
-                 <span class="n">tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">shifts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="o">*</span><span class="n">args</span><span class="p">,</span>
-                 <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Signal2D</span><span class="p">],</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create an ETSpy signal instance.</span>
@@ -845,20 +790,6 @@ $(document).ready(function(){
 <span class="sd">            The signal data. Can be provided as either a HyperSpy</span>
 <span class="sd">            :py:class:`hyperspy.api.signals.Signal2D` or a Numpy array</span>
 <span class="sd">            of the shape `(tilt, y, x)`.</span>
-<span class="sd">        tilts</span>
-<span class="sd">            A :py:class:`~etspy.base.TomoTilts` containing the</span>
-<span class="sd">            tilt value (in degrees) for each projection in the stack.</span>
-<span class="sd">            The navigation dimension should match the navigation dimension of the</span>
-<span class="sd">            stack (one value per tilt image).</span>
-<span class="sd">        shifts</span>
-<span class="sd">            A :py:class:`~etspy.base.TomoShifts` or :py:class:`~numpy.ndarray`</span>
-<span class="sd">            containing the x/y image shift value (in pixels) for each projection in</span>
-<span class="sd">            the stack. A signal should have the same navigation dimension as the stack.</span>
-<span class="sd">            A Numpy array should have shape `(nav_size, 2)`. If ``None``, the ``shifts``</span>
-<span class="sd">            will be initialized to zero-valued signal.  If shifts are supplied as an</span>
-<span class="sd">            :py:class:`~numpy.ndarray`, the Y-shifts (perpendicular to the tilt axis)</span>
-<span class="sd">            should be in the ``shifts[:, 0]`` position and X-shifts (parallel to the</span>
-<span class="sd">            tilt axis) in ``shifts[:, 1]``.</span>
 <span class="sd">        args</span>
 <span class="sd">            Additional non-keyword arguments passed to the</span>
 <span class="sd">            :py:class:`~hyperspy.api.signals.Signal2D` constructor</span>
@@ -872,10 +803,6 @@ $(document).ready(function(){
 <span class="sd">            :py:class:`~etspy.base.CommonStack` is not intended to be used directly.</span>
 <span class="sd">            One of its sub-classes (:py:class:`~etspy.base.TomoStack` or</span>
 <span class="sd">            :py:class:`~etspy.base.RecStack`) should be used instead.</span>
-
-<span class="sd">        ValueError</span>
-<span class="sd">            If the ``tilts`` or ``shifts`` signals provided do not have the correct</span>
-<span class="sd">            dimensions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="ow">is</span> <span class="n">CommonStack</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
@@ -884,223 +811,8 @@ $(document).ready(function(){
             <span class="p">)</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-        <span class="c1"># copy axes and metadata if input was already a signal</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">Signal2D</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_create_from_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_create_from_ndarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">shifts</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tilts</span> <span class="o">=</span> <span class="n">tilts</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">:</span>
-            <span class="c1"># normal single-frame mode:</span>
-            <span class="k">if</span> <span class="p">(</span>
-                <span class="c1"># only set axis information if it is undefined</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span>
-                <span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="ow">or</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span>
-                <span class="p">)</span>
-            <span class="p">):</span>
-                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Projections&quot;</span>
-                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;degrees&quot;</span>
-            <span class="c1"># multiframe (special SerialEM case)</span>
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># noqa: PLR2004</span>
-                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                <span class="n">nav_ax_1</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="s2">&quot;Frames&quot;</span> <span class="k">if</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span>
-                <span class="p">)</span>
-                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="s2">&quot;images&quot;</span> <span class="k">if</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span>
-                <span class="p">)</span>
-                <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="s2">&quot;Projections&quot;</span> <span class="k">if</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">name</span>
-                <span class="p">)</span>
-                <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="s2">&quot;degrees&quot;</span> <span class="k">if</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span>
-                <span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">:</span>
-            <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span>
-            <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span>
-
-        <span class="c1"># ensure that shifts and tilts will be sliced when the Signal is</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_additional_slicing_targets</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;metadata.Signal.Noise_properties.variance&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;_shifts&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;_tilts&quot;</span><span class="p">,</span>
-        <span class="p">]</span></div>
-
-
-    <span class="k">def</span> <span class="nf">_check_array_shape</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">array</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="s2">&quot;tilts&quot;</span><span class="p">],</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Check if a signal or array shape is appropriate for the current stack.</span>
-
-<span class="sd">        Used by the shifts and tilts setter methods as a sanity check on the</span>
-<span class="sd">        size of the arrays that are provided.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">to_check</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">BaseSignal</span><span class="p">)</span> <span class="k">else</span> <span class="n">array</span>
-        <span class="n">signal_size</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="mi">1</span>
-        <span class="c1"># if we have more than one navigation dimension, an ndarray should be</span>
-        <span class="c1"># of shape (N, M, 1|2) if the signal&#39;s navigation shape is (M, N | X)</span>
-
-        <span class="c1"># allow a numpy tilt array to be (*self.axes_manager.navigation_shape,), but if</span>
-        <span class="c1"># it is, reshape it to (*self.axes_manager.navigation_shape, 1)</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="nb">isinstance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;tilts&quot;</span><span class="p">)</span> <span class="ow">and</span>
-            <span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">))</span>
-        <span class="p">):</span>
-            <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="k">elif</span> <span class="n">to_check</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">signal_size</span><span class="p">):</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Shape of </span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2"> array must be &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="p">,</span><span class="w"> </span><span class="n">signal_size</span><span class="p">)</span><span class="si">}</span><span class="s2"> to match &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;the navigation size of the stack (was </span><span class="si">{</span><span class="n">to_check</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">)&quot;</span>
-            <span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">array</span>
-
-<div class="viewcode-block" id="CommonStack.shift_and_tilt_setter">
-<a class="viewcode-back" href="../../api/etspy.base.TomoStack.html#etspy.base.CommonStack.shift_and_tilt_setter">[docs]</a>
-    <span class="k">def</span> <span class="nf">shift_and_tilt_setter</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="s2">&quot;tilts&quot;</span><span class="p">],</span>
-        <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Set either ``self._tilts`` or ``self._shifts`` to an array.</span>
-
-<span class="sd">        This method is split out to reduce duplication of code between the</span>
-<span class="sd">        :py:attr:`~etspy.base.CommonStack.tilts` and</span>
-<span class="sd">        :py:attr:`~etspy.base.CommonStack.shifts`</span>
-<span class="sd">        property setter functions, since they have significant</span>
-<span class="sd">        overlap.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        mode</span>
-<span class="sd">            Whether to work on the ``_shifts`` or the ``_tilts`` of the stack</span>
-<span class="sd">        value:</span>
-<span class="sd">            The values to set, as either an array, or</span>
-<span class="sd">            :py:class:`~etspy.base.TomoShifts`, or :py:class:`~etspy.base.TomoTilts`.</span>
-<span class="sd">            If ``None``, the values will be initialized to an array of zeros of the</span>
-<span class="sd">            appropriate shape.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        target : :py:class:`~etspy.base.TomoShifts` or :py:class:`~etspy.base.TomoTilts`</span>
-<span class="sd">            The signal that should be set as either the shifts or tilts property.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        ValueError</span>
-<span class="sd">            If the ``value`` is not the correct shape for either the `shapes` or `tilts`</span>
-<span class="sd">            property</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">signal_size</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="mi">1</span>
-        <span class="n">_cls</span> <span class="o">=</span> <span class="n">TomoShifts</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="n">TomoTilts</span>
-        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># shifts should be shape (self.nav_size | 2), tilts (self.nav_size | 1)</span>
-            <span class="c1"># numpy arrays should be the inverse of the navigation shape, so if</span>
-            <span class="c1"># self.axes_manager.navigation shape is (N, M), then the data shape provided</span>
-            <span class="c1"># to TomoShifts or TomoTilts should be (M, N)</span>
-            <span class="n">target</span> <span class="o">=</span> <span class="n">_cls</span><span class="p">(</span>
-                <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">signal_size</span><span class="p">)),</span>
-            <span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_array_shape</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
-            <span class="n">target</span> <span class="o">=</span> <span class="n">_cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># value is already a Signal, so test the dimensions</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-                <span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">TomoShifts</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_check_array_shape</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mode</span><span class="p">),</span>
-            <span class="p">)</span>
-            <span class="c1"># Using the TomoTilts/TomoShifts constructor strips metadata and axis</span>
-            <span class="c1"># info, so copy it back:</span>
-            <span class="n">target</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">TomoShifts</span><span class="p">],</span> <span class="n">_cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">))</span>
-            <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">())</span>
-            <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">update_axes_attributes_from</span><span class="p">(</span>
-                <span class="p">(</span><span class="o">*</span><span class="n">value</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">,</span> <span class="o">*</span><span class="n">value</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">),</span>
-                <span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="s2">&quot;units&quot;</span><span class="p">),</span>
-            <span class="p">)</span>
-            <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get_item</span><span class="p">(</span><span class="s2">&quot;General.title&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-                <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;General.title&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">mode</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> values&quot;</span><span class="p">)</span>
-
-        <span class="c1"># set metadata in the case value was None or Numpy array:</span>
-        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;General.title&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">mode</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> values&quot;</span><span class="p">)</span>
-
-            <span class="c1"># set the navigation axes to the same as the signal&#39;s:</span>
-            <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">update_axes_attributes_from</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">,</span>
-                <span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="s2">&quot;units&quot;</span><span class="p">),</span>
-            <span class="p">)</span>
-
-            <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">:</span>
-                <span class="n">tilt_sig_ax</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># pyright: ignore[reportGeneralTypeIssues]</span>
-                <span class="n">tilt_sig_ax</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="s2">&quot;Shift values (x/y)&quot;</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="s2">&quot;Tilt values&quot;</span>
-                <span class="p">)</span>
-                <span class="n">tilt_sig_ax</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;pixels&quot;</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="s2">&quot;degrees&quot;</span>
-
-        <span class="k">return</span> <span class="n">target</span></div>
-
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoShifts</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        The stack&#39;s image shift values (in pixels).</span>
-
-<span class="sd">        A :py:class:`~etspy.base.TomoShifts` signal containing the</span>
-<span class="sd">        x/y image shift value (in pixels) for each projection in the stack.</span>
-<span class="sd">        Should have the same navigation dimension as the stack.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span>
-
-    <span class="nd">@shifts</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_shifts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoShifts</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="n">new_shifts</span><span class="p">),</span>
-        <span class="p">)</span>
-
-    <span class="nd">@shifts</span><span class="o">.</span><span class="n">deleter</span>
-    <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoShifts</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span><span class="p">)),</span>
-        <span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoTilts</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        The stack&#39;s tilt values (in degrees).</span>
-
-<span class="sd">        A :py:class:`~etspy.base.TomoTilts` signal containing the</span>
-<span class="sd">        tilt value (in degrees) for each projection in the stack.</span>
-<span class="sd">        Should have the same navigation dimension as the stack.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span>
-
-    <span class="nd">@tilts</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoTilts</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;tilts&quot;</span><span class="p">,</span> <span class="n">new_tilts</span><span class="p">),</span>
-        <span class="p">)</span>
-
-    <span class="nd">@tilts</span><span class="o">.</span><span class="n">deleter</span>
-    <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoTilts</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;tilts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="p">)),</span>
-        <span class="p">)</span>
 
 <div class="viewcode-block" id="CommonStack.plot">
 <a class="viewcode-back" href="../../api/etspy.base.TomoStack.html#etspy.base.CommonStack.plot">[docs]</a>
@@ -1112,80 +824,6 @@ $(document).ready(function(){
 <span class="sd">        :py:meth:`hyperspy.api.signals.Signal2D.plot`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">navigator</span><span class="o">=</span><span class="n">navigator</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># noqa: B026</span></div>
-
-
-<div class="viewcode-block" id="CommonStack.deepcopy">
-<a class="viewcode-back" href="../../api/etspy.base.TomoStack.html#etspy.base.CommonStack.deepcopy">[docs]</a>
-    <span class="k">def</span> <span class="nf">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return a &quot;deep copy&quot; of this Stack.</span>
-
-<span class="sd">        Uses the standard library&#39;s :func:`~copy.deepcopy` function. Note: this means</span>
-<span class="sd">        the underlying data structure will be duplicated in memory.</span>
-
-<span class="sd">        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.deepcopy`</span>
-<span class="sd">        method to ensure the ``tilts`` and ``shifts`` properties are also copied</span>
-
-<span class="sd">        See Also</span>
-<span class="sd">        --------</span>
-<span class="sd">        :py:meth:`~etspy.base.CommonStack.copy`</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">tilts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="p">)</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">s</span></div>
-
-
-<div class="viewcode-block" id="CommonStack.copy">
-<a class="viewcode-back" href="../../api/etspy.base.TomoStack.html#etspy.base.CommonStack.copy">[docs]</a>
-    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return a &quot;shallow copy&quot; of this Stack.</span>
-
-<span class="sd">        Uses the standard library&#39;s :func:`~copy.copy` function. Note: this will</span>
-<span class="sd">        return a copy of the, Stack, but it will not duplicate the underlying</span>
-<span class="sd">        data in memory, and both Stacks will reference the same data.</span>
-
-<span class="sd">        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.copy`</span>
-<span class="sd">        method to ensure the ``tilts`` and ``shifts`` properties are also copied</span>
-
-<span class="sd">        See Also</span>
-<span class="sd">        --------</span>
-<span class="sd">        :py:meth:`~etspy.base.CommonStack.deepcopy`</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">tilts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="p">)</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">s</span></div>
-
-
-<div class="viewcode-block" id="CommonStack.save">
-<a class="viewcode-back" href="../../api/etspy.base.TomoStack.html#etspy.base.CommonStack.save">[docs]</a>
-    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">overwrite</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">extension</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">file_format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Save the signal in the specified format.</span>
-
-<span class="sd">        Overloads the HyperSpy :py:meth:`~hyperspy.api.signals.BaseSignal.save` method</span>
-<span class="sd">        so that tilts and shifts are written to metadata prior to saving. All arguments</span>
-<span class="sd">        are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`, so please</span>
-<span class="sd">        consult that method&#39;s documentation for details.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;Tomography.tilts&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;Tomography.shifts&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
-            <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
-            <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">,</span>
-            <span class="n">extension</span><span class="o">=</span><span class="n">extension</span><span class="p">,</span>
-            <span class="n">file_format</span><span class="o">=</span><span class="n">file_format</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CommonStack.change_data_type">
@@ -1555,24 +1193,442 @@ $(document).ready(function(){
     <span class="n">_signal_type</span> <span class="o">=</span> <span class="s2">&quot;TomoStack&quot;</span>
     <span class="n">_signal_dimension</span> <span class="o">=</span> <span class="mi">2</span>
 
+    <span class="k">def</span> <span class="nf">_create_tomostack_from_signal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create stack from HyperSpy signal (helper method for __init__).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">ntilts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ntilts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="s2">&quot;Projections&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tilts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ntilts</span> <span class="o">!=</span> <span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="n">MismatchedTiltError</span><span class="p">(</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ntilts</span><span class="p">)</span>
+
+        <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;Tomography&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;cropped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;tiltaxis&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;xshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;yshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+        <span class="c1"># metadata may already be present in data</span>
+        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">):</span>
+            <span class="c1"># don&#39;t do anything if the signal already has Tomography metadata</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if not, create default one</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
+        <span class="n">metadata_dict</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span>
+
+        <span class="c1"># metadata may be supplied in kwargs; if so, overwrite</span>
+        <span class="c1"># any existing metadata:</span>
+        <span class="k">if</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">metadata_dict</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
+            <span class="c1"># add default Tomo metadata if not present</span>
+            <span class="k">if</span> <span class="s2">&quot;Tomography&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">metadata_dict</span><span class="p">:</span>
+                <span class="n">metadata_dict</span><span class="p">[</span><span class="s2">&quot;Tomography&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tomo_metadata</span><span class="p">[</span><span class="s2">&quot;Tomography&quot;</span><span class="p">]</span>
+            <span class="c1"># remove from kwargs so we don&#39;t supply it twice</span>
+            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
+
+        <span class="c1"># do similar check for original metadata</span>
+        <span class="n">original_metadata_dict</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">original_metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;original_metadata&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">original_metadata_dict</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;original_metadata&quot;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;original_metadata&quot;</span><span class="p">]</span>
+
+        <span class="c1"># similar for axes</span>
+        <span class="n">axes_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">())]</span>
+        <span class="k">if</span> <span class="s2">&quot;axes&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">axes_list</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;axes&quot;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;axes&quot;</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">,</span>
+            <span class="n">axes</span><span class="o">=</span><span class="n">axes_list</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata_dict</span><span class="p">,</span>
+            <span class="n">original_metadata</span><span class="o">=</span><span class="n">original_metadata_dict</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span>  <span class="c1"># noqa: B026</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_fix_projection_axis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">axis_number</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Undefined</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Projections&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;degrees&quot;</span>
+            <span class="k">del</span> <span class="n">ax</span><span class="o">.</span><span class="n">scale</span>
+
+    <span class="k">def</span> <span class="nf">_fix_frames_axis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">axis_number</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Undefined</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Frames&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;images&quot;</span>
+            <span class="k">del</span> <span class="n">ax</span><span class="o">.</span><span class="n">scale</span>
+
+    <span class="k">def</span> <span class="nf">_create_tomostack_from_ndarray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create stack from Numpy array (helper method for __init__).&quot;&quot;&quot;</span>
+        <span class="n">ntilts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">tilts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ntilts</span> <span class="o">!=</span> <span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="n">MismatchedTiltError</span><span class="p">(</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ntilts</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="s2">&quot;Tomography&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]:</span>
+            <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;Tomography&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tomo_metadata</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;cropped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;tiltaxis&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;xshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;yshift&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">)</span>
+        <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
+
+        <span class="c1"># need to handle navigation_dimension == 1 (normal case) or == 2 (multiframe)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># single projection (rare case, but should allow)</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># normal case</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fix_projection_axis</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># noqa: PLR2004</span>
+            <span class="c1"># multiframe</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fix_projection_axis</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fix_frames_axis</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;Invalid number of navigation dimensions for a TomoStack (&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span><span class="si">}</span><span class="s2">). Must be either 0, 1, or 2.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="n">signal_axes</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Uda</span><span class="p">,</span> <span class="n">Uda</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">)</span>
+        <span class="n">x_axis</span> <span class="o">=</span> <span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">x_axis</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span>
+        <span class="k">if</span> <span class="n">x_axis</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
+            <span class="n">x_axis</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;pixels&quot;</span>
+
+        <span class="n">y_axis</span> <span class="o">=</span> <span class="n">signal_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">y_axis</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span>
+        <span class="k">if</span> <span class="n">y_axis</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
+            <span class="n">y_axis</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;pixels&quot;</span>
+
 <div class="viewcode-block" id="TomoStack.__init__">
 <a class="viewcode-back" href="../../api/etspy.base.TomoStack.__init__.html#etspy.base.TomoStack.__init__">[docs]</a>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Signal2D</span><span class="p">],</span>
+        <span class="n">tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">shifts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Create a TomoStack signal.</span>
+<span class="sd">        Create a TomoStack signal instance.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
+<span class="sd">        data</span>
+<span class="sd">            The signal data. Can be provided as either a HyperSpy</span>
+<span class="sd">            :py:class:`hyperspy.api.signals.Signal2D` or a Numpy array</span>
+<span class="sd">            of the shape `(tilt, y, x)`.</span>
+<span class="sd">        tilts</span>
+<span class="sd">            A :py:class:`~etspy.base.TomoTilts` containing the</span>
+<span class="sd">            tilt value (in degrees) for each projection in the stack.</span>
+<span class="sd">            The navigation dimension should match the navigation dimension of the</span>
+<span class="sd">            stack (one value per tilt image).</span>
+<span class="sd">        shifts</span>
+<span class="sd">            A :py:class:`~etspy.base.TomoShifts` or :py:class:`~numpy.ndarray`</span>
+<span class="sd">            containing the x/y image shift value (in pixels) for each projection in</span>
+<span class="sd">            the stack. A signal should have the same navigation dimension as the stack.</span>
+<span class="sd">            A Numpy array should have shape `(nav_size, 2)`. If ``None``, the ``shifts``</span>
+<span class="sd">            will be initialized to zero-valued signal.  If shifts are supplied as an</span>
+<span class="sd">            :py:class:`~numpy.ndarray`, the Y-shifts (perpendicular to the tilt axis)</span>
+<span class="sd">            should be in the ``shifts[:, 0]`` position and X-shifts (parallel to the</span>
+<span class="sd">            tilt axis) in ``shifts[:, 1]``.</span>
 <span class="sd">        args</span>
-<span class="sd">            Additional non-keyword arguments passed to</span>
-<span class="sd">            :py:class:`~hyperspy.api.signals.Signal2D`</span>
+<span class="sd">            Additional non-keyword arguments passed to the</span>
+<span class="sd">            :py:class:`~hyperspy.api.signals.Signal2D` constructor</span>
 <span class="sd">        kwargs</span>
-<span class="sd">            Additional keyword arguments passed to</span>
-<span class="sd">            :py:class:`~hyperspy.api.signals.Signal2D`</span>
+<span class="sd">            Additional keyword arguments passed to the</span>
+<span class="sd">            :py:class:`hyperspy.api.signals.Signal2D` constructor</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the ``tilts`` or ``shifts`` signals provided do not have the correct</span>
+<span class="sd">            dimensions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># copy axes and metadata if input was already a signal</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">Signal2D</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_create_tomostack_from_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_create_tomostack_from_ndarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">tilts</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">shifts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tilts</span> <span class="o">=</span> <span class="n">tilts</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">:</span>
+            <span class="c1"># normal single-frame mode:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="c1"># only set axis information if it is undefined</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">1</span>
+                <span class="ow">and</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span>
+                    <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span>
+                <span class="p">)</span>
+            <span class="p">):</span>
+                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Projections&quot;</span>
+                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;degrees&quot;</span>
+            <span class="c1"># multiframe (special SerialEM case)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># noqa: PLR2004</span>
+                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">nav_ax_1</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;Frames&quot;</span> <span class="k">if</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span>
+                <span class="p">)</span>
+                <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;images&quot;</span> <span class="k">if</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span>
+                <span class="p">)</span>
+                <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;Projections&quot;</span> <span class="k">if</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">name</span>
+                <span class="p">)</span>
+                <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;degrees&quot;</span> <span class="k">if</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">:</span>
+            <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span>
+            <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span>
+
+        <span class="c1"># ensure that shifts and tilts will be sliced when the Signal is</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_additional_slicing_targets</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;metadata.Signal.Noise_properties.variance&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;_shifts&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;_tilts&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">inav</span> <span class="o">=</span> <span class="n">_TomoStackSlicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">isig</span> <span class="o">=</span> <span class="n">_TomoStackSlicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_check_array_shape</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">array</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="s2">&quot;tilts&quot;</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if a signal or array shape is appropriate for the current stack.</span>
+
+<span class="sd">        Used by the shifts and tilts setter methods as a sanity check on the</span>
+<span class="sd">        size of the arrays that are provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">to_check</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">BaseSignal</span><span class="p">)</span> <span class="k">else</span> <span class="n">array</span>
+        <span class="n">signal_size</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="c1"># if we have more than one navigation dimension, an ndarray should be</span>
+        <span class="c1"># of shape (N, M, 1|2) if the signal&#39;s navigation shape is (M, N | X)</span>
+
+        <span class="c1"># allow a numpy tilt array to be (*self.axes_manager.navigation_shape,), but if</span>
+        <span class="c1"># it is, reshape it to (*self.axes_manager.navigation_shape, 1)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;tilts&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],))</span>
+        <span class="p">):</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">to_check</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">signal_size</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Shape of </span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2"> array must be &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="p">,</span><span class="w"> </span><span class="n">signal_size</span><span class="p">)</span><span class="si">}</span><span class="s2"> to match &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;the navigation size of the stack (was </span><span class="si">{</span><span class="n">to_check</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">array</span>
+
+<div class="viewcode-block" id="TomoStack.shift_and_tilt_setter">
+<a class="viewcode-back" href="../../api/etspy.base.TomoStack.shift_and_tilt_setter.html#etspy.base.TomoStack.shift_and_tilt_setter">[docs]</a>
+    <span class="k">def</span> <span class="nf">shift_and_tilt_setter</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="s2">&quot;tilts&quot;</span><span class="p">],</span>
+        <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoTilts</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set either ``self._tilts`` or ``self._shifts`` to an array.</span>
+
+<span class="sd">        This method is split out to reduce duplication of code between the</span>
+<span class="sd">        :py:attr:`~etspy.base.TomoStack.tilts` and</span>
+<span class="sd">        :py:attr:`~etspy.base.TomoStack.shifts`</span>
+<span class="sd">        property setter functions, since they have significant</span>
+<span class="sd">        overlap.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mode</span>
+<span class="sd">            Whether to work on the ``_shifts`` or the ``_tilts`` of the stack</span>
+<span class="sd">        value:</span>
+<span class="sd">            The values to set, as either an array, or</span>
+<span class="sd">            :py:class:`~etspy.base.TomoShifts`, or :py:class:`~etspy.base.TomoTilts`.</span>
+<span class="sd">            If ``None``, the values will be initialized to an array of zeros of the</span>
+<span class="sd">            appropriate shape.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        target : :py:class:`~etspy.base.TomoShifts` or :py:class:`~etspy.base.TomoTilts`</span>
+<span class="sd">            The signal that should be set as either the shifts or tilts property.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the ``value`` is not the correct shape for either the `shapes` or `tilts`</span>
+<span class="sd">            property</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">signal_size</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">_cls</span> <span class="o">=</span> <span class="n">TomoShifts</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="n">TomoTilts</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># shifts should be shape (self.nav_size | 2), tilts (self.nav_size | 1)</span>
+            <span class="c1"># numpy arrays should be the inverse of the navigation shape, so if</span>
+            <span class="c1"># self.axes_manager.navigation shape is (N, M), then the data shape provided</span>
+            <span class="c1"># to TomoShifts or TomoTilts should be (M, N)</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">_cls</span><span class="p">(</span>
+                <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">signal_size</span><span class="p">)),</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_array_shape</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">_cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># value is already a Signal, so test the dimensions</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+                <span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">TomoShifts</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_check_array_shape</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mode</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="c1"># Using the TomoTilts/TomoShifts constructor strips metadata and axis</span>
+            <span class="c1"># info, so copy it back:</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">TomoShifts</span><span class="p">],</span> <span class="n">_cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">))</span>
+            <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">())</span>
+            <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">update_axes_attributes_from</span><span class="p">(</span>
+                <span class="p">(</span><span class="o">*</span><span class="n">value</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">,</span> <span class="o">*</span><span class="n">value</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="s2">&quot;units&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get_item</span><span class="p">(</span><span class="s2">&quot;General.title&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;General.title&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">mode</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> values&quot;</span><span class="p">)</span>
+
+        <span class="c1"># set metadata in the case value was None or Numpy array:</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;General.title&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">mode</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> values&quot;</span><span class="p">)</span>
+
+            <span class="c1"># set the navigation axes to the same as the signal&#39;s:</span>
+            <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">update_axes_attributes_from</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">,</span>
+                <span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">,</span> <span class="s2">&quot;units&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">:</span>
+                <span class="n">tilt_sig_ax</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># pyright: ignore[reportGeneralTypeIssues]</span>
+                <span class="n">tilt_sig_ax</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;Shift values (x/y)&quot;</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="s2">&quot;Tilt values&quot;</span>
+                <span class="p">)</span>
+                <span class="n">tilt_sig_ax</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;pixels&quot;</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;shifts&quot;</span> <span class="k">else</span> <span class="s2">&quot;degrees&quot;</span>
+
+        <span class="k">return</span> <span class="n">target</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoShifts</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The stack&#39;s image shift values (in pixels).</span>
+
+<span class="sd">        A :py:class:`~etspy.base.TomoShifts` signal containing the</span>
+<span class="sd">        x/y image shift value (in pixels) for each projection in the stack.</span>
+<span class="sd">        Should have the same navigation dimension as the stack.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span>
+
+    <span class="nd">@shifts</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_shifts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">TomoShifts</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="n">new_shifts</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@shifts</span><span class="o">.</span><span class="n">deleter</span>
+    <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">TomoShifts</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span><span class="p">)),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoTilts</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The stack&#39;s tilt values (in degrees).</span>
+
+<span class="sd">        A :py:class:`~etspy.base.TomoTilts` signal containing the</span>
+<span class="sd">        tilt value (in degrees) for each projection in the stack.</span>
+<span class="sd">        Should have the same navigation dimension as the stack.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span>
+
+    <span class="nd">@tilts</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">TomoTilts</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;tilts&quot;</span><span class="p">,</span> <span class="n">new_tilts</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@tilts</span><span class="o">.</span><span class="n">deleter</span>
+    <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">TomoTilts</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;tilts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="p">)),</span>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="TomoStack.deepcopy">
+<a class="viewcode-back" href="../../api/etspy.base.TomoStack.deepcopy.html#etspy.base.TomoStack.deepcopy">[docs]</a>
+    <span class="k">def</span> <span class="nf">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a &quot;deep copy&quot; of this Stack.</span>
+
+<span class="sd">        Uses the standard library&#39;s :func:`~copy.deepcopy` function. Note: this means</span>
+<span class="sd">        the underlying data structure will be duplicated in memory.</span>
+
+<span class="sd">        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.deepcopy`</span>
+<span class="sd">        method to ensure the ``tilts`` and ``shifts`` properties are also copied</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        :py:meth:`~etspy.base.TomoStack.copy`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">tilts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span></div>
+
+
+<div class="viewcode-block" id="TomoStack.copy">
+<a class="viewcode-back" href="../../api/etspy.base.TomoStack.copy.html#etspy.base.TomoStack.copy">[docs]</a>
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a &quot;shallow copy&quot; of this Stack.</span>
+
+<span class="sd">        Uses the standard library&#39;s :func:`~copy.copy` function. Note: this will</span>
+<span class="sd">        return a copy of the, Stack, but it will not duplicate the underlying</span>
+<span class="sd">        data in memory, and both Stacks will reference the same data.</span>
+
+<span class="sd">        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.copy`</span>
+<span class="sd">        method to ensure the ``tilts`` and ``shifts`` properties are also copied</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        :py:meth:`~etspy.base.TomoStack.deepcopy`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">tilts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span></div>
 
 
 <div class="viewcode-block" id="TomoStack.plot_sinos">
@@ -1592,7 +1648,7 @@ $(document).ready(function(){
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">Signal2D</span><span class="p">(</span>
             <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
-            <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()],</span>
+            <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()],</span>
         <span class="p">)</span><span class="o">.</span><span class="n">swap_axes</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">swap_axes</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
             <span class="n">navigator</span><span class="o">=</span><span class="s2">&quot;slider&quot;</span><span class="p">,</span>
             <span class="o">*</span><span class="n">args</span><span class="p">,</span>  <span class="c1"># noqa: B026</span>
@@ -1630,9 +1686,9 @@ $(document).ready(function(){
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="n">nprojs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">projections</span><span class="p">)</span>
         <span class="n">s_new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
-        <span class="n">s_ax</span> <span class="o">=</span>  <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="n">s_tilt_ax</span> <span class="o">=</span>  <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="n">s_shift_ax</span> <span class="o">=</span>  <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">s_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">s_tilt_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">s_shift_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="p">(</span><span class="n">s_ax</span><span class="p">,</span> <span class="n">s_tilt_ax</span><span class="p">,</span> <span class="n">s_shift_ax</span><span class="p">):</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">size</span> <span class="o">-=</span> <span class="n">nprojs</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
@@ -1641,6 +1697,35 @@ $(document).ready(function(){
         <span class="n">s_new</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
         <span class="n">s_new</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">s_new</span></div>
+
+
+<div class="viewcode-block" id="TomoStack.save">
+<a class="viewcode-back" href="../../api/etspy.base.TomoStack.save.html#etspy.base.TomoStack.save">[docs]</a>
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">extension</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">file_format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save the signal in the specified format.</span>
+
+<span class="sd">        Overloads the HyperSpy :py:meth:`~hyperspy.api.signals.BaseSignal.save` method</span>
+<span class="sd">        so that tilts and shifts are written to metadata prior to saving. All arguments</span>
+<span class="sd">        are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`, so please</span>
+<span class="sd">        consult that method&#39;s documentation for details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;Tomography.tilts&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;Tomography.shifts&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">,</span>
+            <span class="n">extension</span><span class="o">=</span><span class="n">extension</span><span class="p">,</span>
+            <span class="n">file_format</span><span class="o">=</span><span class="n">file_format</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TomoStack.test_correlation">
@@ -2409,37 +2494,37 @@ $(document).ready(function(){
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">yshift</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">xshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>                  <span class="c1"># x+ , y0</span>
+            <span class="k">if</span> <span class="n">xshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># x+ , y0</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="n">xshift</span><span class="p">]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="n">xshift</span><span class="p">:]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="n">xshift</span><span class="p">]</span>
-            <span class="k">elif</span> <span class="n">xshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>                <span class="c1"># x- , y0</span>
+            <span class="k">elif</span> <span class="n">xshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># x- , y0</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="n">xshift</span><span class="p">]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:</span><span class="n">xshift</span><span class="p">]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="o">-</span><span class="n">xshift</span><span class="p">:]</span>
 
         <span class="k">elif</span> <span class="n">xshift</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">yshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>                  <span class="c1"># x0 , y+</span>
+            <span class="k">if</span> <span class="n">yshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># x0 , y+</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="n">yshift</span><span class="p">:,</span> <span class="p">:]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:]</span>
-            <span class="k">elif</span> <span class="n">yshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>                <span class="c1"># x0 , y-</span>
+            <span class="k">elif</span> <span class="n">yshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># x0 , y-</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:]</span>
                 <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="o">-</span><span class="n">yshift</span><span class="p">:,</span> <span class="p">:]</span>
-        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span> <span class="c1"># x+ , y+</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>  <span class="c1"># x+ , y+</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="n">xshift</span><span class="p">]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="n">yshift</span><span class="p">:,</span> <span class="n">xshift</span><span class="p">:]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="n">xshift</span><span class="p">]</span>
-        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span> <span class="c1"># x+ , y-</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>  <span class="c1"># x+ , y-</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="n">xshift</span><span class="p">]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:</span><span class="n">yshift</span><span class="p">,</span> <span class="n">xshift</span><span class="p">:]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="o">-</span><span class="n">yshift</span><span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="n">xshift</span><span class="p">]</span>
-        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span> <span class="c1"># x- , y +</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>  <span class="c1"># x- , y +</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:</span><span class="n">xshift</span><span class="p">]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="n">yshift</span><span class="p">:,</span> <span class="p">:</span><span class="n">xshift</span><span class="p">]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="n">yshift</span><span class="p">,</span> <span class="o">-</span><span class="n">xshift</span><span class="p">:]</span>
-        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span> <span class="c1"># x- , x-</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">xshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">yshift</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>  <span class="c1"># x- , x-</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:</span><span class="n">xshift</span><span class="p">]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:</span><span class="n">yshift</span><span class="p">,</span> <span class="p">:</span><span class="n">xshift</span><span class="p">]</span>
             <span class="n">output</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">nslice</span><span class="p">:,</span> <span class="o">-</span><span class="n">yshift</span><span class="p">:,</span> <span class="o">-</span><span class="n">xshift</span><span class="p">:]</span>
@@ -2534,7 +2619,7 @@ $(document).ready(function(){
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">cuda</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA not detected with Astra&quot;</span><span class="p">)</span>
-        <span class="n">sinogram</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">isig</span><span class="p">[</span><span class="n">nslice</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">sinogram</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">isig</span><span class="p">[</span><span class="n">nslice</span><span class="p">:</span><span class="n">nslice</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
         <span class="n">rec_stack</span><span class="p">,</span> <span class="n">error</span> <span class="o">=</span> <span class="n">recon</span><span class="o">.</span><span class="n">astra_error</span><span class="p">(</span>
             <span class="n">sinogram</span><span class="p">,</span>
             <span class="n">angles</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
@@ -2563,6 +2648,68 @@ $(document).ready(function(){
         <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">error</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot; Iteration&quot;</span>
         <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">error</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Signal</span><span class="p">)</span><span class="o">.</span><span class="n">quantity</span> <span class="o">=</span> <span class="s2">&quot;Sum of Squared Difference&quot;</span>
         <span class="k">return</span> <span class="n">rec_stack</span><span class="p">,</span> <span class="n">error</span></div>
+
+
+<div class="viewcode-block" id="TomoStack.extract_sinogram">
+<a class="viewcode-back" href="../../api/etspy.base.TomoStack.extract_sinogram.html#etspy.base.TomoStack.extract_sinogram">[docs]</a>
+    <span class="k">def</span> <span class="nf">extract_sinogram</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">column</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>  <span class="c1"># noqa: PYI041</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Signal2D</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extract a sinogram from a single column of the TomoStack.</span>
+
+<span class="sd">        The value to use for ``column`` can be supplied as either</span>
+<span class="sd">        an integer for pixel-based indexing, or as a float for unit-based</span>
+<span class="sd">        indexing. The resulting image will have the stack&#39;s projection axis</span>
+<span class="sd">        oriented vertically and the y-axis horizontally.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        column</span>
+<span class="sd">            The x-axis position to use for computing the sinogram. If an integer,</span>
+<span class="sd">            pixel-basd indexing will be used. If a float, unit-based indexing will</span>
+<span class="sd">            be used.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sino : :py:class:`~hyperspy.api.signals.Signal2D`</span>
+<span class="sd">            A single image representing the single column data over the range of</span>
+<span class="sd">            projections in the original TomoStack.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TypeError</span>
+<span class="sd">            Raised if column is neither a float or int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s1">&#39;&quot;column&quot; argument must be either a float or an integer &#39;</span>
+                <span class="sa">f</span><span class="s2">&quot;(was </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">column</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># hide isig warning from TomoStackSlicer</span>
+        <span class="n">orig_logger_state</span> <span class="o">=</span> <span class="n">logger</span><span class="o">.</span><span class="n">disabled</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">disabled</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sino</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">isig</span><span class="p">[</span><span class="n">column</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="n">sino</span><span class="o">.</span><span class="n">set_signal_type</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">sino</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">sino</span><span class="o">.</span><span class="n">as_signal2D</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+                <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Sinogram at x = </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="si">}</span><span class="s2">&quot;</span> <span class="c1"># type: ignore</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Sinogram at column </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="c1"># if there was an error above, reset the logger state</span>
+            <span class="c1"># before raising it</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">disabled</span> <span class="o">=</span> <span class="n">orig_logger_state</span>
+            <span class="k">raise</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">disabled</span> <span class="o">=</span> <span class="n">orig_logger_state</span>
+        <span class="n">sino</span> <span class="o">=</span> <span class="n">sino</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+        <span class="n">sino</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;General.title&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sino</span></div>
 </div>
 
 
@@ -2604,6 +2751,12 @@ $(document).ready(function(){
 <span class="sd">            :py:class:`~hyperspy.api.signals.Signal2D`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;A RecStack must have a singular (or no) navigation axis. &quot;</span>
+                   <span class="sa">f</span><span class="s2">&quot;Navigation shape was: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">inav</span> <span class="o">=</span> <span class="n">_RecStackSlicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">isig</span> <span class="o">=</span> <span class="n">_RecStackSlicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 

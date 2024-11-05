@@ -989,8 +989,8 @@ $(document).ready(function(){
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    sinogram</span>
-<span class="sd">       Tilt series data either of the form [angles, x] or [angles, y, x] where</span>
-<span class="sd">       y is the tilt axis and x is the projection axis.</span>
+<span class="sd">       Tilt series data of the shape ``(n_angles, n_y)``, where</span>
+<span class="sd">       y is the axis perpendicular to the tilt axis.</span>
 <span class="sd">    angles</span>
 <span class="sd">        Projection angles in degrees.</span>
 <span class="sd">    method</span>
@@ -1019,6 +1019,13 @@ $(document).ready(function(){
 <span class="sd">    recon</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">thetas</span> <span class="o">=</span> <span class="n">angles</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">180</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sinogram</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># noqa: PLR2004</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;Sinogram must be two-dimensional (ntilts, y). Provided shape &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;was </span><span class="si">{</span><span class="n">sinogram</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="n">nangles</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">sinogram</span><span class="o">.</span><span class="n">shape</span>
 
