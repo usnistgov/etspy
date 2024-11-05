@@ -36,12 +36,18 @@ of whatever packages are required.
     $ conda activate etspy
     ```
 
-  * Finally, (with the `etspy` environment activated), install the ETSpy package
-    from the `conda-forge` repo:
+  * With the `etspy` environment activated, install the ETSpy package from the `conda-forge` repo:
 
     ```shell
     (etspy) $ conda install -c conda-forge etspy
     ``` 
+
+  * (Alternatively) if you have a GPU and wish to make full use of the GPU-accelerated code, install
+    the `etspy-gpu` package, which will pull in a few added dependencies to enable these features:
+
+    ```shell
+    (etspy) $ conda install -c conda-forge etspy-gpu
+    ```
 
 ####  Optional Jupyter components (higly recommended)
 
@@ -50,6 +56,7 @@ of whatever packages are required.
     the following after ensuring that environment is activated (with `conda activate etspy`):
 
     ```shell
+    (etspy) $ conda install -c conda-forge ipykernel
     (etspy) $ python -m ipykernel install --user --name ETSpy
     ```
 
