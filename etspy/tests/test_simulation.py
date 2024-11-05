@@ -102,6 +102,7 @@ class TestModifications:
         assert shifted.data.shape == (90, 10, 10)
         assert abs(shifted.shifts.data).sum() > 0
 
+    @pytest.mark.filterwarnings("ignore:divide by zero encountered")
     def test_add_noise_gaussian(self):
         model = sim.create_catalyst_model(0, volsize=(10, 10, 10))
         stack = sim.create_model_tilt_series(model)
@@ -117,6 +118,7 @@ class TestModifications:
         # ensure signal to noise is higher for non-noisy signal
         assert stack_snr > noisy_snr
 
+    @pytest.mark.filterwarnings("ignore:divide by zero encountered")
     def test_add_noise_poissanian(self):
         model = sim.create_catalyst_model(0, volsize=(10, 10, 10))
         stack = sim.create_model_tilt_series(model)

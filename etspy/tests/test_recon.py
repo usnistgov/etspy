@@ -274,3 +274,46 @@ class TestAstraError:
         )
         assert isinstance(error, np.ndarray)
         assert rec_stack.shape == (2, ny, ny)
+
+    def test_astra_error_cpu_bad_dims(self):
+        stack = ds.get_needle_data(aligned=True)
+        angles = stack.tilts.data.squeeze()
+        sino = np.random.rand(3, 5, 10)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Sinogram must be two-dimensional (ntilts, y). "
+                "Provided shape was (3, 5, 10).",
+                ),
+        ):
+            recon.astra_error(
+                sino,
+                angles,
+                method="SART",
+                iterations=2,
+                constrain=True,
+                thresh=0,
+                cuda=False,
+            )
+
+    def test_astra_error_cpu_nangles_mismatch(self):
+        stack = ds.get_needle_data(aligned=True)
+        angles = stack.tilts.data.squeeze()
+        sino = np.random.rand(3, 10)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Number of angles must match size of the first dimension of the "
+                "sinogram. [len(angles) was 77; sinogram.shape was (3, 10)] "
+                "(77 != 3)",
+                ),
+        ):
+            recon.astra_error(
+                sino,
+                angles,
+                method="SART",
+                iterations=2,
+                constrain=True,
+                thresh=0,
+                cuda=False,
+            )

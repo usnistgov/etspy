@@ -2,8 +2,6 @@
 name: etspy-dev
 channels:
   - conda-forge
-  - nvidia
-  - defaults
 dependencies:
 # ensure that cuda version of astra gets installed
   - astra-toolbox=*=*cuda*
@@ -12,7 +10,7 @@ dependencies:
   - hyperspy-gui-ipywidgets
   - ipykernel
   - numba
-  - numpy<2.0
+  - numpy
   - pystackreg
   - ffmpeg
   - pip
