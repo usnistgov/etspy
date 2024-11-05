@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "etspy"
-version = "0.9.3"
+version = "0.9.4"
 description = "Suite of tools for processing and reconstruction of electron tomography data"
 authors = [
     "Andrew A. Herzing <andrew.herzing@nist.gov>",

@@ -543,6 +543,14 @@ def astra_error(
 
     nangles, ny = sinogram.shape
 
+    if nangles != len(angles):
+        msg = (
+            "Number of angles must match size of the first dimension of "
+            f"the sinogram. [len(angles) was {len(angles)}; sinogram.shape was "
+            f"{sinogram.shape}] ({len(angles)} != {nangles})"
+        )
+        raise ValueError(msg)
+
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((ny, ny))
     rec_id = astra.data2d.create("-vol", vol_geom)
