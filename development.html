@@ -10,11 +10,11 @@
       
       
       
-      <link rel="icon" href="../_static/favicon-64x64.png">
+      <link rel="icon" href="_static/favicon-64x64.png">
     
     
       
-        <title>etspy.align.get_coms - ETSpy 1.0.0 documentation</title>
+        <title>Development tips - ETSpy 1.0.0 documentation</title>
       
     
     
@@ -33,10 +33,10 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="../_static/sphinx_immaterial_theme.4b4a8c74e2ff2ab5b.min.css?v=afa97f93" />
-        <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
-        <link rel="stylesheet" type="text/css" href="../_static/custom_css.css?v=3df925f6" />
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+        <link rel="stylesheet" type="text/css" href="_static/sphinx_immaterial_theme.4b4a8c74e2ff2ab5b.min.css?v=afa97f93" />
+        <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+        <link rel="stylesheet" type="text/css" href="_static/custom_css.css?v=3df925f6" />
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -93,11 +93,6 @@ $(document).ready(function(){
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#parameters" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -108,8 +103,8 @@ $(document).ready(function(){
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../index.html" title="ETSpy 1.0.0 documentation" class="md-header__button md-logo" aria-label="ETSpy 1.0.0 documentation" data-md-component="logo">
-      <img src="../_static/ETSpy_logo_trans.png" alt="logo">
+    <a href="index.html" title="ETSpy 1.0.0 documentation" class="md-header__button md-logo" aria-label="ETSpy 1.0.0 documentation" data-md-component="logo">
+      <img src="_static/ETSpy_logo_trans.png" alt="logo">
     </a>
     <label class="md-header__button md-icon" for="__drawer">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
@@ -124,7 +119,7 @@ $(document).ready(function(){
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              etspy.align.get_coms
+              Development tips
             
           </span>
         </div>
@@ -231,8 +226,8 @@ $(document).ready(function(){
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../index.html" title="ETSpy 1.0.0 documentation" class="md-nav__button md-logo" aria-label="ETSpy 1.0.0 documentation" data-md-component="logo">
-      <img src="../_static/ETSpy_logo_trans.png" alt="logo">
+    <a href="index.html" title="ETSpy 1.0.0 documentation" class="md-nav__button md-logo" aria-label="ETSpy 1.0.0 documentation" data-md-component="logo">
+      <img src="_static/ETSpy_logo_trans.png" alt="logo">
     </a>
     ETSpy 1.0.0 documentation
   </label>
@@ -260,7 +255,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../index.html" class="md-nav__link">
+      <a href="index.html" class="md-nav__link">
         <span class="md-ellipsis">Home</span>
       </a>
     </li>
@@ -273,12 +268,20 @@ $(document).ready(function(){
 
   
   
+    
+  
+    
   
   
-    <li class="md-nav__item">
-      <a href="../development.html" class="md-nav__link">
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      <a href="#" class="md-nav__link md-nav__link--active">
         <span class="md-ellipsis">Development</span>
       </a>
+      
     </li>
   
 
@@ -292,7 +295,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../examples/etspy_demo.html" class="md-nav__link">
+      <a href="examples/etspy_demo.html" class="md-nav__link">
         <span class="md-ellipsis">Example Usage</span>
       </a>
     </li>
@@ -305,14 +308,12 @@ $(document).ready(function(){
 
   
   
-    
-  
   
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
       
       
       
@@ -335,7 +336,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../api.html" class="md-nav__link">
+      <a href="api.html" class="md-nav__link">
         <span class="md-ellipsis">General Information</span>
       </a>
     </li>
@@ -350,7 +351,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../api.html#signals" class="md-nav__link">
+      <a href="api.html#signals" class="md-nav__link">
         <span title="signals (reference label)" class="md-ellipsis">Signals</span>
       </a>
     </li>
@@ -365,7 +366,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../api.html#file-i-o" class="md-nav__link">
+      <a href="api.html#file-i-o" class="md-nav__link">
         <span class="md-ellipsis">File I/O</span>
       </a>
     </li>
@@ -377,43 +378,11 @@ $(document).ready(function(){
               
   
   
-    
-  
-  
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-      
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_4" type="checkbox" id="__nav_4_4" checked>
-      
-      
-      
-        
-        <div class="md-nav__link md-nav__link--index ">
-          <a href="../api.html#alignment-methods"><span class="md-ellipsis">Alignment Methods</span></a>
-          
-            <label for="__nav_4_4">
-              <span class="md-nav__icon md-icon"></span>
-            </label>
-          
-        </div>
-      
-      <nav class="md-nav" aria-label="Alignment Methods" data-md-level="2">
-        <label class="md-nav__title" for="__nav_4_4">
-          <span class="md-nav__icon md-icon"></span>
-          <span class="md-ellipsis">Alignment Methods</span>
-        </label>
-        <ul class="md-nav__list" data-md-scrollfix>
-          
-            
-              
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="etspy.AlignmentMethod.html" class="md-nav__link">
-        <span aria-label="Python class" class="objinfo-icon objinfo-icon__data" title="Python class">C</span><span title="etspy.AlignmentMethod — Allowed values for the stack alignment method." class="md-ellipsis">Alignment<wbr>Method</span>
+      <a href="api.html#alignment-methods" class="md-nav__link">
+        <span class="md-ellipsis">Alignment Methods</span>
       </a>
     </li>
   
@@ -427,314 +396,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="etspy.align.get_best_slices.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.get_best_slices — Get best nslices for center of mass analysis." class="md-ellipsis">get_<wbr>best_<wbr>slices</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-    
-  
-    
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.get_coms — Calculate the center of mass for indicated slices." class="md-ellipsis">get_<wbr>coms</span>
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="#" class="md-nav__link md-nav__link--active">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.get_coms — Calculate the center of mass for indicated slices." class="md-ellipsis">get_<wbr>coms</span>
-      </a>
-      
-        
-
-  
-
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.get_coms — Calculate the center of mass for indicated slices." class="md-ellipsis">get_<wbr>coms</span>
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
-    <span class="md-ellipsis">Parameters</span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#p-stack" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.get_coms.stack — Tilt series from which to calculate the centers of mass." class="md-ellipsis">stack</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-slices" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.get_coms.slices — Location of slices to use for center of mass calculation." class="md-ellipsis">slices</span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#returns" class="md-nav__link">
-    <span class="md-ellipsis">Returns</span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#return-type" class="md-nav__link">
-    <span class="md-ellipsis">Return type</span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.apply_shifts.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.apply_shifts — Apply a series of shifts to a TomoStack." class="md-ellipsis">apply_<wbr>shifts</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.pad_line.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.pad_line — Pad a 1D array for FFT treatment without altering center location." class="md-ellipsis">pad_<wbr>line</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.calc_shifts_cl.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.calc_shifts_cl — Calculate shifts using the common line method." class="md-ellipsis">calc_<wbr>shifts_<wbr>cl</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.calculate_shifts_conservation_of_mass.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.calculate_shifts_conservation_of_mass — Calculate shifts parallel to the tilt axis using conservation of mass." class="md-ellipsis">calculate_<wbr>shifts_<wbr>conservation_<wbr>of_<wbr>mass</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.calculate_shifts_com.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.calculate_shifts_com — Align stack using a center of mass method." class="md-ellipsis">calculate_<wbr>shifts_<wbr>com</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.calculate_shifts_pc.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.calculate_shifts_pc — Calculate shifts using the phase correlation algorithm." class="md-ellipsis">calculate_<wbr>shifts_<wbr>pc</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.calculate_shifts_stackreg.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.calculate_shifts_stackreg — Calculate shifts using PyStackReg." class="md-ellipsis">calculate_<wbr>shifts_<wbr>stackreg</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.calc_shifts_com_cl.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.calc_shifts_com_cl — Calculate shifts using combined center of mass and common line methods." class="md-ellipsis">calc_<wbr>shifts_<wbr>com_<wbr>cl</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.align_stack.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.align_stack — Compute the shifts for spatial registration." class="md-ellipsis">align_<wbr>stack</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.tilt_com.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.tilt_com — Perform tilt axis alignment using center of mass (CoM) tracking." class="md-ellipsis">tilt_<wbr>com</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.tilt_maximage.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.tilt_maximage — Perform automated determination of the tilt axis of a TomoStack." class="md-ellipsis">tilt_<wbr>maximage</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.align_to_other.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.align_to_other — Spatially register a TomoStack using previously calculated shifts." class="md-ellipsis">align_<wbr>to_<wbr>other</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.shift_crop.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.shift_crop — Crop shifted stack to common area." class="md-ellipsis">shift_<wbr>crop</span>
-      </a>
-    </li>
-  
-
-            
-          
-        </ul>
-      </nav>
-    </li>
-  
-  
-
-            
-          
-            
-              
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api.html#reconstruction" class="md-nav__link">
+      <a href="api.html#reconstruction" class="md-nav__link">
         <span title="reconstruction (reference label)" class="md-ellipsis">Reconstruction</span>
       </a>
     </li>
@@ -749,7 +411,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../api.html#data-simulation" class="md-nav__link">
+      <a href="api.html#data-simulation" class="md-nav__link">
         <span class="md-ellipsis">Data Simulation</span>
       </a>
     </li>
@@ -764,7 +426,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../api.html#example-datasets" class="md-nav__link">
+      <a href="api.html#example-datasets" class="md-nav__link">
         <span class="md-ellipsis">Example Datasets</span>
       </a>
     </li>
@@ -779,7 +441,7 @@ $(document).ready(function(){
   
   
     <li class="md-nav__item">
-      <a href="../api.html#utilities" class="md-nav__link">
+      <a href="api.html#utilities" class="md-nav__link">
         <span title="utilities (reference label)" class="md-ellipsis">Utilities</span>
       </a>
     </li>
@@ -807,60 +469,9 @@ $(document).ready(function(){
                   <div class="md-sidebar__inner">
                     
 
-  
-
 <nav class="md-nav md-nav--secondary">
   
   
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.get_coms — Calculate the center of mass for indicated slices." class="md-ellipsis">get_<wbr>coms</span>
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
-    <span class="md-ellipsis">Parameters</span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#p-stack" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.get_coms.stack — Tilt series from which to calculate the centers of mass." class="md-ellipsis">stack</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-slices" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.get_coms.slices — Location of slices to use for center of mass calculation." class="md-ellipsis">slices</span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#returns" class="md-nav__link">
-    <span class="md-ellipsis">Returns</span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#return-type" class="md-nav__link">
-    <span class="md-ellipsis">Return type</span>
-  </a>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -874,28 +485,136 @@ $(document).ready(function(){
                   
 
 
-<dl class="py function objdesc">
-<dt class="sig sig-object highlight py">
-<span class="sig-prename descclassname"><span class="pre">etspy.align.</span></span><span class="sig-name descname"><span class="pre">get_coms</span></span><span class="sig-paren">(</span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-stack" title="etspy.align.get_coms.stack — Tilt series from which to calculate the centers of mass."><span class="n"><span class="pre">stack</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoStack.html" title="etspy.base.TomoStack — Create a TomoStack instance, used to represent tomographic tilt series data."><span class="pre">TomoStack</span></a></span></span></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-slices" title="etspy.align.get_coms.slices — Location of slices to use for center of mass calculation."><span class="n"><span class="pre">slices</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.1)"><span class="pre">ndarray</span></a></span></span></em></span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="desctype"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.1)"><span class="pre">ndarray</span></a></span></span></span><a class="reference internal" href="../_modules/etspy/align.html#get_coms"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Calculate the center of mass for indicated slices.</p>
-<dl class="field-list simple">
-<dt class="field-odd" id="parameters">Parameters<span class="colon">:</span><a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></dt>
-<dd class="field-odd"><dl class="simple api-field highlight">
-<dt id="p-stack"><span class="n sig-name">stack</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoStack.html" title="etspy.base.TomoStack — Create a TomoStack instance, used to represent tomographic tilt series data.">TomoStack</a></span></span><a class="headerlink" href="#p-stack" title="Permalink to this definition">¶</a></dt><dd><p>Tilt series from which to calculate the centers of mass.</p>
-</dd>
-<dt id="p-slices"><span class="n sig-name">slices</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.1)">ndarray</a></span></span><a class="headerlink" href="#p-slices" title="Permalink to this definition">¶</a></dt><dd><p>Location of slices to use for center of mass calculation.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even" id="returns">Returns<span class="colon">:</span><a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></dt>
-<dd class="field-even"><p>Center of mass as a function of tilt for each slice [ntilts, nslices].</p>
-</dd>
-<dt class="field-odd" id="return-type">Return type<span class="colon">:</span><a class="headerlink" href="#return-type" title="Permalink to this headline">¶</a></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a></p>
-</dd>
-</dl>
-</dd></dl>
+  <a href="https://github.com/usnistgov/etspy/blob/master/docs/development.md" title="Edit this page" class="md-content__button md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+  </a>
 
+<h1 id="development-tips">Development tips<a class="headerlink" href="#development-tips" title="Link to this heading">¶</a></h1>
+<div class="note admonition">
+<p class="admonition-title">Note</p>
+<p>This page contains information useful for developers and those who may wish to
+contribute to ETSpy.</p>
+</div>
+<h2 id="installing-a-development-version-of-etspy">Installing a development version of ETSpy<a class="headerlink" href="#installing-a-development-version-of-etspy" title="Link to this heading">¶</a></h2>
+<p>If you wish to contribute to ETSpy or otherwise install a development version,
+this can be accomplished using either <a class="reference external" href="https://www.anaconda.com/download/success">Anaconda</a>
+or <a class="reference external" href="https://python-poetry.org">Poetry</a>.</p>
+<p>If using conda, create and activate a new environment using one of the <em>development</em> specifications:</p>
+<table class="docutils data align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Description</p></th>
+<th class="head"><p>Link</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Development environment without <code class="docutils literal notranslate"><span class="pre">cupy</span></code></p></td>
+<td><p><a class="reference external" href="https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-dev.yml"><code class="docutils literal notranslate"><span class="pre">etspy-dev.yml</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Development environment with <code class="docutils literal notranslate"><span class="pre">cupy</span></code> and CUDA packages for GPU operations</p></td>
+<td><p><a class="reference external" href="https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-gpu-dev.yml"><code class="docutils literal notranslate"><span class="pre">etspy-gpu-dev.yml</span></code></a></p></td>
+</tr>
+</tbody>
+</table>
+<p>Then you will need to <a class="reference external" href="https://github.com/usnistgov/etspy/fork">fork the repository on Github</a>, clone the repo locally, and
+install the package in “editable” mode using <code class="docutils literal notranslate"><span class="pre">pip</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-dev.yml
+<span class="c1"># or the following for the GPU dependencies:</span>
+<span class="c1">#    conda env create -f https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-gpu-dev.yml</span>
+$<span class="w"> </span>conda<span class="w"> </span>activate<span class="w"> </span>etspy-dev
+$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/&lt;your_account_name&gt;/etspy
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>etspy
+$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</code></pre></div>
+</div>
+<p>If using Poetry (currently only working on Linux due to some limitations of dependency packages),
+make sure you have <code class="docutils literal notranslate"><span class="pre">poetry</span></code> and the CUDA libraries installed, clone the <code class="docutils literal notranslate"><span class="pre">etspy</span></code> repository, and
+run the install command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/&lt;your_account_name&gt;/etspy
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>etspy
+$<span class="w"> </span>poetry<span class="w"> </span>install<span class="w">   </span><span class="c1"># (to get the cupy dependency add &quot;--all-extras&quot; to the install command)</span>
+</code></pre></div>
+</div>
+<div class="note admonition">
+<p class="admonition-title">Note</p>
+<p>Sometimes, on headless Linux systems without a desktop environment installed, the <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">install</span></code>
+command will hang due to an outstanding issue with handling the system keyring
+(see <a class="reference external" href="https://github.com/python-poetry/poetry/issues/8623">this issue</a>). To workaround the issue,
+run the command <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring</span></code> prior to running
+<code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">install</span></code>, and it should work.</p>
+</div>
+<p>At this point, you should have an “editable” version of the latest development
+version of ETSpy installed to hack on as you wish.</p>
+<p>Contributions to the project are welcome, and can be submitted via the GitHub pull
+request mechanism.</p>
+<h2 id="coverage">Coverage<a class="headerlink" href="#coverage" title="Link to this heading">¶</a></h2>
+<p>ETSpy strives to have high code coverage through the use of tests in the <code class="docutils literal notranslate"><span class="pre">etspy/tests/</span></code> directory.
+When developing, you can run the tests from the main directory with the following command, which
+will output the coverage results to the terminal, as well as to a <code class="docutils literal notranslate"><span class="pre">etspy/tests/coverage.xml</span></code> file that can
+be interpreted by various editors to display the coverage stats interactively, and as html in the
+<code class="docutils literal notranslate"><span class="pre">etspy/tests/htmlcov</span></code> directory that can be viewed in a web browser:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>poetry<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>etspy/tests/
+</code></pre></div>
+</div>
+<p>By default, this will exclude CUDA-related code from the coverage
+report (via the <code class="docutils literal notranslate"><span class="pre">[tool.coverage.report]</span></code> setting in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>),
+since most CI/CD systems will not have CUDA enabled. If you would
+like to run the tests with coverage (including CUDA), you can use
+the <code class="docutils literal notranslate"><span class="pre">run_tests.sh</span></code> helper script (on Linux), which will detect whether
+or not CUDA is available, and choose whether or not to exclude those
+lines from the report depending:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>poetry<span class="w"> </span>run<span class="w"> </span>./run_tests.sh
+</code></pre></div>
+</div>
+<h2 id="debugging-when-using-coverage">Debugging when using coverage<a class="headerlink" href="#debugging-when-using-coverage" title="Link to this heading">¶</a></h2>
+<p>ETSpy has the test suite configured to automatically run code coverage
+analysis when using <code class="docutils literal notranslate"><span class="pre">pytest</span></code>. This interferes when using interactive
+debuggers (such as PyCharm or VSCode), since they use the same mechanism
+under the hood to inspect what code is being run. This will manifest as
+your breakpoints never triggering when running a “Debug” configuration.
+For more information, see the following links:
+<a class="reference external" href="https://github.com/microsoft/vscode-python/issues/693">one</a>,
+<a class="reference external" href="https://stackoverflow.com/a/67185092">two</a>,
+<a class="reference external" href="https://youtrack.jetbrains.com/issue/PY-20186">three</a>. There are a
+few workarounds discussed in those threads, but the gist is that
+when debugging, you should disable the coverage plugin to ensure
+that breakpoints will be hit. This varies depending on your IDE/setup,
+but one option for VSCode is to put the following configuration
+in your project’s <code class="docutils literal notranslate"><span class="pre">launch.json</span></code>, which will ensure coverage is disabled
+when running “Debug test” via the <code class="docutils literal notranslate"><span class="pre">PYTEST_ADDOPTS</span></code> environment variable:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><code><span class="w">  </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Debug Tests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;debugpy&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;request&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;launch&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;purpose&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;debug-test&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;console&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;integratedTerminal&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;justMyCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;PYTEST_ADDOPTS&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;--no-cov&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+</code></pre></div>
+</div>
+<h2 id="releasing-a-version">Releasing a version<a class="headerlink" href="#releasing-a-version" title="Link to this heading">¶</a></h2>
+<h3 id="testing-a-pre-release">Testing a pre-release<a class="headerlink" href="#testing-a-pre-release" title="Link to this heading">¶</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># bump version using poetry</span>
+$<span class="w"> </span>poetry<span class="w"> </span>version<span class="w"> </span>prerelease<span class="w">  </span><span class="c1"># this will append the version number and a pre-release indicator e.g &quot;.a0&quot;</span>
+$<span class="w"> </span>poetry<span class="w"> </span>lock<span class="w">  </span><span class="c1"># ensure you&#39;ve updated the lockfile and any dependencies</span>
+$<span class="w"> </span>poetry<span class="w"> </span>build<span class="w">  </span><span class="c1"># buildssource and binary &quot;wheel&quot; distributions</span>
+$<span class="w"> </span>poetry<span class="w"> </span>publish<span class="w">  </span><span class="c1"># requires registering poetry with tokens for your PyPI account (see https://python-poetry.org/docs/repositories/#configuring-credentials )</span>
+</code></pre></div>
+</div>
+<p>You should then be able to install from PyPI with the new version (e.g. <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">etspy==0.9.3a2</span></code>)</p>
+<h3 id="releasing-a-new-version">Releasing a new version<a class="headerlink" href="#releasing-a-new-version" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Basically the same as above, but run <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">version</span> <span class="pre">patch</span></code> rather than <code class="docutils literal notranslate"><span class="pre">prerelease</span></code>.</p></li>
+<li><p>Should also create a git tag for the version, and create a release on GitHub. This may be done automatically in the future.</p></li>
+</ul>
+<h2 id="setting-up-conda-forge-packages">Setting up conda-forge packages<a class="headerlink" href="#setting-up-conda-forge-packages" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Packages on <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> were set up using the great instructions provided by the
+<a class="reference external" href="https://www.pyopensci.org/python-package-guide/tutorials/publish-conda-forge.html">PyOpenSci</a>
+project</p></li>
+<li><p>The conda “recipe” is held in the following repository: <a class="reference external" href="https://github.com/conda-forge/etspy-feedstock">https://github.com/conda-forge/etspy-feedstock</a></p></li>
+</ul>
 
 
 
@@ -925,7 +644,7 @@ $(document).ready(function(){
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="etspy.align.get_best_slices.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: etspy.align.get_best_slices" rel="prev">
+        <a href="index.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: ETSpy" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -934,20 +653,20 @@ $(document).ready(function(){
               <span class="md-footer__direction">
                 Previous
               </span>
-              etspy.align.get_best_slices
+              ETSpy
             </div>
           </div>
         </a>
       
       
         
-        <a href="etspy.align.apply_shifts.html" class="md-footer__link md-footer__link--next" aria-label="Next: etspy.align.apply_shifts" rel="next">
+        <a href="examples/etspy_demo.html" class="md-footer__link md-footer__link--next" aria-label="Next: ETSpy Demo" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              etspy.align.apply_shifts
+              ETSpy Demo
             </div>
           </div>
           <div class="md-footer__button md-icon">
@@ -1007,10 +726,10 @@ $(document).ready(function(){
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.expand", "navigation.instant", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "toc.follow", "toc.sticky", "content.tabs.link", "content.code.annotate", "announce.dismiss"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": ".", "features": ["navigation.expand", "navigation.instant", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "toc.follow", "toc.sticky", "content.tabs.link", "content.code.annotate", "announce.dismiss"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
       
-        <script src="../_static/sphinx_immaterial_theme.f9d9eeeb247ace16c.min.js?v=8ec58cb5"></script>
+        <script src="_static/sphinx_immaterial_theme.f9d9eeeb247ace16c.min.js?v=8ec58cb5"></script>
     
   </body>
 </html>
