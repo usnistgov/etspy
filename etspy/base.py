@@ -14,7 +14,7 @@ from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union, cast
 
 try:
     from typing import Self  # type: ignore
-except ImportError:     # pragma: no cover
+except ImportError:  # pragma: no cover
     # required to support Pyton 3.10 since Self was added in 3.11
     from typing_extensions import Self
 
@@ -42,6 +42,7 @@ from etspy import align, recon
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 class MismatchedTiltError(ValueError):
     """
     Error for when number of tilts in signal does not match tilt dimension.
@@ -62,21 +63,53 @@ class MismatchedTiltError(ValueError):
             f"the tilt dimension of the data array ({tilt_dimension})",
         )
 
+
 # The following private classes are used to allow type hinting on inav and isig
 class _TomoShiftSlicer(SpecialSlicersSignal):
     def __getitem__(self, slices, out=None) -> "TomoShifts":
         return super().__getitem__(slices, out=out)
 
+
 class _TomoTiltSlicer(SpecialSlicersSignal):
     def __getitem__(self, slices, out=None) -> "TomoTilts":
         return super().__getitem__(slices, out=out)
+
+
 class _TomoStackSlicer(SpecialSlicersSignal):
     def __getitem__(self, slices, out=None) -> "TomoStack":
+        # if self.isNavigation is False, we're doing isig,
+        # which should only be allowed if both axes have a size
+        # greater than one
+        if not self.isNavigation:
+            new_slices = []
+            # slices will be a tuple of int (single pixel-based slice),
+            # float (single unit-based slice), or slice class (range).
+            # since TomoStacks are Signal2Ds, it should always be length 2
+            for i, s in enumerate(slices):
+                if isinstance(s, (int, float)):
+                    # don't allow a single slice
+                    scale = self.obj.axes_manager.signal_axes[i].scale
+                    if isinstance(s, int):
+                        # if integer, set scale to 1 to just add one pixel
+                        scale = 1
+                    new_slices.append(slice(s, s + scale, None))
+                    ax_name = self.obj.axes_manager.signal_axes[i].name
+                    logger.warning(
+                        "Slicing a TomoStack signal axis with a single pixel "
+                        'is not supported. Returning a single pixel on the "%s" '
+                        "axis instead",
+                        ax_name,
+                    )
+                else:
+                    new_slices.append(s)
+            slices = tuple(new_slices)
         return super().__getitem__(slices, out=out)
+
 
 class _RecStackSlicer(SpecialSlicersSignal):
     def __getitem__(self, slices, out=None) -> "RecStack":
         return super().__getitem__(slices, out=out)
+
 
 class TomoShifts(Signal1D):
     """
@@ -145,11 +178,13 @@ class TomoShifts(Signal1D):
                 logger.warning(
                     "TomoShifts does not support 'isig' slicing, as signal shape must "
                     "be (2,). Signal was returned with its original "
-                    "shape: %s", self,
+                    "shape: %s",
+                    self,
                 )
             return self
 
         return super()._slicer(slices, isNavigation, out)
+
 
 class TomoTilts(Signal1D):
     """
@@ -217,11 +252,13 @@ class TomoTilts(Signal1D):
                 # in this case, since it happens so frequently
                 logger.warning(
                     "TomoTilts does not support 'isig' slicing, as signal shape must "
-                    "be (1,). Signal was returned with its original shape: %s", self,
+                    "be (1,). Signal was returned with its original shape: %s",
+                    self,
                 )
             return self
 
         return super()._slicer(slices, isNavigation, out)
+
 
 class CommonStack(Signal2D, ABC):
     """
@@ -250,103 +287,11 @@ class CommonStack(Signal2D, ABC):
     _signal_type = "CommonStack"
     _signal_dimension = 2
 
-    def _create_from_signal(self, data, tilts, *args, **kwargs):
-        """Create stack from HyperSpy signal (helper method for __init__)."""
-        if data.axes_manager.navigation_dimension == 1:
-            ntilts = data.axes_manager[0].size
-            if (
-                data.axes_manager[0].name == Undefined or
-                data.axes_manager[0].name == "z"
-            ):
-                data.axes_manager[0].name = "Projections"
-            if data.axes_manager[0].units == Undefined:
-                data.axes_manager[0].units = "degrees"
-                del data.axes_manager[0].scale
-        else:
-            ntilts = data.axes_manager["Projections"].size
-        if (tilts is not None) and (ntilts != tilts.data.shape[0]):
-            raise MismatchedTiltError(tilts.data.shape[0], ntilts)
-
-        tomo_metadata = {
-            "Tomography": {
-                "cropped": False,
-                "tiltaxis": 0,
-                "xshift": 0,
-                "yshift": 0,
-            },
-        }
-        # metadata may already be present in data
-        if data.metadata.has_item("Tomography"):
-            # don't do anything if the signal already has Tomography metadata
-            pass
-        else:
-            # if not, create default one
-            data.metadata.add_dictionary(tomo_metadata)
-        metadata_dict = data.metadata.as_dictionary()
-
-        # metadata may be supplied in kwargs; if so, overwrite
-        # any existing metadata:
-        if "metadata" in kwargs:
-            metadata_dict = kwargs["metadata"]
-            # add default Tomo metadata if not present
-            if "Tomography" not in metadata_dict:
-                metadata_dict["Tomography"] = tomo_metadata["Tomography"]
-            # remove from kwargs so we don't supply it twice
-            del kwargs["metadata"]
-
-        # do similar check for original metadata
-        original_metadata_dict = data.original_metadata.as_dictionary()
-        if "original_metadata" in kwargs:
-            original_metadata_dict = kwargs["original_metadata"]
-            del kwargs["original_metadata"]
-
-        # similar for axes
-        axes_list = [
-            x for _, x in
-            sorted(data.axes_manager.as_dictionary().items())
-        ]
-        if "axes" in kwargs:
-            axes_list = kwargs["axes"]
-            del kwargs["axes"]
-
-        super().__init__(
-            data,
-            axes=axes_list,
-            metadata=metadata_dict,
-            original_metadata=original_metadata_dict,
-            *args,  # noqa: B026
-            **kwargs,
-        )
-
-    def _create_from_ndarray(self, data, tilts, *args, **kwargs):
-        """Create stack from Numpy array (helper method for __init__)."""
-        ntilts = data.shape[0]
-        if (tilts is not None) and (ntilts != tilts.data.shape[0]):
-            raise MismatchedTiltError(tilts.data.shape[0], ntilts)
-        if "metadata" in kwargs and "Tomography" in kwargs["metadata"]:
-            tomo_metadata = kwargs["metadata"]["Tomography"]
-        else:
-            tomo_metadata = {
-                "cropped": False,
-                "tiltaxis": 0,
-                "xshift": 0,
-                "yshift": 0,
-            }
-        super().__init__(
-            data,
-            tilts=tilts,
-            *args,  # noqa: B026
-            **kwargs,
-        )
-        self.metadata.add_node("Tomography")
-        cast(Dtb, self.metadata.Tomography).add_dictionary(tomo_metadata)
-
-    def __init__(self,
-                 data: Union[np.ndarray, Signal2D],
-                 tilts: Optional[TomoTilts] = None,
-                 shifts: Optional[Union[TomoShifts, np.ndarray]] = None,
-                 *args,
-                 **kwargs,
+    def __init__(
+        self,
+        data: Union[np.ndarray, Signal2D],
+        *args,
+        **kwargs,
     ):
         """
         Create an ETSpy signal instance.
@@ -357,20 +302,6 @@ class CommonStack(Signal2D, ABC):
             The signal data. Can be provided as either a HyperSpy
             :py:class:`hyperspy.api.signals.Signal2D` or a Numpy array
             of the shape `(tilt, y, x)`.
-        tilts
-            A :py:class:`~etspy.base.TomoTilts` containing the
-            tilt value (in degrees) for each projection in the stack.
-            The navigation dimension should match the navigation dimension of the
-            stack (one value per tilt image).
-        shifts
-            A :py:class:`~etspy.base.TomoShifts` or :py:class:`~numpy.ndarray`
-            containing the x/y image shift value (in pixels) for each projection in
-            the stack. A signal should have the same navigation dimension as the stack.
-            A Numpy array should have shape `(nav_size, 2)`. If ``None``, the ``shifts``
-            will be initialized to zero-valued signal.  If shifts are supplied as an
-            :py:class:`~numpy.ndarray`, the Y-shifts (perpendicular to the tilt axis)
-            should be in the ``shifts[:, 0]`` position and X-shifts (parallel to the
-            tilt axis) in ``shifts[:, 1]``.
         args
             Additional non-keyword arguments passed to the
             :py:class:`~hyperspy.api.signals.Signal2D` constructor
@@ -384,10 +315,6 @@ class CommonStack(Signal2D, ABC):
             :py:class:`~etspy.base.CommonStack` is not intended to be used directly.
             One of its sub-classes (:py:class:`~etspy.base.TomoStack` or
             :py:class:`~etspy.base.RecStack`) should be used instead.
-
-        ValueError
-            If the ``tilts`` or ``shifts`` signals provided do not have the correct
-            dimensions.
         """
         if type(self) is CommonStack:
             msg = (
@@ -396,219 +323,7 @@ class CommonStack(Signal2D, ABC):
             )
             raise NotImplementedError(msg)
 
-        # copy axes and metadata if input was already a signal
-        if isinstance(data, Signal2D):
-            self._create_from_signal(data, tilts, *args, **kwargs)
-        elif isinstance(data, np.ndarray):
-            self._create_from_ndarray(data, tilts, *args, **kwargs)
-
-        self.shifts = shifts
-        self.tilts = tilts
-        if self.axes_manager.navigation_axes:
-            # normal single-frame mode:
-            if (
-                # only set axis information if it is undefined
-                self.axes_manager.navigation_dimension == 1 and
-                (
-                    self.axes_manager.navigation_axes[0].units == Undefined or
-                    self.axes_manager.navigation_axes[0].units == ""
-                )
-            ):
-                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
-                nav_ax_0.name = "Projections"
-                nav_ax_0.units = "degrees"
-            # multiframe (special SerialEM case)
-            elif self.axes_manager.navigation_dimension == 2:  # noqa: PLR2004
-                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
-                nav_ax_1 = cast(Uda, self.axes_manager.navigation_axes[1])
-                nav_ax_0.name = (
-                    "Frames" if nav_ax_0.name == Undefined else nav_ax_0.name
-                )
-                nav_ax_0.units = (
-                    "images" if nav_ax_0.units == Undefined else nav_ax_0.units
-                )
-                nav_ax_1.name = (
-                    "Projections" if nav_ax_1.name == Undefined else nav_ax_1.name
-                )
-                nav_ax_1.units = (
-                    "degrees" if nav_ax_1.units == Undefined else nav_ax_1.units
-                )
-        if self.axes_manager.signal_axes:
-            cast(Uda, self.axes_manager.signal_axes[0]).name = "x"
-            cast(Uda, self.axes_manager.signal_axes[1]).name = "y"
-
-        # ensure that shifts and tilts will be sliced when the Signal is
-        self._additional_slicing_targets = [
-            "metadata.Signal.Noise_properties.variance",
-            "_shifts",
-            "_tilts",
-        ]
-
-    def _check_array_shape(
-        self,
-        array: Union[TomoShifts, TomoTilts, np.ndarray],
-        mode: Literal["shifts", "tilts"],
-    ) -> Union[TomoShifts, TomoTilts, np.ndarray]:
-        """
-        Check if a signal or array shape is appropriate for the current stack.
-
-        Used by the shifts and tilts setter methods as a sanity check on the
-        size of the arrays that are provided.
-        """
-        to_check = array.data if isinstance(array, BaseSignal) else array
-        signal_size = 2 if mode == "shifts" else 1
-        # if we have more than one navigation dimension, an ndarray should be
-        # of shape (N, M, 1|2) if the signal's navigation shape is (M, N | X)
-
-        # allow a numpy tilt array to be (*self.axes_manager.navigation_shape,), but if
-        # it is, reshape it to (*self.axes_manager.navigation_shape, 1)
-        if (
-            isinstance(array, np.ndarray) and (mode == "tilts") and
-            (array.shape == (*self.axes_manager.navigation_shape[::-1], ))
-        ):
-            array = array.reshape((*self.axes_manager.navigation_shape[::-1], 1))
-        elif to_check.shape != (*self.axes_manager.navigation_shape[::-1], signal_size):
-            msg = (
-                f"Shape of {mode} array must be "
-                f"{(*self.axes_manager.navigation_shape[::-1] , signal_size)} to match "
-                f"the navigation size of the stack (was {to_check.shape})"
-            )
-            raise ValueError(msg)
-        return array
-
-    def shift_and_tilt_setter(
-        self,
-        mode: Literal["shifts", "tilts"],
-        value: Optional[Union[TomoShifts, TomoTilts, np.ndarray]],
-    ) -> Union[TomoShifts, TomoTilts]:
-        """
-        Set either ``self._tilts`` or ``self._shifts`` to an array.
-
-        This method is split out to reduce duplication of code between the
-        :py:attr:`~etspy.base.CommonStack.tilts` and
-        :py:attr:`~etspy.base.CommonStack.shifts`
-        property setter functions, since they have significant
-        overlap.
-
-        Parameters
-        ----------
-        mode
-            Whether to work on the ``_shifts`` or the ``_tilts`` of the stack
-        value:
-            The values to set, as either an array, or
-            :py:class:`~etspy.base.TomoShifts`, or :py:class:`~etspy.base.TomoTilts`.
-            If ``None``, the values will be initialized to an array of zeros of the
-            appropriate shape.
-
-        Returns
-        -------
-        target : :py:class:`~etspy.base.TomoShifts` or :py:class:`~etspy.base.TomoTilts`
-            The signal that should be set as either the shifts or tilts property.
-
-        Raises
-        ------
-        ValueError
-            If the ``value`` is not the correct shape for either the `shapes` or `tilts`
-            property
-        """
-        signal_size = 2 if mode == "shifts" else 1
-        _cls = TomoShifts if mode == "shifts" else TomoTilts
-        if value is None:
-            # shifts should be shape (self.nav_size | 2), tilts (self.nav_size | 1)
-            # numpy arrays should be the inverse of the navigation shape, so if
-            # self.axes_manager.navigation shape is (N, M), then the data shape provided
-            # to TomoShifts or TomoTilts should be (M, N)
-            target = _cls(
-                data=np.zeros((*self.axes_manager.navigation_shape[::-1], signal_size)),
-            )
-        elif isinstance(value, np.ndarray):
-            value = self._check_array_shape(value, mode)
-            target = _cls(data=value)
-        else:
-            # value is already a Signal, so test the dimensions
-            value = cast(
-                Union[TomoTilts, TomoShifts],
-                self._check_array_shape(value, mode),
-            )
-            # Using the TomoTilts/TomoShifts constructor strips metadata and axis
-            # info, so copy it back:
-            target = cast(Union[TomoTilts, TomoShifts], _cls(data=value))
-            target.metadata.add_dictionary(value.metadata.as_dictionary())
-            target.axes_manager.update_axes_attributes_from(
-                (*value.axes_manager.navigation_axes, *value.axes_manager.signal_axes),
-                ("name", "offset", "scale", "units"),
-            )
-            if target.metadata.get_item("General.title") == "":
-                target.metadata.set_item("General.title", f"Image {mode[:-1]} values")
-
-        # set metadata in the case value was None or Numpy array:
-        if value is None or isinstance(value, np.ndarray):
-            target.metadata.set_item("General.title", f"Image {mode[:-1]} values")
-
-            # set the navigation axes to the same as the signal's:
-            target.axes_manager.update_axes_attributes_from(
-                self.axes_manager.navigation_axes,
-                ("name", "offset", "scale", "units"),
-            )
-
-            if target.axes_manager.signal_axes:
-                tilt_sig_ax = target.axes_manager.signal_axes[0] # pyright: ignore[reportGeneralTypeIssues]
-                tilt_sig_ax.name = (
-                    "Shift values (x/y)" if mode == "shifts" else "Tilt values"
-                )
-                tilt_sig_ax.units = "pixels" if mode == "shifts" else "degrees"
-
-        return target
-
-    @property
-    def shifts(self) -> TomoShifts:
-        """
-        The stack's image shift values (in pixels).
-
-        A :py:class:`~etspy.base.TomoShifts` signal containing the
-        x/y image shift value (in pixels) for each projection in the stack.
-        Should have the same navigation dimension as the stack.
-        """
-        return self._shifts
-
-    @shifts.setter
-    def shifts(self, new_shifts: Optional[Union[TomoShifts, np.ndarray]]):
-        self._shifts = cast(
-            TomoShifts,
-            self.shift_and_tilt_setter("shifts", new_shifts),
-        )
-
-    @shifts.deleter
-    def shifts(self):
-        self._shifts = cast(
-            TomoShifts,
-            self.shift_and_tilt_setter("shifts", np.zeros_like(self.shifts.data)),
-        )
-
-    @property
-    def tilts(self) -> TomoTilts:
-        """
-        The stack's tilt values (in degrees).
-
-        A :py:class:`~etspy.base.TomoTilts` signal containing the
-        tilt value (in degrees) for each projection in the stack.
-        Should have the same navigation dimension as the stack.
-        """
-        return self._tilts
-
-    @tilts.setter
-    def tilts(self, new_tilts: Optional[Union[TomoTilts, np.ndarray]]):
-        self._tilts = cast(
-            TomoTilts,
-            self.shift_and_tilt_setter("tilts", new_tilts),
-        )
-
-    @tilts.deleter
-    def tilts(self):
-        self._tilts = cast(
-            TomoTilts,
-            self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
-        )
+        super().__init__(data, *args, **kwargs)
 
     def plot(self, navigator: str = "slider", *args, **kwargs):
         """
@@ -618,71 +333,6 @@ class CommonStack(Signal2D, ABC):
         :py:meth:`hyperspy.api.signals.Signal2D.plot`
         """
         super().plot(navigator=navigator, *args, **kwargs)  # noqa: B026
-
-    def deepcopy(self):
-        """
-        Return a "deep copy" of this Stack.
-
-        Uses the standard library's :func:`~copy.deepcopy` function. Note: this means
-        the underlying data structure will be duplicated in memory.
-
-        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.deepcopy`
-        method to ensure the ``tilts`` and ``shifts`` properties are also copied
-
-        See Also
-        --------
-        :py:meth:`~etspy.base.CommonStack.copy`
-        """
-        s = copy.deepcopy(self)
-        s.tilts = copy.deepcopy(self.tilts)
-        s.shifts = copy.deepcopy(self.shifts)
-        return s
-
-    def copy(self):
-        """
-        Return a "shallow copy" of this Stack.
-
-        Uses the standard library's :func:`~copy.copy` function. Note: this will
-        return a copy of the, Stack, but it will not duplicate the underlying
-        data in memory, and both Stacks will reference the same data.
-
-        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.copy`
-        method to ensure the ``tilts`` and ``shifts`` properties are also copied
-
-        See Also
-        --------
-        :py:meth:`~etspy.base.CommonStack.deepcopy`
-        """
-        s = copy.copy(self)
-        s.tilts = copy.copy(self.tilts)
-        s.shifts = copy.copy(self.shifts)
-        return s
-
-    def save(
-        self,
-        filename=None,
-        overwrite=None,
-        extension=None,
-        file_format=None,
-        **kwargs,
-    ):
-        """
-        Save the signal in the specified format.
-
-        Overloads the HyperSpy :py:meth:`~hyperspy.api.signals.BaseSignal.save` method
-        so that tilts and shifts are written to metadata prior to saving. All arguments
-        are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`, so please
-        consult that method's documentation for details.
-        """
-        self.metadata.set_item("Tomography.tilts", self.tilts)
-        self.metadata.set_item("Tomography.shifts", self.shifts)
-        super().save(
-            filename=filename,
-            overwrite=overwrite,
-            extension=extension,
-            file_format=file_format,
-            **kwargs,
-        )
 
     def change_data_type(self, dtype: Union[str, np.dtype]):
         """
@@ -1027,22 +677,431 @@ class TomoStack(CommonStack):
     _signal_type = "TomoStack"
     _signal_dimension = 2
 
-    def __init__(self, *args, **kwargs):
+    def _create_tomostack_from_signal(self, data, tilts, *args, **kwargs):
+        """Create stack from HyperSpy signal (helper method for __init__)."""
+        if data.axes_manager.navigation_dimension == 1:
+            ntilts = data.axes_manager[0].size
+        else:
+            ntilts = data.axes_manager["Projections"].size
+        if (tilts is not None) and (ntilts != tilts.data.shape[0]):
+            raise MismatchedTiltError(tilts.data.shape[0], ntilts)
+
+        tomo_metadata = {
+            "Tomography": {
+                "cropped": False,
+                "tiltaxis": 0,
+                "xshift": 0,
+                "yshift": 0,
+            },
+        }
+        # metadata may already be present in data
+        if data.metadata.has_item("Tomography"):
+            # don't do anything if the signal already has Tomography metadata
+            pass
+        else:
+            # if not, create default one
+            data.metadata.add_dictionary(tomo_metadata)
+        metadata_dict = data.metadata.as_dictionary()
+
+        # metadata may be supplied in kwargs; if so, overwrite
+        # any existing metadata:
+        if "metadata" in kwargs:
+            metadata_dict = kwargs["metadata"]
+            # add default Tomo metadata if not present
+            if "Tomography" not in metadata_dict:
+                metadata_dict["Tomography"] = tomo_metadata["Tomography"]
+            # remove from kwargs so we don't supply it twice
+            del kwargs["metadata"]
+
+        # do similar check for original metadata
+        original_metadata_dict = data.original_metadata.as_dictionary()
+        if "original_metadata" in kwargs:
+            original_metadata_dict = kwargs["original_metadata"]
+            del kwargs["original_metadata"]
+
+        # similar for axes
+        axes_list = [x for _, x in sorted(data.axes_manager.as_dictionary().items())]
+        if "axes" in kwargs:
+            axes_list = kwargs["axes"]
+            del kwargs["axes"]
+
+        super().__init__(
+            data,
+            axes=axes_list,
+            metadata=metadata_dict,
+            original_metadata=original_metadata_dict,
+            *args,  # noqa: B026
+            **kwargs,
+        )
+
+    def _fix_projection_axis(self, axis_number: int):
+        ax = cast(Uda, self.axes_manager[axis_number])
+        if ax.name in (Undefined, "z"):
+            ax.name = "Projections"
+        if ax.units == Undefined:
+            ax.units = "degrees"
+            del ax.scale
+
+    def _fix_frames_axis(self, axis_number: int):
+        ax = cast(Uda, self.axes_manager[axis_number])
+        if ax.name in (Undefined, "z"):
+            ax.name = "Frames"
+        if ax.units == Undefined:
+            ax.units = "images"
+            del ax.scale
+
+    def _create_tomostack_from_ndarray(self, data, tilts, *args, **kwargs):
+        """Create stack from Numpy array (helper method for __init__)."""
+        ntilts = data.shape[0]
+        if (tilts is not None) and (ntilts != tilts.data.shape[0]):
+            raise MismatchedTiltError(tilts.data.shape[0], ntilts)
+        if "metadata" in kwargs and "Tomography" in kwargs["metadata"]:
+            tomo_metadata = kwargs["metadata"]["Tomography"]
+        else:
+            tomo_metadata = {
+                "cropped": False,
+                "tiltaxis": 0,
+                "xshift": 0,
+                "yshift": 0,
+            }
+        super().__init__(
+            data,
+            *args,
+            **kwargs,
+        )
+        self.metadata.add_node("Tomography")
+        cast(Dtb, self.metadata.Tomography).add_dictionary(tomo_metadata)
+
+        # need to handle navigation_dimension == 1 (normal case) or == 2 (multiframe)
+        if self.axes_manager.navigation_dimension == 0:
+            # single projection (rare case, but should allow)
+            pass
+        elif self.axes_manager.navigation_dimension == 1:
+            # normal case
+            self._fix_projection_axis(0)
+        elif self.axes_manager.navigation_dimension == 2:  # noqa: PLR2004
+            # multiframe
+            self._fix_projection_axis(1)
+            self._fix_frames_axis(0)
+        else:
+            msg = (
+                "Invalid number of navigation dimensions for a TomoStack ("
+                f"{self.axes_manager.navigation_dimension}). Must be either 0, 1, or 2."
+            )
+            raise ValueError(msg)
+
+        signal_axes = cast(tuple[Uda, Uda], self.axes_manager.signal_axes)
+        x_axis = signal_axes[0]
+        x_axis.name = "x"
+        if x_axis.units == Undefined:
+            x_axis.units = "pixels"
+
+        y_axis = signal_axes[1]
+        y_axis.name = "y"
+        if y_axis.units == Undefined:
+            y_axis.units = "pixels"
+
+    def __init__(
+        self,
+        data: Union[np.ndarray, Signal2D],
+        tilts: Optional[TomoTilts] = None,
+        shifts: Optional[Union[TomoShifts, np.ndarray]] = None,
+        *args,
+        **kwargs,
+    ):
         """
-        Create a TomoStack signal.
+        Create a TomoStack signal instance.
 
         Parameters
         ----------
+        data
+            The signal data. Can be provided as either a HyperSpy
+            :py:class:`hyperspy.api.signals.Signal2D` or a Numpy array
+            of the shape `(tilt, y, x)`.
+        tilts
+            A :py:class:`~etspy.base.TomoTilts` containing the
+            tilt value (in degrees) for each projection in the stack.
+            The navigation dimension should match the navigation dimension of the
+            stack (one value per tilt image).
+        shifts
+            A :py:class:`~etspy.base.TomoShifts` or :py:class:`~numpy.ndarray`
+            containing the x/y image shift value (in pixels) for each projection in
+            the stack. A signal should have the same navigation dimension as the stack.
+            A Numpy array should have shape `(nav_size, 2)`. If ``None``, the ``shifts``
+            will be initialized to zero-valued signal.  If shifts are supplied as an
+            :py:class:`~numpy.ndarray`, the Y-shifts (perpendicular to the tilt axis)
+            should be in the ``shifts[:, 0]`` position and X-shifts (parallel to the
+            tilt axis) in ``shifts[:, 1]``.
         args
-            Additional non-keyword arguments passed to
-            :py:class:`~hyperspy.api.signals.Signal2D`
+            Additional non-keyword arguments passed to the
+            :py:class:`~hyperspy.api.signals.Signal2D` constructor
         kwargs
-            Additional keyword arguments passed to
-            :py:class:`~hyperspy.api.signals.Signal2D`
+            Additional keyword arguments passed to the
+            :py:class:`hyperspy.api.signals.Signal2D` constructor
+
+        Raises
+        ------
+        ValueError
+            If the ``tilts`` or ``shifts`` signals provided do not have the correct
+            dimensions.
         """
-        super().__init__(*args, **kwargs)
+        # copy axes and metadata if input was already a signal
+        if isinstance(data, Signal2D):
+            self._create_tomostack_from_signal(data, tilts, *args, **kwargs)
+        elif isinstance(data, np.ndarray):
+            self._create_tomostack_from_ndarray(data, tilts, *args, **kwargs)
+
+        self.shifts = shifts
+        self.tilts = tilts
+        if self.axes_manager.navigation_axes:
+            # normal single-frame mode:
+            if (
+                # only set axis information if it is undefined
+                self.axes_manager.navigation_dimension == 1
+                and (
+                    self.axes_manager.navigation_axes[0].units == Undefined
+                    or self.axes_manager.navigation_axes[0].units == ""
+                )
+            ):
+                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
+                nav_ax_0.name = "Projections"
+                nav_ax_0.units = "degrees"
+            # multiframe (special SerialEM case)
+            elif self.axes_manager.navigation_dimension == 2:  # noqa: PLR2004
+                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
+                nav_ax_1 = cast(Uda, self.axes_manager.navigation_axes[1])
+                nav_ax_0.name = (
+                    "Frames" if nav_ax_0.name == Undefined else nav_ax_0.name
+                )
+                nav_ax_0.units = (
+                    "images" if nav_ax_0.units == Undefined else nav_ax_0.units
+                )
+                nav_ax_1.name = (
+                    "Projections" if nav_ax_1.name == Undefined else nav_ax_1.name
+                )
+                nav_ax_1.units = (
+                    "degrees" if nav_ax_1.units == Undefined else nav_ax_1.units
+                )
+        if self.axes_manager.signal_axes:
+            cast(Uda, self.axes_manager.signal_axes[0]).name = "x"
+            cast(Uda, self.axes_manager.signal_axes[1]).name = "y"
+
+        # ensure that shifts and tilts will be sliced when the Signal is
+        self._additional_slicing_targets = [
+            "metadata.Signal.Noise_properties.variance",
+            "_shifts",
+            "_tilts",
+        ]
+
         self.inav = _TomoStackSlicer(self, isNavigation=True)
         self.isig = _TomoStackSlicer(self, isNavigation=False)
+
+    def _check_array_shape(
+        self,
+        array: Union[TomoShifts, TomoTilts, np.ndarray],
+        mode: Literal["shifts", "tilts"],
+    ) -> Union[TomoShifts, TomoTilts, np.ndarray]:
+        """
+        Check if a signal or array shape is appropriate for the current stack.
+
+        Used by the shifts and tilts setter methods as a sanity check on the
+        size of the arrays that are provided.
+        """
+        to_check = array.data if isinstance(array, BaseSignal) else array
+        signal_size = 2 if mode == "shifts" else 1
+        # if we have more than one navigation dimension, an ndarray should be
+        # of shape (N, M, 1|2) if the signal's navigation shape is (M, N | X)
+
+        # allow a numpy tilt array to be (*self.axes_manager.navigation_shape,), but if
+        # it is, reshape it to (*self.axes_manager.navigation_shape, 1)
+        if (
+            isinstance(array, np.ndarray)
+            and (mode == "tilts")
+            and (array.shape == (*self.axes_manager.navigation_shape[::-1],))
+        ):
+            array = array.reshape((*self.axes_manager.navigation_shape[::-1], 1))
+        elif to_check.shape != (*self.axes_manager.navigation_shape[::-1], signal_size):
+            msg = (
+                f"Shape of {mode} array must be "
+                f"{(*self.axes_manager.navigation_shape[::-1] , signal_size)} to match "
+                f"the navigation size of the stack (was {to_check.shape})"
+            )
+            raise ValueError(msg)
+        return array
+
+    def shift_and_tilt_setter(
+        self,
+        mode: Literal["shifts", "tilts"],
+        value: Optional[Union[TomoShifts, TomoTilts, np.ndarray]],
+    ) -> Union[TomoShifts, TomoTilts]:
+        """
+        Set either ``self._tilts`` or ``self._shifts`` to an array.
+
+        This method is split out to reduce duplication of code between the
+        :py:attr:`~etspy.base.TomoStack.tilts` and
+        :py:attr:`~etspy.base.TomoStack.shifts`
+        property setter functions, since they have significant
+        overlap.
+
+        Parameters
+        ----------
+        mode
+            Whether to work on the ``_shifts`` or the ``_tilts`` of the stack
+        value:
+            The values to set, as either an array, or
+            :py:class:`~etspy.base.TomoShifts`, or :py:class:`~etspy.base.TomoTilts`.
+            If ``None``, the values will be initialized to an array of zeros of the
+            appropriate shape.
+
+        Returns
+        -------
+        target : :py:class:`~etspy.base.TomoShifts` or :py:class:`~etspy.base.TomoTilts`
+            The signal that should be set as either the shifts or tilts property.
+
+        Raises
+        ------
+        ValueError
+            If the ``value`` is not the correct shape for either the `shapes` or `tilts`
+            property
+        """
+        signal_size = 2 if mode == "shifts" else 1
+        _cls = TomoShifts if mode == "shifts" else TomoTilts
+        if value is None:
+            # shifts should be shape (self.nav_size | 2), tilts (self.nav_size | 1)
+            # numpy arrays should be the inverse of the navigation shape, so if
+            # self.axes_manager.navigation shape is (N, M), then the data shape provided
+            # to TomoShifts or TomoTilts should be (M, N)
+            target = _cls(
+                data=np.zeros((*self.axes_manager.navigation_shape[::-1], signal_size)),
+            )
+        elif isinstance(value, np.ndarray):
+            value = self._check_array_shape(value, mode)
+            target = _cls(data=value)
+        else:
+            # value is already a Signal, so test the dimensions
+            value = cast(
+                Union[TomoTilts, TomoShifts],
+                self._check_array_shape(value, mode),
+            )
+            # Using the TomoTilts/TomoShifts constructor strips metadata and axis
+            # info, so copy it back:
+            target = cast(Union[TomoTilts, TomoShifts], _cls(data=value))
+            target.metadata.add_dictionary(value.metadata.as_dictionary())
+            target.axes_manager.update_axes_attributes_from(
+                (*value.axes_manager.navigation_axes, *value.axes_manager.signal_axes),
+                ("name", "offset", "scale", "units"),
+            )
+            if target.metadata.get_item("General.title") == "":
+                target.metadata.set_item("General.title", f"Image {mode[:-1]} values")
+
+        # set metadata in the case value was None or Numpy array:
+        if value is None or isinstance(value, np.ndarray):
+            target.metadata.set_item("General.title", f"Image {mode[:-1]} values")
+
+            # set the navigation axes to the same as the signal's:
+            target.axes_manager.update_axes_attributes_from(
+                self.axes_manager.navigation_axes,
+                ("name", "offset", "scale", "units"),
+            )
+
+            if target.axes_manager.signal_axes:
+                tilt_sig_ax = target.axes_manager.signal_axes[0]  # pyright: ignore[reportGeneralTypeIssues]
+                tilt_sig_ax.name = (
+                    "Shift values (x/y)" if mode == "shifts" else "Tilt values"
+                )
+                tilt_sig_ax.units = "pixels" if mode == "shifts" else "degrees"
+
+        return target
+
+    @property
+    def shifts(self) -> TomoShifts:
+        """
+        The stack's image shift values (in pixels).
+
+        A :py:class:`~etspy.base.TomoShifts` signal containing the
+        x/y image shift value (in pixels) for each projection in the stack.
+        Should have the same navigation dimension as the stack.
+        """
+        return self._shifts
+
+    @shifts.setter
+    def shifts(self, new_shifts: Optional[Union[TomoShifts, np.ndarray]]):
+        self._shifts = cast(
+            TomoShifts,
+            self.shift_and_tilt_setter("shifts", new_shifts),
+        )
+
+    @shifts.deleter
+    def shifts(self):
+        self._shifts = cast(
+            TomoShifts,
+            self.shift_and_tilt_setter("shifts", np.zeros_like(self.shifts.data)),
+        )
+
+    @property
+    def tilts(self) -> TomoTilts:
+        """
+        The stack's tilt values (in degrees).
+
+        A :py:class:`~etspy.base.TomoTilts` signal containing the
+        tilt value (in degrees) for each projection in the stack.
+        Should have the same navigation dimension as the stack.
+        """
+        return self._tilts
+
+    @tilts.setter
+    def tilts(self, new_tilts: Optional[Union[TomoTilts, np.ndarray]]):
+        self._tilts = cast(
+            TomoTilts,
+            self.shift_and_tilt_setter("tilts", new_tilts),
+        )
+
+    @tilts.deleter
+    def tilts(self):
+        self._tilts = cast(
+            TomoTilts,
+            self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
+        )
+
+
+    def deepcopy(self):
+        """
+        Return a "deep copy" of this Stack.
+
+        Uses the standard library's :func:`~copy.deepcopy` function. Note: this means
+        the underlying data structure will be duplicated in memory.
+
+        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.deepcopy`
+        method to ensure the ``tilts`` and ``shifts`` properties are also copied
+
+        See Also
+        --------
+        :py:meth:`~etspy.base.TomoStack.copy`
+        """
+        s = copy.deepcopy(self)
+        s.tilts = copy.deepcopy(self.tilts)
+        s.shifts = copy.deepcopy(self.shifts)
+        return s
+
+    def copy(self):
+        """
+        Return a "shallow copy" of this Stack.
+
+        Uses the standard library's :func:`~copy.copy` function. Note: this will
+        return a copy of the, Stack, but it will not duplicate the underlying
+        data in memory, and both Stacks will reference the same data.
+
+        Overrides the :py:meth:`~hyperspy.api.signals.BaseSignal.copy`
+        method to ensure the ``tilts`` and ``shifts`` properties are also copied
+
+        See Also
+        --------
+        :py:meth:`~etspy.base.TomoStack.deepcopy`
+        """
+        s = copy.copy(self)
+        s.tilts = copy.copy(self.tilts)
+        s.shifts = copy.copy(self.shifts)
+        return s
 
     def plot_sinos(self, *args: Tuple, **kwargs: Dict):
         """
@@ -1059,7 +1118,7 @@ class TomoStack(CommonStack):
         """
         Signal2D(
             data=self.data,
-            axes=[v for k,v in self.axes_manager.as_dictionary().items()],
+            axes=[v for k, v in self.axes_manager.as_dictionary().items()],
         ).swap_axes(1, 0).swap_axes(1, 2).plot(
             navigator="slider",
             *args,  # noqa: B026
@@ -1094,9 +1153,9 @@ class TomoStack(CommonStack):
             raise ValueError(msg)
         nprojs = len(projections)
         s_new = self.deepcopy()
-        s_ax =  cast(Uda, s_new.axes_manager[0])
-        s_tilt_ax =  cast(Uda, s_new.tilts.axes_manager[0])
-        s_shift_ax =  cast(Uda, s_new.shifts.axes_manager[0])
+        s_ax = cast(Uda, s_new.axes_manager[0])
+        s_tilt_ax = cast(Uda, s_new.tilts.axes_manager[0])
+        s_shift_ax = cast(Uda, s_new.shifts.axes_manager[0])
         for ax in (s_ax, s_tilt_ax, s_shift_ax):
             ax.size -= nprojs
         mask = np.ones(self.data.shape[0], dtype=bool)
@@ -1105,6 +1164,32 @@ class TomoStack(CommonStack):
         s_new.tilts.data = self.tilts.data[mask]
         s_new.shifts.data = self.shifts.data[mask]
         return s_new
+
+    def save(
+        self,
+        filename=None,
+        overwrite=None,
+        extension=None,
+        file_format=None,
+        **kwargs,
+    ):
+        """
+        Save the signal in the specified format.
+
+        Overloads the HyperSpy :py:meth:`~hyperspy.api.signals.BaseSignal.save` method
+        so that tilts and shifts are written to metadata prior to saving. All arguments
+        are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`, so please
+        consult that method's documentation for details.
+        """
+        self.metadata.set_item("Tomography.tilts", self.tilts)
+        self.metadata.set_item("Tomography.shifts", self.shifts)
+        super().save(
+            filename=filename,
+            overwrite=overwrite,
+            extension=extension,
+            file_format=file_format,
+            **kwargs,
+        )
 
     def test_correlation(
         self,
@@ -1846,37 +1931,37 @@ class TomoStack(CommonStack):
         """
         output = self.deepcopy()
         if yshift == 0:
-            if xshift > 0:                  # x+ , y0
+            if xshift > 0:  # x+ , y0
                 output.data = output.data[:, :, :-xshift]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :, xshift:]
                 output.data[nslice:, :, :] = self.data[nslice:, :, :-xshift]
-            elif xshift < 0:                # x- , y0
+            elif xshift < 0:  # x- , y0
                 output.data = output.data[:, :, :xshift]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :, :xshift]
                 output.data[nslice:, :, :] = self.data[nslice:, :, -xshift:]
 
         elif xshift == 0:
-            if yshift > 0:                  # x0 , y+
+            if yshift > 0:  # x0 , y+
                 output.data = output.data[:, :-yshift, :]
                 output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :]
                 output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :]
-            elif yshift < 0:                # x0 , y-
+            elif yshift < 0:  # x0 , y-
                 output.data = output.data[:, :yshift, :]
                 output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :]
                 output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :]
-        elif (xshift > 0) and (yshift > 0): # x+ , y+
+        elif (xshift > 0) and (yshift > 0):  # x+ , y+
             output.data = output.data[:, :-yshift, :-xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, xshift:]
             output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :-xshift]
-        elif (xshift > 0) and (yshift < 0): # x+ , y-
+        elif (xshift > 0) and (yshift < 0):  # x+ , y-
             output.data = output.data[:, :yshift, :-xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, xshift:]
             output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :-xshift]
-        elif (xshift < 0) and (yshift > 0): # x- , y +
+        elif (xshift < 0) and (yshift > 0):  # x- , y +
             output.data = output.data[:, :-yshift, :xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :xshift]
             output.data[nslice:, :, :] = self.data[nslice:, :-yshift, -xshift:]
-        elif (xshift < 0) and (yshift < 0): # x- , x-
+        elif (xshift < 0) and (yshift < 0):  # x- , x-
             output.data = output.data[:, :yshift, :xshift]
             output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :xshift]
             output.data[nslice:, :, :] = self.data[nslice:, -yshift:, -xshift:]
@@ -1968,7 +2053,7 @@ class TomoStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        sinogram = self.isig[nslice, :].data
+        sinogram = self.isig[nslice:nslice+1, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
             angles=self.tilts.data,
@@ -1997,6 +2082,65 @@ class TomoStack(CommonStack):
         cast(Uda, error.axes_manager[0]).name = algorithm.upper() + " Iteration"
         cast(Dtb, error.metadata.Signal).quantity = "Sum of Squared Difference"
         return rec_stack, error
+
+    def extract_sinogram(
+        self,
+        column: Union[int, float],  # noqa: PYI041
+    ) -> Signal2D:
+        """
+        Extract a sinogram from a single column of the TomoStack.
+
+        The value to use for ``column`` can be supplied as either
+        an integer for pixel-based indexing, or as a float for unit-based
+        indexing. The resulting image will have the stack's projection axis
+        oriented vertically and the y-axis horizontally.
+
+        Parameters
+        ----------
+        column
+            The x-axis position to use for computing the sinogram. If an integer,
+            pixel-basd indexing will be used. If a float, unit-based indexing will
+            be used.
+
+        Returns
+        -------
+        sino : :py:class:`~hyperspy.api.signals.Signal2D`
+            A single image representing the single column data over the range of
+            projections in the original TomoStack.
+
+        Raises
+        ------
+        TypeError
+            Raised if column is neither a float or int
+        """
+        if not isinstance(column, (float, int)):
+            msg = (
+                '"column" argument must be either a float or an integer '
+                f"(was {type(column)})"
+            )
+            raise TypeError(msg)
+
+        # hide isig warning from TomoStackSlicer
+        orig_logger_state = logger.disabled
+        logger.disabled = True
+        try:
+            sino = self.isig[column, :]
+            sino.set_signal_type("")
+            sino = cast(Signal2D, sino.as_signal2D((2, 0)))
+            if isinstance(column, float):
+                title = f"Sinogram at x = {column} {self.axes_manager[1].units}" # type: ignore
+            else:
+                title = f"Sinogram at column {column}"
+        except Exception:
+            # if there was an error above, reset the logger state
+            # before raising it
+            logger.disabled = orig_logger_state
+            raise
+
+        logger.disabled = orig_logger_state
+        sino = sino.squeeze()
+        sino.metadata.set_item("General.title", title)
+        return sino
 
 
 class RecStack(CommonStack):
@@ -2032,6 +2176,12 @@ class RecStack(CommonStack):
             :py:class:`~hyperspy.api.signals.Signal2D`
         """
         super().__init__(*args, **kwargs)
+
+        if self.axes_manager.navigation_dimension not in (0, 1):
+            msg = ("A RecStack must have a singular (or no) navigation axis. "
+                   f"Navigation shape was: {self.axes_manager.navigation_shape}")
+            raise ValueError(msg)
+
         self.inav = _RecStackSlicer(self, isNavigation=True)
         self.isig = _RecStackSlicer(self, isNavigation=False)
 
