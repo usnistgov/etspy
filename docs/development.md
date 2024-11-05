@@ -136,3 +136,4 @@ You should then be able to install from PyPI with the new version (e.g. `pip ins
 - Packages on `conda-forge` were set up using the great instructions provided by the
   [PyOpenSci](https://www.pyopensci.org/python-package-guide/tutorials/publish-conda-forge.html)
   project
+- The conda "recipe" is held in the following repository: [https://github.com/conda-forge/etspy-feedstock](https://github.com/conda-forge/etspy-feedstock)
