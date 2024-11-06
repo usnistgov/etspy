@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
 # ensure that cuda version of astra gets installed
-  - astra-toolbox=*=*cuda*
+  - astra-toolbox>=2.1=*cuda*
   - cupy
   - ffmpeg
   - hyperspy-base
