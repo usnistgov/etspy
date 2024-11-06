@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "etspy"
-version = "1.0.0"
+version = "1.0.1"
 description = "Suite of tools for processing and reconstruction of electron tomography data"
 authors = [
     "Andrew A. Herzing <andrew.herzing@nist.gov>",
@@ -10,7 +10,7 @@ license = "NIST Public License"
 readme = "README.md"
 homepage = "https://pages.nist.gov/etspy/"
 repository = "https://github.com/usnistgov/etspy/"
-documentation = "https://pages.nist.gov/etspy/docs/"
+documentation = "https://pages.nist.gov/etspy/"
 packages = [
     { include = "etspy" }
 ]
