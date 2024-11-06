@@ -18,7 +18,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.10, <3.13"
 pystackreg = "^0.2.8"
-astra-toolbox = "^2.2.0"
+astra-toolbox = ">=2.1"
 hyperspy = "^2.1.1"
 hyperspy-gui-ipywidgets = "^2.0.2"
 numba = "^0.60.0"

@@ -4,7 +4,7 @@ name: etspy
 channels:
   - conda-forge
 dependencies:
-  - astra-toolbox
+  - astra-toolbox>=2.1
   - ffmpeg
   - hyperspy-base
   - hyperspy-gui-ipywidgets
