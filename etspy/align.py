@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 has_cupy = True
 try:
     import cupy as cp  # type: ignore
+    import cupyx.scipy as scipyx
 except ImportError:
     has_cupy = False
 
@@ -184,6 +185,100 @@ def apply_shifts(
         raise ValueError(msg)
 
     shifted.shifts.data = shifted.shifts.data + shifts
+    return shifted
+
+
+def apply_shifts_cuda(
+    stack: "TomoStack",
+    shifts: Union["TomoShifts", np.ndarray],
+    method: Literal["interp", "fourier"] = "interp",
+) -> "TomoStack":
+    """
+    Apply a series of shifts to a TomoStack using CUDA acceleration.
+
+    Parameters
+    ----------
+    stack
+        The image series to be aligned
+    shifts
+        The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
+        each image. Should be of size
+        ``(*stack.axes_manager.navigation_shape[::-1], 2)``,
+        with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
+        position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
+    method
+        Image shifts can be applied using either interpolation via scipy.ndimage.shift
+        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
+        either 'interp' or 'fourier'.
+
+    Returns
+    -------
+    shifted : TomoStack
+        Copy of input stack after shifts are applied
+
+    Group
+    -----
+    align
+    """
+    shifted = stack.deepcopy()
+
+    data = cp.array(shifted.data)
+    if isinstance(shifts, BaseSignal):
+        shifts = shifts.data
+    shifts = cp.array(shifts)
+
+    if len(shifts) != stack.data.shape[0]:
+        msg = (
+            f"Number of shifts ({len(shifts)}) is not consistent "
+            f"with number of images in the stack ({stack.data.shape[0]})"
+        )
+        raise ValueError(msg)
+
+    if method.lower() == "interp":
+        for i in range(data.shape[0]):
+            data[i, :, :] = scipyx.ndimage.shift(
+                data[i, :, :],
+                shift=[shifts[i, 0], shifts[i, 1]],
+            )
+    elif method.lower() == "fourier":
+        _, ny, nx = data.shape
+        y_pad_min = cp.abs(shifts[:, 0]).max() + ny
+        ny_pad = int(2 ** np.ceil(cp.log2(y_pad_min)))
+        y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
+
+        x_pad_min = cp.abs(shifts[:, 1]).max() + nx
+        nx_pad = int(2 ** cp.ceil(np.log2(x_pad_min)))
+        x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
+
+        padded = cp.pad(
+            data,
+            ((0, 0), y_pad_width, x_pad_width),
+            mode="constant",
+        )
+        data = padded
+        _, ny, nx = data.shape
+        data_fft = cp.fft.fft2(data, axes=(1, 2))
+        for i in range(data.shape[0]):
+            data_fft[i, :, :] = cp.fft.ifft2(
+                scipyx.ndimage.fourier_shift(
+                    data_fft[i],
+                    shift=[shifts[i, 0], shifts[i, 1]],
+                ),
+            )
+        data = cp.real(data_fft)
+        slices = [
+            slice(0, None),
+        ]
+        for i in [y_pad_width, x_pad_width]:
+            i[1] = None if i[1] == 0 else -i[1]
+            slices.append(slice(i[0], i[1]))
+        data = data[tuple(slices)]
+    else:
+        msg = f"Invalid shift application method {method}."
+        raise ValueError(msg)
+
+    shifted.data = data.get()
+    shifted.shifts.data = shifted.shifts.data + shifts.get()
     return shifted
 
 
@@ -876,7 +971,10 @@ def align_stack(  # noqa: PLR0913
     else:
         msg = f"Invalid alignment method {method}"
         raise ValueError(msg)
-    aligned = apply_shifts(stack, shifts, shift_type)
+    if cuda:
+        aligned = apply_shifts_cuda(stack, shifts, shift_type)
+    else:
+        aligned = apply_shifts(stack, shifts, shift_type)
     logger.info("Stack registration complete")
     return aligned
 
