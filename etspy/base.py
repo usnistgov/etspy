@@ -1063,7 +1063,6 @@ class TomoStack(CommonStack):
             self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
         )
 
-
     def deepcopy(self):
         """
         Return a "deep copy" of this Stack.
@@ -1386,6 +1385,7 @@ class TomoStack(CommonStack):
         cl_resolution: float = 0.05,
         cl_div_factor: int = 8,
         cuda: bool = False,
+        shift_type: Literal["interp", "fourier"] = "interp",
     ) -> "TomoStack":
         """
         Register stack spatially.
@@ -1442,6 +1442,10 @@ class TomoStack(CommonStack):
             :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
         cuda
             Whether or not to use CUDA-accelerated reconstruction algorithms.
+        shift_type
+            Calculated image shifts can be applied using either interpolation via
+            scipy.ndimage.shift or via Fourier shift as implemented in
+            scipy.ndimage.fourier_shift.  Must be either 'interp' or 'fourier'.
 
         Returns
         -------
@@ -1485,6 +1489,7 @@ class TomoStack(CommonStack):
                 cl_resolution=cl_resolution,
                 cl_div_factor=cl_div_factor,
                 cuda=cuda,
+                shift_type=shift_type,
             )
         else:
             msg = (
@@ -2053,7 +2058,7 @@ class TomoStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        sinogram = self.isig[nslice:nslice+1, :].data.squeeze()
+        sinogram = self.isig[nslice : nslice + 1, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
             angles=self.tilts.data,
@@ -2128,7 +2133,7 @@ class TomoStack(CommonStack):
             sino.set_signal_type("")
             sino = cast(Signal2D, sino.as_signal2D((2, 0)))
             if isinstance(column, float):
-                title = f"Sinogram at x = {column} {self.axes_manager[1].units}" # type: ignore
+                title = f"Sinogram at x = {column} {self.axes_manager[1].units}"  # type: ignore
             else:
                 title = f"Sinogram at column {column}"
         except Exception:
@@ -2178,8 +2183,10 @@ class RecStack(CommonStack):
         super().__init__(*args, **kwargs)
 
         if self.axes_manager.navigation_dimension not in (0, 1):
-            msg = ("A RecStack must have a singular (or no) navigation axis. "
-                   f"Navigation shape was: {self.axes_manager.navigation_shape}")
+            msg = (
+                "A RecStack must have a singular (or no) navigation axis. "
+                f"Navigation shape was: {self.axes_manager.navigation_shape}"
+            )
             raise ValueError(msg)
 
         self.inav = _RecStackSlicer(self, isNavigation=True)
