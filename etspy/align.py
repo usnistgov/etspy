@@ -4,7 +4,7 @@
 
 import copy
 import logging
-from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Literal, Optional, Tuple, Union, cast
 
 import astra
 import matplotlib.pylab as plt
@@ -13,7 +13,7 @@ import tqdm
 from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
-from scipy import ndimage, optimize
+from scipy import fft, ndimage, optimize
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
@@ -98,6 +98,8 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
 def apply_shifts(
     stack: "TomoStack",
     shifts: Union["TomoShifts", np.ndarray],
+    method: Literal["interp", "fourier"] = "interp",
+    pad: bool = False,
 ) -> "TomoStack":
     """
     Apply a series of shifts to a TomoStack.
@@ -112,6 +114,13 @@ def apply_shifts(
         ``(*stack.axes_manager.navigation_shape[::-1], 2)``,
         with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
         position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
+    method
+        Image shifts can be applied using either interpolation via scipy.ndimage.shift
+        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
+        either 'interp' or 'fourier'.
+    pad
+        If True, the image will be padded up to the next power of 2 in both dimensions
+        to prevent wraparound when using the Fourier shift method
 
     Returns
     -------
@@ -133,11 +142,47 @@ def apply_shifts(
             f"with number of images in the stack ({stack.data.shape[0]})"
         )
         raise ValueError(msg)
-    for i in range(shifted.data.shape[0]):
-        shifted.data[i, :, :] = ndimage.shift(
-            shifted.data[i, :, :],
-            shift=[shifts[i, 0], shifts[i, 1]],
-        )
+    if method.lower() == "interp":
+        for i in range(shifted.data.shape[0]):
+            shifted.data[i, :, :] = ndimage.shift(
+                shifted.data[i, :, :],
+                shift=[shifts[i, 0], shifts[i, 1]],
+            )
+    elif method.lower() == "fourier":
+        if pad:
+            _, ny, nx = shifted.data.shape
+            y_pad_min = np.abs(shifts[:, 0]).max() + ny
+            ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
+            y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
+
+            x_pad_min = np.abs(shifts[:, 1]).max() + nx
+            nx_pad = int(2 ** np.ceil(np.log2(x_pad_min)))
+            x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
+
+            shifted_padded = np.pad(
+                shifted,
+                ((0, 0), y_pad_width, x_pad_width),
+                mode="constant",
+            )
+            shifted = shifted_padded
+            _, ny, nx = shifted.shape
+        for i in range(shifted.data.shape[0]):
+            shifted.data[i, :, :] = np.real(
+                fft.ifft2(
+                    ndimage.fourier_shift(
+                        fft.fft2(shifted.data[i, :, :]),
+                        shift=[shifts[i, 0], shifts[i, 1]],
+                    ),
+                ),
+            )
+        if pad:
+            slices = [
+                slice(0, None),
+            ]
+            for i in [y_pad_width, x_pad_width]:
+                i[1] = None if i[1] == 0 else -i[1]
+                slices.append(slice(i[0], i[1]))
+            shifted = shifted[tuple(slices)]
 
     shifted.shifts.data = shifted.shifts.data + shifts
     return shifted
@@ -390,7 +435,7 @@ def _upsampled_dft(
         kernel = cp.exp(-im2pi * kernel)
         # use kernel with same precision as the data
         kernel = kernel.astype(data.dtype, copy=False)
-        data = cp.tensordot(kernel, data, axes=(1, -1)) # type: ignore
+        data = cp.tensordot(kernel, data, axes=(1, -1))  # type: ignore
     return data
 
 
@@ -911,7 +956,7 @@ def tilt_com(
     slices = np.sort(slices)
 
     coms = get_coms(stack, slices)
-    thetas = np.pi * stack.tilts.data.squeeze() / 180.0 # remove length 1 dimension
+    thetas = np.pi * stack.tilts.data.squeeze() / 180.0  # remove length 1 dimension
 
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 
@@ -1012,7 +1057,7 @@ def tilt_maximage(
         shifted = ali.isig[0:nshifts, :].deepcopy()
         for i in range(nshifts):
             shifted.data[:, :, i] = np.roll(
-                ali.isig[idx:idx+1, :].data.squeeze(),
+                ali.isig[idx : idx + 1, :].data.squeeze(),
                 int(shifts[i]),
             )
         shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
