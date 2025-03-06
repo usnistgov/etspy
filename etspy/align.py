@@ -27,7 +27,8 @@ if TYPE_CHECKING:
 has_cupy = True
 try:
     import cupy as cp  # type: ignore
-    from cupyx import scipy as scipyx
+    from cupyx.scipy.ndimage import fourier_shift as fourier_shift_gpu
+    from cupyx.scipy.ndimage import shift as shift_gpu
 except ImportError:
     has_cupy = False
 
@@ -236,7 +237,7 @@ def apply_shifts_cuda(
 
     if method.lower() == "interp":
         for i in range(data.shape[0]):
-            data[i, :, :] = scipyx.ndimage.shift(
+            data[i, :, :] = shift_gpu(
                 data[i, :, :],
                 shift=[shifts[i, 0], shifts[i, 1]],
             )
@@ -260,7 +261,7 @@ def apply_shifts_cuda(
         data_fft = cp.fft.fft2(data, axes=(1, 2))
         for i in range(data.shape[0]):
             data_fft[i, :, :] = cp.fft.ifft2(
-                scipyx.ndimage.fourier_shift(
+                fourier_shift_gpu(
                     data_fft[i],
                     shift=[shifts[i, 0], shifts[i, 1]],
                 ),

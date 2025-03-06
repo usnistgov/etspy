@@ -10,11 +10,13 @@ import pytest
 
 import etspy.datasets as ds
 from etspy import recon
+from etspy.align import apply_shifts_cuda
 from etspy.base import RecStack, TomoStack
 
 NUM_FIG_AXES = 3
 
-#TODO(jat) test cuda functionality and coverage
+
+# TODO(jat) test cuda functionality and coverage
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestAlignCUDA:
     """Test alignment of a TomoStack using CUDA."""
@@ -110,10 +112,13 @@ class TestAstraSIRTGPU:
         _, ny, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
         stack = stack.isig[120:121, :]
-        with pytest.raises(ValueError, match=re.escape(
-            "Sinogram must be two-dimensional (ntilts, y). "
-            "Provided shape was (77, 256, 1).",
-        )):
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Sinogram must be two-dimensional (ntilts, y). "
+                "Provided shape was (77, 256, 1).",
+            ),
+        ):
             recon.astra_error(
                 stack.data,
                 angles,
@@ -122,6 +127,7 @@ class TestAstraSIRTGPU:
                 thresh=0,
                 cuda=True,
             )
+
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestReconRunCUDA:
@@ -190,5 +196,37 @@ class TestStackRegisterCUDA:
         )
         assert (
             reg.axes_manager.navigation_shape
+            == stack.inav[0:20].axes_manager.navigation_shape
+        )
+
+
+class TestApplyShiftsCUDA:
+    """Test StackReg alignment of a TomoStack using CUDA."""
+
+    def test_apply_shifts_fourier_cuda(self):
+        stack = ds.get_needle_data(aligned=False)
+        shifts = np.random.uniform(-2, 2, [20, 2])
+        shifted = apply_shifts_cuda(stack.inav[0:20], shifts, "fourier")
+        assert isinstance(shifted, TomoStack)
+        assert (
+            shifted.axes_manager.signal_shape
+            == stack.inav[0:20].axes_manager.signal_shape
+        )
+        assert (
+            shifted.axes_manager.navigation_shape
+            == stack.inav[0:20].axes_manager.navigation_shape
+        )
+
+    def test_apply_shifts_interp_cuda(self):
+        stack = ds.get_needle_data(aligned=False)
+        shifts = np.random.uniform(-2, 2, [20, 2])
+        shifted = apply_shifts_cuda(stack.inav[0:20], shifts, "interp")
+        assert isinstance(shifted, TomoStack)
+        assert (
+            shifted.axes_manager.signal_shape
+            == stack.inav[0:20].axes_manager.signal_shape
+        )
+        assert (
+            shifted.axes_manager.navigation_shape
             == stack.inav[0:20].axes_manager.navigation_shape
         )
