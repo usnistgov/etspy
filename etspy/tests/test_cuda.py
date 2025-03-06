@@ -200,6 +200,7 @@ class TestStackRegisterCUDA:
         )
 
 
+@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestApplyShiftsCUDA:
     """Test StackReg alignment of a TomoStack using CUDA."""
 
