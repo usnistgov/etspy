@@ -1238,7 +1238,7 @@ class TomoStack(CommonStack):
     def align_other(
         self,
         other: "TomoStack",
-        shift_type: Literal["interp", "fourier"] = "interp",
+        shift_type: Literal["interp", "fourier"] = "fourier",
         cuda: bool = False,
     ) -> "TomoStack":
         """
@@ -1396,7 +1396,7 @@ class TomoStack(CommonStack):
         cl_resolution: float = 0.05,
         cl_div_factor: int = 8,
         cuda: bool = False,
-        shift_type: Literal["interp", "fourier"] = "interp",
+        shift_type: Literal["interp", "fourier"] = "fourier",
     ) -> "TomoStack":
         """
         Register stack spatially.

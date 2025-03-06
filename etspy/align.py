@@ -100,7 +100,7 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
 def apply_shifts(
     stack: "TomoStack",
     shifts: Union["TomoShifts", np.ndarray],
-    method: Literal["interp", "fourier"] = "interp",
+    method: Literal["interp", "fourier"] = "fourier",
 ) -> "TomoStack":
     """
     Apply a series of shifts to a TomoStack.
@@ -192,7 +192,7 @@ def apply_shifts(
 def apply_shifts_cuda(
     stack: "TomoStack",
     shifts: Union["TomoShifts", np.ndarray],
-    method: Literal["interp", "fourier"] = "interp",
+    method: Literal["interp", "fourier"] = "fourier",
 ) -> "TomoStack":
     """
     Apply a series of shifts to a TomoStack using CUDA acceleration.
@@ -806,7 +806,7 @@ def align_stack(  # noqa: PLR0913
     start: Optional[int],
     show_progressbar: bool,
     xrange: Optional[Tuple[int, int]] = None,
-    shift_type: Literal["fourier", "interp"] = "interp",
+    shift_type: Literal["fourier", "interp"] = "fourier",
     p: int = 20,
     nslices: int = 20,
     cuda: bool = False,
@@ -1175,7 +1175,7 @@ def tilt_maximage(
 def align_to_other(
     stack: "TomoStack",
     other: "TomoStack",
-    shift_type: Literal["fourier", "interp"] = "interp",
+    shift_type: Literal["fourier", "interp"] = "fourier",
     cuda: bool = False,
 ) -> "TomoStack":
     """
