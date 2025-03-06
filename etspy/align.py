@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 has_cupy = True
 try:
     import cupy as cp  # type: ignore
-    import cupyx.scipy as scipyx
+    from cupyx import scipy as scipyx
 except ImportError:
     has_cupy = False
 
@@ -1175,6 +1175,7 @@ def align_to_other(
     stack: "TomoStack",
     other: "TomoStack",
     shift_type: Literal["fourier", "interp"] = "interp",
+    cuda: bool = False,
 ) -> "TomoStack":
     """
     Spatially register a TomoStack using previously calculated shifts.
@@ -1214,7 +1215,10 @@ def align_to_other(
     yshift = cast(float, stack_tomo_meta.yshift)
     out_tomo_meta.yshift = stack_tomo_meta.yshift
 
-    out = apply_shifts(out, stack.shifts, shift_type)
+    if cuda:
+        out = apply_shifts_cuda(out, stack.shifts, shift_type)
+    else:
+        out = apply_shifts(out, stack.shifts, shift_type)
 
     if stack_tomo_meta.cropped:
         out = shift_crop(out)

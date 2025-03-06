@@ -1239,6 +1239,7 @@ class TomoStack(CommonStack):
         self,
         other: "TomoStack",
         shift_type: Literal["interp", "fourier"] = "interp",
+        cuda: bool = False,
     ) -> "TomoStack":
         """
         Apply the alignment calculated for one dataset to another.
@@ -1256,6 +1257,8 @@ class TomoStack(CommonStack):
             Image shifts can be applied using either interpolation via
             scipy.ndimage.shift or via Fourier shift as implemented in
             scipy.ndimage.fourier_shift.  Must be either 'interp' or 'fourier'.
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms.
 
         Returns
         -------
@@ -1288,7 +1291,7 @@ class TomoStack(CommonStack):
             msg = "No transformations have been applied to this stack"
             raise ValueError(msg)
 
-        out = align.align_to_other(self, other, shift_type)
+        out = align.align_to_other(self, other, shift_type, cuda)
 
         return out
 
