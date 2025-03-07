@@ -1063,7 +1063,6 @@ class TomoStack(CommonStack):
             self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
         )
 
-
     def deepcopy(self):
         """
         Return a "deep copy" of this Stack.
@@ -2053,7 +2052,7 @@ class TomoStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        sinogram = self.isig[nslice:nslice+1, :].data.squeeze()
+        sinogram = self.isig[nslice : nslice + 1, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
             angles=self.tilts.data,
@@ -2128,7 +2127,7 @@ class TomoStack(CommonStack):
             sino.set_signal_type("")
             sino = cast(Signal2D, sino.as_signal2D((2, 0)))
             if isinstance(column, float):
-                title = f"Sinogram at x = {column} {self.axes_manager[1].units}" # type: ignore
+                title = f"Sinogram at x = {column} {self.axes_manager[1].units}"  # type: ignore
             else:
                 title = f"Sinogram at column {column}"
         except Exception:
@@ -2178,12 +2177,69 @@ class RecStack(CommonStack):
         super().__init__(*args, **kwargs)
 
         if self.axes_manager.navigation_dimension not in (0, 1):
-            msg = ("A RecStack must have a singular (or no) navigation axis. "
-                   f"Navigation shape was: {self.axes_manager.navigation_shape}")
+            msg = (
+                "A RecStack must have a singular (or no) navigation axis. "
+                f"Navigation shape was: {self.axes_manager.navigation_shape}"
+            )
             raise ValueError(msg)
 
         self.inav = _RecStackSlicer(self, isNavigation=True)
         self.isig = _RecStackSlicer(self, isNavigation=False)
+
+    def forward_project(
+        self,
+        tilts: Optional[Union[TomoTilts, np.ndarray]],
+        cuda: Optional[bool] = None,
+    ) -> TomoStack:
+        """
+        Forward project the RecStack signal.
+
+        Parameters
+        ----------
+        tilts
+            Tilt angles in degrees to use for the projection
+            :py:class:`~numpy.ndarray`
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms. If
+            ``None`` (the default), the decision to use CUDA will be left to
+            :py:func:`astra.astra.use_cuda`.
+        """
+        if cuda is None:
+            if astra.use_cuda():  # coverage: nocuda
+                logger.info("CUDA detected with Astra")
+                cuda = True
+            else:
+                cuda = False
+                logger.info("CUDA not detected with Astra")
+        if len(self.data.shape) == 2:  # noqa: PLR2004
+            nz, ny = self.data.shape
+            ntilts = len(tilts)
+            thetas = np.deg2rad(tilts)
+            vol_geom = astra.create_vol_geom(nz, ny)
+            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
+
+            if cuda:
+                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+            else:
+                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+            proj_id, proj = astra.create_sino(self.data, proj_id)
+            proj = proj[:, :, np.newaxis]
+        else:
+            nx, nz, ny = self.data.shape
+            ntilts = len(tilts)
+            proj = np.zeros([ntilts, ny, nx])
+            thetas = np.deg2rad(tilts)
+            vol_geom = astra.create_vol_geom(ny, ny)
+            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
+
+            if cuda:
+                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+            else:
+                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+            for i in range(nx):
+                _, proj[:, :, i] = astra.create_sino(self.data[i, :, :], proj_id)
+        astra.clear()
+        return TomoStack(proj, tilts)
 
     def plot_slices(
         self,
