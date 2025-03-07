@@ -134,6 +134,14 @@ For more details, see the dedicated [documentation](https://pages.nist.gov/etspy
 the [example Jupyter notebook](https://pages.nist.gov/etspy/examples/etspy_demo.html) and the more detailed
 [API Reference](https://pages.nist.gov/etspy/api.html).
 
+## Logging
+
+To enable logging in ETSpy, use the following code:
+
+```python
+import logging
+logging.basicConfig(level="WARNING")
+```
 ## Developer documentation
 
 See the [developer docs](https://pages.nist.gov/etspy/development) for more information.
