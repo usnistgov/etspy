@@ -62,7 +62,7 @@ class TestProjMatchHelperFunctions:
 
 
 class TestProjMatch:
-    """Test ProjMatchClass."""
+    """Test ProjMatch Class."""
 
     def test_params_is_none(self):
         sino = stack.isig[300:301, :]
@@ -96,6 +96,24 @@ class TestProjMatch:
         assert pm.total_shifts.shape[0] == pm.nangles
 
 
-# @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
-# class TestProjMatchCUDA:
-#     """Test ProjMatchClass."""
+@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+class TestProjMatchCUDA:
+    """Test CUDA functionality of ProjMatch Class."""
+
+    def test_shift_calculation_cuda(self):
+        sino = stack.isig[300:301, :].rebin(scale=[1, 1, 4])
+        params = {
+            "levels": [2, 1],
+            "iterations": 200,
+            "minstep": 1e-2,
+            "relax": 0.1,
+            "recon_algorithm": "FBP",
+            "recon_iterations": None,
+        }
+        pm = projmatch.ProjMatch(sino, cuda=True, params=params)
+        pm.calculate_shifts()
+        shift_diff = shifts + 4 * pm.total_shifts
+        assert np.quantile(shift_diff, 0.80) < 1.0
+        assert isinstance(pm.total_shifts, np.ndarray)
+        assert np.sum(np.abs(pm.total_shifts)) > 0.0
+        assert pm.total_shifts.shape[0] == pm.nangles
