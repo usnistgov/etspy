@@ -76,59 +76,28 @@ class ProjMatch:
         self.relax = params.get("relax", 0.1)
         self.minstep = params.get("minstep", 0.01)
 
+    def calculate_shifts(
+        self,
+        y_only: bool = False,
+        show_progressbar=False,
+    ):
+        """Calculate shifts.
 
-def calculate_shifts(
-    self,
-    y_only: bool = False,
-    downsample_method: Literal[
-        "interp",
-        "blur",
-    ] = "interp",
-    show_progressbar=False,
-):
-    """Calculate shifts.
+        Parameters
+        ----------
+        y_only : bool, optional
+            If True, calculate alignments only in the Y direction (i.e. perpendicular
+            to the tilt axis), by default False
+        downsample_method : str, optional
+            Method to use for downsampling.  If "interp", downsampling is performed
+            using Hyperspy which employs an interpolation method.  The resulting data
+            will be smaller than the input by a factor of the current level.  If "blur",
+            the data is blurred by convolution and the result will have the same size
+            as the input, by default "interp"
 
-    Parameters
-    ----------
-    y_only : bool, optional
-        If True, calculate alignments only in the Y direction (i.e. perpendicular
-        to the tilt axis), by default False
-    downsample_method : str, optional
-        Method to use for downsampling.  If "interp", downsampling is performed
-        using Hyperspy which employs an interpolation method.  The resulting data
-        will be smaller than the input by a factor of the current level.  If "blur",
-        the data is blurred by convolution and the result will have the same size
-        as the input, by default "interp"
-
-    """
-    sino_shifted = self.sino.copy()
-    return sino_shifted
-
-
-def downsample(
-    data: np.ndarray,
-    factor: int,
-) -> np.ndarray:
-    """Downsample sinogram or image stack using Hyperspy.
-
-    Parameters
-    ----------
-    data : np.ndarray
-        Sinogram or stack to downsample
-    factor : int
-        Factor by which to downsample
-
-    Returns
-    -------
-    downsampled : np.ndarray
-        Downsampled version of input data
-
-    """
-    if len(data.shape) == DIM_2D:
-        downsampled = Signal1D(data).rebin(scale=[1, factor]).data
-    else:
-        downsampled = Signal2D(data).rebin(scale=[1, factor, factor]).data
-    return downsampled
+        """
+        sino_shifted = self.sino.copy()
+        return sino_shifted
 
 
 def blur_convolve(
