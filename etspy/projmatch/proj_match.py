@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict, Literal, Optional
 import numpy as np
 from hyperspy.signals import Signal1D, Signal2D
 from scipy.fft import fft, fftfreq, fftshift, ifft
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
 if TYPE_CHECKING:
@@ -112,9 +112,9 @@ def blur_convolve(
     Parameters
     ----------
     sino : np.ndarray
-        Sinogram or stack to downsample
+        Sinogram or stack to blur
     factor : int
-        Factor by which to downsample
+        Factor by which to blur
 
     Returns
     -------
@@ -246,6 +246,81 @@ def high_pass_fourier_filter(
     return sino_filtered
 
 
+def interpolate_ft(
+    sino: np.ndarray,
+    blur_factor: int,
+) -> np.ndarray:
+    """Interpolate the FT of sinogram after convolution to maintain cente of mass.
+
+    Parameters
+    ----------
+    sino : np.ndarray
+        Input sinogram
+    blur_factor : int
+        Factor used for blurring
+
+    Returns
+    -------
+    sino_centered : np.ndarray
+        Interpolated version of blurred sinogram
+
+    """
+    _, ny = sino.shape
+    ny_new = int(np.ceil(ny / blur_factor / 2) * 2)
+    ny_new = 2 + ny_new
+
+    scale = ny_new / ny
+    pad_pix = int(np.ceil(np.sqrt(1 / scale)))
+
+    # Pad sinogram in y-dimension
+    sino = np.pad(
+        sino,
+        (
+            (0, 0),
+            (pad_pix, pad_pix + 1),
+        ),
+        "symmetric",
+    )
+    sino_fft = fft(sino, axis=1)
+
+    # Apply +0.5 shift in Fourier space
+    sino_fft = fourier_shift(sino_fft, 0.5)
+
+    # Apply FFT shift
+    _, ny_fft = sino_fft.shape
+    crop_pix = int(np.ceil(ny_fft / 2))
+    idx = np.concatenate((np.arange(crop_pix, ny_fft), np.arange(crop_pix)))
+    sino_fft = sino_fft[:, idx]
+
+    # Crop in Fourier space while preserving center position
+    center = np.floor(ny_new / 2) - np.floor(ny_fft / 2)
+    y_crop = np.arange(
+        np.maximum(-center, 0),
+        np.minimum(-center + ny_new, ny_fft),
+        dtype=int,
+    )
+    sino_fft = sino_fft[:, y_crop]
+
+    # Reverse FFT shift
+    offset = int(np.floor(ny_new / 2))
+    idx = np.concatenate((np.arange(offset, ny_new), np.arange(offset)))
+    sino_fft = sino_fft[:, idx]
+
+    # Apply -0.5 shift in cropped Fourier space
+    sino_fft = fourier_shift(sino_fft, -0.5)
+
+    # Return to the Real Space
+    sino_centered = ifft(sino_fft, axis=1)
+
+    # Scale intensities to maintain average value between input and output
+    sino_centered = sino_centered * scale
+    # Remove the Padding
+    sino_centered = sino_centered[:, 1:-1]
+
+    sino_centered = np.real(sino_centered)
+    return sino_centered
+
+
 def sino_gradient(
     sino: np.ndarray,
     blur_window: int = 5,
@@ -276,4 +351,5 @@ def sino_gradient(
     sino_fft = sino_fft * x[np.newaxis, :]
 
     sino_grad = ifft(sino_fft, axis=1)
+    sino_grad = np.real(sino_grad)
     return sino_grad
