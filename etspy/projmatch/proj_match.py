@@ -10,9 +10,9 @@ from scipy.fft import fft, fftfreq, ifft
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
+from etspy.align import apply_shifts
 from etspy.base import TomoStack
 
-from .shift import imshift
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -106,25 +106,37 @@ class ProjMatch:
         sino_shifted = self.sino.copy()
         for idx, j in enumerate(self.levels):
             logger.info(f"Binning {str(j)}")
-            sino_shifted = imshift(self.sino, self.total_shifts)
+            sino_shifted = TomoStack(self.sino[:, :, np.newaxis], self.tilts)
+            sino_shifted = apply_shifts(
+                sino_shifted,
+                np.stack([self.total_shifts, np.zeros(self.nangles)], axis=1),
+            )
+            # sino_shifted = imshift(self.sino, self.total_shifts)
 
             if j != 1:
-                sino_rebin = blur_convolve(sino_shifted, j)
+                sino_rebin = blur_convolve(sino_shifted.data.squeeze(), j)
+                # sino_rebin = blur_convolve(sino_shifted, j)
                 sino_rebin = interpolate_ft(sino_rebin, j)
             else:
-                sino_rebin = sino_shifted
+                sino_rebin = sino_shifted.data.squeeze()
+                # sino_rebin = sino_shifted
             current_sino = TomoStack(
                 sino_rebin[:, :, np.newaxis].copy(),
                 self.tilts,
             )
-            current_shifts = np.zeros([sino_shifted.shape[0]])
+            current_shifts = np.zeros(self.nangles)
 
             for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
-                current_sino.data[:, :, 0] = imshift(
-                    sino_rebin,
-                    current_shifts,
-                    pad=True,
-                    cuda=False,
+                # current_sino.data[:, :, 0] = imshift(
+                #     sino_rebin,
+                #     current_shifts,
+                #     pad=True,
+                #     cuda=False,
+                # )
+                current_sino.data = sino_rebin[:, :, np.newaxis]
+                current_sino = apply_shifts(
+                    current_sino,
+                    np.stack([current_shifts, np.zeros(self.nangles)], axis=1),
                 )
                 if i == 0:
                     mass = np.median(np.mean(np.abs(current_sino.data), axis=(1, 2)))
