@@ -1,13 +1,15 @@
 """Projection matching alignment."""
 
 import logging
-from typing import Dict, Literal, Optional
+from typing import TYPE_CHECKING, Dict, Literal, Optional
 
 import numpy as np
 from hyperspy.signals import Signal1D, Signal2D
+from scipy.fft import fft, fftfreq, fftshift, ifft
 from scipy.signal import convolve
 
-from etspy.base import TomoStack
+if TYPE_CHECKING:
+    from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -141,3 +143,49 @@ def blur_convolve(
         corr = convolve(corr, kernel.reshape(1, 1, shape), mode="same")
         sino = sino / corr
     return sino
+
+
+def high_pass_filter(
+    sino: np.ndarray,
+    sigma: float,
+    apply_fft: bool = True,
+) -> np.ndarray:
+    """High pass filter a sinogram or sinogram-like array.
+
+    Parameters
+    ----------
+    sino : np.ndarray
+        Sinogram or stack to downsample
+    sigma : int
+        Factor by which to downsample
+    apply_fft : bool
+        If True, input is real and an FFT is applied prior to applying the filter.
+        An IFFT is then applied to the filtered array.  Default is True.
+
+    Returns
+    -------
+    sino_filtered : np.ndarray
+        Filtered version of input data
+
+    """
+    is_real = np.all(np.isreal(sino))
+    _, ny = sino.shape
+
+    if apply_fft:
+        sino_fft = fft(sino)
+
+    freq = fftfreq(ny)
+    sigma = 256 / (ny) * sigma
+
+    if sigma == 0:
+        high_pass_filter = 2j * np.pi * freq
+    else:
+        high_pass_filter = 1 - np.exp(-0.5 * (freq / sigma) ** 2)
+
+    sino_filtered = sino_fft * high_pass_filter
+
+    if apply_fft:
+        sino_filtered = np.fft.ifft(sino_filtered)
+    if is_real:
+        sino_filtered = np.real(sino_filtered)
+    return sino_filtered
