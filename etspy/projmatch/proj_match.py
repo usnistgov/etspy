@@ -175,12 +175,36 @@ def blur_edges(
     return filtered
 
 
+def high_pass_filter(
+    sino: np.ndarray,
+    sigma: float = 5,
+) -> np.ndarray:
+    """High pass filter a sinogram or sinogram-like array using Gaussian convolution.
+
+    Parameters
+    ----------
+    sino : np.ndarray
+        Sinogram or stack to filter
+    sigma : int
+        Standard deviation of the Gaussian filter which controls the degree of
+        filtering. Default is 5.
+
+    Returns
+    -------
+    sino_filtered : np.ndarray
+        Filtered version of input data
+
+    """
+    filtered = sino - gaussian_filter(sino, sigma, axes=(1,))
+    return filtered
+
+
 def high_pass_fourier_filter(
     sino: np.ndarray,
     sigma: float = 0.01,
     apply_fft: bool = True,
 ) -> np.ndarray:
-    """High pass filter a sinogram or sinogram-like array.
+    """Fourier high pass filter a sinogram or sinogram-like array.
 
     Parameters
     ----------
