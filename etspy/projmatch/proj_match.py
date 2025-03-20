@@ -244,3 +244,36 @@ def high_pass_fourier_filter(
     if is_real:
         sino_filtered = np.real(sino_filtered)
     return sino_filtered
+
+
+def sino_gradient(
+    sino: np.ndarray,
+    blur_window: int = 5,
+    blur_sigma: float = 5.0,
+) -> np.ndarray:
+    """Calculate the gradient of a sinogram along Y axis.
+
+    Parameters
+    ----------
+    sino : np.ndarray
+        Input sinogram
+    smooth_window : int
+        Window for blurring edges. Default is 5.
+    blur_sigma : float
+        Sigma for Gaussian blur. Default is 5.0.
+
+    Returns
+    -------
+    sino_grad : np.ndarray
+        Gradient of input sinogram along the Y-axis
+
+    """
+    _, ny = sino.shape
+    sino = blur_edges(sino, blur_window, blur_sigma)
+    x = 2j * np.pi * fftfreq(ny)
+
+    sino_fft = fft(sino, axis=1)
+    sino_fft = sino_fft * x[np.newaxis, :]
+
+    sino_grad = ifft(sino_fft, axis=1)
+    return sino_grad
