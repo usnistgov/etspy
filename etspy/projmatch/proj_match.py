@@ -1,16 +1,18 @@
 """Projection matching alignment."""
 
 import logging
-from typing import TYPE_CHECKING, Dict, Literal, Optional
+from typing import Dict, Optional
 
 import numpy as np
+import tqdm
 from hyperspy.signals import Signal1D, Signal2D
-from scipy.fft import fft, fftfreq, fftshift, ifft
+from scipy.fft import fft, fftfreq, ifft
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
-if TYPE_CHECKING:
-    from etspy.base import TomoStack
+from etspy.base import TomoStack
+
+from .shift import imshift
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -64,33 +66,35 @@ class ProjMatch:
             self.nx = None
             self.total_shifts = np.zeros(self.nangles)
         else:
+            raise (ValueError, "Alignment of 3D stacks is not yet implemented")
             self.nangles, self.ny, self.nx = self.sino.shape
             self.total_shifts = np.zeros([self.nangles, 2])
         self.cuda = cuda
         if params is None:
             params = {}
         self.levels = params.get("levels", [8, 4, 2, 1])
-        self.iterations = params.get("iterations", 50)
+        self.iterations = params.get("iterations", 100)
+        self.error = [np.empty(0)] * len(self.levels)
+
+        self.sino_update = [None] * len(self.levels)
+        self.rec_update = [None] * len(self.levels)
+
         self.recon_algorithm = params.get("recon_algorithm", "FBP")
         if self.recon_algorithm.lower() == "fbp":
-            self.recon_iters = None
+            self.recon_iterations = None
         else:
-            self.recon_iters = params.get("recon_iterations", 20)
+            self.recon_iterations = params.get("recon_iterations", 20)
         self.relax = params.get("relax", 0.1)
         self.minstep = params.get("minstep", 0.01)
 
     def calculate_shifts(
         self,
-        y_only: bool = False,
         show_progressbar=False,
     ):
         """Calculate shifts.
 
         Parameters
         ----------
-        y_only : bool, optional
-            If True, calculate alignments only in the Y direction (i.e. perpendicular
-            to the tilt axis), by default False
         downsample_method : str, optional
             Method to use for downsampling.  If "interp", downsampling is performed
             using Hyperspy which employs an interpolation method.  The resulting data
@@ -100,7 +104,93 @@ class ProjMatch:
 
         """
         sino_shifted = self.sino.copy()
-        return sino_shifted
+        for idx, j in enumerate(self.levels):
+            logger.info(f"Binning {str(j)}")
+            sino_shifted = imshift(self.sino, self.total_shifts)
+
+            if j != 1:
+                sino_rebin = blur_convolve(sino_shifted, j)
+                sino_rebin = interpolate_ft(sino_rebin, j)
+            else:
+                sino_rebin = sino_shifted
+            current_sino = TomoStack(
+                sino_rebin[:, :, np.newaxis].copy(),
+                self.tilts,
+            )
+            current_shifts = np.zeros([sino_shifted.shape[0]])
+
+            for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
+                current_sino.data[:, :, 0] = imshift(
+                    sino_rebin,
+                    current_shifts,
+                    pad=True,
+                    cuda=False,
+                )
+                if i == 0:
+                    mass = np.median(np.mean(np.abs(current_sino.data), axis=(1, 2)))
+                    self.sino_update[idx] = current_sino.data
+                else:
+                    self.sino_update[idx] = np.concatenate(
+                        [self.sino_update[idx], current_sino.data],
+                        axis=2,
+                    )
+                rec = current_sino.reconstruct(
+                    method=self.recon_algorithm,
+                    iterations=self.recon_iterations,
+                    cuda=self.cuda,
+                    constrain=True,
+                    show_progressbar=False,
+                )
+                reproj = rec.forward_project(
+                    tilts=self.tilts,
+                    cuda=self.cuda,
+                ).data.squeeze()
+
+                resid = reproj - current_sino.data.squeeze()
+                resid = high_pass_filter(resid, 5)
+
+                self.error[idx] = np.append(
+                    self.error[idx],
+                    np.linalg.norm(resid) / mass,
+                )
+                grad_y = sino_gradient(reproj)
+                grad_y = high_pass_filter(grad_y, 5)
+                yshifts = -np.sum(grad_y * resid, axis=1) / np.sum(grad_y**2, axis=1)
+                yshifts = (
+                    np.minimum(0.5, np.abs(yshifts)) * np.sign(yshifts) * self.relax
+                )
+                yshifts = yshifts - np.median(yshifts)
+                max_step = np.minimum(np.quantile(np.abs(yshifts), 0.99), 0.5)
+                yshifts = np.minimum(max_step, np.abs(yshifts)) * np.sign(yshifts)
+                current_shifts += yshifts
+
+                if i == 0:
+                    self.rec_update[idx] = rec.data
+                else:
+                    self.rec_update[idx] = np.concatenate(
+                        [self.rec_update[idx], rec.data],
+                        axis=0,
+                    )
+
+                max_update = np.max(np.quantile(np.abs(yshifts), 0.995))
+                if max_update * j < self.minstep:
+                    logger.info(f"Converged after {str(i)} iterations")
+                    break
+
+            current_shifts = current_shifts - np.median(current_shifts)
+            self.total_shifts = self.total_shifts + current_shifts * j
+            if idx == 0:
+                self.shift_update = self.total_shifts[np.newaxis, :]
+            else:
+                self.shift_update = np.concatenate(
+                    [self.shift_update, self.total_shifts[np.newaxis, :]],
+                    axis=0,
+                )
+        for i in range(len(self.levels)):
+            self.sino_update[i] = Signal2D(np.rollaxis(self.sino_update[i], 2))
+            self.rec_update[i] = Signal2D(self.rec_update[i])
+            self.error[i] = Signal1D(self.error[i])
+        self.shift_update = Signal1D(self.shift_update)
 
 
 def blur_convolve(
