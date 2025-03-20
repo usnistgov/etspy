@@ -19,7 +19,10 @@ logger.setLevel(logging.INFO)
 DIM_2D = 2
 
 
-# TODO: Drop internal shift functions and use the built-in ETSpy options
+# TODO: Avoid recreating projection matrices at each iteration
+# TODO: Enable alignment along X axis
+
+
 class ProjMatch:
     """Class to perform alignment via projection matching method.
 
