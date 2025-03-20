@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, Literal, Optional
 import numpy as np
 from hyperspy.signals import Signal1D, Signal2D
 from scipy.fft import fft, fftfreq, fftshift, ifft
+from scipy.ndimage import gaussian_filter
 from scipy.signal import convolve
 
 if TYPE_CHECKING:
@@ -145,9 +146,38 @@ def blur_convolve(
     return sino
 
 
-def high_pass_filter(
+def blur_edges(
     sino: np.ndarray,
-    sigma: float,
+    window: int = 5,
+    sigma: float = 5,
+) -> np.ndarray:
+    """Blur the edges on both sides of a sinogram within a user defind window.
+
+    Parameters
+    ----------
+    sino : np.ndarray
+        Sinogram or stack to blur
+    window : int
+        Number of pixels to blur on both sides of the sinogram.
+    sigma : float
+        Standard deviation for a Gaussian kernel which determines the amount of
+        blurring. Default is 5.
+
+    Returns
+    -------
+    sino_filtered : np.ndarray
+        Filtered version of input data
+
+    """
+    window = max(window, 3)
+    filtered = gaussian_filter(sino, sigma, axes=(1,))
+    filtered[:, window:-window] = sino[:, window:-window]
+    return filtered
+
+
+def high_pass_fourier_filter(
+    sino: np.ndarray,
+    sigma: float = 0.01,
     apply_fft: bool = True,
 ) -> np.ndarray:
     """High pass filter a sinogram or sinogram-like array.
@@ -155,9 +185,10 @@ def high_pass_filter(
     Parameters
     ----------
     sino : np.ndarray
-        Sinogram or stack to downsample
+        Sinogram or stack to filter
     sigma : int
-        Factor by which to downsample
+        Standard deviation of the Gaussian filter which controls the degree of
+        filtering. Default is 0.01.
     apply_fft : bool
         If True, input is real and an FFT is applied prior to applying the filter.
         An IFFT is then applied to the filtered array.  Default is True.
