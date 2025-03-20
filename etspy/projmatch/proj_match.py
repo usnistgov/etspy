@@ -71,21 +71,23 @@ class ProjMatch:
             raise NotImplementedError(msg)
         self.cuda = cuda
         if params is None:
-            params = {}
-        self.levels = params.get("levels", [8, 4, 2, 1])
-        self.iterations = params.get("iterations", 100)
+            self.params = {}
+        else:
+            self.params = params
+        self.levels = self.params.get("levels", [8, 4, 2, 1])
+        self.iterations = self.params.get("iterations", 100)
         self.error = [np.empty(0)] * len(self.levels)
 
         self.sino_update = [None] * len(self.levels)
         self.rec_update = [None] * len(self.levels)
 
-        self.recon_algorithm = params.get("recon_algorithm", "FBP")
+        self.recon_algorithm = self.params.get("recon_algorithm", "FBP")
         if self.recon_algorithm.lower() == "fbp":
             self.recon_iterations = None
         else:
-            self.recon_iterations = params.get("recon_iterations", 20)
-        self.relax = params.get("relax", 0.1)
-        self.minstep = params.get("minstep", 0.01)
+            self.recon_iterations = self.params.get("recon_iterations", 20)
+        self.relax = self.params.get("relax", 0.1)
+        self.minstep = self.params.get("minstep", 0.01)
 
     def calculate_shifts(
         self,
