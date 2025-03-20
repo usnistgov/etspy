@@ -142,6 +142,7 @@ class ProjMatch:
                     cuda=self.cuda,
                     constrain=True,
                     show_progressbar=False,
+                    verbose=False,
                 )
                 reproj = rec.forward_project(
                     tilts=self.tilts,

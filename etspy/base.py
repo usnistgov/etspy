@@ -1616,6 +1616,7 @@ class TomoStack(CommonStack):
         sino_filter: FbpMethodType = "shepp-logan",
         dart_iterations: Optional[int] = 5,
         gray_levels: Optional[Union[List, np.ndarray]] = None,
+        verbose=True,
     ) -> "RecStack":
         """
         Reconstruct a TomoStack series using one of the available methods.
@@ -1657,6 +1658,8 @@ class TomoStack(CommonStack):
             Number of iterations to employ for DART reconstruction
         gray_levels
             List of gray levels to use for DART reconstruction
+        verbose
+            If True, display reconstrution related logger output
 
         Returns
         -------
@@ -1751,6 +1754,7 @@ class TomoStack(CommonStack):
             dart_iterations=cast(int, dart_iterations),
             p=p,
             show_progressbar=show_progressbar,
+            verbose=verbose,
         )
 
         axes_dict = self.axes_manager.as_dictionary()

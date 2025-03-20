@@ -203,6 +203,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     dart_iterations: int = 2,
     p: float = 0.99,
     show_progressbar: bool = True,
+    verbose=True,
 ) -> np.ndarray:
     """
     Perform reconstruction of input tilt series.
@@ -246,6 +247,8 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         Probability for setting free pixels in DART reconstruction
     show_progressbar
         If True, show a progress bar for the reconstruction. Default is True.
+    verbose
+        If True, display reconstruction related info with logger. Default is True.
 
     Returns
     -------
@@ -278,34 +281,24 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     cfg = {}
     cfg["option"] = {}
 
+    if verbose:
+        logger.info("Reconstructing with CUDA-accelerated %s algorithm", method.upper())
+
     if cuda:  # coverage: nocuda
         if method.lower() == "fbp":
-            logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
             cfg["type"] = "FBP_CUDA"
             cfg["option"]["FilterType"] = bp_filter.lower()
             niterations = 1
         elif method.lower() == "sirt":
-            logger.info(
-                "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)",
-                niterations,
-            )
             cfg["type"] = "SIRT_CUDA"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
         elif method.lower() == "sart":
-            logger.info(
-                "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)",
-                niterations,
-            )
             cfg["type"] = "SART_CUDA"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
 
         elif method.lower() == "dart":
-            logger.info(
-                "Reconstructing with CUDA-accelerated DART algorithm (%s iterations)",
-                niterations,
-            )
             cfg["type"] = "SART_CUDA"
             if gray_levels is None:
                 msg = "gray_levels must be provided for DART"
@@ -354,23 +347,21 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
 
+        if verbose:
+            logger.info("Reconstructing with CPU-based %s algorithm", method.upper())
         if method.lower() == "fbp":
-            logger.info("Reconstructing with CPU-based FBP algorithm")
             cfg["type"] = "FBP"
             cfg["option"]["FilterType"] = bp_filter.lower()
             niterations = 1
         elif method.lower() == "sirt":
-            logger.info("Reconstructing with CPU-based SIRT algorithm")
             cfg["type"] = "SIRT"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
         elif method.lower() == "sart":
-            logger.info("Reconstructing with CPU-based SART algorithm")
             cfg["type"] = "SART"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
         elif method.lower() == "dart":
-            logger.info("Reconstructing with CPU-based DART algorithm")
             cfg["type"] = "SART"
             if gray_levels is None:
                 msg = "gray_levels must be provided for DART"
