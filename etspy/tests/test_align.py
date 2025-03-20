@@ -16,6 +16,7 @@ from etspy import datasets as ds
 
 cupy_in_test_env = find_spec("cupy") is not None
 
+
 class TestAlignFunctions:
     """Test alignment functions."""
 
@@ -83,8 +84,10 @@ class TestAlignFunctions:
     def test_tilt_com_no_slices_yes_nslices_30_perc(self, caplog):
         stack = ds.get_needle_data()
         etspy.align.tilt_com(stack, slices=None, nslices=100)
-        assert ("nslices is greater than 30% of number of x pixels. "
-                "Using 76 slices instead.") in caplog.text
+        assert (
+            "nslices is greater than 30% of number of x pixels. "
+            "Using 76 slices instead."
+        ) in caplog.text
 
     def test_tilt_com_no_slices_yes_nslices_too_big(self):
         stack = ds.get_needle_data()
@@ -108,13 +111,13 @@ class TestAlignFunctions:
 
     def test_calc_shifts_com_cl_res_error(self):
         stack = ds.get_needle_data()
-        with pytest.raises(ValueError,
-                           match="Resolution should be less than 0.5"):
+        with pytest.raises(ValueError, match="Resolution should be less than 0.5"):
             etspy.align.calc_shifts_com_cl(
                 stack,
                 com_ref_index=30,
                 cl_resolution=0.9,
             )
+
 
 @pytest.mark.skipif(not cupy_in_test_env, reason="cupy not available")
 class TestCUDAAlignFunctions:
@@ -131,6 +134,7 @@ class TestCUDAAlignFunctions:
             assert not etspy.align.has_cupy
         reload(sys.modules["etspy.align"])
         assert etspy.align.has_cupy
+
 
 class TestAlignStackRegister:
     """Test alignment using stack reg."""
@@ -203,14 +207,14 @@ class TestAlignStackRegister:
         """
         stack = ds.get_needle_data()
         bad_method = "WRONG"
-        with pytest.raises(ValueError,
-                           match=f"Invalid alignment method {bad_method}"):
+        with pytest.raises(ValueError, match=f"Invalid alignment method {bad_method}"):
             etspy.align.align_stack(
                 stack,
-                method=bad_method, # pyright: ignore[reportArgumentType]
+                method=bad_method,  # pyright: ignore[reportArgumentType]
                 start=None,
                 show_progressbar=False,
             )
+
 
 class TestTiltAlign:
     """Test tilt alignment functions."""
@@ -236,7 +240,7 @@ class TestTiltAlign:
         with pytest.raises(
             ValueError,
             match=r"Tilts are not defined in stack.tilts \(values were all zeros\). "
-                  r"Please set tilt values before alignment.",
+            r"Please set tilt values before alignment.",
         ):
             reg.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
 

@@ -60,7 +60,6 @@ class ProjMatch:
             "minstep"
 
         """
-        self.stack_orig = stack.deepcopy()
         self.sino = stack.data.squeeze()
         self.tilts = stack.tilts.data.squeeze()
         if len(self.sino.shape) == DIM_2D:
@@ -68,9 +67,8 @@ class ProjMatch:
             self.nx = None
             self.total_shifts = np.zeros(self.nangles)
         else:
-            raise (ValueError, "Alignment of 3D stacks is not yet implemented")
-            self.nangles, self.ny, self.nx = self.sino.shape
-            self.total_shifts = np.zeros([self.nangles, 2])
+            msg = "Alignment of 3D stacks is not yet implemented"
+            raise NotImplementedError(msg)
         self.cuda = cuda
         if params is None:
             params = {}
