@@ -13,7 +13,6 @@ from scipy.signal import convolve
 from etspy.align import apply_shifts
 from etspy.base import TomoStack
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -105,21 +104,18 @@ class ProjMatch:
         """
         sino_shifted = self.sino.copy()
         for idx, j in enumerate(self.levels):
-            logger.info(f"Binning {str(j)}")
+            logger.info("Binning %i", j)
             sino_shifted = TomoStack(self.sino[:, :, np.newaxis], self.tilts)
             sino_shifted = apply_shifts(
                 sino_shifted,
                 np.stack([self.total_shifts, np.zeros(self.nangles)], axis=1),
             )
-            # sino_shifted = imshift(self.sino, self.total_shifts)
 
             if j != 1:
                 sino_rebin = blur_convolve(sino_shifted.data.squeeze(), j)
-                # sino_rebin = blur_convolve(sino_shifted, j)
                 sino_rebin = interpolate_ft(sino_rebin, j)
             else:
                 sino_rebin = sino_shifted.data.squeeze()
-                # sino_rebin = sino_shifted
             current_sino = TomoStack(
                 sino_rebin[:, :, np.newaxis].copy(),
                 self.tilts,
@@ -127,12 +123,6 @@ class ProjMatch:
             current_shifts = np.zeros(self.nangles)
 
             for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
-                # current_sino.data[:, :, 0] = imshift(
-                #     sino_rebin,
-                #     current_shifts,
-                #     pad=True,
-                #     cuda=False,
-                # )
                 current_sino.data = sino_rebin[:, :, np.newaxis]
                 current_sino = apply_shifts(
                     current_sino,
@@ -186,7 +176,7 @@ class ProjMatch:
 
                 max_update = np.max(np.quantile(np.abs(yshifts), 0.995))
                 if max_update * j < self.minstep:
-                    logger.info(f"Converged after {str(i)} iterations")
+                    logger.info("Converged after %i iterations", i)
                     break
 
             current_shifts = current_shifts - np.median(current_shifts)
