@@ -1,7 +1,7 @@
 """Projection matching alignment."""
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import astra
 import numpy as np
@@ -11,7 +11,8 @@ from scipy.fft import fft, fftfreq, ifft
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
-from etspy.base import TomoStack
+if TYPE_CHECKING:
+    from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
