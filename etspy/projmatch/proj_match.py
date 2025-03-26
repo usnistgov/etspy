@@ -1,7 +1,7 @@
 """Projection matching alignment."""
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import astra
 import numpy as np
@@ -11,8 +11,8 @@ from scipy.fft import fft, fftfreq, ifft
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
-from etspy.align import apply_shifts
-from etspy.base import TomoStack
+if TYPE_CHECKING:
+    from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -116,21 +116,17 @@ class ProjMatch:
                 sino_rebin = blur_convolve(sino_shifted, j)
                 sino_rebin = interpolate_ft(sino_rebin, j)
             else:
-                sino_rebin = sino_shifted
-            current_shifts = np.zeros(self.nangles)
+                sino_rebin = sino_shifted.copy()
 
+            current_shifts = np.zeros(self.nangles)
+            self.rec_id = None
+            self.proj_id = None
+            self.sino_id = None
             self.update_geometries(sino_rebin.shape[1])
 
             for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
                 current_sino = shift_sinogram(sino_rebin, current_shifts)
-                if i == 0:
-                    mass = np.median(np.mean(np.abs(current_sino), axis=(1, 2)))
-                    self.sino_update[idx] = current_sino
-                else:
-                    self.sino_update[idx] = np.concatenate(
-                        [self.sino_update[idx], current_sino],
-                        axis=2,
-                    )
+
                 rec = self.reconstruct(current_sino)
 
                 reproj = self.forward_project(rec)
@@ -138,10 +134,6 @@ class ProjMatch:
                 resid = reproj - current_sino
                 resid = high_pass_filter(resid, 5)
 
-                self.error[idx] = np.append(
-                    self.error[idx],
-                    np.linalg.norm(resid) / mass,
-                )
                 grad_y = sino_gradient(reproj)
                 grad_y = high_pass_filter(grad_y, 5)
                 yshifts = -np.sum(grad_y * resid, axis=1) / np.sum(grad_y**2, axis=1)
@@ -154,13 +146,22 @@ class ProjMatch:
                 current_shifts += yshifts
 
                 if i == 0:
+                    mass = np.median(np.mean(np.abs(current_sino), axis=1))
+                    self.sino_update[idx] = current_sino
                     self.rec_update[idx] = rec
                 else:
+                    self.sino_update[idx] = np.concatenate(
+                        [self.sino_update[idx], current_sino],
+                        axis=0,
+                    )
                     self.rec_update[idx] = np.concatenate(
                         [self.rec_update[idx], rec],
                         axis=0,
                     )
-
+                self.error[idx] = np.append(
+                    self.error[idx],
+                    np.linalg.norm(resid) / mass,
+                )
                 max_update = np.max(np.quantile(np.abs(yshifts), 0.995))
                 if max_update * j < self.minstep:
                     logger.info("Converged after %i iterations", i)
@@ -175,8 +176,9 @@ class ProjMatch:
                     [self.shift_update, self.total_shifts[np.newaxis, :]],
                     axis=0,
                 )
+
         for i in range(len(self.levels)):
-            self.sino_update[i] = Signal2D(np.rollaxis(self.sino_update[i], 2))
+            self.sino_update[i] = Signal2D(self.sino_update[i])
             self.rec_update[i] = Signal2D(self.rec_update[i])
             self.error[i] = Signal1D(self.error[i])
         self.shift_update = Signal1D(self.shift_update)
