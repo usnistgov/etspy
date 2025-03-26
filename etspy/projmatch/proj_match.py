@@ -1,7 +1,7 @@
 """Projection matching alignment."""
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import astra
 import numpy as np
@@ -11,16 +11,13 @@ from scipy.fft import fft, fftfreq, ifft
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
-if TYPE_CHECKING:
-    from etspy.base import TomoStack
+from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 DIM_2D = 2
 
-
-# TODO: Avoid recreating projection matrices at each iteration
 # TODO: Enable alignment along X axis
 
 
@@ -300,19 +297,13 @@ def shift_sinogram(
 
     shifted_fft = shifted_fft * shift_array
     shifted = np.real(ifft(shifted_fft, axis=1))
-    slices = [
-        slice(0, None),
-    ]
 
-    for i in [
-        y_pad_width,
-    ]:
-        if i[1] == 0:
-            i[1] = None
-        else:
-            i[1] = -i[1]
-        slices.append(slice(i[0], i[1]))
-    shifted = shifted[tuple(slices)]
+    if y_pad_width[1] == 0:
+        slices = slice(y_pad_width[0], None)
+    else:
+        slices = slice(y_pad_width[0], -y_pad_width[1])
+
+    shifted = shifted[:, slices]
     return shifted
 
 
@@ -346,15 +337,6 @@ def blur_convolve(
 
         corr = np.ones([1, ny])
         corr = convolve(corr, kernel.reshape(1, shape), mode="same")
-        sino = sino / corr
-    else:
-        _, ny, nx = sino.shape
-        sino = convolve(sino, kernel.reshape(1, shape, 1), mode="same")
-        sino = convolve(sino, kernel.reshape(1, 1, shape), mode="same")
-
-        corr = np.ones([1, ny, nx])
-        corr = convolve(corr, kernel.reshape(1, shape, 1), mode="same")
-        corr = convolve(corr, kernel.reshape(1, 1, shape), mode="same")
         sino = sino / corr
     return sino
 
