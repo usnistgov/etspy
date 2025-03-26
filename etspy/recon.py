@@ -317,7 +317,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
         rec_id = astra.data2d.create("-vol", vol_geom)
         sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+
         cfg["ReconstructionDataId"] = rec_id
         cfg["ProjectorId"] = proj_id
         cfg["ProjectionDataId"] = sino_id

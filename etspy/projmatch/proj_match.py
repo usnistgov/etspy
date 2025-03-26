@@ -1,8 +1,9 @@
 """Projection matching alignment."""
 
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
+import astra
 import numpy as np
 import tqdm
 from hyperspy.signals import Signal1D, Signal2D
@@ -44,7 +45,7 @@ class ProjMatch:
         self,
         stack: "TomoStack",
         cuda: bool = False,
-        params: Optional[Dict] = None,
+        params: Optional[dict] = None,
     ):
         """Create a ProjMatch instance.
 
@@ -62,6 +63,7 @@ class ProjMatch:
         """
         self.sino = stack.data.squeeze()
         self.tilts = stack.tilts.data.squeeze()
+        self.thetas = np.deg2rad(self.tilts)
         if len(self.sino.shape) == DIM_2D:
             self.nangles, self.ny = self.sino.shape
             self.nx = None
@@ -83,9 +85,10 @@ class ProjMatch:
 
         self.recon_algorithm = self.params.get("recon_algorithm", "FBP")
         if self.recon_algorithm.lower() == "fbp":
-            self.recon_iterations = None
+            self.recon_iterations = 1
         else:
             self.recon_iterations = self.params.get("recon_iterations", 20)
+        self.create_recon_algorithm(self.recon_algorithm, self.cuda)
         self.relax = self.params.get("relax", 0.1)
         self.minstep = self.params.get("minstep", 0.01)
 
@@ -105,54 +108,34 @@ class ProjMatch:
             as the input, by default "interp"
 
         """
-        sino_shifted = self.sino.copy()
         for idx, j in enumerate(self.levels):
             logger.info("Binning %i", j)
-            sino_shifted = TomoStack(self.sino[:, :, np.newaxis], self.tilts)
-            sino_shifted = apply_shifts(
-                sino_shifted,
-                np.stack([self.total_shifts, np.zeros(self.nangles)], axis=1),
-            )
+            sino_shifted = shift_sinogram(self.sino, self.total_shifts)
 
             if j != 1:
-                sino_rebin = blur_convolve(sino_shifted.data.squeeze(), j)
+                sino_rebin = blur_convolve(sino_shifted, j)
                 sino_rebin = interpolate_ft(sino_rebin, j)
             else:
-                sino_rebin = sino_shifted.data.squeeze()
-            current_sino = TomoStack(
-                sino_rebin[:, :, np.newaxis].copy(),
-                self.tilts,
-            )
+                sino_rebin = sino_shifted
             current_shifts = np.zeros(self.nangles)
 
+            self.update_geometries(sino_rebin.shape[1])
+
             for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
-                current_sino.data = sino_rebin[:, :, np.newaxis]
-                current_sino = apply_shifts(
-                    current_sino,
-                    np.stack([current_shifts, np.zeros(self.nangles)], axis=1),
-                )
+                current_sino = shift_sinogram(sino_rebin, current_shifts)
                 if i == 0:
-                    mass = np.median(np.mean(np.abs(current_sino.data), axis=(1, 2)))
-                    self.sino_update[idx] = current_sino.data
+                    mass = np.median(np.mean(np.abs(current_sino), axis=(1, 2)))
+                    self.sino_update[idx] = current_sino
                 else:
                     self.sino_update[idx] = np.concatenate(
-                        [self.sino_update[idx], current_sino.data],
+                        [self.sino_update[idx], current_sino],
                         axis=2,
                     )
-                rec = current_sino.reconstruct(
-                    method=self.recon_algorithm,
-                    iterations=self.recon_iterations,
-                    cuda=self.cuda,
-                    constrain=True,
-                    show_progressbar=False,
-                    verbose=False,
-                )
-                reproj = rec.forward_project(
-                    tilts=self.tilts,
-                    cuda=self.cuda,
-                ).data.squeeze()
+                rec = self.reconstruct(current_sino)
 
-                resid = reproj - current_sino.data.squeeze()
+                reproj = self.forward_project(rec)
+
+                resid = reproj - current_sino
                 resid = high_pass_filter(resid, 5)
 
                 self.error[idx] = np.append(
@@ -171,10 +154,10 @@ class ProjMatch:
                 current_shifts += yshifts
 
                 if i == 0:
-                    self.rec_update[idx] = rec.data
+                    self.rec_update[idx] = rec
                 else:
                     self.rec_update[idx] = np.concatenate(
-                        [self.rec_update[idx], rec.data],
+                        [self.rec_update[idx], rec],
                         axis=0,
                     )
 
@@ -197,6 +180,116 @@ class ProjMatch:
             self.rec_update[i] = Signal2D(self.rec_update[i])
             self.error[i] = Signal1D(self.error[i])
         self.shift_update = Signal1D(self.shift_update)
+
+    def create_recon_algorithm(
+        self,
+        method: str,
+        cuda: bool,
+    ):
+        """Create a configuration dictionary for the reconstruction.
+
+        Parameters
+        ----------
+        method
+            Reconstruction method
+        cuda
+            If True, use CUDA acceleration for reconstruction
+
+        """
+        self.recon_config = {"option": {}}
+        if cuda:
+            self.recon_config["type"] = method.upper() + "_CUDA"
+        else:
+            self.recon_config["type"] = method.upper()
+
+        if method.lower() in [
+            "sirt",
+            "sart",
+        ]:
+            self.recon_config["option"]["MinConstraint"] = 0.0
+
+    def update_geometries(self, current_ny):
+        """Update projection and reconstruction parameters for current downsampling.
+
+        Parameters
+        ----------
+        current_ny
+            Number of pixels in the Y-dimension in the current downsampled sinogram.
+
+        """
+        astra.clear()
+        proj_geom = astra.create_proj_geom("parallel", 1.0, current_ny, self.thetas)
+        vol_geom = astra.create_vol_geom((current_ny, current_ny))
+        self.rec_id = astra.data2d.create("-vol", vol_geom)
+        self.sino_id = astra.data2d.create(
+            "-sino",
+            proj_geom,
+            np.zeros([self.nangles, current_ny]),
+        )
+        if self.cuda:
+            self.proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+        else:
+            self.proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+        self.recon_config["ReconstructionDataId"] = self.rec_id
+        self.recon_config["ProjectorId"] = self.proj_id
+        self.recon_config["ProjectionDataId"] = self.sino_id
+        self.recon_config["ReconstructionDataId"] = self.rec_id
+        self.algorithm = astra.algorithm.create(self.recon_config)
+
+    def forward_project(self, current_rec):
+        _, proj = astra.create_sino(current_rec, self.proj_id)
+        return proj
+
+    def reconstruct(self, current_sinogram):
+        """Update projection and reconstruction parameters for current downsampling.
+
+        Parameters
+        ----------
+        current_ny
+            Number of pixels in the Y-dimension in the current downsampled sinogram.
+
+        """
+        astra.data2d.store(self.sino_id, current_sinogram)
+        astra.algorithm.run(self.algorithm, self.recon_iterations)
+        rec = astra.data2d.get(self.rec_id)
+        return rec
+
+
+def shift_sinogram(sino, shifts):
+    shifted = sino.copy()
+    _, ny = shifted.shape
+    y_pad_min = np.abs(shifts).max() + ny
+    ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
+    y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
+
+    shifted = np.pad(
+        shifted,
+        ((0, 0), y_pad_width),
+        mode="constant",
+    )
+    _, ny = shifted.shape
+    shifted_fft = fft(shifted, axis=1)
+
+    f = fftfreq(ny)
+    shift_array = shifts[:, np.newaxis] @ f[np.newaxis, :]
+    shift_array = np.exp((-2j * np.pi) * shift_array)
+
+    shifted_fft = shifted_fft * shift_array
+    shifted = np.real(ifft(shifted_fft, axis=1))
+    slices = [
+        slice(0, None),
+    ]
+
+    for i in [
+        y_pad_width,
+    ]:
+        if i[1] == 0:
+            i[1] = None
+        else:
+            i[1] = -i[1]
+        slices.append(slice(i[0], i[1]))
+    shifted = shifted[tuple(slices)]
+    return shifted
 
 
 def blur_convolve(
