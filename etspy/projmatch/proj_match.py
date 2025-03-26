@@ -210,7 +210,10 @@ class ProjMatch:
         ]:
             self.recon_config["option"]["MinConstraint"] = 0.0
 
-    def update_geometries(self, current_ny):
+    def update_geometries(
+        self,
+        current_ny: int,
+    ):
         """Update projection and reconstruction parameters for current downsampling.
 
         Parameters
@@ -238,17 +241,24 @@ class ProjMatch:
         self.recon_config["ReconstructionDataId"] = self.rec_id
         self.algorithm = astra.algorithm.create(self.recon_config)
 
-    def forward_project(self, current_rec):
+    def forward_project(
+        self,
+        current_rec: np.ndarray,
+    ) -> np.ndarray:
+        """Forward project the current reconstruction."""
         _, proj = astra.create_sino(current_rec, self.proj_id)
         return proj
 
-    def reconstruct(self, current_sinogram):
-        """Update projection and reconstruction parameters for current downsampling.
+    def reconstruct(
+        self,
+        current_sinogram: np.ndarray,
+    ) -> np.ndarray:
+        """Run reconstruction algorithm.
 
         Parameters
         ----------
-        current_ny
-            Number of pixels in the Y-dimension in the current downsampled sinogram.
+        current_sinogram
+            Sinogram to reconstruct.
 
         """
         astra.data2d.store(self.sino_id, current_sinogram)
@@ -257,7 +267,19 @@ class ProjMatch:
         return rec
 
 
-def shift_sinogram(sino, shifts):
+def shift_sinogram(
+    sino: np.ndarray,
+    shifts: np.ndarray,
+) -> np.ndarray:
+    """Apply shifts to singoram.
+
+    Parameters
+    ----------
+    sino:
+        Sinogram to shift
+    shifts:
+        Shifts to apply
+    """
     shifted = sino.copy()
     _, ny = shifted.shape
     y_pad_min = np.abs(shifts).max() + ny
