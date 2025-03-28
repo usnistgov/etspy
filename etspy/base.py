@@ -27,8 +27,6 @@ from hyperspy._signals.signal2d import Signal2D
 from hyperspy.axes import UniformDataAxis as Uda
 from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from hyperspy.signal import BaseSignal, SpecialSlicersSignal
-from matplotlib import animation
-from matplotlib.artist import Artist
 from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
