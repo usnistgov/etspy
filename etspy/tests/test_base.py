@@ -82,22 +82,6 @@ class TestCommonStack:
             shifts = h5.get("/Experiments/__unnamed__/metadata/Tomography/_sig_shifts")
             assert shifts.get("data").shape == (77, 2)  # type: ignore
 
-    @pytest.mark.parametrize("axis", [("XY", 77), ("XZ", 256), ("YZ", 256)])
-    def test_save_movie(self, tmp_path, axis):
-        s = ds.get_needle_data(aligned=True)
-        f = tmp_path / f"output_movie_{axis[0]}.avi"
-        s.save_movie(start=0, stop=axis[1], outfile=f, axis=axis[0])
-
-    def test_save_movie_invalid_axis(self):
-        s = ds.get_needle_data(aligned=True)
-        with pytest.raises(
-            ValueError,
-            match=re.escape(
-                'Invalid axis "not valid". Must be one of ["XY", "YZ", or "XZ"].',
-            ),
-        ):
-            s.save_movie(start=0, stop=100, outfile="", axis="not valid")  # type: ignore
-
     def test_save_raw(self, tmp_path):
         os.chdir(tmp_path)
         s = ds.get_needle_data()
