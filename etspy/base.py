@@ -1235,7 +1235,12 @@ class TomoStack(CommonStack):
         return fig
 
     # TODO: allow a list of signals for 'other'
-    def align_other(self, other: "TomoStack") -> "TomoStack":
+    def align_other(
+        self,
+        other: "TomoStack",
+        shift_type: Literal["interp", "fourier"] = "fourier",
+        cuda: bool = False,
+    ) -> "TomoStack":
         """
         Apply the alignment calculated for one dataset to another.
 
@@ -1248,6 +1253,12 @@ class TomoStack(CommonStack):
             The tilt series which is to be aligned using the previously
             calculated parameters. The data array in the TomoStack must be of
             the same size as that in ``self.data``
+        shift_type
+            Image shifts can be applied using either interpolation via
+            scipy.ndimage.shift or via Fourier shift as implemented in
+            scipy.ndimage.fourier_shift.  Must be either 'interp' or 'fourier'.
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms.
 
         Returns
         -------
@@ -1280,7 +1291,7 @@ class TomoStack(CommonStack):
             msg = "No transformations have been applied to this stack"
             raise ValueError(msg)
 
-        out = align.align_to_other(self, other)
+        out = align.align_to_other(self, other, shift_type, cuda)
 
         return out
 
@@ -1385,6 +1396,7 @@ class TomoStack(CommonStack):
         cl_resolution: float = 0.05,
         cl_div_factor: int = 8,
         cuda: bool = False,
+        shift_type: Literal["interp", "fourier"] = "fourier",
     ) -> "TomoStack":
         """
         Register stack spatially.
@@ -1441,6 +1453,10 @@ class TomoStack(CommonStack):
             :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
         cuda
             Whether or not to use CUDA-accelerated reconstruction algorithms.
+        shift_type
+            Calculated image shifts can be applied using either interpolation via
+            scipy.ndimage.shift or via Fourier shift as implemented in
+            scipy.ndimage.fourier_shift.  Must be either 'interp' or 'fourier'.
 
         Returns
         -------
@@ -1484,6 +1500,7 @@ class TomoStack(CommonStack):
                 cl_resolution=cl_resolution,
                 cl_div_factor=cl_div_factor,
                 cuda=cuda,
+                shift_type=shift_type,
             )
         else:
             msg = (
