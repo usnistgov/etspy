@@ -12,7 +12,6 @@ dependencies:
   - numba
   - numpy
   - pystackreg
-  - ffmpeg
   - pip
   - isort
   - myst-nb
