@@ -944,11 +944,11 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([[ 4.46601307, -4.83013074],
-       [ 2.50940259,  4.3421752 ],
-       [-3.72235869,  2.2149008 ],
-       [ 4.26289602,  2.07969516],
-       [ 0.77610969,  3.44610051]])
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>array([[ 2.46887688,  0.21269914],
+       [ 4.62839685, -4.73217085],
+       [-0.54112512, -4.12262345],
+       [ 3.54015472,  3.85026295],
+       [-3.56850259, -0.9241536 ]])
 </code></pre></div>
 </div>
 </div>
@@ -984,7 +984,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "33de779e27004addb6565a97449b59fd", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "a3d61bd308e04e1ebd8d3334e70a6224", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "21d6be9d47204fa29123a428d766a178", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "a64af0a424064e16acfb75926fc4d860", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -993,7 +993,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "de4ddaa1c48a4402b1893cdf74e0dcf4", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "41b2b57c35fb448680458d1ed397e729", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h3 id="stack-registration">Stack Registration<a class="headerlink" href="#stack-registration" title="Link to this heading">¶</a></h3>
 <ul class="simple">
@@ -1013,6 +1013,12 @@ th, td {
 </code></pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.align:Performing stack registration using PyStackReg
+INFO:etspy.align:Stack registration complete
+</code></pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1029,7 +1035,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "f69eade24daf442ba0ebcfcfc96c1630", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "93886a0d117141d6ba57fb566982f35f", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h3 id="reconstruction">Reconstruction<a class="headerlink" href="#reconstruction" title="Link to this heading">¶</a></h3>
 <h4 id="plot-single-image-alongside-the-sinogram-of-the-central-slice">Plot single image alongside the sinogram of the central slice<a class="headerlink" href="#plot-single-image-alongside-the-sinogram-of-the-central-slice" title="Link to this heading">¶</a></h4>
@@ -1037,15 +1043,21 @@ th, td {
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">sino</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">extract_sinogram</span><span class="p">(</span><span class="mi">150</span><span class="p">)</span>
 
-<span class="n">ax</span> <span class="o">=</span> <span class="n">hs</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">plot_images</span><span class="p">([</span><span class="n">sino</span><span class="p">,</span> <span class="n">reg</span><span class="o">.</span><span class="n">inav</span><span class="p">[</span><span class="mi">45</span><span class="p">]],</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">per_row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Sinogram&#39;</span><span class="p">,</span><span class="s1">&#39;FBP Reconstruction&#39;</span><span class="p">])</span>
-<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">hs</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">plot_images</span><span class="p">([</span><span class="n">sino</span><span class="p">,</span> <span class="n">reg</span><span class="o">.</span><span class="n">inav</span><span class="p">[</span><span class="mi">45</span><span class="p">]],</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">per_row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Sinogram&#39;</span><span class="p">,</span><span class="s1">&#39;Projection Image ($n$=45)&#39;</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "52f58cd2704b4ea9afb19fb69b78c2ca", "version_major": 2, "version_minor": 0}</script></div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code><span class=" -Color -Color-Bold -Color-Bold-Green">INFO | Hyperspy | &lt;Signal2D, title: , dimensions: (1|300, 90)&gt; data is replaced by its optimized copy, see optimize parameter of ``Basesignal.transpose`` for more information. (hyperspy.signal:4020)</span>
+</code></pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:hyperspy.signal:&lt;Signal2D, title: , dimensions: (1|300, 90)&gt; data is replaced by its optimized copy, see optimize parameter of ``Basesignal.transpose`` for more information.
+</code></pre></div>
+</div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "c6682f2c3f664604bd206af9fcab476e", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h4 id="filtered-backprojection-of-single-slice-cpu">Filtered Backprojection of Single Slice (CPU)<a class="headerlink" href="#filtered-backprojection-of-single-slice-cpu" title="Link to this heading">¶</a></h4>
 <div class="cell docutils container">
@@ -1055,7 +1067,10 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>[########################################] | 100% Completed | 205.71 ms
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.recon:Reconstructing with CPU-based FBP algorithm
+</code></pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>[########################################] | 100% Completed | 101.43 ms
 </code></pre></div>
 </div>
 </div>
@@ -1069,7 +1084,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "963fd0f53bf847c7bad3b49a5821e94d", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "34c47537a97c47059310cead411158dd", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h4 id="sirt-error-analysis">SIRT Error Analysis<a class="headerlink" href="#sirt-error-analysis" title="Link to this heading">¶</a></h4>
 <ul class="simple">
@@ -1085,7 +1100,8 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>100%|██████████████████████████████████████████████████████████████████| 500/500 [00:00&lt;00:00, 688.31it/s]
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.base:CUDA detected with Astra
+100%|██████████| 500/500 [00:00&lt;00:00, 961.70it/s]
 </code></pre></div>
 </div>
 </div>
@@ -1097,7 +1113,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "996e43dde561461584b8f45b35664882", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "6873a203d384402caec41ccfd2c6d780", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1113,7 +1129,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "b97b4e9315f24a26871e53b0775f4ffd", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "ef1302045196484d8b40bf74f833c5a7", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h4 id="reconstruct-the-entire-binned-stack">Reconstruct the entire binned stack<a class="headerlink" href="#reconstruct-the-entire-binned-stack" title="Link to this heading">¶</a></h4>
 <ul class="simple">
@@ -1127,38 +1143,40 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>100%|██████████████████████████████████████████████████████████████████| 300/300 [00:00&lt;00:00, 415.34it/s]
-100%|███████████████████████████████████████████████████████████████████| 300/300 [00:18&lt;00:00, 16.42it/s]
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.recon:Reconstructing with CUDA-accelerated FBP algorithm
+100%|██████████| 300/300 [00:00&lt;00:00, 1146.55it/s]
+INFO:etspy.recon:Reconstructing with CUDA-accelerated SIRT algorithm (100 iterations)
+100%|██████████| 300/300 [00:11&lt;00:00, 26.92it/s]
 </code></pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">recFBP</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">vmax</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">recFBP</span><span class="o">.</span><span class="n">inav</span><span class="p">[</span><span class="mi">150</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">vmax</span><span class="o">=</span><span class="mi">3000</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "0945c866874243b98da6c9e5d912e049", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "fe6753acfad84d92b831e389205b3018", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "af7d44c1739549039c9054b8b4eafccd", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">recSIRT</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">vmax</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">recSIRT</span><span class="o">.</span><span class="n">inav</span><span class="p">[</span><span class="mi">150</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">vmax</span><span class="o">=</span><span class="mi">3000</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "a9a99753acc247558fa4bcd1997ae1c0", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "c00b1dfa7d984f0299bd50f29a7f89c6", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "66617c6add9940c7b6827baae20fe737", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">recSIRT</span><span class="o">.</span><span class="n">swap_axes</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">vmax</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">recSIRT</span><span class="o">.</span><span class="n">isig</span><span class="p">[:,</span><span class="mi">150</span><span class="p">:]</span><span class="o">.</span><span class="n">swap_axes</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">vmax</span><span class="o">=</span><span class="mi">3000</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "fe8a6d08c6354f359c826c22331cefa5", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "3546de8666ca47899f337d8aa6049d5f", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "69bcfbccf9904a608f31d9e0cbb2eaff", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "8d5c022492294e3e8c82e4aa5ded6296", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h4 id="save-the-reconstruction-results">Save the Reconstruction Results<a class="headerlink" href="#save-the-reconstruction-results" title="Link to this heading">¶</a></h4>
 <ul class="simple">
@@ -1186,6 +1204,11 @@ th, td {
 </code></pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.io:Tilts found in MRC file header
+</code></pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1194,7 +1217,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "4fc3e6f0c70449928ffafc99268b5772", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "c4f2f99eff90449d8e713cd367aa1261", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "71902b1a07ab448eb30ef3fa5810491c", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "d84d7b9f86204f659639a6d1ff6c5640", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h3 id="id1">Stack Registration<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <ul class="simple">
@@ -1214,6 +1237,12 @@ th, td {
 </code></pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.align:Performing stack registration using PyStackReg
+INFO:etspy.align:Stack registration complete
+</code></pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1222,7 +1251,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "4f22ae0626eb4ed78c604b3d7d7c2801", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "9416da9fa6f94d2882e9d4a91e0ae4e4", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "cdbcb898bc264f9a98816808c9ccf929", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "0b2a877e771043b58e87872015a3b5f8", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1231,7 +1260,11 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "021a5119adfd440cae5dd5462b4ac06c", "version_major": 2, "version_minor": 0}</script></div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.base:CUDA detected with Astra
+INFO:etspy.recon:Reconstructing with CUDA-accelerated FBP algorithm
+</code></pre></div>
+</div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "5b82a6ebb44a421d8402069a27137e77", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h3 id="tilt-axis-alignment">Tilt Axis Alignment<a class="headerlink" href="#tilt-axis-alignment" title="Link to this heading">¶</a></h3>
 <ul class="simple">
@@ -1246,6 +1279,13 @@ th, td {
 </code></pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.align:Performing alignments using best 25 slices
+INFO:etspy.align:Calculated tilt-axis shift 0.22
+INFO:etspy.align:Calculated tilt-axis rotation -2.74
+</code></pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1254,7 +1294,11 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "973b98a6b0f044799811e116652f2fc4", "version_major": 2, "version_minor": 0}</script></div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.base:CUDA detected with Astra
+INFO:etspy.recon:Reconstructing with CUDA-accelerated FBP algorithm
+</code></pre></div>
+</div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "3ca74aef45b34e0d9b6aa88acaebddbf", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -1263,7 +1307,7 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "ef48a29220fc487890a61d58eb46b976", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "386d9a472e0946319818d0589c887268", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "c429fcd355d640658025fcbfc4d1f7f2", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "a360f44e1a8b4356b5a47a2e974c1cec", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <h3 id="id2">Reconstruction<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <div class="cell docutils container">
@@ -1274,28 +1318,30 @@ th, td {
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>100%|███████████████████████████████████████████████████████████████████| 256/256 [01:00&lt;00:00,  4.26it/s]
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><code>INFO:etspy.base:CUDA detected with Astra
+INFO:etspy.recon:Reconstructing with CUDA-accelerated SIRT algorithm (500 iterations)
+100%|██████████| 256/256 [00:44&lt;00:00,  5.71it/s]
 </code></pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rec</span><span class="o">.</span><span class="n">inav</span><span class="p">[</span><span class="mi">10</span><span class="p">:</span><span class="mi">205</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1200</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rec</span><span class="o">.</span><span class="n">inav</span><span class="p">[</span><span class="mi">100</span><span class="p">:</span><span class="mi">205</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1200</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "a200dbdada5748d1b6136c252c0dc5b7", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "f1dadc8876c84863b95a2a9dba32e245", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "765031e85d374200bbc7cb161287fa4c", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "32b167736eb84e8c86bc7a7316d87dae", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rec</span><span class="o">.</span><span class="n">isig</span><span class="p">[:,</span><span class="mi">90</span><span class="p">:</span><span class="mi">165</span><span class="p">]</span><span class="o">.</span><span class="n">swap_axes</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><code><span class="n">rec</span><span class="o">.</span><span class="n">isig</span><span class="p">[:,</span><span class="mi">110</span><span class="p">:</span><span class="mi">165</span><span class="p">]</span><span class="o">.</span><span class="n">swap_axes</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;inferno&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"model_id": "b7d6554d517f4a1ab2337297bfcd09b0", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "ee6efd1976254be78790aed77ef3787a", "version_major": 2, "version_minor": 0}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "6bc5ee95de214f439ceb5781cb9314ec", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "8c0c65c7180d4bd5bd9cc1999e9674af", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 
 
