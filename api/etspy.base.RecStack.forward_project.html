@@ -14,7 +14,7 @@
     
     
       
-        <title>etspy.base.RecStack.plot_slices - ETSpy 1.0.1 documentation</title>
+        <title>etspy.base.RecStack.forward_project - ETSpy 1.0.1 documentation</title>
       
     
     
@@ -124,7 +124,7 @@ $(document).ready(function(){
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              etspy.base.RecStack.plot_slices
+              etspy.base.RecStack.forward_project
             
           </span>
         </div>
@@ -473,21 +473,6 @@ $(document).ready(function(){
               
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.base.RecStack.forward_project.html" class="md-nav__link">
-        <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.forward_project — Forward project the RecStack signal." class="md-ellipsis">forward_<wbr>project</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
     
   
     
@@ -499,12 +484,12 @@ $(document).ready(function(){
       <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.plot_slices — Plot slices along all three axes of a reconstruction stack." class="md-ellipsis">plot_<wbr>slices</span>
+          <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.forward_project — Forward project the RecStack signal." class="md-ellipsis">forward_<wbr>project</span>
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="#" class="md-nav__link md-nav__link--active">
-        <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.plot_slices — Plot slices along all three axes of a reconstruction stack." class="md-ellipsis">plot_<wbr>slices</span>
+        <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.forward_project — Forward project the RecStack signal." class="md-ellipsis">forward_<wbr>project</span>
       </a>
       
         
@@ -519,7 +504,7 @@ $(document).ready(function(){
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.plot_slices — Plot slices along all three axes of a reconstruction stack." class="md-ellipsis">plot_<wbr>slices</span>
+      <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.forward_project — Forward project the RecStack signal." class="md-ellipsis">forward_<wbr>project</span>
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -532,36 +517,15 @@ $(document).ready(function(){
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#p-xslice" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.xslice — Indices of slices to plot." class="md-ellipsis">xslice</span>
+  <a href="#p-tilts" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.forward_project.tilts — Tilt angles in degrees to use for the projection ndarray" class="md-ellipsis">tilts</span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#p-yslice" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.yslice — Indices of slices to plot." class="md-ellipsis">yslice</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-zslice" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.zslice — Indices of slices to plot." class="md-ellipsis">zslice</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-vmin_std" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.vmin_std — Number of standard deviations from mean to use for scaling the displayed slices" class="md-ellipsis">vmin_<wbr>std</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-vmax_std" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.vmax_std — Number of standard deviations from mean to use for scaling the displayed slices" class="md-ellipsis">vmax_<wbr>std</span>
+  <a href="#p-cuda" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.forward_project.cuda — Whether or not to use CUDA-accelerated reconstruction algorithms." class="md-ellipsis">cuda</span>
   </a>
   
 </li>
@@ -571,24 +535,25 @@ $(document).ready(function(){
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#returns" class="md-nav__link">
-    <span class="md-ellipsis">Returns</span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#return-type" class="md-nav__link">
-    <span class="md-ellipsis">Return type</span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="etspy.base.RecStack.plot_slices.html" class="md-nav__link">
+        <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.plot_slices — Plot slices along all three axes of a reconstruction stack." class="md-ellipsis">plot_<wbr>slices</span>
+      </a>
     </li>
   
 
@@ -796,7 +761,7 @@ $(document).ready(function(){
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.plot_slices — Plot slices along all three axes of a reconstruction stack." class="md-ellipsis">plot_<wbr>slices</span>
+      <span aria-label="Python method" class="objinfo-icon objinfo-icon__procedure" title="Python method">M</span><span title="etspy.base.RecStack.forward_project — Forward project the RecStack signal." class="md-ellipsis">forward_<wbr>project</span>
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -809,56 +774,21 @@ $(document).ready(function(){
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#p-xslice" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.xslice — Indices of slices to plot." class="md-ellipsis">xslice</span>
+  <a href="#p-tilts" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.forward_project.tilts — Tilt angles in degrees to use for the projection ndarray" class="md-ellipsis">tilts</span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#p-yslice" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.yslice — Indices of slices to plot." class="md-ellipsis">yslice</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-zslice" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.zslice — Indices of slices to plot." class="md-ellipsis">zslice</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-vmin_std" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.vmin_std — Number of standard deviations from mean to use for scaling the displayed slices" class="md-ellipsis">vmin_<wbr>std</span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#p-vmax_std" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.plot_slices.vmax_std — Number of standard deviations from mean to use for scaling the displayed slices" class="md-ellipsis">vmax_<wbr>std</span>
+  <a href="#p-cuda" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.base.RecStack.forward_project.cuda — Whether or not to use CUDA-accelerated reconstruction algorithms." class="md-ellipsis">cuda</span>
   </a>
   
 </li>
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#returns" class="md-nav__link">
-    <span class="md-ellipsis">Returns</span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#return-type" class="md-nav__link">
-    <span class="md-ellipsis">Return type</span>
-  </a>
   
 </li>
       
@@ -878,33 +808,19 @@ $(document).ready(function(){
 
 <dl class="py method objdesc">
 <dt class="sig sig-object highlight sig-wrap py">
-<span class="sig-prename descclassname"><span class="pre">etspy.base.</span><span class="pre">RecStack.</span></span><span class="sig-name descname"><span class="pre">plot_slices</span></span><span class="sig-paren">(</span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-xslice" title="etspy.base.RecStack.plot_slices.xslice — Indices of slices to plot."><span class="n"><span class="pre">xslice</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-yslice" title="etspy.base.RecStack.plot_slices.yslice — Indices of slices to plot."><span class="n"><span class="pre">yslice</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-zslice" title="etspy.base.RecStack.plot_slices.zslice — Indices of slices to plot."><span class="n"><span class="pre">zslice</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-vmin_std" title="etspy.base.RecStack.plot_slices.vmin_std — Number of standard deviations from mean to use for scaling the displayed slices"><span class="n"><span class="pre">vmin_std</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="mf">0.1</span></code></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-vmax_std" title="etspy.base.RecStack.plot_slices.vmax_std — Number of standard deviations from mean to use for scaling the displayed slices"><span class="n"><span class="pre">vmax_std</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="mi">5</span></code></em></span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/etspy/base.html#RecStack.plot_slices"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Plot slices along all three axes of a reconstruction stack.</p>
+<span class="sig-prename descclassname"><span class="pre">etspy.base.</span><span class="pre">RecStack.</span></span><span class="sig-name descname"><span class="pre">forward_project</span></span><span class="sig-paren">(</span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-tilts" title="etspy.base.RecStack.forward_project.tilts — Tilt angles in degrees to use for the projection ndarray"><span class="n"><span class="pre">tilts</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoTilts.html" title="etspy.base.TomoTilts — Create a TomoTilts instance, used to hold the tilt values of a tomography stack."><span class="pre">TomoTilts</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><span class="pre">ndarray</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-cuda" title="etspy.base.RecStack.forward_project.cuda — Whether or not to use CUDA-accelerated reconstruction algorithms."><span class="n"><span class="pre">cuda</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code></em></span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="desctype"><a class="reference internal" href="etspy.base.TomoStack.html" title="etspy.base.TomoStack — Create a TomoStack instance, used to represent tomographic tilt series data."><span class="pre">TomoStack</span></a></span></span></span><a class="reference internal" href="../_modules/etspy/base.html#RecStack.forward_project"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Forward project the RecStack signal.</p>
 <dl class="field-list simple">
 <dt class="field-odd" id="parameters">Parameters<span class="colon">:</span><a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></dt>
 <dd class="field-odd"><dl class="simple api-field highlight">
-<dt id="p-xslice"><span class="n sig-name">xslice</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a><span class="w"> </span><span class="p">|</span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)">None</a></span></span><span class="w"> </span><span class="o">=</span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code><a class="headerlink" href="#p-xslice" title="Permalink to this definition">¶</a></dt><dd><p>Indices of slices to plot. If <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), the middle
-most slice will be used.</p>
+<dt id="p-tilts"><span class="n sig-name">tilts</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoTilts.html" title="etspy.base.TomoTilts — Create a TomoTilts instance, used to hold the tilt values of a tomography stack.">TomoTilts</a><span class="w"> </span><span class="p">|</span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)">ndarray</a><span class="w"> </span><span class="p">|</span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)">None</a></span></span><a class="headerlink" href="#p-tilts" title="Permalink to this definition">¶</a></dt><dd><p>Tilt angles in degrees to use for the projection
+<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a></p>
 </dd>
-<dt id="p-yslice"><span class="n sig-name">yslice</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a><span class="w"> </span><span class="p">|</span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)">None</a></span></span><span class="w"> </span><span class="o">=</span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code><a class="headerlink" href="#p-yslice" title="Permalink to this definition">¶</a></dt><dd><p>Indices of slices to plot. If <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), the middle
-most slice will be used.</p>
-</dd>
-<dt id="p-zslice"><span class="n sig-name">zslice</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a><span class="w"> </span><span class="p">|</span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)">None</a></span></span><span class="w"> </span><span class="o">=</span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code><a class="headerlink" href="#p-zslice" title="Permalink to this definition">¶</a></dt><dd><p>Indices of slices to plot. If <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), the middle
-most slice will be used.</p>
-</dd>
-<dt id="p-vmin_std"><span class="n sig-name">vmin_std</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></span></span><span class="w"> </span><span class="o">=</span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="mf">0.1</span></code><a class="headerlink" href="#p-vmin_std" title="Permalink to this definition">¶</a></dt><dd><p>Number of standard deviations from mean to use for
-scaling the displayed slices</p>
-</dd>
-<dt id="p-vmax_std"><span class="n sig-name">vmax_std</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></span></span><span class="w"> </span><span class="o">=</span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="mi">5</span></code><a class="headerlink" href="#p-vmax_std" title="Permalink to this definition">¶</a></dt><dd><p>Number of standard deviations from mean to use for
-scaling the displayed slices</p>
+<dt id="p-cuda"><span class="n sig-name">cuda</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a><span class="w"> </span><span class="p">|</span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)">None</a></span></span><span class="w"> </span><span class="o">=</span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="kc">None</span></code><a class="headerlink" href="#p-cuda" title="Permalink to this definition">¶</a></dt><dd><p>Whether or not to use CUDA-accelerated reconstruction algorithms. If
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (the default), the decision to use CUDA will be left to
+<a class="reference external" href="https://astra-toolbox.com/apiref/astra.html#astra.astra.use_cuda" title="(in ASTRA Toolbox v2.3)"><code class="xref py py-func docutils literal notranslate"><span class="pre">astra.astra.use_cuda()</span></code></a>.</p>
 </dd>
 </dl>
-</dd>
-<dt class="field-even" id="returns">Returns<span class="colon">:</span><a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></dt>
-<dd class="field-even"><p><strong>fig</strong> – The figure containing a view of the three slices</p>
-</dd>
-<dt class="field-odd" id="return-type">Return type<span class="colon">:</span><a class="headerlink" href="#return-type" title="Permalink to this headline">¶</a></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.html#matplotlib.figure.Figure" title="(in Matplotlib v3.10.1)"><em>Figure</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -938,7 +854,7 @@ scaling the displayed slices</p>
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="etspy.base.RecStack.forward_project.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: etspy.base.RecStack.forward_project" rel="prev">
+        <a href="etspy.base.RecStack.__init__.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: etspy.base.RecStack.__init__" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -947,20 +863,20 @@ scaling the displayed slices</p>
               <span class="md-footer__direction">
                 Previous
               </span>
-              etspy.base.RecStack.forward_project
+              etspy.base.RecStack.__init__
             </div>
           </div>
         </a>
       
       
         
-        <a href="etspy.base.CommonStack.html" class="md-footer__link md-footer__link--next" aria-label="Next: etspy.base.CommonStack" rel="next">
+        <a href="etspy.base.RecStack.plot_slices.html" class="md-footer__link md-footer__link--next" aria-label="Next: etspy.base.RecStack.plot_slices" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              etspy.base.CommonStack
+              etspy.base.RecStack.plot_slices
             </div>
           </div>
           <div class="md-footer__button md-icon">

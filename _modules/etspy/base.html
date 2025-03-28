@@ -1601,7 +1601,6 @@ $(document).ready(function(){
             <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;tilts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="p">)),</span>
         <span class="p">)</span>
 
-
 <div class="viewcode-block" id="TomoStack.deepcopy">
 <a class="viewcode-back" href="../../api/etspy.base.TomoStack.deepcopy.html#etspy.base.TomoStack.deepcopy">[docs]</a>
     <span class="k">def</span> <span class="nf">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -2635,7 +2634,7 @@ $(document).ready(function(){
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">cuda</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA not detected with Astra&quot;</span><span class="p">)</span>
-        <span class="n">sinogram</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">isig</span><span class="p">[</span><span class="n">nslice</span><span class="p">:</span><span class="n">nslice</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+        <span class="n">sinogram</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">isig</span><span class="p">[</span><span class="n">nslice</span> <span class="p">:</span> <span class="n">nslice</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
         <span class="n">rec_stack</span><span class="p">,</span> <span class="n">error</span> <span class="o">=</span> <span class="n">recon</span><span class="o">.</span><span class="n">astra_error</span><span class="p">(</span>
             <span class="n">sinogram</span><span class="p">,</span>
             <span class="n">angles</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
@@ -2713,7 +2712,7 @@ $(document).ready(function(){
             <span class="n">sino</span><span class="o">.</span><span class="n">set_signal_type</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
             <span class="n">sino</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">sino</span><span class="o">.</span><span class="n">as_signal2D</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
-                <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Sinogram at x = </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="si">}</span><span class="s2">&quot;</span> <span class="c1"># type: ignore</span>
+                <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Sinogram at x = </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="si">}</span><span class="s2">&quot;</span>  <span class="c1"># type: ignore</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Sinogram at column </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
@@ -2769,12 +2768,72 @@ $(document).ready(function(){
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;A RecStack must have a singular (or no) navigation axis. &quot;</span>
-                   <span class="sa">f</span><span class="s2">&quot;Navigation shape was: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;A RecStack must have a singular (or no) navigation axis. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Navigation shape was: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_shape</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">inav</span> <span class="o">=</span> <span class="n">_RecStackSlicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">isig</span> <span class="o">=</span> <span class="n">_RecStackSlicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RecStack.forward_project">
+<a class="viewcode-back" href="../../api/etspy.base.RecStack.forward_project.html#etspy.base.RecStack.forward_project">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward_project</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
+        <span class="n">cuda</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoStack</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Forward project the RecStack signal.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tilts</span>
+<span class="sd">            Tilt angles in degrees to use for the projection</span>
+<span class="sd">            :py:class:`~numpy.ndarray`</span>
+<span class="sd">        cuda</span>
+<span class="sd">            Whether or not to use CUDA-accelerated reconstruction algorithms. If</span>
+<span class="sd">            ``None`` (the default), the decision to use CUDA will be left to</span>
+<span class="sd">            :py:func:`astra.astra.use_cuda`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">cuda</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">astra</span><span class="o">.</span><span class="n">use_cuda</span><span class="p">():</span>  <span class="c1"># coverage: nocuda</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA detected with Astra&quot;</span><span class="p">)</span>
+                <span class="n">cuda</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cuda</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA not detected with Astra&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># noqa: PLR2004</span>
+            <span class="n">nz</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">ntilts</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span>
+            <span class="n">thetas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span>
+            <span class="n">vol_geom</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_vol_geom</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span>
+            <span class="n">proj_geom</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_proj_geom</span><span class="p">(</span><span class="s2">&quot;parallel&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">thetas</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+                <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
+            <span class="n">proj_id</span><span class="p">,</span> <span class="n">proj</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_sino</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">proj_id</span><span class="p">)</span>
+            <span class="n">proj</span> <span class="o">=</span> <span class="n">proj</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nx</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">ntilts</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span>
+            <span class="n">proj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">ntilts</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">])</span>
+            <span class="n">thetas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">tilts</span><span class="p">)</span>
+            <span class="n">vol_geom</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_vol_geom</span><span class="p">(</span><span class="n">ny</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span>
+            <span class="n">proj_geom</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_proj_geom</span><span class="p">(</span><span class="s2">&quot;parallel&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">thetas</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+                <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span><span class="p">):</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">proj</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_sino</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">proj_id</span><span class="p">)</span>
+        <span class="n">astra</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">TomoStack</span><span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">tilts</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="RecStack.plot_slices">
