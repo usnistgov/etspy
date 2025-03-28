@@ -10,7 +10,7 @@ import logging
 from abc import ABC
 from pathlib import Path
 from types import FrameType
-from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union, cast
+from typing import Dict, List, Literal, Optional, Tuple, Union, cast
 
 try:
     from typing import Self  # type: ignore
