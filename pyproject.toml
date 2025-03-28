@@ -21,7 +21,6 @@ pystackreg = "^0.2.8"
 astra-toolbox = ">=2.1"
 hyperspy = "^2.1.1"
 hyperspy-gui-ipywidgets = "^2.0.2"
-numba = "^0.60.0"
 typing-extensions = "^4.12.2"
 h5py = "^3.12.1"
 

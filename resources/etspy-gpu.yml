@@ -12,6 +12,5 @@ dependencies:
   - ipykernel
   - pystackreg
   - pip
-  - numba
   - numpy
   - typing_extensions
