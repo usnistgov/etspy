@@ -8,7 +8,6 @@ dependencies:
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel
-  - numba
   - numpy
   - pystackreg
   - ffmpeg
