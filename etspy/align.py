@@ -2,7 +2,6 @@
 
 # pyright: reportPossiblyUnboundVariable=false
 
-import copy
 import logging
 from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
 
