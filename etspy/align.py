@@ -390,7 +390,7 @@ def _upsampled_dft(
         kernel = cp.exp(-im2pi * kernel)
         # use kernel with same precision as the data
         kernel = kernel.astype(data.dtype, copy=False)
-        data = cp.tensordot(kernel, data, axes=(1, -1)) # type: ignore
+        data = cp.tensordot(kernel, data, axes=(1, -1))  # type: ignore
     return data
 
 
@@ -911,7 +911,7 @@ def tilt_com(
     slices = np.sort(slices)
 
     coms = get_coms(stack, slices)
-    thetas = np.pi * stack.tilts.data.squeeze() / 180.0 # remove length 1 dimension
+    thetas = np.pi * stack.tilts.data.squeeze() / 180.0  # remove length 1 dimension
 
     r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
 
@@ -1012,7 +1012,7 @@ def tilt_maximage(
         shifted = ali.isig[0:nshifts, :].deepcopy()
         for i in range(nshifts):
             shifted.data[:, :, i] = np.roll(
-                ali.isig[idx:idx+1, :].data.squeeze(),
+                ali.isig[idx : idx + 1, :].data.squeeze(),
                 int(shifts[i]),
             )
         shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
@@ -1044,7 +1044,7 @@ def align_to_other(stack: "TomoStack", other: "TomoStack") -> "TomoStack":
     -----
     align
     """
-    out = copy.deepcopy(other)
+    out = other.deepcopy()
     stack_tomo_meta = cast(Dtb, stack.metadata.Tomography)
     out_tomo_meta = cast(Dtb, out.metadata.Tomography)
 

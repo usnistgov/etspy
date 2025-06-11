@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
+import astra
 import h5py
 import hyperspy.api as hs
 import numpy as np
@@ -295,7 +296,8 @@ class TestTomoStack:
             ValueError,
             match=re.escape(
                 "Invalid number of navigation dimensions for a TomoStack (4). "
-                "Must be either 0, 1, or 2."),
+                "Must be either 0, 1, or 2.",
+            ),
         ):
             TomoStack(n)
 
@@ -766,7 +768,7 @@ class TestSlicers:
         assert ax.navigation_shape == ()
         assert ax.shape == (256, 256)
 
-    def test_single_pixel_sig_slicer_x(self, caplog): # type: ignore
+    def test_single_pixel_sig_slicer_x(self, caplog):  # type: ignore
         stack = ds.get_needle_data()
         with caplog.at_level(logging.WARNING):
             # warning should be triggered and shape should be (77, 1, 256)
@@ -859,6 +861,7 @@ class TestSlicers:
         assert t.data.shape == (77, 10, 5)
         assert isinstance(t, RecStack)
 
+
 class TestExtractSinogram:
     """Test extract_sinogram method."""
 
@@ -891,8 +894,7 @@ class TestExtractSinogram:
                 "(was <class 'str'>)",
             ),
         ):
-            stack.extract_sinogram("bad_val") # type: ignore
-
+            stack.extract_sinogram("bad_val")  # type: ignore
 
     def test_extract_sinogram_exception_handling(self):
         # test that on exception, logger is still enabled
@@ -902,6 +904,7 @@ class TestExtractSinogram:
             # using too large of a value should trigger an error
             stack.extract_sinogram(column=10000)
         assert logging.getLogger("etspy.base").disabled is False
+
 
 class TestFiltering:
     """Test filtering of TomoStack data."""
@@ -1403,6 +1406,7 @@ class TestManualAlign:
         shifted = stack.manual_align(64, display=True)
         assert isinstance(shifted, TomoStack)
 
+
 class TestRecStack:
     """Test creating RecStacks."""
 
@@ -1421,6 +1425,7 @@ class TestRecStack:
             ),
         ):
             RecStack(np.random.rand(10, 8, 11, 12))
+
 
 class TestRecStackPlotSlices:
     """Test plotting slices of a RecStack."""
@@ -1450,3 +1455,36 @@ class TestRecStackPlotSlices:
         fig = rec.plot_slices()
         assert isinstance(fig, Figure)
         assert np.all(fig.get_size_inches() == np.array([8, 4]))
+
+
+@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+class TestRecStackForwardProject:
+    """Test forward projection of RecStacks."""
+
+    def test_rec_stack_forward_project_3d(self):
+        rec = RecStack(np.random.rand(10, 100, 100))
+        tilts = np.linspace(0, 180, 90)
+        sino = rec.forward_project(tilts, cuda=False)
+        assert isinstance(sino, TomoStack)
+        assert isinstance(sino.tilts, TomoTilts)
+
+    def test_rec_stack_forward_project_2d(self):
+        rec = RecStack(np.random.rand(100, 100))
+        tilts = np.linspace(0, 180, 90)
+        sino = rec.forward_project(tilts, cuda=False)
+        assert isinstance(sino, TomoStack)
+        assert isinstance(sino.tilts, TomoTilts)
+
+    def test_rec_stack_forward_project_3d_cuda(self):
+        rec = RecStack(np.random.rand(10, 100, 100))
+        tilts = np.linspace(0, 180, 90)
+        sino = rec.forward_project(tilts, cuda=True)
+        assert isinstance(sino, TomoStack)
+        assert isinstance(sino.tilts, TomoTilts)
+
+    def test_rec_stack_forward_project_2d_cuda(self):
+        rec = RecStack(np.random.rand(100, 100))
+        tilts = np.linspace(0, 180, 90)
+        sino = rec.forward_project(tilts, cuda=True)
+        assert isinstance(sino, TomoStack)
+        assert isinstance(sino.tilts, TomoTilts)
