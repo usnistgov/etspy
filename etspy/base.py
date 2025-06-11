@@ -10,7 +10,7 @@ import logging
 from abc import ABC
 from pathlib import Path
 from types import FrameType
-from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union, cast
+from typing import Dict, List, Literal, Optional, Tuple, Union, cast
 
 try:
     from typing import Self  # type: ignore
@@ -27,8 +27,6 @@ from hyperspy._signals.signal2d import Signal2D
 from hyperspy.axes import UniformDataAxis as Uda
 from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from hyperspy.signal import BaseSignal, SpecialSlicersSignal
-from matplotlib import animation
-from matplotlib.artist import Artist
 from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
@@ -420,110 +418,6 @@ class CommonStack(Signal2D, ABC):
         )
         normalized.data = normalized.data / (meanvals + width * stdvals)
         return normalized
-
-    def save_movie(
-        self,
-        start: int,
-        stop: int,
-        axis: Literal["XY", "YZ", "XZ"] = "XY",
-        fps: int = 15,
-        dpi: int = 100,
-        outfile: Union[str, Path] = "output.avi",
-        title: str = "output.avi",
-        clim: Optional[Tuple[float, float]] = None,
-        cmap: str = "afmhot",
-    ):
-        """
-        Save the Stack as an AVI movie file.
-
-        Parameters
-        ----------
-        start
-            Starting slice number for animation
-        stop
-            Ending slice number for animation
-        axis
-            Projection axis for the output movie.
-            Must be ``'XY'`` (default), ``'YZ'`` , or ``'XZ'``
-        fps
-            Number of frames per second at which to create the movie.
-        dpi
-            Resolution to save the images in the movie.
-        outfile
-            Filename for output.
-        title
-            Title to add at the top of the movie
-        clim
-            Upper and lower contrast limit to use for movie
-        cmap
-            Matplotlib colormap to use for movie
-        """
-        if clim is None:
-            clim = (self.data.min(), self.data.max())
-
-        fig, ax = plt.subplots(1, figsize=(8, 8))
-
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        if title:
-            ax.set_title(title)
-
-        if axis == "XY":
-            im = ax.imshow(
-                self.data[start, :, :],
-                interpolation="none",
-                cmap=cmap,
-                clim=clim,
-            )
-        elif axis == "XZ":
-            im = ax.imshow(
-                self.data[:, start, :],
-                interpolation="none",
-                cmap=cmap,
-                clim=clim,
-            )
-        elif axis == "YZ":
-            im = ax.imshow(
-                self.data[:, :, start],
-                interpolation="none",
-                cmap=cmap,
-                clim=clim,
-            )
-        else:
-            msg = (
-                f'Invalid axis "{axis}". Must be one of '
-                f"{_fmt(_get_lit(self.save_movie, 'axis'))}."
-            )
-            raise ValueError(msg)
-        fig.tight_layout()
-
-        def updatexy(n) -> Iterable[Artist]:
-            tmp = self.data[n, :, :]
-            im.set_data(tmp)
-            return [im]
-
-        def updatexz(n) -> Iterable[Artist]:
-            tmp = self.data[:, n, :]
-            im.set_data(tmp)
-            return [im]
-
-        def updateyz(n) -> Iterable[Artist]:
-            tmp = self.data[:, :, n]
-            im.set_data(tmp)
-            return [im]
-
-        frames = np.arange(start, stop, 1)
-
-        if axis == "XY":
-            ani = animation.FuncAnimation(fig=fig, func=updatexy, frames=frames)
-        elif axis == "XZ":
-            ani = animation.FuncAnimation(fig=fig, func=updatexz, frames=frames)
-        elif axis == "YZ":
-            ani = animation.FuncAnimation(fig=fig, func=updateyz, frames=frames)
-
-        writer = animation.writers["ffmpeg"](fps=fps)
-        ani.save(outfile, writer=writer, dpi=dpi)
-        plt.close()
 
     def save_raw(self, filename: Optional[Union[str, Path]] = None) -> Path:
         """
@@ -923,7 +817,7 @@ class TomoStack(CommonStack):
         elif to_check.shape != (*self.axes_manager.navigation_shape[::-1], signal_size):
             msg = (
                 f"Shape of {mode} array must be "
-                f"{(*self.axes_manager.navigation_shape[::-1] , signal_size)} to match "
+                f"{(*self.axes_manager.navigation_shape[::-1], signal_size)} to match "
                 f"the navigation size of the stack (was {to_check.shape})"
             )
             raise ValueError(msg)

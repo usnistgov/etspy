@@ -10,7 +10,6 @@ dependencies:
   - ipykernel
   - numpy
   - pystackreg
-  - ffmpeg
   - pip
   - isort
   - myst-nb

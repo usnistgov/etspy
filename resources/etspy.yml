@@ -5,7 +5,6 @@ channels:
   - conda-forge
 dependencies:
   - astra-toolbox>=2.1
-  - ffmpeg
   - hyperspy-base
   - hyperspy-gui-ipywidgets
   - ipykernel

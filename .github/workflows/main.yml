@@ -59,11 +59,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           with-cuda: true
           poetry-options: "--with=dev --without=gpu"
-      - name: Install ffmpeg
-        uses: Wandalen/wretry.action@master
-        with:
-          action: FedericoCarboni/setup-ffmpeg@v3
-          attempt_limit: 3
       - name: Run docstring example tests
         run: poetry run pytest --doctest-modules --ignore=etspy/tests etspy/ 
       - name: Run full test suite
