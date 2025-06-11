@@ -14,7 +14,7 @@
     
     
       
-        <title>etspy.align.pad_line - ETSpy 1.0.1 documentation</title>
+        <title>etspy.align.apply_shifts_cuda - ETSpy 1.0.1 documentation</title>
       
     
     
@@ -124,7 +124,7 @@ $(document).ready(function(){
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              etspy.align.pad_line
+              etspy.align.apply_shifts_cuda
             
           </span>
         </div>
@@ -469,21 +469,6 @@ $(document).ready(function(){
               
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="etspy.align.apply_shifts_cuda.html" class="md-nav__link">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.apply_shifts_cuda — Apply a series of shifts to a TomoStack using CUDA acceleration." class="md-ellipsis">apply_<wbr>shifts_<wbr>cuda</span>
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
     
   
     
@@ -495,12 +480,12 @@ $(document).ready(function(){
       <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.pad_line — Pad a 1D array for FFT treatment without altering center location." class="md-ellipsis">pad_<wbr>line</span>
+          <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.apply_shifts_cuda — Apply a series of shifts to a TomoStack using CUDA acceleration." class="md-ellipsis">apply_<wbr>shifts_<wbr>cuda</span>
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="#" class="md-nav__link md-nav__link--active">
-        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.pad_line — Pad a 1D array for FFT treatment without altering center location." class="md-ellipsis">pad_<wbr>line</span>
+        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.apply_shifts_cuda — Apply a series of shifts to a TomoStack using CUDA acceleration." class="md-ellipsis">apply_<wbr>shifts_<wbr>cuda</span>
       </a>
       
         
@@ -515,7 +500,7 @@ $(document).ready(function(){
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.pad_line — Pad a 1D array for FFT treatment without altering center location." class="md-ellipsis">pad_<wbr>line</span>
+      <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.apply_shifts_cuda — Apply a series of shifts to a TomoStack using CUDA acceleration." class="md-ellipsis">apply_<wbr>shifts_<wbr>cuda</span>
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -528,15 +513,22 @@ $(document).ready(function(){
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#p-line" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.pad_line.line — The data to be padded (should be 1D)" class="md-ellipsis">line</span>
+  <a href="#p-stack" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.apply_shifts_cuda.stack — The image series to be aligned" class="md-ellipsis">stack</span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#p-paddedsize" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.pad_line.paddedsize — The size of the desired padded data." class="md-ellipsis">paddedsize</span>
+  <a href="#p-shifts" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.apply_shifts_cuda.shifts — The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to each image." class="md-ellipsis">shifts</span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p-method" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.apply_shifts_cuda.method — Image shifts can be applied using either interpolation via scipy.ndimage.shift or via Fourier shift as implemented in scipy.ndimage.fourier_shift." class="md-ellipsis">method</span>
   </a>
   
 </li>
@@ -564,6 +556,21 @@ $(document).ready(function(){
   
 </nav>
       
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="etspy.align.pad_line.html" class="md-nav__link">
+        <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.pad_line — Pad a 1D array for FFT treatment without altering center location." class="md-ellipsis">pad_<wbr>line</span>
+      </a>
     </li>
   
 
@@ -830,7 +837,7 @@ $(document).ready(function(){
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.pad_line — Pad a 1D array for FFT treatment without altering center location." class="md-ellipsis">pad_<wbr>line</span>
+      <span aria-label="Python function" class="objinfo-icon objinfo-icon__procedure" title="Python function">F</span><span title="etspy.align.apply_shifts_cuda — Apply a series of shifts to a TomoStack using CUDA acceleration." class="md-ellipsis">apply_<wbr>shifts_<wbr>cuda</span>
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -843,15 +850,22 @@ $(document).ready(function(){
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#p-line" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.pad_line.line — The data to be padded (should be 1D)" class="md-ellipsis">line</span>
+  <a href="#p-stack" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.apply_shifts_cuda.stack — The image series to be aligned" class="md-ellipsis">stack</span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#p-paddedsize" class="md-nav__link">
-    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.pad_line.paddedsize — The size of the desired padded data." class="md-ellipsis">paddedsize</span>
+  <a href="#p-shifts" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.apply_shifts_cuda.shifts — The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to each image." class="md-ellipsis">shifts</span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p-method" class="md-nav__link">
+    <span aria-label="Python parameter" class="objinfo-icon objinfo-icon__sub-data" title="Python parameter">p</span><span title="etspy.align.apply_shifts_cuda.method — Image shifts can be applied using either interpolation via scipy.ndimage.shift or via Fourier shift as implemented in scipy.ndimage.fourier_shift." class="md-ellipsis">method</span>
   </a>
   
 </li>
@@ -890,23 +904,31 @@ $(document).ready(function(){
 
 
 <dl class="py function objdesc">
-<dt class="sig sig-object highlight py">
-<span class="sig-prename descclassname"><span class="pre">etspy.align.</span></span><span class="sig-name descname"><span class="pre">pad_line</span></span><span class="sig-paren">(</span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-line" title="etspy.align.pad_line.line — The data to be padded (should be 1D)"><span class="n"><span class="pre">line</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a></span></span></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-paddedsize" title="etspy.align.pad_line.paddedsize — The size of the desired padded data."><span class="n"><span class="pre">paddedsize</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></span></em></span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="desctype"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a></span></span></span><a class="reference internal" href="../_modules/etspy/align.html#pad_line"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Pad a 1D array for FFT treatment without altering center location.</p>
+<dt class="sig sig-object highlight sig-wrap py">
+<span class="sig-prename descclassname"><span class="pre">etspy.align.</span></span><span class="sig-name descname"><span class="pre">apply_shifts_cuda</span></span><span class="sig-paren">(</span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-stack" title="etspy.align.apply_shifts_cuda.stack — The image series to be aligned"><span class="n"><span class="pre">stack</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoStack.html" title="etspy.base.TomoStack — Create a TomoStack instance, used to represent tomographic tilt series data."><span class="pre">TomoStack</span></a></span></span></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-shifts" title="etspy.align.apply_shifts_cuda.shifts — The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to each image."><span class="n"><span class="pre">shifts</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoShifts.html" title="etspy.base.TomoShifts — Create a TomoShifts instance to store image shift values of a tomography stack."><span class="pre">TomoShifts</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a></span></span></em>, </span><span class="sig-param-decl"><em class="sig-param"><a class="n reference internal" href="#p-method" title="etspy.align.apply_shifts_cuda.method — Image shifts can be applied using either interpolation via scipy.ndimage.shift or via Fourier shift as implemented in scipy.ndimage.fourier_shift."><span class="n"><span class="pre">method</span></span></a><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="desctype"><span class="s"><span class="pre">'interp'</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="s"><span class="pre">'fourier'</span></span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="s1">&#39;fourier&#39;</span></code></em></span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="desctype"><a class="reference internal" href="etspy.base.TomoStack.html" title="etspy.base.TomoStack — Create a TomoStack instance, used to represent tomographic tilt series data."><span class="pre">TomoStack</span></a></span></span></span><a class="reference internal" href="../_modules/etspy/align.html#apply_shifts_cuda"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Apply a series of shifts to a TomoStack using CUDA acceleration.</p>
 <dl class="field-list simple">
 <dt class="field-odd" id="parameters">Parameters<span class="colon">:</span><a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></dt>
 <dd class="field-odd"><dl class="simple api-field highlight">
-<dt id="p-line"><span class="n sig-name">line</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)">ndarray</a></span></span><a class="headerlink" href="#p-line" title="Permalink to this definition">¶</a></dt><dd><p>The data to be padded (should be 1D)</p>
+<dt id="p-stack"><span class="n sig-name">stack</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoStack.html" title="etspy.base.TomoStack — Create a TomoStack instance, used to represent tomographic tilt series data.">TomoStack</a></span></span><a class="headerlink" href="#p-stack" title="Permalink to this definition">¶</a></dt><dd><p>The image series to be aligned</p>
 </dd>
-<dt id="p-paddedsize"><span class="n sig-name">paddedsize</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></span></span><a class="headerlink" href="#p-paddedsize" title="Permalink to this definition">¶</a></dt><dd><p>The size of the desired padded data.</p>
+<dt id="p-shifts"><span class="n sig-name">shifts</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><a class="reference internal" href="etspy.base.TomoShifts.html" title="etspy.base.TomoShifts — Create a TomoShifts instance to store image shift values of a tomography stack.">TomoShifts</a><span class="w"> </span><span class="p">|</span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)">ndarray</a></span></span><a class="headerlink" href="#p-shifts" title="Permalink to this definition">¶</a></dt><dd><p>The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
+each image. Should be of size
+<code class="docutils literal notranslate"><span class="pre">(*stack.axes_manager.navigation_shape[::-1],</span> <span class="pre">2)</span></code>,
+with Y-shifts in the <code class="docutils literal notranslate"><span class="pre">shifts[:,</span> <span class="pre">0]</span></code> position and X-shifts in <code class="docutils literal notranslate"><span class="pre">shifts[:,</span> <span class="pre">1]</span></code>
+position (if <code class="docutils literal notranslate"><span class="pre">shifts</span></code> is a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>).</p>
+</dd>
+<dt id="p-method"><span class="n sig-name">method</span><span class="p">:</span><span class="w"> </span><span class="n"><span class="desctype"><span class="s">'interp'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="s">'fourier'</span></span></span><span class="w"> </span><span class="o">=</span><span class="w"> </span><code class="code python default_value docutils literal highlight highlight-python"><span class="s1">&#39;fourier&#39;</span></code><a class="headerlink" href="#p-method" title="Permalink to this definition">¶</a></dt><dd><p>Image shifts can be applied using either interpolation via scipy.ndimage.shift
+or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
+either ‘interp’ or ‘fourier’.</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even" id="returns">Returns<span class="colon">:</span><a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></dt>
-<dd class="field-even"><p><strong>padded</strong> – Padded version of input data (1 dimensional)</p>
+<dd class="field-even"><p><strong>shifted</strong> – Copy of input stack after shifts are applied</p>
 </dd>
 <dt class="field-odd" id="return-type">Return type<span class="colon">:</span><a class="headerlink" href="#return-type" title="Permalink to this headline">¶</a></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a></p>
+<dd class="field-odd"><p><a class="reference internal" href="etspy.base.TomoStack.html" title="etspy.base.TomoStack — Create a TomoStack instance, used to represent tomographic tilt series data.">TomoStack</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -940,7 +962,7 @@ $(document).ready(function(){
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="etspy.align.apply_shifts_cuda.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: etspy.align.apply_shifts_cuda" rel="prev">
+        <a href="etspy.align.apply_shifts.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: etspy.align.apply_shifts" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -949,20 +971,20 @@ $(document).ready(function(){
               <span class="md-footer__direction">
                 Previous
               </span>
-              etspy.align.apply_shifts_cuda
+              etspy.align.apply_shifts
             </div>
           </div>
         </a>
       
       
         
-        <a href="etspy.align.calc_shifts_cl.html" class="md-footer__link md-footer__link--next" aria-label="Next: etspy.align.calc_shifts_cl" rel="next">
+        <a href="etspy.align.pad_line.html" class="md-footer__link md-footer__link--next" aria-label="Next: etspy.align.pad_line" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              etspy.align.calc_shifts_cl
+              etspy.align.pad_line
             </div>
           </div>
           <div class="md-footer__button md-icon">

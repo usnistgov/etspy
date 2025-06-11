@@ -488,7 +488,7 @@ $(document).ready(function(){
 <span class="c1"># pyright: reportPossiblyUnboundVariable=false</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span> <span class="nn">astra</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pylab</span> <span class="k">as</span> <span class="nn">plt</span>
@@ -497,7 +497,7 @@ $(document).ready(function(){
 <span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="n">DictionaryTreeBrowser</span> <span class="k">as</span> <span class="n">Dtb</span>
 <span class="kn">from</span> <span class="nn">hyperspy.signal</span> <span class="kn">import</span> <span class="n">BaseSignal</span>
 <span class="kn">from</span> <span class="nn">pystackreg</span> <span class="kn">import</span> <span class="n">StackReg</span>
-<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span><span class="p">,</span> <span class="n">optimize</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span> <span class="n">ndimage</span><span class="p">,</span> <span class="n">optimize</span>
 <span class="kn">from</span> <span class="nn">skimage.feature</span> <span class="kn">import</span> <span class="n">canny</span>
 <span class="kn">from</span> <span class="nn">skimage.filters</span> <span class="kn">import</span> <span class="n">sobel</span>
 <span class="kn">from</span> <span class="nn">skimage.registration</span> <span class="kn">import</span> <span class="n">phase_cross_correlation</span> <span class="k">as</span> <span class="n">pcc</span>
@@ -511,6 +511,8 @@ $(document).ready(function(){
 <span class="n">has_cupy</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>  <span class="c1"># type: ignore</span>
+    <span class="kn">from</span> <span class="nn">cupyx.scipy.ndimage</span> <span class="kn">import</span> <span class="n">fourier_shift</span> <span class="k">as</span> <span class="n">fourier_shift_gpu</span>
+    <span class="kn">from</span> <span class="nn">cupyx.scipy.ndimage</span> <span class="kn">import</span> <span class="n">shift</span> <span class="k">as</span> <span class="n">shift_gpu</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="n">has_cupy</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -590,6 +592,7 @@ $(document).ready(function(){
 <span class="k">def</span> <span class="nf">apply_shifts</span><span class="p">(</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
     <span class="n">shifts</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;TomoShifts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;interp&quot;</span><span class="p">,</span> <span class="s2">&quot;fourier&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fourier&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Apply a series of shifts to a TomoStack.</span>
@@ -604,6 +607,10 @@ $(document).ready(function(){
 <span class="sd">        ``(*stack.axes_manager.navigation_shape[::-1], 2)``,</span>
 <span class="sd">        with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``</span>
 <span class="sd">        position (if ``shifts`` is a :py:class:`~numpy.ndarray`).</span>
+<span class="sd">    method</span>
+<span class="sd">        Image shifts can be applied using either interpolation via scipy.ndimage.shift</span>
+<span class="sd">        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be</span>
+<span class="sd">        either &#39;interp&#39; or &#39;fourier&#39;.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -625,13 +632,149 @@ $(document).ready(function(){
             <span class="sa">f</span><span class="s2">&quot;with number of images in the stack (</span><span class="si">{</span><span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span>
         <span class="p">)</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-        <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span>
-            <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span>
-            <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
+
+    <span class="k">if</span> <span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;interp&quot;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span>
+                <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span>
+                <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
+            <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;fourier&quot;</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">y_pad_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">shifts</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">ny</span>
+        <span class="n">ny_pad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">y_pad_min</span><span class="p">)))</span>
+        <span class="n">y_pad_width</span> <span class="o">=</span> <span class="p">[(</span><span class="n">ny_pad</span> <span class="o">-</span> <span class="n">ny</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">ny_pad</span> <span class="o">-</span> <span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">x_pad_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">shifts</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">nx</span>
+        <span class="n">nx_pad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">x_pad_min</span><span class="p">)))</span>
+        <span class="n">x_pad_width</span> <span class="o">=</span> <span class="p">[(</span><span class="n">nx_pad</span> <span class="o">-</span> <span class="n">nx</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">nx_pad</span> <span class="o">-</span> <span class="n">nx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">shifted_padded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span>
+            <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+            <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">y_pad_width</span><span class="p">,</span> <span class="n">x_pad_width</span><span class="p">),</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span>
         <span class="p">)</span>
+        <span class="n">shifted</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">shifted_padded</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">shifted_fft</span> <span class="o">=</span> <span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span>
+                <span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span>
+                    <span class="n">ndimage</span><span class="o">.</span><span class="n">fourier_shift</span><span class="p">(</span>
+                        <span class="n">shifted_fft</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                        <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
+                    <span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="n">slices</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="n">y_pad_width</span><span class="p">,</span> <span class="n">x_pad_width</span><span class="p">]:</span>
+            <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">shifted</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slices</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Invalid shift application method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="n">shifted</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">shifted</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">shifts</span>
+    <span class="k">return</span> <span class="n">shifted</span></div>
+
+
+
+<div class="viewcode-block" id="apply_shifts_cuda">
+<a class="viewcode-back" href="../../api/etspy.align.apply_shifts_cuda.html#etspy.align.apply_shifts_cuda">[docs]</a>
+<span class="k">def</span> <span class="nf">apply_shifts_cuda</span><span class="p">(</span>
+    <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
+    <span class="n">shifts</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;TomoShifts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;interp&quot;</span><span class="p">,</span> <span class="s2">&quot;fourier&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fourier&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply a series of shifts to a TomoStack using CUDA acceleration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stack</span>
+<span class="sd">        The image series to be aligned</span>
+<span class="sd">    shifts</span>
+<span class="sd">        The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to</span>
+<span class="sd">        each image. Should be of size</span>
+<span class="sd">        ``(*stack.axes_manager.navigation_shape[::-1], 2)``,</span>
+<span class="sd">        with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``</span>
+<span class="sd">        position (if ``shifts`` is a :py:class:`~numpy.ndarray`).</span>
+<span class="sd">    method</span>
+<span class="sd">        Image shifts can be applied using either interpolation via scipy.ndimage.shift</span>
+<span class="sd">        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be</span>
+<span class="sd">        either &#39;interp&#39; or &#39;fourier&#39;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    shifted : TomoStack</span>
+<span class="sd">        Copy of input stack after shifts are applied</span>
+
+<span class="sd">    Group</span>
+<span class="sd">    -----</span>
+<span class="sd">    align</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shifted</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">BaseSignal</span><span class="p">):</span>
+        <span class="n">shifts</span> <span class="o">=</span> <span class="n">shifts</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">shifts</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">shifts</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shifts</span><span class="p">)</span> <span class="o">!=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Number of shifts (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">shifts</span><span class="p">)</span><span class="si">}</span><span class="s2">) is not consistent &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;with number of images in the stack (</span><span class="si">{</span><span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;interp&quot;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">shift_gpu</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span>
+                <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
+            <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;fourier&quot;</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">y_pad_min</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">shifts</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">ny</span>
+        <span class="n">ny_pad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">y_pad_min</span><span class="p">)))</span>
+        <span class="n">y_pad_width</span> <span class="o">=</span> <span class="p">[(</span><span class="n">ny_pad</span> <span class="o">-</span> <span class="n">ny</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">ny_pad</span> <span class="o">-</span> <span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">x_pad_min</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">shifts</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">nx</span>
+        <span class="n">nx_pad</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">cp</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">x_pad_min</span><span class="p">)))</span>
+        <span class="n">x_pad_width</span> <span class="o">=</span> <span class="p">[(</span><span class="n">nx_pad</span> <span class="o">-</span> <span class="n">nx</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">nx_pad</span> <span class="o">-</span> <span class="n">nx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">padded</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">,</span>
+            <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">y_pad_width</span><span class="p">,</span> <span class="n">x_pad_width</span><span class="p">),</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">padded</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">data_fft</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">data_fft</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span>
+                <span class="n">fourier_shift_gpu</span><span class="p">(</span>
+                    <span class="n">data_fft</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">data_fft</span><span class="p">)</span>
+        <span class="n">slices</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="n">y_pad_width</span><span class="p">,</span> <span class="n">x_pad_width</span><span class="p">]:</span>
+            <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slices</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Invalid shift application method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">shifted</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+    <span class="n">shifted</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">shifted</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">shifts</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">shifted</span></div>
 
 
@@ -1182,6 +1325,7 @@ $(document).ready(function(){
     <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">show_progressbar</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">shift_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;fourier&quot;</span><span class="p">,</span> <span class="s2">&quot;interp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fourier&quot;</span><span class="p">,</span>
     <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
     <span class="n">nslices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
     <span class="n">cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -1241,6 +1385,10 @@ $(document).ready(function(){
 <span class="sd">        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
 <span class="sd">        The range for performing alignment. See</span>
 <span class="sd">        :py:func:`~etspy.align.calculate_shifts_com` for more details.</span>
+<span class="sd">    shift_type</span>
+<span class="sd">        Image shifts can be applied using either interpolation via scipy.ndimage.shift</span>
+<span class="sd">        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be</span>
+<span class="sd">        either &#39;interp&#39; or &#39;fourier&#39;.</span>
 <span class="sd">    p</span>
 <span class="sd">        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
 <span class="sd">        Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more</span>
@@ -1343,7 +1491,10 @@ $(document).ready(function(){
     <span class="k">else</span><span class="p">:</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Invalid alignment method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-    <span class="n">aligned</span> <span class="o">=</span> <span class="n">apply_shifts</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">shifts</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+        <span class="n">aligned</span> <span class="o">=</span> <span class="n">apply_shifts_cuda</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">shift_type</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">aligned</span> <span class="o">=</span> <span class="n">apply_shifts</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">shift_type</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Stack registration complete&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">aligned</span></div>
 
@@ -1549,7 +1700,12 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="align_to_other">
 <a class="viewcode-back" href="../../api/etspy.align.align_to_other.html#etspy.align.align_to_other">[docs]</a>
-<span class="k">def</span> <span class="nf">align_to_other</span><span class="p">(</span><span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">align_to_other</span><span class="p">(</span>
+    <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
+    <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
+    <span class="n">shift_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;fourier&quot;</span><span class="p">,</span> <span class="s2">&quot;interp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fourier&quot;</span><span class="p">,</span>
+    <span class="n">cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Spatially register a TomoStack using previously calculated shifts.</span>
 
@@ -1559,6 +1715,10 @@ $(document).ready(function(){
 <span class="sd">        TomoStack which was previously aligned</span>
 <span class="sd">    other</span>
 <span class="sd">        TomoStack to be aligned. Must be the same size as the primary stack</span>
+<span class="sd">    shift_type</span>
+<span class="sd">        Image shifts can be applied using either interpolation via scipy.ndimage.shift</span>
+<span class="sd">        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be</span>
+<span class="sd">        either &#39;interp&#39; or &#39;fourier&#39;.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -1584,7 +1744,10 @@ $(document).ready(function(){
     <span class="n">yshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">yshift</span><span class="p">)</span>
     <span class="n">out_tomo_meta</span><span class="o">.</span><span class="n">yshift</span> <span class="o">=</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">yshift</span>
 
-    <span class="n">out</span> <span class="o">=</span> <span class="n">apply_shifts</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">shifts</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">apply_shifts_cuda</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">shifts</span><span class="p">,</span> <span class="n">shift_type</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">apply_shifts</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">shifts</span><span class="p">,</span> <span class="n">shift_type</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">cropped</span><span class="p">:</span>
         <span class="n">out</span> <span class="o">=</span> <span class="n">shift_crop</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
