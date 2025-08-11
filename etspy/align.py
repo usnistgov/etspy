@@ -3,13 +3,12 @@
 # pyright: reportPossiblyUnboundVariable=false
 
 import logging
-from typing import TYPE_CHECKING, Literal, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Literal, Optional, Union, cast
 
 import astra
 import matplotlib.pylab as plt
 import numpy as np
 import tqdm
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
 from scipy import fft, ndimage, optimize
@@ -21,6 +20,8 @@ from skimage.transform import hough_line, hough_line_peaks
 from etspy import AlignmentMethod, AlignmentMethodType
 
 if TYPE_CHECKING:
+    from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
+
     from etspy.base import TomoShifts, TomoStack  # pragma: no cover
 
 has_cupy = True
@@ -131,7 +132,7 @@ def apply_shifts(
     shifted = stack.deepcopy()
     if isinstance(shifts, BaseSignal):
         shifts = shifts.data
-    shifts = cast(np.ndarray, shifts)
+    shifts = cast("np.ndarray", shifts)
 
     if len(shifts.data) != stack.data.shape[0]:
         msg = (
@@ -406,7 +407,7 @@ def calc_shifts_cl(
 
 def calculate_shifts_conservation_of_mass(
     stack: "TomoStack",
-    xrange: Optional[Tuple[int, int]] = None,
+    xrange: Optional[tuple[int, int]] = None,
     p: int = 20,
 ) -> np.ndarray:
     """
@@ -492,7 +493,7 @@ def calculate_shifts_com(stack: "TomoStack", nslices: int) -> np.ndarray:
 
     angles = stack.tilts.data.squeeze()
     ntilts, _, _ = stack.data.shape
-    thetas = np.pi * cast(np.ndarray, angles) / 180
+    thetas = np.pi * cast("np.ndarray", angles) / 180
 
     coms = get_coms(stack, slices)
     i_tilts = np.eye(ntilts)
@@ -707,7 +708,7 @@ def calculate_shifts_stackreg(
 
     if start is None:
         start = stack.data.shape[0] // 2  # Use the midpoint if start is not provided
-    start = cast(int, start)
+    start = cast("int", start)
 
     # Initialize pystackreg object with TranslationTransform2D
     reg = StackReg(StackReg.TRANSLATION)
@@ -804,7 +805,7 @@ def align_stack(  # noqa: PLR0913
     method: AlignmentMethodType,
     start: Optional[int],
     show_progressbar: bool,
-    xrange: Optional[Tuple[int, int]] = None,
+    xrange: Optional[tuple[int, int]] = None,
     shift_type: Literal["fourier", "interp"] = "fourier",
     p: int = 20,
     nslices: int = 20,
@@ -920,7 +921,7 @@ def align_stack(  # noqa: PLR0913
         start = (
             stack.data.shape[0] // 2
         )  # Use the slice closest to the midpoint if start is not provided
-    start = cast(int, start)  # explicit type cast for type checking
+    start = cast("int", start)  # explicit type cast for type checking
 
     if method == AlignmentMethod.COM:
         logger.info("Performing stack registration using center of mass method")
@@ -958,8 +959,8 @@ def align_stack(  # noqa: PLR0913
             cl_ref_index = stack.data.shape[0] // 2
 
         # explicit type casts for type checking
-        com_ref_index = cast(int, com_ref_index)
-        cl_ref_index = cast(int, cl_ref_index)
+        com_ref_index = cast("int", com_ref_index)
+        cl_ref_index = cast("int", cl_ref_index)
 
         shifts = calc_shifts_com_cl(
             stack,
@@ -1149,7 +1150,7 @@ def tilt_maximage(
         plt.tight_layout()
 
     ali = cast("TomoStack", stack.trans_stack(angle=-rotation_angle))
-    tomo_meta = cast(Dtb, ali.metadata.Tomography)
+    tomo_meta = cast("Dtb", ali.metadata.Tomography)
     tomo_meta.tiltaxis = -rotation_angle
 
     if also_shift:
@@ -1163,9 +1164,9 @@ def tilt_maximage(
                 int(shifts[i]),
             )
         shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
-        image_sum = cast(BaseSignal, shifted_rec.sum(axis=(1, 2)))
+        image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2)))
         tilt_shift = shifts[image_sum.data.argmin()]
-        tilt_shift = cast(float, tilt_shift)
+        tilt_shift = cast("float", tilt_shift)
         ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
         tomo_meta.yshift = -tilt_shift
     return ali
@@ -1201,18 +1202,18 @@ def align_to_other(
     align
     """
     out = other.deepcopy()
-    stack_tomo_meta = cast(Dtb, stack.metadata.Tomography)
-    out_tomo_meta = cast(Dtb, out.metadata.Tomography)
+    stack_tomo_meta = cast("Dtb", stack.metadata.Tomography)
+    out_tomo_meta = cast("Dtb", out.metadata.Tomography)
 
     out.shifts = np.zeros([out.data.shape[0], 2])
 
-    tiltaxis = cast(float, stack_tomo_meta.tiltaxis)
+    tiltaxis = cast("float", stack_tomo_meta.tiltaxis)
     out_tomo_meta.tiltaxis = tiltaxis
 
-    xshift = cast(float, stack_tomo_meta.xshift)
+    xshift = cast("float", stack_tomo_meta.xshift)
     out_tomo_meta.xshift = stack_tomo_meta.xshift
 
-    yshift = cast(float, stack_tomo_meta.yshift)
+    yshift = cast("float", stack_tomo_meta.yshift)
     out_tomo_meta.yshift = stack_tomo_meta.yshift
 
     if cuda:

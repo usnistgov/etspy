@@ -9,8 +9,7 @@ import inspect
 import logging
 from abc import ABC
 from pathlib import Path
-from types import FrameType
-from typing import Dict, List, Literal, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Literal, Optional, Union, cast
 
 try:
     from typing import Self  # type: ignore
@@ -24,8 +23,6 @@ import numpy as np
 import pylab as plt
 from hyperspy._signals.signal1d import Signal1D
 from hyperspy._signals.signal2d import Signal2D
-from hyperspy.axes import UniformDataAxis as Uda
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 from hyperspy.signal import BaseSignal, SpecialSlicersSignal
 from matplotlib.figure import Figure
 from scipy import ndimage
@@ -36,6 +33,12 @@ from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMeth
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
+
+if TYPE_CHECKING:
+    from types import FrameType
+
+    from hyperspy.axes import UniformDataAxis as Uda
+    from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -166,8 +169,8 @@ class TomoShifts(Signal1D):
 
     def _slicer(self, slices, isNavigation=None, out=None):  # noqa: N803
         if not isNavigation:
-            f = cast(FrameType, inspect.currentframe())
-            co_names = cast(FrameType, f.f_back).f_code.co_names
+            f = cast("FrameType", inspect.currentframe())
+            co_names = cast("FrameType", f.f_back).f_code.co_names
             if "_additional_slicing_targets" not in co_names:
                 # '_additional_slicing_targets' will only be present if call originated
                 # from the HyperSpy slicing module, meaning we reached this code by
@@ -241,8 +244,8 @@ class TomoTilts(Signal1D):
 
     def _slicer(self, slices, isNavigation=None, out=None):  # noqa: N803
         if not isNavigation:
-            f = cast(FrameType, inspect.currentframe())
-            co_names = cast(FrameType, f.f_back).f_code.co_names
+            f = cast("FrameType", inspect.currentframe())
+            co_names = cast("FrameType", f.f_back).f_code.co_names
             if "_additional_slicing_targets" not in co_names:
                 # '_additional_slicing_targets' will only be present if call originated
                 # from the HyperSpy slicing module, meaning we reached this code by
@@ -437,7 +440,7 @@ class CommonStack(Signal2D, ABC):
         datashape = self.data.shape
 
         if filename is None:
-            filename = Path(str(cast(Dtb, self.metadata.General).title))
+            filename = Path(str(cast("Dtb", self.metadata.General).title))
         elif isinstance(filename, str):
             filename = Path(filename)
 
@@ -544,11 +547,11 @@ class CommonStack(Signal2D, ABC):
                 order=interpolation_order,
             )
 
-        trans_tomo_meta = cast(Dtb, transformed.metadata.Tomography)
-        self_tomo_meta = cast(Dtb, self.metadata.Tomography)
-        trans_tomo_meta.xshift = cast(float, self_tomo_meta.xshift) + xshift
-        trans_tomo_meta.yshift = cast(float, self_tomo_meta.yshift) + yshift
-        trans_tomo_meta.tiltaxis = cast(float, self_tomo_meta.tiltaxis) + angle
+        trans_tomo_meta = cast("Dtb", transformed.metadata.Tomography)
+        self_tomo_meta = cast("Dtb", self.metadata.Tomography)
+        trans_tomo_meta.xshift = cast("float", self_tomo_meta.xshift) + xshift
+        trans_tomo_meta.yshift = cast("float", self_tomo_meta.yshift) + yshift
+        trans_tomo_meta.tiltaxis = cast("float", self_tomo_meta.tiltaxis) + angle
         return transformed
 
 
@@ -629,7 +632,7 @@ class TomoStack(CommonStack):
         )
 
     def _fix_projection_axis(self, axis_number: int):
-        ax = cast(Uda, self.axes_manager[axis_number])
+        ax = cast("Uda", self.axes_manager[axis_number])
         if ax.name in (Undefined, "z"):
             ax.name = "Projections"
         if ax.units == Undefined:
@@ -637,7 +640,7 @@ class TomoStack(CommonStack):
             del ax.scale
 
     def _fix_frames_axis(self, axis_number: int):
-        ax = cast(Uda, self.axes_manager[axis_number])
+        ax = cast("Uda", self.axes_manager[axis_number])
         if ax.name in (Undefined, "z"):
             ax.name = "Frames"
         if ax.units == Undefined:
@@ -664,7 +667,7 @@ class TomoStack(CommonStack):
             **kwargs,
         )
         self.metadata.add_node("Tomography")
-        cast(Dtb, self.metadata.Tomography).add_dictionary(tomo_metadata)
+        cast("Dtb", self.metadata.Tomography).add_dictionary(tomo_metadata)
 
         # need to handle navigation_dimension == 1 (normal case) or == 2 (multiframe)
         if self.axes_manager.navigation_dimension == 0:
@@ -684,7 +687,7 @@ class TomoStack(CommonStack):
             )
             raise ValueError(msg)
 
-        signal_axes = cast(tuple[Uda, Uda], self.axes_manager.signal_axes)
+        signal_axes = cast("tuple[Uda, Uda]", self.axes_manager.signal_axes)
         x_axis = signal_axes[0]
         x_axis.name = "x"
         if x_axis.units == Undefined:
@@ -757,13 +760,13 @@ class TomoStack(CommonStack):
                     or self.axes_manager.navigation_axes[0].units == ""
                 )
             ):
-                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
+                nav_ax_0 = cast("Uda", self.axes_manager.navigation_axes[0])
                 nav_ax_0.name = "Projections"
                 nav_ax_0.units = "degrees"
             # multiframe (special SerialEM case)
             elif self.axes_manager.navigation_dimension == 2:  # noqa: PLR2004
-                nav_ax_0 = cast(Uda, self.axes_manager.navigation_axes[0])
-                nav_ax_1 = cast(Uda, self.axes_manager.navigation_axes[1])
+                nav_ax_0 = cast("Uda", self.axes_manager.navigation_axes[0])
+                nav_ax_1 = cast("Uda", self.axes_manager.navigation_axes[1])
                 nav_ax_0.name = (
                     "Frames" if nav_ax_0.name == Undefined else nav_ax_0.name
                 )
@@ -777,8 +780,8 @@ class TomoStack(CommonStack):
                     "degrees" if nav_ax_1.units == Undefined else nav_ax_1.units
                 )
         if self.axes_manager.signal_axes:
-            cast(Uda, self.axes_manager.signal_axes[0]).name = "x"
-            cast(Uda, self.axes_manager.signal_axes[1]).name = "y"
+            cast("Uda", self.axes_manager.signal_axes[0]).name = "x"
+            cast("Uda", self.axes_manager.signal_axes[1]).name = "y"
 
         # ensure that shifts and tilts will be sliced when the Signal is
         self._additional_slicing_targets = [
@@ -874,12 +877,12 @@ class TomoStack(CommonStack):
         else:
             # value is already a Signal, so test the dimensions
             value = cast(
-                Union[TomoTilts, TomoShifts],
+                "Union[TomoTilts, TomoShifts]",
                 self._check_array_shape(value, mode),
             )
             # Using the TomoTilts/TomoShifts constructor strips metadata and axis
             # info, so copy it back:
-            target = cast(Union[TomoTilts, TomoShifts], _cls(data=value))
+            target = cast("Union[TomoTilts, TomoShifts]", _cls(data=value))
             target.metadata.add_dictionary(value.metadata.as_dictionary())
             target.axes_manager.update_axes_attributes_from(
                 (*value.axes_manager.navigation_axes, *value.axes_manager.signal_axes),
@@ -921,14 +924,14 @@ class TomoStack(CommonStack):
     @shifts.setter
     def shifts(self, new_shifts: Optional[Union[TomoShifts, np.ndarray]]):
         self._shifts = cast(
-            TomoShifts,
+            "TomoShifts",
             self.shift_and_tilt_setter("shifts", new_shifts),
         )
 
     @shifts.deleter
     def shifts(self):
         self._shifts = cast(
-            TomoShifts,
+            "TomoShifts",
             self.shift_and_tilt_setter("shifts", np.zeros_like(self.shifts.data)),
         )
 
@@ -946,14 +949,14 @@ class TomoStack(CommonStack):
     @tilts.setter
     def tilts(self, new_tilts: Optional[Union[TomoTilts, np.ndarray]]):
         self._tilts = cast(
-            TomoTilts,
+            "TomoTilts",
             self.shift_and_tilt_setter("tilts", new_tilts),
         )
 
     @tilts.deleter
     def tilts(self):
         self._tilts = cast(
-            TomoTilts,
+            "TomoTilts",
             self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
         )
 
@@ -996,7 +999,7 @@ class TomoStack(CommonStack):
         s.shifts = copy.copy(self.shifts)
         return s
 
-    def plot_sinos(self, *args: Tuple, **kwargs: Dict):
+    def plot_sinos(self, *args: tuple, **kwargs: dict):
         """
         Plot the TomoStack in sinogram orientation.
 
@@ -1018,7 +1021,7 @@ class TomoStack(CommonStack):
             **kwargs,
         )
 
-    def remove_projections(self, projections: Optional[List] = None) -> "TomoStack":
+    def remove_projections(self, projections: Optional[list] = None) -> "TomoStack":
         """
         Return a copy of the TomoStack with certain projections removed from the series.
 
@@ -1046,9 +1049,9 @@ class TomoStack(CommonStack):
             raise ValueError(msg)
         nprojs = len(projections)
         s_new = self.deepcopy()
-        s_ax = cast(Uda, s_new.axes_manager[0])
-        s_tilt_ax = cast(Uda, s_new.tilts.axes_manager[0])
-        s_shift_ax = cast(Uda, s_new.shifts.axes_manager[0])
+        s_ax = cast("Uda", s_new.axes_manager[0])
+        s_tilt_ax = cast("Uda", s_new.tilts.axes_manager[0])
+        s_shift_ax = cast("Uda", s_new.shifts.axes_manager[0])
         for ax in (s_ax, s_tilt_ax, s_shift_ax):
             ax.size -= nprojs
         mask = np.ones(self.data.shape[0], dtype=bool)
@@ -1086,7 +1089,7 @@ class TomoStack(CommonStack):
 
     def test_correlation(
         self,
-        images: Optional[Union[List[int], Tuple[int, int]]] = None,
+        images: Optional[Union[list[int], tuple[int, int]]] = None,
     ) -> Figure:
         """
         Test output of cross-correlation prior to alignment.
@@ -1161,7 +1164,7 @@ class TomoStack(CommonStack):
         """
         # Check if any transformations have been applied to the current stack
         no_shifts = np.all(self.shifts.data == 0)
-        tomo_meta = cast(Dtb, self.metadata.Tomography)
+        tomo_meta = cast("Dtb", self.metadata.Tomography)
         no_xshift = any(
             [
                 tomo_meta.xshift is None,
@@ -1282,7 +1285,7 @@ class TomoStack(CommonStack):
         start: Optional[int] = None,
         show_progressbar: bool = False,
         crop: bool = False,
-        xrange: Optional[Tuple[int, int]] = None,
+        xrange: Optional[tuple[int, int]] = None,
         p: int = 20,
         nslices: int = 20,
         com_ref_index: Optional[int] = None,
@@ -1526,7 +1529,7 @@ class TomoStack(CommonStack):
         ncores: Optional[int] = None,
         sino_filter: FbpMethodType = "shepp-logan",
         dart_iterations: Optional[int] = 5,
-        gray_levels: Optional[Union[List, np.ndarray]] = None,
+        gray_levels: Optional[Union[list, np.ndarray]] = None,
     ) -> "RecStack":
         """
         Reconstruct a TomoStack series using one of the available methods.
@@ -1659,7 +1662,7 @@ class TomoStack(CommonStack):
             ncores=ncores,
             bp_filter=sino_filter,
             gray_levels=gray_levels,
-            dart_iterations=cast(int, dart_iterations),
+            dart_iterations=cast("int", dart_iterations),
             p=p,
             show_progressbar=show_progressbar,
         )
@@ -1740,10 +1743,13 @@ class TomoStack(CommonStack):
             shifted = self.trans_stack(xshift=0, yshift=tilt_shift, angle=tilt_rotation)
         else:
             shifted = self.deepcopy()
-        shifted = cast(TomoStack, shifted)
+        shifted = cast("TomoStack", shifted)
         shifted.data = shifted.data[:, :, slices]
 
-        cast(Uda, shifted.axes_manager[0]).axis = cast(Uda, self.axes_manager[0]).axis
+        cast("Uda", shifted.axes_manager[0]).axis = cast(
+            "Uda",
+            self.axes_manager[0],
+        ).axis
         if cuda is None:
             if astra.use_cuda():  # coverage: nocuda
                 logger.info("CUDA detected with Astra")
@@ -1799,7 +1805,7 @@ class TomoStack(CommonStack):
             Tilt increment between images
         """
         nimages = self.data.shape[0]
-        ax = cast(Uda, self.axes_manager[0])
+        ax = cast("Uda", self.axes_manager[0])
         ax.name = "Projections"
         ax.units = "degrees"
         ax.scale = increment
@@ -1808,7 +1814,7 @@ class TomoStack(CommonStack):
 
         if not self.metadata.has_item("Tomography"):
             self.metadata.add_node("Tomography")
-            tomo_meta = cast(Dtb, self.metadata.Tomography)
+            tomo_meta = cast("Dtb", self.metadata.Tomography)
             tomo_meta.set_item("tiltaxis", 0)
             tomo_meta.set_item("xshift", 0)
             tomo_meta.set_item("yshift", 0)
@@ -1909,7 +1915,7 @@ class TomoStack(CommonStack):
         constrain: bool = True,
         cuda: Optional[bool] = None,
         thresh: float = 0,
-    ) -> Tuple[Signal2D, Signal1D]:
+    ) -> tuple[Signal2D, Signal1D]:
         """
         Determine the optimum number of iterations for reconstruction.
 
@@ -1975,9 +1981,9 @@ class TomoStack(CommonStack):
         )
         rec_stack = Signal2D(rec_stack)
         rec_ax0, rec_ax1, rec_ax2 = (
-            cast(Uda, rec_stack.axes_manager[i]) for i in range(3)
+            cast("Uda", rec_stack.axes_manager[i]) for i in range(3)
         )
-        self_ax2 = cast(Uda, self.axes_manager[2])
+        self_ax2 = cast("Uda", self.axes_manager[2])
         rec_ax0.name = algorithm.upper() + " iteration"
         rec_ax0.scale = 1
         rec_ax1.name = self_ax2.name
@@ -1989,8 +1995,8 @@ class TomoStack(CommonStack):
         rec_stack.navigator = "slider"
 
         error = Signal1D(error)
-        cast(Uda, error.axes_manager[0]).name = algorithm.upper() + " Iteration"
-        cast(Dtb, error.metadata.Signal).quantity = "Sum of Squared Difference"
+        cast("Uda", error.axes_manager[0]).name = algorithm.upper() + " Iteration"
+        cast("Dtb", error.metadata.Signal).quantity = "Sum of Squared Difference"
         return rec_stack, error
 
     def extract_sinogram(
@@ -2036,7 +2042,7 @@ class TomoStack(CommonStack):
         try:
             sino = self.isig[column, :]
             sino.set_signal_type("")
-            sino = cast(Signal2D, sino.as_signal2D((2, 0)))
+            sino = cast("Signal2D", sino.as_signal2D((2, 0)))
             if isinstance(column, float):
                 title = f"Sinogram at x = {column} {self.axes_manager[1].units}"  # type: ignore
             else:

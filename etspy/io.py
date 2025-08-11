@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 from hyperspy._signals.signal2d import (
@@ -56,7 +56,7 @@ def get_mrc_tilts(
     tiltfile = filename.with_suffix(".rawtlt")
     tilts = None
     if stack.original_metadata.has_item("fei_header"):
-        fei_header = cast(Dtb, stack.original_metadata.fei_header)
+        fei_header = cast("Dtb", stack.original_metadata.fei_header)
         if fei_header.has_item("a_tilt"):
             tilts = fei_header["a_tilt"][0 : stack.data.shape[0]]
             logger.info("Tilts found in MRC file header")
@@ -114,7 +114,7 @@ def get_dm_tilts(s: Union[Signal2D, TomoStack]) -> np.ndarray:
 def parse_mdoc(
     mdoc_file: PathLike,
     series: bool = False,
-) -> Tuple[dict, Union[np.ndarray, float]]:
+) -> tuple[dict, Union[np.ndarray, float]]:
     """Parse experimental parameters from a SerialEM MDOC file.
 
     Parameters
@@ -223,9 +223,9 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
 
 
 def load_serialem_series(
-    mrcfiles: Union[List[str], List[Path]],
-    mdocfiles: Union[List[str], List[Path]],
-) -> Tuple[Signal2D, np.ndarray]:
+    mrcfiles: Union[list[str], list[Path]],
+    mdocfiles: Union[list[str], list[Path]],
+) -> tuple[Signal2D, np.ndarray]:
     """
     Load a multi-frame series collected by SerialEM.
 
@@ -424,9 +424,9 @@ def _load_single_file(filename: Path) -> TomoStack:
 
 
 def load(
-    filename: Union[PathLike, List[str], List[Path]],
-    tilts: Optional[Union[List[float], np.ndarray]] = None,
-    mdocs: Optional[Union[List[str], List[Path]]] = None,
+    filename: Union[PathLike, list[str], list[Path]],
+    tilts: Optional[Union[list[float], np.ndarray]] = None,
+    mdocs: Optional[Union[list[str], list[Path]]] = None,
 ) -> TomoStack:
     """
     Create a TomoStack object using data from a file.

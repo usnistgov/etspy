@@ -2,12 +2,11 @@
 
 import logging
 from multiprocessing import Pool
-from typing import Literal, Optional, cast
+from typing import TYPE_CHECKING, Literal, Optional, cast
 
 import numpy as np
 import tqdm
 from hyperspy._signals.signal2d import Signal2D
-from hyperspy.axes import UniformDataAxis as Uda
 from pystackreg import StackReg
 from scipy import ndimage
 
@@ -15,6 +14,9 @@ from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.align import calculate_shifts_stackreg
 from etspy.base import TomoStack
+
+if TYPE_CHECKING:
+    from hyperspy.axes import UniformDataAxis as Uda
 
 
 def multiaverage(stack: np.ndarray, nframes: int, ny: int, nx: int) -> np.ndarray:
@@ -106,9 +108,9 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
         reg = np.array(reg)
 
     reg = TomoStack(reg)
-    reg_ax_0, reg_ax_1, reg_ax_2 = (cast(Uda, reg.axes_manager[i]) for i in range(3))
+    reg_ax_0, reg_ax_1, reg_ax_2 = (cast("Uda", reg.axes_manager[i]) for i in range(3))
     stack_ax_1, stack_ax_2, stack_ax_3 = (
-        cast(Uda, stack.axes_manager[i]) for i in range(1, 4)
+        cast("Uda", stack.axes_manager[i]) for i in range(1, 4)
     )
     reg_ax_0.scale = stack_ax_1.scale
     reg_ax_0.offset = stack_ax_1.offset
@@ -378,7 +380,7 @@ def get_radial_mask(
     utilities
     """
     if center is None:
-        center = cast(tuple[int, int], tuple(int(i / 2) for i in mask_shape))
+        center = cast("tuple[int, int]", tuple(int(i / 2) for i in mask_shape))
     radius = min(
         center[0],
         center[1],

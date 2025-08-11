@@ -1,6 +1,6 @@
 """Simulation module for ETSpy package."""
 
-from typing import Literal, Optional, Tuple, Union, cast
+from typing import Literal, Optional, Union, cast
 
 import astra
 import hyperspy.api as hs
@@ -17,9 +17,9 @@ def create_catalyst_model(
     nparticles: int = 15,
     particle_density: int = 255,
     support_density: int = 100,
-    volsize: Tuple[int, int, int] = (600, 600, 600),
+    volsize: tuple[int, int, int] = (600, 600, 600),
     support_radius: int = 200,
-    size_interval: Tuple[int, int] = (5, 12),
+    size_interval: tuple[int, int] = (5, 12),
 ) -> hs.signals.Signal2D:
     """
     Create a model data array that mimics a hetergeneous catalyst.
@@ -219,7 +219,7 @@ def create_model_tilt_series(
 
     if angles is None:
         angles = np.arange(0, 180, 2)
-    angles = cast(np.ndarray, angles)
+    angles = cast("np.ndarray", angles)
 
     if isinstance(model, Signal2D):
         model = model.data
@@ -235,7 +235,11 @@ def create_model_tilt_series(
     if cuda is False:
         proj_id = astra.create_projector("linear", proj_geom, vol_geom)
     else:
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom) # coverage: nocuda
+        proj_id = astra.create_projector(
+            "cuda",
+            proj_geom,
+            vol_geom,
+        )  # coverage: nocuda
 
     for i in range(model.shape[0]):
         sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)

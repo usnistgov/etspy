@@ -1,7 +1,7 @@
 """Tests for the CUDA-enabled functionality of ETSpy."""
 
 import re
-from typing import Tuple, cast
+from typing import cast
 
 import astra
 import matplotlib.pyplot as plt
@@ -138,7 +138,7 @@ class TestReconRunCUDA:
         slices = stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "FBP", cuda=True)
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -148,7 +148,7 @@ class TestReconRunCUDA:
         slices = stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SIRT", niterations=2, cuda=True)
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -158,7 +158,7 @@ class TestReconRunCUDA:
         slices = stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SART", niterations=2, cuda=True)
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -177,7 +177,7 @@ class TestReconRunCUDA:
             gray_levels=gray_levels,
             dart_iterations=1,
         )
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)

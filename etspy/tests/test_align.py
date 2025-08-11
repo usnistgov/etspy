@@ -4,15 +4,17 @@ import re
 import sys
 from importlib import reload
 from importlib.util import find_spec
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
 import numpy as np
 import pytest
-from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 import etspy.api as etspy
 from etspy import datasets as ds
+
+if TYPE_CHECKING:
+    from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 cupy_in_test_env = find_spec("cupy") is not None
 
@@ -103,8 +105,7 @@ class TestAlignFunctions:
         with pytest.raises(
             ValueError,
             match=(
-                "Dataset is only 2 pixels in x dimension. "
-                "This method cannot be used."
+                "Dataset is only 2 pixels in x dimension. This method cannot be used."
             ),
         ):
             etspy.align.tilt_com(stack)
@@ -223,15 +224,15 @@ class TestTiltAlign:
         stack = ds.get_needle_data()
         reg = stack.stack_register("PC")
         ali = reg.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
-        tilt_axis = cast(Dtb, ali.metadata.Tomography).tiltaxis
-        assert abs(-2.7 - cast(float, tilt_axis)) < 1.0
+        tilt_axis = cast("Dtb", ali.metadata.Tomography).tiltaxis
+        assert abs(-2.7 - cast("float", tilt_axis)) < 1.0
 
     def test_tilt_align_com_no_locs(self):
         stack = ds.get_needle_data()
         reg = stack.stack_register("PC")
         ali = reg.tilt_align(method="CoM", slices=None, nslices=None)
-        tilt_axis = cast(Dtb, ali.metadata.Tomography).tiltaxis
-        assert abs(-2.7 - cast(float, tilt_axis)) < 1.0
+        tilt_axis = cast("Dtb", ali.metadata.Tomography).tiltaxis
+        assert abs(-2.7 - cast("float", tilt_axis)) < 1.0
 
     def test_tilt_align_com_no_tilts(self):
         stack = ds.get_needle_data()
@@ -325,7 +326,7 @@ class TestAlignOther:
         stack = stack.inav[0:5]
         stack2 = stack.deepcopy()
         reg = stack.stack_register("PC")
-        reg = cast(etspy.TomoStack, reg.trans_stack(xshift=10, yshift=5, angle=2))
+        reg = cast("etspy.TomoStack", reg.trans_stack(xshift=10, yshift=5, angle=2))
         reg2 = reg.align_other(stack2)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0
