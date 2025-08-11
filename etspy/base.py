@@ -497,6 +497,12 @@ class CommonStack(Signal2D, ABC):
             <TomoStack, title: , dimensions: (77|256, 256)>
         """
         transformed = self.deepcopy()
+        if interpolation.lower() in ["linear", "cubic"] and np.issubdtype(
+            transformed.data.dtype,
+            np.integer,
+        ):
+            transformed.data = transformed.data.astype("float32")
+            logger.debug("Data converted to float prior to transformation")
         theta = np.pi * angle / 180.0
         center_y, center_x = np.array(
             np.array(transformed.data.shape[1:]) / 2,
