@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
 import astra
@@ -15,9 +15,7 @@ import hyperspy.api as hs
 import numpy as np
 import pytest
 from hyperspy._signals.signal2d import Signal2D
-from hyperspy.axes import UniformDataAxis as Uda
 from hyperspy.io import load as hs_load
-from hyperspy.misc.utils import DictionaryTreeBrowser
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
@@ -25,6 +23,10 @@ from etspy import datasets as ds
 from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
 
 from . import load_serialem_multiframe_data
+
+if TYPE_CHECKING:
+    from hyperspy.axes import UniformDataAxis as Uda
+    from hyperspy.misc.utils import DictionaryTreeBrowser
 
 NUM_AXES_THREE = 3
 
@@ -38,7 +40,7 @@ def _set_tomo_metadata(s: Signal2D) -> Signal2D:
     }
     s.metadata.add_node("Tomography")
     cast(
-        DictionaryTreeBrowser,
+        "DictionaryTreeBrowser",
         s.metadata.Tomography,
     ).add_dictionary(tomo_metadata)
     return s
@@ -181,7 +183,7 @@ class TestTomoStack:
         assert stack.metadata.get_item("General.title") == "test signal"
 
     def test_tomostack_create_by_signal_original_metadata(self):
-        s = cast(Signal2D, hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
         s.metadata.set_item("General.title", "original_metadata test")
         s.original_metadata.set_item("Level1.level2", "the value")
         stack = TomoStack(s)
@@ -189,7 +191,7 @@ class TestTomoStack:
         assert stack.original_metadata.get_item("Level1.level2") == "the value"
 
     def test_tomostack_create_by_signal_original_metadata_arg(self):
-        s = cast(Signal2D, hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
         s.metadata.set_item("General.title", "original_metadata test")
         s.original_metadata.set_item("Level1.level2", "the value")
         stack = TomoStack(s, original_metadata={"A1": {"B1": "C", "B2": "C2"}})
@@ -199,7 +201,7 @@ class TestTomoStack:
         assert stack.original_metadata.get_item("A1.B2") == "C2"
 
     def test_tomostack_create_by_signal_axes(self):
-        s = cast(Signal2D, hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
         s.axes_manager[0].name = "Test nav"  # type: ignore
         s.axes_manager[0].units = "Nav units"  # type: ignore
         stack = TomoStack(s)
@@ -207,7 +209,7 @@ class TestTomoStack:
         assert stack.axes_manager[0].units == "Nav units"  # type: ignore
 
     def test_tomostack_create_by_signal_axes_list_arg(self):
-        s = cast(Signal2D, hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
         ax_list = [
             {
                 "_type": "UniformDataAxis",
@@ -247,7 +249,7 @@ class TestTomoStack:
         assert stack.axes_manager[-1].scale == 0.123  # type: ignore
 
     def test_tomostack_create_by_signal_undefined_axes(self):
-        s = cast(Signal2D, hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
         axes = [
             {"size": 10, "name": "Axis0", "units": ""},
             {"size": 100, "name": "Axis1", "units": ""},
@@ -260,7 +262,7 @@ class TestTomoStack:
     def test_tomostack_create_by_array_multiframe(self):
         n = np.random.random([20, 5, 110, 120])
         stack = TomoStack(n)
-        ax0, ax1, ax2, ax3 = (cast(Uda, stack.axes_manager[i]) for i in range(4))
+        ax0, ax1, ax2, ax3 = (cast("Uda", stack.axes_manager[i]) for i in range(4))
         assert ax0.name == "Frames"
         assert ax1.name == "Projections"
         assert ax2.name == "x"
@@ -701,7 +703,10 @@ class TestSlicers:
         s = load_serialem_multiframe_data()
         assert s.axes_manager.shape == (2, 3, 1024, 1024)
         assert s.data.shape == (3, 2, 1024, 1024)
-        ax_0, ax_1, ax_2, ax_3 = cast(list[Uda], [s.axes_manager[i] for i in range(4)])
+        ax_0, ax_1, ax_2, ax_3 = cast(
+            "list[Uda]",
+            [s.axes_manager[i] for i in range(4)],
+        )
         assert ax_0.name == "Frames"
         assert ax_0.units == "images"
         assert ax_1.name == "Projections"
@@ -764,7 +769,7 @@ class TestSlicers:
             ) in caplog.text
         assert t.data.shape == (77, 256, 1)
         assert t.axes_manager.shape == (77, 1, 256)
-        ax_0, ax_1, ax_2 = cast(list[Uda], [t.axes_manager[i] for i in range(3)])
+        ax_0, ax_1, ax_2 = cast("list[Uda]", [t.axes_manager[i] for i in range(3)])
         assert ax_0.name == "Projections"
         assert ax_1.name == "x"
         assert ax_2.name == "y"
@@ -789,7 +794,7 @@ class TestSlicers:
             ) in caplog.text
         assert t.data.shape == (77, 1, 256)
         assert t.axes_manager.shape == (77, 256, 1)
-        ax_0, ax_1, ax_2 = cast(list[Uda], [t.axes_manager[i] for i in range(3)])
+        ax_0, ax_1, ax_2 = cast("list[Uda]", [t.axes_manager[i] for i in range(3)])
         assert ax_0.name == "Projections"
         assert ax_1.name == "x"
         assert ax_2.name == "y"
@@ -814,7 +819,7 @@ class TestSlicers:
             ) in caplog.text
         assert t.data.shape == (77, 1, 256)
         assert t.axes_manager.shape == (77, 256, 1)
-        ax_0, ax_1, ax_2 = cast(list[Uda], [t.axes_manager[i] for i in range(3)])
+        ax_0, ax_1, ax_2 = cast("list[Uda]", [t.axes_manager[i] for i in range(3)])
         assert ax_0.name == "Projections"
         assert ax_1.name == "x"
         assert ax_2.name == "y"
@@ -852,7 +857,7 @@ class TestExtractSinogram:
     def test_extract_sinogram(self):
         stack = ds.get_catalyst_data()
         sino = stack.extract_sinogram(300)
-        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
+        ax_0, ax_1 = cast("list[Uda]", [sino.axes_manager[i] for i in range(2)])
         assert sino.axes_manager.shape == (600, 90)
         assert sino.metadata.get_item("Signal.signal_type") == ""
         assert ax_0.name == "y"
@@ -862,7 +867,7 @@ class TestExtractSinogram:
     def test_extract_sinogram_float(self):
         stack = ds.get_catalyst_data()
         sino = stack.extract_sinogram(106.32)
-        ax_0, ax_1 = cast(list[Uda], [sino.axes_manager[i] for i in range(2)])
+        ax_0, ax_1 = cast("list[Uda]", [sino.axes_manager[i] for i in range(2)])
         assert sino.axes_manager.shape == (600, 90)
         assert sino.metadata.get_item("Signal.signal_type") == ""
         assert ax_0.name == "y"
@@ -961,7 +966,7 @@ class TestOperations:
 
     def test_stack_normalize(self):
         stack = ds.get_needle_data()
-        norm = cast(TomoStack, stack.normalize())
+        norm = cast("TomoStack", stack.normalize())
         assert norm.axes_manager.navigation_shape == stack.axes_manager.navigation_shape
         assert norm.axes_manager.signal_shape == stack.axes_manager.signal_shape
         assert norm.data.min() == 0.0
@@ -970,7 +975,7 @@ class TestOperations:
         im = np.zeros([10, 100, 100])
         im[:, 40:60, 40:60] = 10
         stack = TomoStack(im)
-        invert = cast(TomoStack, stack.invert())
+        invert = cast("TomoStack", stack.invert())
         hist, bins = np.histogram(stack.data)
         hist_inv, bins_inv = np.histogram(invert.data)
         assert hist[0] > hist_inv[0]
@@ -992,7 +997,7 @@ class TestOperations:
         stack = ds.get_needle_data()
         start, increment = -50, 5
         stack.set_tilts(start, increment)
-        ax = cast(Uda, stack.axes_manager[0])
+        ax = cast("Uda", stack.axes_manager[0])
         assert ax.name == "Projections"
         assert ax.scale == increment
         assert ax.units == "degrees"
@@ -1011,7 +1016,7 @@ class TestOperations:
         del stack.metadata.Tomography  # pyright: ignore[reportAttributeAccessIssue]
         start, increment = -50, 5
         stack.set_tilts(start, increment)
-        ax = cast(Uda, stack.axes_manager[0])
+        ax = cast("Uda", stack.axes_manager[0])
         assert ax.name == "Projections"
         assert ax.scale == increment
         assert ax.units == "degrees"

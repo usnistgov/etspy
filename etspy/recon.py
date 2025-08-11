@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 import logging
 import multiprocessing as mp
-from typing import Literal, Optional, Union, cast
+from typing import Literal, Union, cast
 
 import astra
 import numpy as np
@@ -172,9 +172,9 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     niterations: int = 20,
     constrain: bool = False,
     thresh: float = 0,
-    cuda: Optional[bool] = None,
-    thickness: Optional[int] = None,
-    ncores: Optional[int] = None,
+    cuda: bool | None = None,
+    thickness: int | None = None,
+    ncores: int | None = None,
     bp_filter: Literal[
         "ram-lak",
         "shepp-logan",
@@ -199,7 +199,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         "rprojection",
         "rsinogram",
     ] = "shepp-logan",
-    gray_levels: Optional[Union[list, np.ndarray]] = None,
+    gray_levels: Union[list, np.ndarray] | None = None,
     dart_iterations: int = 2,
     p: float = 0.99,
     show_progressbar: bool = True,
@@ -269,7 +269,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
 
     if thickness is None:
         thickness = ny
-    thickness = cast(int, thickness)
+    thickness = cast("int", thickness)
 
     rec = np.zeros((nx, thickness, ny), np.float32)
 
@@ -310,7 +310,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
             if gray_levels is None:
                 msg = "gray_levels must be provided for DART"
                 raise ValueError(msg)
-            gray_levels = cast(Union[list, np.ndarray], gray_levels)
+            gray_levels = cast("Union[list, np.ndarray]", gray_levels)
             thresholds = [
                 (gray_levels[i] + gray_levels[i + 1]) // 2
                 for i in range(len(gray_levels) - 1)
@@ -342,7 +342,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
                     dart_iterations,
                     p,
                     thresholds,
-                    cast(Union[list, np.ndarray], gray_levels),
+                    cast("Union[list, np.ndarray]", gray_levels),
                     cfg,
                     vol_geom,
                     proj_geom,
@@ -375,7 +375,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
             if gray_levels is None:
                 msg = "gray_levels must be provided for DART"
                 raise ValueError(msg)
-            gray_levels = cast(np.ndarray, gray_levels)  # explicit type-checking cast
+            gray_levels = cast("np.ndarray", gray_levels)  # explicit type-checking cast
             thresholds = [
                 (gray_levels[i] + gray_levels[i + 1]) // 2
                 for i in range(len(gray_levels) - 1)

@@ -16,9 +16,9 @@ logger.setLevel(logging.INFO)
 etspy_path = _Path(__file__).parent
 
 __all__ = [
+    "TomoStack",
     "align",
     "io",
-    "utils",
-    "TomoStack",
     "load",
+    "utils",
 ]

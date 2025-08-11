@@ -1,10 +1,11 @@
 """ETSpy."""
+
 import importlib.metadata
 
 __version__ = importlib.metadata.version("etspy")
 
 from enum import Enum
-from typing import Callable, List, Literal, Union, get_args, get_type_hints
+from typing import Callable, Literal, Union, get_args, get_type_hints
 
 
 class AlignmentMethod(str, Enum):
@@ -41,7 +42,7 @@ class AlignmentMethod(str, Enum):
             return True
 
     @classmethod
-    def values(cls) -> List[str]:
+    def values(cls) -> list[str]:
         """Calculate a list of allowed values in the AlignmentMethod enum."""
         return [v.value for _, v in cls.__members__.items()]
 

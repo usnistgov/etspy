@@ -1,7 +1,7 @@
 """Test the reconstruction module of ETSpy."""
 
 import re
-from typing import Tuple, cast
+from typing import cast
 
 import astra
 import numpy as np
@@ -22,7 +22,7 @@ class TestReconstruction:
         with pytest.raises(
             ValueError,
             match=r"Tilts are not defined in stack.tilts \(values were all zeros\). "
-                  r"Please set tilt values before alignment.",
+            r"Please set tilt values before alignment.",
         ):
             slices.reconstruct("FBP")
 
@@ -34,7 +34,7 @@ class TestReconstruction:
         assert isinstance(stack, TomoStack)
         assert isinstance(rec, np.ndarray)
         data_shape = rec.data.shape
-        data_shape = cast(Tuple[int, int, int], data_shape)  # cast for type checking
+        data_shape = cast("tuple[int, int, int]", data_shape)  # cast for type checking
         assert data_shape[2] == slices.data.shape[1]
 
     def test_recon_unknown_algorithm(self):
@@ -135,7 +135,7 @@ class TestReconRun:
         slices = stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "FBP", cuda=False)
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -145,7 +145,7 @@ class TestReconRun:
         slices = stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data.squeeze(), tilts, "FBP", cuda=False)
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -155,7 +155,7 @@ class TestReconRun:
         slices = stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SIRT", niterations=2, cuda=False)
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -165,7 +165,7 @@ class TestReconRun:
         slices = stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SART", niterations=2, cuda=False)
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -184,7 +184,7 @@ class TestReconRun:
             gray_levels=gray_levels,
             dart_iterations=1,
         )
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
@@ -234,10 +234,11 @@ class TestReconRun:
             dart_iterations=1,
             show_progressbar=False,
         )
-        data_shape = cast(Tuple[int, int, int], rec.data.shape)
+        data_shape = cast("tuple[int, int, int]", rec.data.shape)
         assert data_shape == (1, slices.data.shape[1], slices.data.shape[1])
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
+
 
 class TestAstraError:
     """Test Astra toolbox errors."""
@@ -284,7 +285,7 @@ class TestAstraError:
             match=re.escape(
                 "Sinogram must be two-dimensional (ntilts, y). "
                 "Provided shape was (3, 5, 10).",
-                ),
+            ),
         ):
             recon.astra_error(
                 sino,
@@ -306,7 +307,7 @@ class TestAstraError:
                 "Number of angles must match size of the first dimension of the "
                 "sinogram. [len(angles) was 77; sinogram.shape was (3, 10)] "
                 "(77 != 3)",
-                ),
+            ),
         ):
             recon.astra_error(
                 sino,
