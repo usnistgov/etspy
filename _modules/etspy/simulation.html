@@ -485,7 +485,7 @@ $(document).ready(function(){
 <h1>Source code for etspy.simulation</h1><div class="highlight"><pre>
 <span></span><code><span class="sd">&quot;&quot;&quot;Simulation module for ETSpy package.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span> <span class="nn">astra</span>
 <span class="kn">import</span> <span class="nn">hyperspy.api</span> <span class="k">as</span> <span class="nn">hs</span>
@@ -504,9 +504,9 @@ $(document).ready(function(){
     <span class="n">nparticles</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
     <span class="n">particle_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">255</span><span class="p">,</span>
     <span class="n">support_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-    <span class="n">volsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">600</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">600</span><span class="p">),</span>
+    <span class="n">volsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">600</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">600</span><span class="p">),</span>
     <span class="n">support_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
-    <span class="n">size_interval</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+    <span class="n">size_interval</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hs</span><span class="o">.</span><span class="n">signals</span><span class="o">.</span><span class="n">Signal2D</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a model data array that mimics a hetergeneous catalyst.</span>
@@ -712,7 +712,7 @@ $(document).ready(function(){
 
     <span class="k">if</span> <span class="n">angles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">angles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-    <span class="n">angles</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span>
+    <span class="n">angles</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">Signal2D</span><span class="p">):</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">data</span>
@@ -728,7 +728,11 @@ $(document).ready(function(){
     <span class="k">if</span> <span class="n">cuda</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
         <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">proj_geom</span><span class="p">,</span> <span class="n">vol_geom</span><span class="p">)</span> <span class="c1"># coverage: nocuda</span>
+        <span class="n">proj_id</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_projector</span><span class="p">(</span>
+            <span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+            <span class="n">proj_geom</span><span class="p">,</span>
+            <span class="n">vol_geom</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># coverage: nocuda</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
         <span class="n">sino_id</span><span class="p">,</span> <span class="n">proj_data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_sino</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">proj_id</span><span class="p">)</span>

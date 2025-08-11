@@ -494,8 +494,7 @@ $(document).ready(function(){
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="n">FrameType</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Self</span>  <span class="c1"># type: ignore</span>
@@ -509,8 +508,6 @@ $(document).ready(function(){
 <span class="kn">import</span> <span class="nn">pylab</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">from</span> <span class="nn">hyperspy._signals.signal1d</span> <span class="kn">import</span> <span class="n">Signal1D</span>
 <span class="kn">from</span> <span class="nn">hyperspy._signals.signal2d</span> <span class="kn">import</span> <span class="n">Signal2D</span>
-<span class="kn">from</span> <span class="nn">hyperspy.axes</span> <span class="kn">import</span> <span class="n">UniformDataAxis</span> <span class="k">as</span> <span class="n">Uda</span>
-<span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="n">DictionaryTreeBrowser</span> <span class="k">as</span> <span class="n">Dtb</span>
 <span class="kn">from</span> <span class="nn">hyperspy.signal</span> <span class="kn">import</span> <span class="n">BaseSignal</span><span class="p">,</span> <span class="n">SpecialSlicersSignal</span>
 <span class="kn">from</span> <span class="nn">matplotlib.figure</span> <span class="kn">import</span> <span class="n">Figure</span>
 <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
@@ -521,6 +518,12 @@ $(document).ready(function(){
 <span class="kn">from</span> <span class="nn">etspy</span> <span class="kn">import</span> <span class="n">_format_choices</span> <span class="k">as</span> <span class="n">_fmt</span>
 <span class="kn">from</span> <span class="nn">etspy</span> <span class="kn">import</span> <span class="n">_get_literal_hint_values</span> <span class="k">as</span> <span class="n">_get_lit</span>
 <span class="kn">from</span> <span class="nn">etspy</span> <span class="kn">import</span> <span class="n">align</span><span class="p">,</span> <span class="n">recon</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="n">FrameType</span>
+
+    <span class="kn">from</span> <span class="nn">hyperspy.axes</span> <span class="kn">import</span> <span class="n">UniformDataAxis</span> <span class="k">as</span> <span class="n">Uda</span>
+    <span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="n">DictionaryTreeBrowser</span> <span class="k">as</span> <span class="n">Dtb</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
@@ -659,8 +662,8 @@ $(document).ready(function(){
 
     <span class="k">def</span> <span class="nf">_slicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># noqa: N803</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">isNavigation</span><span class="p">:</span>
-            <span class="n">f</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">FrameType</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">())</span>
-            <span class="n">co_names</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">FrameType</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">f_back</span><span class="p">)</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_names</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;FrameType&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">())</span>
+            <span class="n">co_names</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;FrameType&quot;</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">f_back</span><span class="p">)</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_names</span>
             <span class="k">if</span> <span class="s2">&quot;_additional_slicing_targets&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">co_names</span><span class="p">:</span>
                 <span class="c1"># &#39;_additional_slicing_targets&#39; will only be present if call originated</span>
                 <span class="c1"># from the HyperSpy slicing module, meaning we reached this code by</span>
@@ -740,8 +743,8 @@ $(document).ready(function(){
 
     <span class="k">def</span> <span class="nf">_slicer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">isNavigation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># noqa: N803</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">isNavigation</span><span class="p">:</span>
-            <span class="n">f</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">FrameType</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">())</span>
-            <span class="n">co_names</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">FrameType</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">f_back</span><span class="p">)</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_names</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;FrameType&quot;</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">())</span>
+            <span class="n">co_names</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;FrameType&quot;</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">f_back</span><span class="p">)</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_names</span>
             <span class="k">if</span> <span class="s2">&quot;_additional_slicing_targets&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">co_names</span><span class="p">:</span>
                 <span class="c1"># &#39;_additional_slicing_targets&#39; will only be present if call originated</span>
                 <span class="c1"># from the HyperSpy slicing module, meaning we reached this code by</span>
@@ -956,7 +959,7 @@ $(document).ready(function(){
         <span class="n">datashape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
 
         <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">General</span><span class="p">)</span><span class="o">.</span><span class="n">title</span><span class="p">))</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">General</span><span class="p">)</span><span class="o">.</span><span class="n">title</span><span class="p">))</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="n">filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
 
@@ -1075,11 +1078,11 @@ $(document).ready(function(){
                 <span class="n">order</span><span class="o">=</span><span class="n">interpolation_order</span><span class="p">,</span>
             <span class="p">)</span>
 
-        <span class="n">trans_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">transformed</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
-        <span class="n">self_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
-        <span class="n">trans_tomo_meta</span><span class="o">.</span><span class="n">xshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">self_tomo_meta</span><span class="o">.</span><span class="n">xshift</span><span class="p">)</span> <span class="o">+</span> <span class="n">xshift</span>
-        <span class="n">trans_tomo_meta</span><span class="o">.</span><span class="n">yshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">self_tomo_meta</span><span class="o">.</span><span class="n">yshift</span><span class="p">)</span> <span class="o">+</span> <span class="n">yshift</span>
-        <span class="n">trans_tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">self_tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span><span class="p">)</span> <span class="o">+</span> <span class="n">angle</span>
+        <span class="n">trans_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="n">transformed</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+        <span class="n">self_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+        <span class="n">trans_tomo_meta</span><span class="o">.</span><span class="n">xshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">self_tomo_meta</span><span class="o">.</span><span class="n">xshift</span><span class="p">)</span> <span class="o">+</span> <span class="n">xshift</span>
+        <span class="n">trans_tomo_meta</span><span class="o">.</span><span class="n">yshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">self_tomo_meta</span><span class="o">.</span><span class="n">yshift</span><span class="p">)</span> <span class="o">+</span> <span class="n">yshift</span>
+        <span class="n">trans_tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">self_tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span><span class="p">)</span> <span class="o">+</span> <span class="n">angle</span>
         <span class="k">return</span> <span class="n">transformed</span></div>
 </div>
 
@@ -1164,7 +1167,7 @@ $(document).ready(function(){
         <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_fix_projection_axis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">axis_number</span><span class="p">])</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">axis_number</span><span class="p">])</span>
         <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Undefined</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">):</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Projections&quot;</span>
         <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
@@ -1172,7 +1175,7 @@ $(document).ready(function(){
             <span class="k">del</span> <span class="n">ax</span><span class="o">.</span><span class="n">scale</span>
 
     <span class="k">def</span> <span class="nf">_fix_frames_axis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">axis_number</span><span class="p">])</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">axis_number</span><span class="p">])</span>
         <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Undefined</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">):</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Frames&quot;</span>
         <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
@@ -1199,7 +1202,7 @@ $(document).ready(function(){
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">)</span>
-        <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
+        <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">tomo_metadata</span><span class="p">)</span>
 
         <span class="c1"># need to handle navigation_dimension == 1 (normal case) or == 2 (multiframe)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -1219,7 +1222,7 @@ $(document).ready(function(){
             <span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-        <span class="n">signal_axes</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Uda</span><span class="p">,</span> <span class="n">Uda</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">)</span>
+        <span class="n">signal_axes</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;tuple[Uda, Uda]&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">)</span>
         <span class="n">x_axis</span> <span class="o">=</span> <span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">x_axis</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span>
         <span class="k">if</span> <span class="n">x_axis</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span><span class="p">:</span>
@@ -1294,13 +1297,13 @@ $(document).ready(function(){
                     <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span>
                 <span class="p">)</span>
             <span class="p">):</span>
-                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
                 <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Projections&quot;</span>
                 <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;degrees&quot;</span>
             <span class="c1"># multiframe (special SerialEM case)</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_dimension</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># noqa: PLR2004</span>
-                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                <span class="n">nav_ax_1</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">nav_ax_0</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">nav_ax_1</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
                 <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="s2">&quot;Frames&quot;</span> <span class="k">if</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_0</span><span class="o">.</span><span class="n">name</span>
                 <span class="p">)</span>
@@ -1314,8 +1317,8 @@ $(document).ready(function(){
                     <span class="s2">&quot;degrees&quot;</span> <span class="k">if</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="n">Undefined</span> <span class="k">else</span> <span class="n">nav_ax_1</span><span class="o">.</span><span class="n">units</span>
                 <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">:</span>
-            <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span>
-            <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span>
+            <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span>
+            <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span>
 
         <span class="c1"># ensure that shifts and tilts will be sliced when the Signal is</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_additional_slicing_targets</span> <span class="o">=</span> <span class="p">[</span>
@@ -1414,12 +1417,12 @@ $(document).ready(function(){
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># value is already a Signal, so test the dimensions</span>
             <span class="n">value</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-                <span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">TomoShifts</span><span class="p">],</span>
+                <span class="s2">&quot;Union[TomoTilts, TomoShifts]&quot;</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_check_array_shape</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mode</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="c1"># Using the TomoTilts/TomoShifts constructor strips metadata and axis</span>
             <span class="c1"># info, so copy it back:</span>
-            <span class="n">target</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">TomoShifts</span><span class="p">],</span> <span class="n">_cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">))</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Union[TomoTilts, TomoShifts]&quot;</span><span class="p">,</span> <span class="n">_cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">))</span>
             <span class="n">target</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_dictionary</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">as_dictionary</span><span class="p">())</span>
             <span class="n">target</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">update_axes_attributes_from</span><span class="p">(</span>
                 <span class="p">(</span><span class="o">*</span><span class="n">value</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">navigation_axes</span><span class="p">,</span> <span class="o">*</span><span class="n">value</span><span class="o">.</span><span class="n">axes_manager</span><span class="o">.</span><span class="n">signal_axes</span><span class="p">),</span>
@@ -1462,14 +1465,14 @@ $(document).ready(function(){
     <span class="nd">@shifts</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_shifts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoShifts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoShifts</span><span class="p">,</span>
+            <span class="s2">&quot;TomoShifts&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="n">new_shifts</span><span class="p">),</span>
         <span class="p">)</span>
 
     <span class="nd">@shifts</span><span class="o">.</span><span class="n">deleter</span>
     <span class="k">def</span> <span class="nf">shifts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoShifts</span><span class="p">,</span>
+            <span class="s2">&quot;TomoShifts&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span><span class="p">)),</span>
         <span class="p">)</span>
 
@@ -1487,14 +1490,14 @@ $(document).ready(function(){
     <span class="nd">@tilts</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_tilts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">TomoTilts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoTilts</span><span class="p">,</span>
+            <span class="s2">&quot;TomoTilts&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;tilts&quot;</span><span class="p">,</span> <span class="n">new_tilts</span><span class="p">),</span>
         <span class="p">)</span>
 
     <span class="nd">@tilts</span><span class="o">.</span><span class="n">deleter</span>
     <span class="k">def</span> <span class="nf">tilts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tilts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-            <span class="n">TomoTilts</span><span class="p">,</span>
+            <span class="s2">&quot;TomoTilts&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">shift_and_tilt_setter</span><span class="p">(</span><span class="s2">&quot;tilts&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="p">)),</span>
         <span class="p">)</span>
 
@@ -1545,7 +1548,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="TomoStack.plot_sinos">
 <a class="viewcode-back" href="../../api/etspy.base.TomoStack.plot_sinos.html#etspy.base.TomoStack.plot_sinos">[docs]</a>
-    <span class="k">def</span> <span class="nf">plot_sinos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">plot_sinos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Plot the TomoStack in sinogram orientation.</span>
 
@@ -1570,7 +1573,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="TomoStack.remove_projections">
 <a class="viewcode-back" href="../../api/etspy.base.TomoStack.remove_projections.html#etspy.base.TomoStack.remove_projections">[docs]</a>
-    <span class="k">def</span> <span class="nf">remove_projections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">projections</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">remove_projections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">projections</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return a copy of the TomoStack with certain projections removed from the series.</span>
 
@@ -1598,9 +1601,9 @@ $(document).ready(function(){
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="n">nprojs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">projections</span><span class="p">)</span>
         <span class="n">s_new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
-        <span class="n">s_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="n">s_tilt_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="n">s_shift_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">s_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">s_tilt_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">s_shift_ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="n">s_new</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="p">(</span><span class="n">s_ax</span><span class="p">,</span> <span class="n">s_tilt_ax</span><span class="p">,</span> <span class="n">s_shift_ax</span><span class="p">):</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">size</span> <span class="o">-=</span> <span class="n">nprojs</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
@@ -1644,7 +1647,7 @@ $(document).ready(function(){
 <a class="viewcode-back" href="../../api/etspy.base.TomoStack.test_correlation.html#etspy.base.TomoStack.test_correlation">[docs]</a>
     <span class="k">def</span> <span class="nf">test_correlation</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">images</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">images</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Figure</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Test output of cross-correlation prior to alignment.</span>
@@ -1722,7 +1725,7 @@ $(document).ready(function(){
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Check if any transformations have been applied to the current stack</span>
         <span class="n">no_shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+        <span class="n">tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
         <span class="n">no_xshift</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
             <span class="p">[</span>
                 <span class="n">tomo_meta</span><span class="o">.</span><span class="n">xshift</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span>
@@ -1849,7 +1852,7 @@ $(document).ready(function(){
         <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">show_progressbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">crop</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
         <span class="n">nslices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
         <span class="n">com_ref_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -2099,7 +2102,7 @@ $(document).ready(function(){
         <span class="n">ncores</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">sino_filter</span><span class="p">:</span> <span class="n">FbpMethodType</span> <span class="o">=</span> <span class="s2">&quot;shepp-logan&quot;</span><span class="p">,</span>
         <span class="n">dart_iterations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
-        <span class="n">gray_levels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">gray_levels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;RecStack&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Reconstruct a TomoStack series using one of the available methods.</span>
@@ -2232,7 +2235,7 @@ $(document).ready(function(){
             <span class="n">ncores</span><span class="o">=</span><span class="n">ncores</span><span class="p">,</span>
             <span class="n">bp_filter</span><span class="o">=</span><span class="n">sino_filter</span><span class="p">,</span>
             <span class="n">gray_levels</span><span class="o">=</span><span class="n">gray_levels</span><span class="p">,</span>
-            <span class="n">dart_iterations</span><span class="o">=</span><span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">dart_iterations</span><span class="p">),</span>
+            <span class="n">dart_iterations</span><span class="o">=</span><span class="n">cast</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">dart_iterations</span><span class="p">),</span>
             <span class="n">p</span><span class="o">=</span><span class="n">p</span><span class="p">,</span>
             <span class="n">show_progressbar</span><span class="o">=</span><span class="n">show_progressbar</span><span class="p">,</span>
         <span class="p">)</span>
@@ -2316,10 +2319,13 @@ $(document).ready(function(){
             <span class="n">shifted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_stack</span><span class="p">(</span><span class="n">xshift</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">yshift</span><span class="o">=</span><span class="n">tilt_shift</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">tilt_rotation</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">shifted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
-        <span class="n">shifted</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">TomoStack</span><span class="p">,</span> <span class="n">shifted</span><span class="p">)</span>
+        <span class="n">shifted</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span> <span class="n">shifted</span><span class="p">)</span>
         <span class="n">shifted</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">shifted</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">slices</span><span class="p">]</span>
 
-        <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">shifted</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">axis</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">axis</span>
+        <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="n">shifted</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">axis</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="s2">&quot;Uda&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">axis</span>
         <span class="k">if</span> <span class="n">cuda</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">astra</span><span class="o">.</span><span class="n">use_cuda</span><span class="p">():</span>  <span class="c1"># coverage: nocuda</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA detected with Astra&quot;</span><span class="p">)</span>
@@ -2378,7 +2384,7 @@ $(document).ready(function(){
 <span class="sd">            Tilt increment between images</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">nimages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Projections&quot;</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;degrees&quot;</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">increment</span>
@@ -2387,7 +2393,7 @@ $(document).ready(function(){
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;Tomography&quot;</span><span class="p">)</span>
-            <span class="n">tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+            <span class="n">tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
             <span class="n">tomo_meta</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;tiltaxis&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="n">tomo_meta</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;xshift&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="n">tomo_meta</span><span class="o">.</span><span class="n">set_item</span><span class="p">(</span><span class="s2">&quot;yshift&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
@@ -2494,7 +2500,7 @@ $(document).ready(function(){
         <span class="n">constrain</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">cuda</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">thresh</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">Signal1D</span><span class="p">]:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">Signal1D</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Determine the optimum number of iterations for reconstruction.</span>
 
@@ -2560,9 +2566,9 @@ $(document).ready(function(){
         <span class="p">)</span>
         <span class="n">rec_stack</span> <span class="o">=</span> <span class="n">Signal2D</span><span class="p">(</span><span class="n">rec_stack</span><span class="p">)</span>
         <span class="n">rec_ax0</span><span class="p">,</span> <span class="n">rec_ax1</span><span class="p">,</span> <span class="n">rec_ax2</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">rec_stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="n">rec_stack</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="n">self_ax2</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">self_ax2</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
         <span class="n">rec_ax0</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot; iteration&quot;</span>
         <span class="n">rec_ax0</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="n">rec_ax1</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">self_ax2</span><span class="o">.</span><span class="n">name</span>
@@ -2574,8 +2580,8 @@ $(document).ready(function(){
         <span class="n">rec_stack</span><span class="o">.</span><span class="n">navigator</span> <span class="o">=</span> <span class="s2">&quot;slider&quot;</span>
 
         <span class="n">error</span> <span class="o">=</span> <span class="n">Signal1D</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-        <span class="n">cast</span><span class="p">(</span><span class="n">Uda</span><span class="p">,</span> <span class="n">error</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot; Iteration&quot;</span>
-        <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">error</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Signal</span><span class="p">)</span><span class="o">.</span><span class="n">quantity</span> <span class="o">=</span> <span class="s2">&quot;Sum of Squared Difference&quot;</span>
+        <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Uda&quot;</span><span class="p">,</span> <span class="n">error</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot; Iteration&quot;</span>
+        <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="n">error</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Signal</span><span class="p">)</span><span class="o">.</span><span class="n">quantity</span> <span class="o">=</span> <span class="s2">&quot;Sum of Squared Difference&quot;</span>
         <span class="k">return</span> <span class="n">rec_stack</span><span class="p">,</span> <span class="n">error</span></div>
 
 
@@ -2624,7 +2630,7 @@ $(document).ready(function(){
         <span class="k">try</span><span class="p">:</span>
             <span class="n">sino</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">isig</span><span class="p">[</span><span class="n">column</span><span class="p">,</span> <span class="p">:]</span>
             <span class="n">sino</span><span class="o">.</span><span class="n">set_signal_type</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-            <span class="n">sino</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Signal2D</span><span class="p">,</span> <span class="n">sino</span><span class="o">.</span><span class="n">as_signal2D</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
+            <span class="n">sino</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Signal2D&quot;</span><span class="p">,</span> <span class="n">sino</span><span class="o">.</span><span class="n">as_signal2D</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
                 <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Sinogram at x = </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_manager</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">units</span><span class="si">}</span><span class="s2">&quot;</span>  <span class="c1"># type: ignore</span>
             <span class="k">else</span><span class="p">:</span>

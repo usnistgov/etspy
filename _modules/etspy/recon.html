@@ -491,7 +491,7 @@ $(document).ready(function(){
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span> <span class="nn">astra</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -665,9 +665,9 @@ $(document).ready(function(){
     <span class="n">niterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
     <span class="n">constrain</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">thresh</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="n">cuda</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">thickness</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">ncores</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">thickness</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ncores</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">bp_filter</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
         <span class="s2">&quot;ram-lak&quot;</span><span class="p">,</span>
         <span class="s2">&quot;shepp-logan&quot;</span><span class="p">,</span>
@@ -692,7 +692,7 @@ $(document).ready(function(){
         <span class="s2">&quot;rprojection&quot;</span><span class="p">,</span>
         <span class="s2">&quot;rsinogram&quot;</span><span class="p">,</span>
     <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;shepp-logan&quot;</span><span class="p">,</span>
-    <span class="n">gray_levels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">gray_levels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">dart_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
     <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.99</span><span class="p">,</span>
     <span class="n">show_progressbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -762,7 +762,7 @@ $(document).ready(function(){
 
     <span class="k">if</span> <span class="n">thickness</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">thickness</span> <span class="o">=</span> <span class="n">ny</span>
-    <span class="n">thickness</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">thickness</span><span class="p">)</span>
+    <span class="n">thickness</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">thickness</span><span class="p">)</span>
 
     <span class="n">rec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">thickness</span><span class="p">,</span> <span class="n">ny</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
@@ -803,7 +803,7 @@ $(document).ready(function(){
             <span class="k">if</span> <span class="n">gray_levels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;gray_levels must be provided for DART&quot;</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="n">gray_levels</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">gray_levels</span><span class="p">)</span>
+            <span class="n">gray_levels</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Union[list, np.ndarray]&quot;</span><span class="p">,</span> <span class="n">gray_levels</span><span class="p">)</span>
             <span class="n">thresholds</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="p">(</span><span class="n">gray_levels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">gray_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="o">//</span> <span class="mi">2</span>
                 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gray_levels</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
@@ -835,7 +835,7 @@ $(document).ready(function(){
                     <span class="n">dart_iterations</span><span class="p">,</span>
                     <span class="n">p</span><span class="p">,</span>
                     <span class="n">thresholds</span><span class="p">,</span>
-                    <span class="n">cast</span><span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">gray_levels</span><span class="p">),</span>
+                    <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Union[list, np.ndarray]&quot;</span><span class="p">,</span> <span class="n">gray_levels</span><span class="p">),</span>
                     <span class="n">cfg</span><span class="p">,</span>
                     <span class="n">vol_geom</span><span class="p">,</span>
                     <span class="n">proj_geom</span><span class="p">,</span>
@@ -868,7 +868,7 @@ $(document).ready(function(){
             <span class="k">if</span> <span class="n">gray_levels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;gray_levels must be provided for DART&quot;</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="n">gray_levels</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">gray_levels</span><span class="p">)</span>  <span class="c1"># explicit type-checking cast</span>
+            <span class="n">gray_levels</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">,</span> <span class="n">gray_levels</span><span class="p">)</span>  <span class="c1"># explicit type-checking cast</span>
             <span class="n">thresholds</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="p">(</span><span class="n">gray_levels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">gray_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="o">//</span> <span class="mi">2</span>
                 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">gray_levels</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>

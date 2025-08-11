@@ -488,13 +488,12 @@ $(document).ready(function(){
 <span class="c1"># pyright: reportPossiblyUnboundVariable=false</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span> <span class="nn">astra</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pylab</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tqdm</span>
-<span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="n">DictionaryTreeBrowser</span> <span class="k">as</span> <span class="n">Dtb</span>
 <span class="kn">from</span> <span class="nn">hyperspy.signal</span> <span class="kn">import</span> <span class="n">BaseSignal</span>
 <span class="kn">from</span> <span class="nn">pystackreg</span> <span class="kn">import</span> <span class="n">StackReg</span>
 <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span> <span class="n">ndimage</span><span class="p">,</span> <span class="n">optimize</span>
@@ -506,6 +505,8 @@ $(document).ready(function(){
 <span class="kn">from</span> <span class="nn">etspy</span> <span class="kn">import</span> <span class="n">AlignmentMethod</span><span class="p">,</span> <span class="n">AlignmentMethodType</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">hyperspy.misc.utils</span> <span class="kn">import</span> <span class="n">DictionaryTreeBrowser</span> <span class="k">as</span> <span class="n">Dtb</span>
+
     <span class="kn">from</span> <span class="nn">etspy.base</span> <span class="kn">import</span> <span class="n">TomoShifts</span><span class="p">,</span> <span class="n">TomoStack</span>  <span class="c1"># pragma: no cover</span>
 
 <span class="n">has_cupy</span> <span class="o">=</span> <span class="kc">True</span>
@@ -624,7 +625,7 @@ $(document).ready(function(){
     <span class="n">shifted</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">BaseSignal</span><span class="p">):</span>
         <span class="n">shifts</span> <span class="o">=</span> <span class="n">shifts</span><span class="o">.</span><span class="n">data</span>
-    <span class="n">shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">shifts</span><span class="p">)</span>
+    <span class="n">shifts</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">,</span> <span class="n">shifts</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shifts</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">!=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
@@ -911,7 +912,7 @@ $(document).ready(function(){
 <a class="viewcode-back" href="../../api/etspy.align.calculate_shifts_conservation_of_mass.html#etspy.align.calculate_shifts_conservation_of_mass">[docs]</a>
 <span class="k">def</span> <span class="nf">calculate_shifts_conservation_of_mass</span><span class="p">(</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
-    <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1000,7 +1001,7 @@ $(document).ready(function(){
 
     <span class="n">angles</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">tilts</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
     <span class="n">ntilts</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
-    <span class="n">thetas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">cast</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span> <span class="o">/</span> <span class="mi">180</span>
+    <span class="n">thetas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;np.ndarray&quot;</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span> <span class="o">/</span> <span class="mi">180</span>
 
     <span class="n">coms</span> <span class="o">=</span> <span class="n">get_coms</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">slices</span><span class="p">)</span>
     <span class="n">i_tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">ntilts</span><span class="p">)</span>
@@ -1221,7 +1222,7 @@ $(document).ready(function(){
 
     <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">start</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>  <span class="c1"># Use the midpoint if start is not provided</span>
-    <span class="n">start</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
 
     <span class="c1"># Initialize pystackreg object with TranslationTransform2D</span>
     <span class="n">reg</span> <span class="o">=</span> <span class="n">StackReg</span><span class="p">(</span><span class="n">StackReg</span><span class="o">.</span><span class="n">TRANSLATION</span><span class="p">)</span>
@@ -1324,7 +1325,7 @@ $(document).ready(function(){
     <span class="n">method</span><span class="p">:</span> <span class="n">AlignmentMethodType</span><span class="p">,</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">show_progressbar</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
-    <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">shift_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;fourier&quot;</span><span class="p">,</span> <span class="s2">&quot;interp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fourier&quot;</span><span class="p">,</span>
     <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
     <span class="n">nslices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
@@ -1440,7 +1441,7 @@ $(document).ready(function(){
         <span class="n">start</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="p">)</span>  <span class="c1"># Use the slice closest to the midpoint if start is not provided</span>
-    <span class="n">start</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>  <span class="c1"># explicit type cast for type checking</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>  <span class="c1"># explicit type cast for type checking</span>
 
     <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="n">AlignmentMethod</span><span class="o">.</span><span class="n">COM</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Performing stack registration using center of mass method&quot;</span><span class="p">)</span>
@@ -1478,8 +1479,8 @@ $(document).ready(function(){
             <span class="n">cl_ref_index</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
 
         <span class="c1"># explicit type casts for type checking</span>
-        <span class="n">com_ref_index</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">com_ref_index</span><span class="p">)</span>
-        <span class="n">cl_ref_index</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">cl_ref_index</span><span class="p">)</span>
+        <span class="n">com_ref_index</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">com_ref_index</span><span class="p">)</span>
+        <span class="n">cl_ref_index</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">cl_ref_index</span><span class="p">)</span>
 
         <span class="n">shifts</span> <span class="o">=</span> <span class="n">calc_shifts_com_cl</span><span class="p">(</span>
             <span class="n">stack</span><span class="p">,</span>
@@ -1675,7 +1676,7 @@ $(document).ready(function(){
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 
     <span class="n">ali</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">trans_stack</span><span class="p">(</span><span class="n">angle</span><span class="o">=-</span><span class="n">rotation_angle</span><span class="p">))</span>
-    <span class="n">tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">ali</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+    <span class="n">tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="n">ali</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
     <span class="n">tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span> <span class="o">=</span> <span class="o">-</span><span class="n">rotation_angle</span>
 
     <span class="k">if</span> <span class="n">also_shift</span><span class="p">:</span>
@@ -1689,9 +1690,9 @@ $(document).ready(function(){
                 <span class="nb">int</span><span class="p">(</span><span class="n">shifts</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
             <span class="p">)</span>
         <span class="n">shifted_rec</span> <span class="o">=</span> <span class="n">shifted</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="s2">&quot;SIRT&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">constrain</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">image_sum</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">BaseSignal</span><span class="p">,</span> <span class="n">shifted_rec</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>
+        <span class="n">image_sum</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;BaseSignal&quot;</span><span class="p">,</span> <span class="n">shifted_rec</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>
         <span class="n">tilt_shift</span> <span class="o">=</span> <span class="n">shifts</span><span class="p">[</span><span class="n">image_sum</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">argmin</span><span class="p">()]</span>
-        <span class="n">tilt_shift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">tilt_shift</span><span class="p">)</span>
+        <span class="n">tilt_shift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">tilt_shift</span><span class="p">)</span>
         <span class="n">ali</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span> <span class="n">ali</span><span class="o">.</span><span class="n">trans_stack</span><span class="p">(</span><span class="n">yshift</span><span class="o">=-</span><span class="n">tilt_shift</span><span class="p">))</span>
         <span class="n">tomo_meta</span><span class="o">.</span><span class="n">yshift</span> <span class="o">=</span> <span class="o">-</span><span class="n">tilt_shift</span>
     <span class="k">return</span> <span class="n">ali</span></div>
@@ -1730,18 +1731,18 @@ $(document).ready(function(){
 <span class="sd">    align</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">out</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
-    <span class="n">stack_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
-    <span class="n">out_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dtb</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+    <span class="n">stack_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
+    <span class="n">out_tomo_meta</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Dtb&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="p">)</span>
 
     <span class="n">out</span><span class="o">.</span><span class="n">shifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">out</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">])</span>
 
-    <span class="n">tiltaxis</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span><span class="p">)</span>
+    <span class="n">tiltaxis</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span><span class="p">)</span>
     <span class="n">out_tomo_meta</span><span class="o">.</span><span class="n">tiltaxis</span> <span class="o">=</span> <span class="n">tiltaxis</span>
 
-    <span class="n">xshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">xshift</span><span class="p">)</span>
+    <span class="n">xshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">xshift</span><span class="p">)</span>
     <span class="n">out_tomo_meta</span><span class="o">.</span><span class="n">xshift</span> <span class="o">=</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">xshift</span>
 
-    <span class="n">yshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">yshift</span><span class="p">)</span>
+    <span class="n">yshift</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">yshift</span><span class="p">)</span>
     <span class="n">out_tomo_meta</span><span class="o">.</span><span class="n">yshift</span> <span class="o">=</span> <span class="n">stack_tomo_meta</span><span class="o">.</span><span class="n">yshift</span>
 
     <span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
