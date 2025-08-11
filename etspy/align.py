@@ -1123,7 +1123,7 @@ def tilt_maximage(
     align
     """
     image = stack.data.max(0)
-
+    image = image.astype("float32")
     edges = sobel(image)
 
     # Apply Canny edge detector for further edge enhancement
@@ -1153,6 +1153,8 @@ def tilt_maximage(
     tomo_meta = cast("Dtb", ali.metadata.Tomography)
     tomo_meta.tiltaxis = -rotation_angle
 
+    logger.info("Calculated tilt-axis rotation %.2f", -rotation_angle)
+
     if also_shift:
         idx = ali.data.shape[2] // 2
         shifts = np.arange(-shift_limit, shift_limit, 1)
@@ -1169,6 +1171,9 @@ def tilt_maximage(
         tilt_shift = cast("float", tilt_shift)
         ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
         tomo_meta.yshift = -tilt_shift
+
+        logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
+
     return ali
 
 
