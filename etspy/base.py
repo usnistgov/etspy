@@ -33,6 +33,7 @@ from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMeth
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
+from etspy.transform import VolumeRotator, calculate_rotation
 
 if TYPE_CHECKING:
     from types import FrameType
@@ -2108,6 +2109,10 @@ class RecStack(CommonStack):
 
         self.inav = _RecStackSlicer(self, isNavigation=True)
         self.isig = _RecStackSlicer(self, isNavigation=False)
+        self.rotator = None
+        self.rotation_angles = None
+        self.rotation_matrix = None
+        self.rotation_offset = None
 
     def forward_project(
         self,
@@ -2232,3 +2237,47 @@ class RecStack(CommonStack):
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
         return fig
+
+    def interactive_rotation(self, slices=None):
+        """_summary_."""
+        self.rotator = VolumeRotator(
+            self,
+            slices=slices,
+        )
+        self.rotator.display()
+
+    def rotate_volume(self, rotation_angles=None):
+        """_summary_.
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        if rotation_angles is not None:
+            logger.info("Using user-defined rotation angles")
+            rotation_angles = np.array(rotation_angles)
+        elif self.rotator is not None:
+            logger.info("Rotator detected")
+            rotation_angles = self.rotator.slider_values * np.array([-1, 1, -1])
+
+            if not np.any(self.rotator.slider_values):
+                logger.warning("Rotation angles have not been defined")
+                return None
+
+        rotation_matrix, offset = calculate_rotation(rotation_angles, self.data.shape)
+
+        rotated = self.deepcopy()
+        rotated.data = ndimage.affine_transform(
+            self.data,
+            rotation_matrix,
+            offset,
+            output_shape=self.data.shape,
+            cval=0.0,
+            order=3,
+        )
+
+        rotated.rotation_angles = rotation_angles
+        rotated.rotation_matrix = rotation_matrix
+        rotated.rotation_offet = offset
+        return rotated

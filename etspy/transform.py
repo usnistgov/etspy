@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class ImageRotator:
+class VolumeRotator:
     """_Class for interactive rotation of a volume."""
 
     def __init__(self, stack, slices=None):
@@ -60,7 +60,7 @@ class ImageRotator:
             description="Psi:",
         )
         self.button = widgets.Button(description="Get Slider Values")
-        self.slider_values = {"angle1": None, "angle2": None, "angle3": None}
+        self.slider_values = np.zeros(3)
         self.create_plot()
         self.link_widgets()
 
@@ -125,16 +125,16 @@ class ImageRotator:
                 )
             self.fig.canvas.draw_idle()
 
-    def on_button_click(self):
+    def on_button_click(self, b):  # noqa: ARG002
         """Handle the button click event.
 
         Retrieves the current slider values, prints them, closes the plot, and clears
         the output widget. Also disables the slider widgets and the button to prevent
         further interactions.
         """
-        self.slider_values["angle1"] = self.slider1.value
-        self.slider_values["angle2"] = self.slider2.value
-        self.slider_values["angle3"] = self.slider3.value
+        self.slider_values[0] = self.slider1.value
+        self.slider_values[1] = self.slider2.value
+        self.slider_values[2] = self.slider3.value
         plt.close(self.fig)
 
         self.slider1.disabled = True
@@ -167,3 +167,31 @@ class ImageRotator:
             ],
         )
         display(box)
+
+
+def calculate_rotation(rotation_angles, volshape):
+    """Summary."""
+    theta, phi, psi = np.deg2rad(rotation_angles)
+
+    rotation_theta = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(theta), -np.sin(theta)],
+            [0, np.sin(theta), np.cos(theta)],
+        ],
+    )
+
+    rotation_phi = np.array(
+        [[np.cos(phi), 0, np.sin(phi)], [0, 1, 0], [-np.sin(phi), 0, np.cos(phi)]],
+    )
+
+    rotation_psi = np.array(
+        [[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0, 0, 1]],
+    )
+
+    rotation_matrix = rotation_psi @ rotation_phi @ rotation_theta
+
+    center = 0.5 * (np.array(volshape) - 1)
+
+    offset = center - np.dot(rotation_matrix, center)
+    return rotation_matrix, offset
