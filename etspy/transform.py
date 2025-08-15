@@ -51,14 +51,14 @@ class VolumeRotator:
             min=-30,
             max=30,
             step=0.5,
-            description="Phi:",
+            description="Psi:",
         )
         self.slider3 = widgets.FloatSlider(
             value=0,
             min=-30,
             max=30,
             step=0.5,
-            description="Psi:",
+            description="Phi:",
         )
         self.button = widgets.Button(description="Get Slider Values")
         self.slider_values = np.zeros(3)
@@ -186,7 +186,7 @@ class VolumeRotator:
 
 def calculate_rotation(rotation_angles, volshape):
     """Summary."""
-    theta, phi, psi = np.deg2rad(rotation_angles)
+    theta, psi, phi = np.deg2rad(rotation_angles)
 
     rotation_theta = np.array(
         [
@@ -196,15 +196,15 @@ def calculate_rotation(rotation_angles, volshape):
         ],
     )
 
-    rotation_phi = np.array(
-        [[np.cos(phi), 0, np.sin(phi)], [0, 1, 0], [-np.sin(phi), 0, np.cos(phi)]],
-    )
-
     rotation_psi = np.array(
-        [[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0, 0, 1]],
+        [[np.cos(psi), 0, np.sin(psi)], [0, 1, 0], [-np.sin(psi), 0, np.cos(psi)]],
     )
 
-    rotation_matrix = rotation_psi @ rotation_phi @ rotation_theta
+    rotation_phi = np.array(
+        [[np.cos(phi), -np.sin(phi), 0], [np.sin(phi), np.cos(phi), 0], [0, 0, 1]],
+    )
+
+    rotation_matrix = rotation_phi @ rotation_psi @ rotation_theta
 
     center = 0.5 * (np.array(volshape) - 1)
 
