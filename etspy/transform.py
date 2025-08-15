@@ -16,7 +16,7 @@ class VolumeRotator:
     """_Class for interactive rotation of a volume."""
 
     def __init__(self, stack, slices=None, figsize=(10, 4)):
-        """Initialize the ImageRotator Class.
+        """Initialize the VolumeRotator Class.
 
         Parameters
         ----------
