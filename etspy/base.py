@@ -33,8 +33,8 @@ from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMeth
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
-from etspy.visualize import VolumeSlicer
 from etspy.transform import VolumeRotator, calculate_rotation
+from etspy.visualize import VolumeSlicer
 
 if TYPE_CHECKING:
     from types import FrameType
