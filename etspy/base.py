@@ -2176,6 +2176,7 @@ class RecStack(CommonStack):
         zslice: Optional[int] = None,
         vmin_std: float = 0.1,
         vmax_std: float = 5,
+        figsize: tuple = (10, 4),
     ):
         """
         Plot slices along all three axes of a reconstruction stack.
@@ -2202,12 +2203,7 @@ class RecStack(CommonStack):
         if zslice is None:
             zslice = self.data.shape[2] // 2
 
-        if "ipympl" in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
-        elif "nbagg" in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
-        else:
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize)
 
         slices = [
             self.data[xslice, :, :],
@@ -2232,10 +2228,10 @@ class RecStack(CommonStack):
         ax3.set_title(f"Z-X Slice {yslice}")
         ax3.set_ylabel("Z")
         ax3.set_xlabel("X")
-        fig.tight_layout()
 
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
+        fig.tight_layout()
         return fig
 
     def interactive_rotation(
