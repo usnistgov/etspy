@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class VolumeSlicer:
-    """_Class for interactive slicing of a volume."""
+    """Class for interactive slicing of a volume."""
 
     def __init__(
         self,
