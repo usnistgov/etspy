@@ -2283,8 +2283,7 @@ class RecStack(CommonStack):
             rotation_angles = np.array(rotation_angles)
         elif self.rotator is not None:
             logger.info("Rotator detected")
-            rotation_angles = self.rotator.slider_values * np.array([1, 1, -1])
-
+            rotation_angles = self.rotator.slider_values
             if not np.any(self.rotator.slider_values):
                 logger.warning("Rotation angles have not been defined")
                 return None
