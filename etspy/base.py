@@ -2237,6 +2237,7 @@ class RecStack(CommonStack):
     def interactive_rotation(
         self,
         slices: Optional[Union[list, np.ndarray]] = None,
+        order: Optional[int] = 3,
         figsize: Optional[tuple] = (10, 4),
     ):
         """
@@ -2252,6 +2253,7 @@ class RecStack(CommonStack):
         self.rotator = VolumeRotator(
             self,
             slices=slices,
+            order=order,
             figsize=figsize,
         )
         self.rotator.display()

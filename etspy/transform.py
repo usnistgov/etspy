@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 class VolumeRotator:
     """_Class for interactive rotation of a volume."""
 
-    def __init__(self, stack, slices=None, figsize=(10, 4)):
+    def __init__(self, stack, order=3, slices=None, figsize=(10, 4)):
         """Initialize the VolumeRotator Class.
 
         Parameters
@@ -28,6 +28,7 @@ class VolumeRotator:
         """
         if slices is None:
             slices = np.array(stack.data.shape) // 2
+        self.order = order
         self.xslice = stack.data[slices[0], :, :]
         self.zslice = stack.data[:, slices[1], :].T
         self.yslice = stack.data[:, :, slices[2]]
@@ -70,12 +71,7 @@ class VolumeRotator:
         with self.output:
             self.fig, axs = plt.subplots(1, 3, figsize=self.figsize)
             self.im1 = axs[0].imshow(
-                ndimage.rotate(
-                    self.xslice,
-                    -self.angle1,
-                    reshape=False,
-                    cval=self.x_bckg,
-                ),
+                self.xslice,
                 cmap="inferno",
             )
             axs[0].tick_params(axis="x", labelbottom=False)
@@ -84,12 +80,7 @@ class VolumeRotator:
             axs[0].set_xlabel("y")
             axs[0].set_ylabel("z")
             self.im2 = axs[1].imshow(
-                ndimage.rotate(
-                    self.zslice,
-                    -self.angle2,
-                    reshape=False,
-                    cval=self.z_bckg,
-                ),
+                self.zslice,
                 cmap="inferno",
             )
 
@@ -99,12 +90,7 @@ class VolumeRotator:
             axs[1].tick_params(axis="y", labelleft=False)
 
             self.im3 = axs[2].imshow(
-                ndimage.rotate(
-                    self.yslice,
-                    -self.angle3,
-                    reshape=False,
-                    cval=self.y_bckg,
-                ),
+                self.yslice,
                 cmap="inferno",
             )
             axs[2].set_xlabel("z")
@@ -133,6 +119,7 @@ class VolumeRotator:
                         -change["new"],
                         reshape=False,
                         cval=self.x_bckg,
+                        order=self.order,
                     ),
                 )
             elif change["owner"] == self.slider2:
@@ -142,6 +129,7 @@ class VolumeRotator:
                         -change["new"],
                         reshape=False,
                         cval=self.z_bckg,
+                        order=self.order,
                     ),
                 )
             elif change["owner"] == self.slider3:
@@ -151,6 +139,7 @@ class VolumeRotator:
                         -change["new"],
                         reshape=False,
                         cval=self.y_bckg,
+                        order=self.order,
                     ),
                 )
             self.fig.canvas.draw_idle()
