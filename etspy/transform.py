@@ -200,7 +200,17 @@ class VolumeRotator:
 
 
 def calculate_rotation(rotation_angles, volshape):
-    """Summary."""
+    """Calculate a transformation matrix for rotation given angles and volume shape.
+
+    Parameters
+    ----------
+    rotation_angles : list or numpy.ndarray
+        Angles (degrees) by which to rotate the volume. The angles define rotation
+        about the [X, Z, and Y] axes, respectively.
+    volshape : list or tuple
+        Shape of the volume to be rotated (X, Z, Y).
+
+    """
     theta, psi, phi = np.deg2rad(rotation_angles)
 
     rotation_theta = np.array(
