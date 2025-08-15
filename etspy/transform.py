@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 class VolumeRotator:
     """_Class for interactive rotation of a volume."""
 
-    def __init__(self, stack, slices=None):
+    def __init__(self, stack, slices=None, figsize=(10, 4)):
         """Initialize the ImageRotator Class.
 
         Parameters
@@ -29,30 +29,31 @@ class VolumeRotator:
         if slices is None:
             slices = np.array(stack.data.shape) // 2
         self.img1 = stack.data[slices[0], :, :]
-        self.img2 = stack.data[:, slices[1], :]
+        self.img2 = stack.data[:, slices[1], :].T
         self.img3 = stack.data[:, :, slices[2]]
         self.bckg1 = self.img1[0:5, 0:5].mean()
         self.bckg2 = self.img2[0:5, 0:5].mean()
         self.bckg3 = self.img3[0:5, 0:5].mean()
+        self.figsize = figsize
         self.angle1 = 0
         self.angle2 = 0
         self.angle3 = 0
         self.output = widgets.Output()
-        self.slider1 = widgets.IntSlider(
+        self.slider1 = widgets.FloatSlider(
             value=0,
             min=-30,
             max=30,
             step=0.5,
             description="Theta:",
         )
-        self.slider2 = widgets.IntSlider(
+        self.slider2 = widgets.FloatSlider(
             value=0,
             min=-30,
             max=30,
             step=0.5,
             description="Phi:",
         )
-        self.slider3 = widgets.IntSlider(
+        self.slider3 = widgets.FloatSlider(
             value=0,
             min=-30,
             max=30,
@@ -67,22 +68,36 @@ class VolumeRotator:
     def create_plot(self):
         """Create display for interactive rotation."""
         with self.output:
-            self.fig, axs = plt.subplots(1, 3, figsize=(12, 6))
+            self.fig, axs = plt.subplots(1, 3, figsize=self.figsize)
             self.im1 = axs[0].imshow(
-                ndimage.rotate(self.img1, self.angle1, reshape=False, cval=self.bckg1),
+                ndimage.rotate(self.img1, -self.angle1, reshape=False, cval=self.bckg1),
                 cmap="inferno",
             )
-            axs[0].axis("off")
+            axs[0].tick_params(axis="x", labelbottom=False)
+            axs[0].tick_params(axis="y", labelleft=False)
+
+            axs[0].set_xlabel("y")
+            axs[0].set_ylabel("z")
             self.im2 = axs[1].imshow(
-                ndimage.rotate(self.img2, self.angle2, reshape=False, cval=self.bckg2),
+                ndimage.rotate(self.img2, -self.angle2, reshape=False, cval=self.bckg2),
                 cmap="inferno",
             )
-            axs[1].axis("off")
+
+            axs[1].set_xlabel("x")
+            axs[1].set_ylabel("y")
+            axs[1].tick_params(axis="x", labelbottom=False)
+            axs[1].tick_params(axis="y", labelleft=False)
+
             self.im3 = axs[2].imshow(
-                ndimage.rotate(self.img3, self.angle3, reshape=False, cval=self.bckg3),
+                ndimage.rotate(self.img3, -self.angle3, reshape=False, cval=self.bckg3),
                 cmap="inferno",
             )
-            axs[2].axis("off")
+            axs[2].set_xlabel("z")
+            axs[2].set_ylabel("x")
+            axs[2].tick_params(axis="x", labelbottom=False)
+            axs[2].tick_params(axis="y", labelleft=False)
+
+            self.fig.tight_layout()
             plt.show()
 
     def update_plot(self, change):
@@ -100,7 +115,7 @@ class VolumeRotator:
                 self.im1.set_data(
                     ndimage.rotate(
                         self.img1,
-                        change["new"],
+                        -change["new"],
                         reshape=False,
                         cval=self.bckg1,
                     ),
@@ -109,7 +124,7 @@ class VolumeRotator:
                 self.im2.set_data(
                     ndimage.rotate(
                         self.img2,
-                        change["new"],
+                        -change["new"],
                         reshape=False,
                         cval=self.bckg2,
                     ),
@@ -118,7 +133,7 @@ class VolumeRotator:
                 self.im3.set_data(
                     ndimage.rotate(
                         self.img3,
-                        change["new"],
+                        -change["new"],
                         reshape=False,
                         cval=self.bckg3,
                     ),

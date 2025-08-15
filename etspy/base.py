@@ -2238,28 +2238,52 @@ class RecStack(CommonStack):
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
         return fig
 
-    def interactive_rotation(self, slices=None):
-        """_summary_."""
+    def interactive_rotation(
+        self,
+        slices: Optional[Union[list, np.ndarray]] = None,
+        figsize: Optional[tuple] = (10, 4),
+    ):
+        """
+        Interactively determine 3D rotation angles for RecStack.
+
+        Parameters
+        ----------
+        slices : list or numpy.ndarray
+            Indices of slices to plot. If None (default), the
+            central slice along each dimension is used.
+
+        """
         self.rotator = VolumeRotator(
             self,
             slices=slices,
+            figsize=figsize,
         )
         self.rotator.display()
 
-    def rotate_volume(self, rotation_angles=None):
-        """_summary_.
+    def rotate_volume(
+        self,
+        rotation_angles: Optional[Union[list, np.ndarray]] = None,
+    ):
+        """Apply a 3D transformation to the RecStack data.
+
+        Parameters
+        ----------
+        rotation_angles : list or numpy.ndarray
+            Rotation angles (degrees) to apply to data. If None (default), angles
+            provided by RecStack.rotator are used.  The angles define rotation about the
+            [X, Z, and Y] axes, respectively.
 
         Returns
         -------
-        _type_
-            _description_
+        rotated : RecStack
+            Rotated version of input :py:class:`~etspy.base.RecStack`.
         """
         if rotation_angles is not None:
             logger.info("Using user-defined rotation angles")
             rotation_angles = np.array(rotation_angles)
         elif self.rotator is not None:
             logger.info("Rotator detected")
-            rotation_angles = self.rotator.slider_values * np.array([-1, 1, -1])
+            rotation_angles = self.rotator.slider_values * np.array([1, 1, -1])
 
             if not np.any(self.rotator.slider_values):
                 logger.warning("Rotation angles have not been defined")
