@@ -28,12 +28,12 @@ class VolumeRotator:
         """
         if slices is None:
             slices = np.array(stack.data.shape) // 2
-        self.img1 = stack.data[slices[0], :, :]
-        self.img2 = stack.data[:, slices[1], :].T
-        self.img3 = stack.data[:, :, slices[2]]
-        self.bckg1 = self.img1[0:5, 0:5].mean()
-        self.bckg2 = self.img2[0:5, 0:5].mean()
-        self.bckg3 = self.img3[0:5, 0:5].mean()
+        self.xslice = stack.data[slices[0], :, :]
+        self.zslice = stack.data[:, slices[1], :].T
+        self.yslice = stack.data[:, :, slices[2]]
+        self.x_bckg = self.xslice[0:5, 0:5].mean()
+        self.z_bckg = self.zslice[0:5, 0:5].mean()
+        self.y_bckg = self.yslice[0:5, 0:5].mean()
         self.figsize = figsize
         self.angle1 = 0
         self.angle2 = 0
@@ -70,7 +70,12 @@ class VolumeRotator:
         with self.output:
             self.fig, axs = plt.subplots(1, 3, figsize=self.figsize)
             self.im1 = axs[0].imshow(
-                ndimage.rotate(self.img1, -self.angle1, reshape=False, cval=self.bckg1),
+                ndimage.rotate(
+                    self.xslice,
+                    -self.angle1,
+                    reshape=False,
+                    cval=self.x_bckg,
+                ),
                 cmap="inferno",
             )
             axs[0].tick_params(axis="x", labelbottom=False)
@@ -79,7 +84,12 @@ class VolumeRotator:
             axs[0].set_xlabel("y")
             axs[0].set_ylabel("z")
             self.im2 = axs[1].imshow(
-                ndimage.rotate(self.img2, -self.angle2, reshape=False, cval=self.bckg2),
+                ndimage.rotate(
+                    self.zslice,
+                    -self.angle2,
+                    reshape=False,
+                    cval=self.z_bckg,
+                ),
                 cmap="inferno",
             )
 
@@ -89,7 +99,12 @@ class VolumeRotator:
             axs[1].tick_params(axis="y", labelleft=False)
 
             self.im3 = axs[2].imshow(
-                ndimage.rotate(self.img3, -self.angle3, reshape=False, cval=self.bckg3),
+                ndimage.rotate(
+                    self.yslice,
+                    -self.angle3,
+                    reshape=False,
+                    cval=self.y_bckg,
+                ),
                 cmap="inferno",
             )
             axs[2].set_xlabel("z")
@@ -114,28 +129,28 @@ class VolumeRotator:
             if change["owner"] == self.slider1:
                 self.im1.set_data(
                     ndimage.rotate(
-                        self.img1,
+                        self.xslice,
                         -change["new"],
                         reshape=False,
-                        cval=self.bckg1,
+                        cval=self.x_bckg,
                     ),
                 )
             elif change["owner"] == self.slider2:
                 self.im2.set_data(
                     ndimage.rotate(
-                        self.img2,
+                        self.zslice,
                         -change["new"],
                         reshape=False,
-                        cval=self.bckg2,
+                        cval=self.z_bckg,
                     ),
                 )
             elif change["owner"] == self.slider3:
                 self.im3.set_data(
                     ndimage.rotate(
-                        self.img3,
+                        self.yslice,
                         -change["new"],
                         reshape=False,
-                        cval=self.bckg3,
+                        cval=self.y_bckg,
                     ),
                 )
             self.fig.canvas.draw_idle()
