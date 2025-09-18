@@ -2171,6 +2171,7 @@ class RecStack(CommonStack):
         xslice: Optional[int] = None,
         yslice: Optional[int] = None,
         zslice: Optional[int] = None,
+        return_fig: bool = False,
         **kwargs: Any,
     ):
         """
@@ -2202,3 +2203,6 @@ class RecStack(CommonStack):
             ],
             **kwargs,
         )
+        if return_fig:
+            return plt.gcf()
+        return None
