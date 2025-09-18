@@ -9,7 +9,7 @@ import inspect
 import logging
 from abc import ABC
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 try:
     from typing import Self  # type: ignore
@@ -23,6 +23,7 @@ import numpy as np
 import pylab as plt
 from hyperspy._signals.signal1d import Signal1D
 from hyperspy._signals.signal2d import Signal2D
+from hyperspy.drawing.utils import plot_images as hs_plot_images
 from hyperspy.signal import BaseSignal, SpecialSlicersSignal
 from matplotlib.figure import Figure
 from scipy import ndimage
@@ -2170,8 +2171,7 @@ class RecStack(CommonStack):
         xslice: Optional[int] = None,
         yslice: Optional[int] = None,
         zslice: Optional[int] = None,
-        vmin_std: float = 0.1,
-        vmax_std: float = 5,
+        **kwargs: Any,
     ):
         """
         Plot slices along all three axes of a reconstruction stack.
@@ -2182,14 +2182,10 @@ class RecStack(CommonStack):
             Indices of slices to plot. If ``None`` (default), the middle
             most slice will be used.
 
-        vmin_std, vmax_std
-            Number of standard deviations from mean to use for
-            scaling the displayed slices
+        kwargs
+            Additional keyword arguments passed to
+            :py:func:`~hyperspy.drawing.utils.plot_images`
 
-        Returns
-        -------
-        fig : ~matplotlib.figure.Figure
-            The figure containing a view of the three slices
         """
         if xslice is None:
             xslice = self.data.shape[0] // 2
@@ -2198,38 +2194,11 @@ class RecStack(CommonStack):
         if zslice is None:
             zslice = self.data.shape[2] // 2
 
-        if "ipympl" in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
-        elif "nbagg" in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
-        else:
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
-
-        slices = [
-            self.data[xslice, :, :],
-            self.data[:, zslice, :],
-            self.data[:, :, yslice],
-        ]
-        minvals = [slices[i].mean() - vmin_std * slices[i].std() for i in range(3)]
-        minvals = [x if x >= 0 else 0 for x in minvals]
-        maxvals = [slices[i].mean() + vmax_std * slices[i].std() for i in range(3)]
-
-        ax1.imshow(slices[0], cmap="afmhot", vmin=minvals[0], vmax=maxvals[0])
-        ax1.set_title(f"Z-Y Slice {xslice}")
-        ax1.set_ylabel("Z")
-        ax1.set_xlabel("Y")
-
-        ax2.imshow(slices[1], cmap="afmhot", vmin=minvals[1], vmax=maxvals[1])
-        ax2.set_title(f"Y-X Slice {zslice}")
-        ax2.set_ylabel("Y")
-        ax2.set_xlabel("X")
-
-        ax3.imshow(slices[2].T, cmap="afmhot", vmin=minvals[2], vmax=maxvals[2])
-        ax3.set_title(f"Z-X Slice {yslice}")
-        ax3.set_ylabel("Z")
-        ax3.set_xlabel("X")
-        fig.tight_layout()
-
-        [i.set_xticks([]) for i in [ax1, ax2, ax3]]
-        [i.set_yticks([]) for i in [ax1, ax2, ax3]]
-        return fig
+        hs_plot_images(
+            [
+                self.inav[xslice],
+                self.isig[yslice, :].as_signal2D((0, 1)),
+                self.isig[:, zslice].as_signal2D((0, 1)),
+            ],
+            **kwargs,
+        )
