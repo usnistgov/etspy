@@ -242,7 +242,7 @@ def create_model_tilt_series(
         )  # coverage: nocuda
 
     for i in range(model.shape[0]):
-        sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
+        _, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
 
     stack = TomoStack(proj_data, angles)
     return stack
