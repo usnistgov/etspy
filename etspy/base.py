@@ -1247,7 +1247,7 @@ class TomoStack(CommonStack):
             hp_freq = 0.05
             lp_sigma = 1.5
             hp_sigma = 1.5
-            [nprojs, rows, cols] = self.data.shape
+            [_, rows, cols] = self.data.shape
 
             fft = np.fft.fftshift(np.fft.fft2(self.data))
 
@@ -1675,13 +1675,14 @@ class TomoStack(CommonStack):
 
         axes_dict = self.axes_manager.as_dictionary()
         rec_axes_dict = [
-            axes_dict["axis-2"],
-            dict(axes_dict["axis-1"]),
-            axes_dict["axis-1"],
+            axes_dict["axis-2"].copy(),
+            axes_dict["axis-1"].copy(),
+            axes_dict["axis-1"].copy(),
         ]
-        rec_axes_dict[1]["name"] = "z"
-        rec_axes_dict[1]["size"] = rec.shape[1]
+        rec_axes_dict[2]["name"] = "z"
+        rec_axes_dict[2]["size"] = rec.shape[1]
         rec = RecStack(rec, axes=rec_axes_dict)
+        rec = rec.swap_axes(1, 2)
 
         return rec
 
@@ -1902,7 +1903,7 @@ class TomoStack(CommonStack):
             new_im2 = new_im2 - new_im2.min()
             new_im2 = new_im2 / new_im2.max()
 
-            fig, ax = plt.subplots(2, 3)
+            _, ax = plt.subplots(2, 3)
             ax[0, 0].imshow(old_im1)
             ax[0, 1].imshow(old_im2)
             ax[0, 2].imshow(old_im1 - old_im2, clim=[-0.5, 0.5])
