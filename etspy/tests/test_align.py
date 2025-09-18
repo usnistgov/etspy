@@ -95,7 +95,7 @@ class TestAlignFunctions:
         stack = ds.get_needle_data()
         with pytest.raises(
             ValueError,
-            match="nslices is greater than the X-dimension of the data.",
+            match=r"nslices is greater than the X-dimension of the data.",
         ):
             etspy.align.tilt_com(stack, slices=None, nslices=300)
 
@@ -105,14 +105,14 @@ class TestAlignFunctions:
         with pytest.raises(
             ValueError,
             match=(
-                "Dataset is only 2 pixels in x dimension. This method cannot be used."
+                r"Dataset is only 2 pixels in x dimension. This method cannot be used."
             ),
         ):
             etspy.align.tilt_com(stack)
 
     def test_calc_shifts_com_cl_res_error(self):
         stack = ds.get_needle_data()
-        with pytest.raises(ValueError, match="Resolution should be less than 0.5"):
+        with pytest.raises(ValueError, match=r"Resolution should be less than 0.5"):
             etspy.align.calc_shifts_com_cl(
                 stack,
                 com_ref_index=30,

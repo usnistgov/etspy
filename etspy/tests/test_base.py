@@ -976,8 +976,8 @@ class TestOperations:
         im[:, 40:60, 40:60] = 10
         stack = TomoStack(im)
         invert = cast("TomoStack", stack.invert())
-        hist, bins = np.histogram(stack.data)
-        hist_inv, bins_inv = np.histogram(invert.data)
+        hist, _ = np.histogram(stack.data)
+        hist_inv, _ = np.histogram(invert.data)
         assert hist[0] > hist_inv[0]
 
     def test_stack_stats(self, capsys):
