@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.13"
+python = ">=3.10"
 pystackreg = "^0.2.8"
 astra-toolbox = ">=2.1"
 hyperspy = "^2.1.1"
