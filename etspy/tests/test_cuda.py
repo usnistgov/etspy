@@ -1,6 +1,7 @@
 """Tests for the CUDA-enabled functionality of ETSpy."""
 
 import re
+from importlib.util import find_spec
 from typing import cast
 
 import astra
@@ -14,6 +15,8 @@ from etspy.align import apply_shifts_cuda
 from etspy.base import RecStack, TomoStack
 
 NUM_FIG_AXES = 3
+
+cupy_in_test_env = find_spec("cupy") is not None
 
 
 # TODO(jat) test cuda functionality and coverage
@@ -184,6 +187,7 @@ class TestReconRunCUDA:
 
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+@pytest.mark.skipif(not cupy_in_test_env, reason="cupy not available")
 class TestStackRegisterCUDA:
     """Test StackReg alignment of a TomoStack using CUDA."""
 
@@ -201,6 +205,7 @@ class TestStackRegisterCUDA:
 
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+@pytest.mark.skipif(not cupy_in_test_env, reason="cupy not available")
 class TestApplyShiftsCUDA:
     """Test StackReg alignment of a TomoStack using CUDA."""
 
