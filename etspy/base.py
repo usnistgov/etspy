@@ -41,6 +41,13 @@ if TYPE_CHECKING:
     from hyperspy.axes import UniformDataAxis as Uda
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
+has_cupy = True
+try:
+    import cupy as cp  # type: ignore
+    from cupyx.scipy.ndimage import affine_transform as affine_transform_gpu
+except ImportError:
+    has_cupy = False
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -1248,7 +1255,7 @@ class TomoStack(CommonStack):
             hp_freq = 0.05
             lp_sigma = 1.5
             hp_sigma = 1.5
-            [nprojs, rows, cols] = self.data.shape
+            [_, rows, cols] = self.data.shape
 
             fft = np.fft.fftshift(np.fft.fft2(self.data))
 
@@ -2261,6 +2268,7 @@ class RecStack(CommonStack):
     def rotate_volume(
         self,
         rotation_angles: Optional[Union[list, np.ndarray]] = None,
+        cuda: Optional[bool] = False,
     ):
         """Apply a 3D transformation to the RecStack data.
 
@@ -2287,16 +2295,30 @@ class RecStack(CommonStack):
                 return None
 
         rotation_matrix, offset = calculate_rotation(rotation_angles, self.data.shape)
-
         rotated = self.deepcopy()
-        rotated.data = ndimage.affine_transform(
-            self.data,
-            rotation_matrix,
-            offset,
-            output_shape=self.data.shape,
-            cval=0.0,
-            order=3,
-        )
+
+        if not cuda:
+            rotated.data = ndimage.affine_transform(
+                self.data,
+                rotation_matrix,
+                offset,
+                output_shape=self.data.shape,
+                cval=0.0,
+                order=3,
+            )
+        else:
+            data_gpu = cp.asarray(self.data.astype(np.float32))
+
+            rotated_gpu = affine_transform_gpu(
+                data_gpu,
+                cp.asarray(rotation_matrix),
+                offset=cp.asarray(offset),
+                output_shape=self.data.shape,
+                order=3,
+                cval=0.0,
+            )
+
+            rotated.data = cp.asnumpy(rotated_gpu)
 
         rotated.rotation_angles = rotation_angles
         rotated.rotation_matrix = rotation_matrix

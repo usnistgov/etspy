@@ -1140,7 +1140,7 @@ def tilt_maximage(
     rotation_angle = np.degrees(np.mean(angles))
 
     if plot_results:
-        fig, ax = plt.subplots(1)
+        _, ax = plt.subplots(1)
         ax.imshow(image, cmap="gray")
 
         for i in range(len(angles)):
