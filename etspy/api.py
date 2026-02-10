@@ -5,7 +5,7 @@ import logging
 from pathlib import Path as _Path
 
 from etspy import align, io, utils
-from etspy.base import TomoStack
+from etspy.base import TomoStack, RecStack
 from etspy.io import load
 
 from . import __version__
