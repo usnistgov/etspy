@@ -1910,7 +1910,7 @@ class TomoStack(CommonStack):
             new_im2 = new_im2 - new_im2.min()
             new_im2 = new_im2 / new_im2.max()
 
-            fig, ax = plt.subplots(2, 3)
+            _, ax = plt.subplots(2, 3)
             ax[0, 0].imshow(old_im1)
             ax[0, 1].imshow(old_im2)
             ax[0, 2].imshow(old_im1 - old_im2, clim=[-0.5, 0.5])

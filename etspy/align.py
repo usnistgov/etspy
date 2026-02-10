@@ -520,7 +520,14 @@ def _upsampled_dft(
 
     im2pi = 1j * 2 * cp.pi
 
-    dim_properties = list(zip(data.shape, upsampled_region_size, axis_offsets))
+    dim_properties = list(
+        zip(
+            data.shape,
+            upsampled_region_size,
+            axis_offsets,
+            strict=False,
+        ),
+    )
 
     for n_items, ups_size, ax_offset in dim_properties[::-1]:
         kernel = (cp.arange(ups_size) - ax_offset)[:, None] * cp.fft.fftfreq(
