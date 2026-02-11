@@ -19,7 +19,7 @@ jobs:
         uses: ./.github/actions/install-with-poetry
         with:
           with-cuda: false
-          poetry-options: "--with=dev --without=gpu"
+          poetry-options: "--with=dev"
           # python-version: "3.12"
       - name: Check links
         run: |
