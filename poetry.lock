@@ -47,7 +47,7 @@ files = [
     {file = "appnope-0.1.4-py2.py3-none-any.whl", hash = "sha256:502575ee11cd7a28c0205f379b525beefebab9d161b7c964670864014ed7213c"},
     {file = "appnope-0.1.4.tar.gz", hash = "sha256:1de3860566df9caf38f01f86f65e0e13e379af54f9e4bee1e66b48f2efffd1ee"},
 ]
-markers = {main = "(extra == \"all\" or extra == \"jupyter\") and platform_system == \"Darwin\"", dev = "platform_system == \"Darwin\""}
+markers = {main = "(extra == \"jupyter\" or extra == \"all\") and platform_system == \"Darwin\"", dev = "platform_system == \"Darwin\""}
 
 [[package]]
 name = "astra-toolbox"
@@ -218,7 +218,7 @@ files = [
     {file = "cffi-2.0.0-cp39-cp39-win_amd64.whl", hash = "sha256:b882b3df248017dba09d6b16defe9b5c407fe32fc7c65a9c69798e6175601be9"},
     {file = "cffi-2.0.0.tar.gz", hash = "sha256:44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529"},
 ]
-markers = {main = "(extra == \"all\" or extra == \"jupyter\") and implementation_name == \"pypy\"", dev = "implementation_name == \"pypy\""}
+markers = {main = "(extra == \"jupyter\" or extra == \"all\") and implementation_name == \"pypy\"", dev = "implementation_name == \"pypy\""}
 
 [package.dependencies]
 pycparser = {version = "*", markers = "implementation_name != \"PyPy\""}
@@ -701,7 +701,7 @@ description = "CuPy: NumPy & SciPy for GPU"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"all\" or extra == \"gpu\""
+markers = "extra == \"gpu\" or extra == \"all\""
 files = [
     {file = "cupy_cuda12x-13.6.0-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:9e37f60f27ff9625dfdccc4688a09852707ec613e32ea9404f425dd22a386d14"},
     {file = "cupy_cuda12x-13.6.0-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:e78409ea72f5ac7d6b6f3d33d99426a94005254fa57e10617f430f9fd7c3a0a1"},
@@ -814,7 +814,7 @@ files = [
     {file = "debugpy-1.8.20-py2.py3-none-any.whl", hash = "sha256:5be9bed9ae3be00665a06acaa48f8329d2b9632f15fd09f6a9a8c8d9907e54d7"},
     {file = "debugpy-1.8.20.tar.gz", hash = "sha256:55bc8701714969f1ab89a6d5f2f3d40c36f91b2cbe2f65d98bf8196f6a6a2c33"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [[package]]
 name = "decorator"
@@ -896,7 +896,7 @@ description = "Fast, re-entrant optimistic lock implemented in Cython"
 optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"all\" or extra == \"gpu\""
+markers = "extra == \"gpu\" or extra == \"all\""
 files = [
     {file = "fastrlock-0.8.3-cp27-cp27m-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:bbbe31cb60ec32672969651bf68333680dacaebe1a1ec7952b8f5e6e23a70aa5"},
     {file = "fastrlock-0.8.3-cp27-cp27m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:45055702fe9bff719cdc62caa849aa7dbe9e3968306025f639ec62ef03c65e88"},
@@ -1415,7 +1415,7 @@ files = [
     {file = "ipykernel-6.31.0-py3-none-any.whl", hash = "sha256:abe5386f6ced727a70e0eb0cf1da801fa7c5fa6ff82147747d5a0406cd8c94af"},
     {file = "ipykernel-6.31.0.tar.gz", hash = "sha256:2372ce8bc1ff4f34e58cafed3a0feb2194b91fc7cad0fc72e79e47b45ee9e8f6"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [package.dependencies]
 appnope = {version = ">=0.1.2", markers = "platform_system == \"Darwin\""}
@@ -1704,7 +1704,7 @@ files = [
     {file = "jupyter_client-8.8.0-py3-none-any.whl", hash = "sha256:f93a5b99c5e23a507b773d3a1136bd6e16c67883ccdbd9a829b0bbdb98cd7d7a"},
     {file = "jupyter_client-8.8.0.tar.gz", hash = "sha256:d556811419a4f2d96c869af34e854e3f059b7cc2d6d01a9cd9c85c267691be3e"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [package.dependencies]
 jupyter-core = ">=5.1"
@@ -1729,7 +1729,7 @@ files = [
     {file = "jupyter_core-5.9.1-py3-none-any.whl", hash = "sha256:ebf87fdc6073d142e114c72c9e29a9d7ca03fad818c5d300ce2adc1fb0743407"},
     {file = "jupyter_core-5.9.1.tar.gz", hash = "sha256:4d09aaff303b9566c3ce657f580bd089ff5c91f5f89cf7d8846c3cdf465b5508"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [package.dependencies]
 platformdirs = ">=2.5"
@@ -2310,7 +2310,7 @@ files = [
     {file = "nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c"},
     {file = "nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [[package]]
 name = "networkx"
@@ -2898,7 +2898,7 @@ files = [
     {file = "psutil-7.2.2-cp37-abi3-win_arm64.whl", hash = "sha256:8c233660f575a5a89e6d4cb65d9f938126312bca76d8fe087b947b3a1aaac9ee"},
     {file = "psutil-7.2.2.tar.gz", hash = "sha256:0746f5f8d406af344fd547f1c8daa5f5c33dbc293bb8d6a16d80b4bb88f59372"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [package.extras]
 dev = ["abi3audit", "black", "check-manifest", "colorama ; os_name == \"nt\"", "coverage", "packaging", "psleak", "pylint", "pyperf", "pypinfo", "pyreadline3 ; os_name == \"nt\"", "pytest", "pytest-cov", "pytest-instafail", "pytest-xdist", "pywin32 ; os_name == \"nt\" and implementation_name != \"pypy\"", "requests", "rstcheck", "ruff", "setuptools", "sphinx", "sphinx_rtd_theme", "toml-sort", "twine", "validate-pyproject[all]", "virtualenv", "vulture", "wheel", "wheel ; os_name == \"nt\" and implementation_name != \"pypy\"", "wmi ; os_name == \"nt\" and implementation_name != \"pypy\""]
@@ -2943,7 +2943,7 @@ files = [
     {file = "pycparser-3.0-py3-none-any.whl", hash = "sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"},
     {file = "pycparser-3.0.tar.gz", hash = "sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29"},
 ]
-markers = {main = "(extra == \"all\" or extra == \"jupyter\") and implementation_name == \"pypy\"", dev = "implementation_name == \"pypy\""}
+markers = {main = "(extra == \"jupyter\" or extra == \"all\") and implementation_name == \"pypy\"", dev = "implementation_name == \"pypy\""}
 
 [[package]]
 name = "pydantic"
@@ -3521,7 +3521,7 @@ files = [
     {file = "pyzmq-27.1.0-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:ff8d114d14ac671d88c89b9224c63d6c4e5a613fe8acd5594ce53d752a3aafe9"},
     {file = "pyzmq-27.1.0.tar.gz", hash = "sha256:ac0765e3d44455adb6ddbf4417dcce460fc40a05978c08efdf2948072f6db540"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [package.dependencies]
 cffi = {version = "*", markers = "implementation_name == \"pypy\""}
@@ -4555,7 +4555,7 @@ files = [
     {file = "tornado-6.5.4-cp39-abi3-win_arm64.whl", hash = "sha256:053e6e16701eb6cbe641f308f4c1a9541f91b6261991160391bfc342e8a551a1"},
     {file = "tornado-6.5.4.tar.gz", hash = "sha256:a22fa9047405d03260b483980635f0b041989d8bcc9a313f8fe18b411d84b1d7"},
 ]
-markers = {main = "extra == \"all\" or extra == \"jupyter\""}
+markers = {main = "extra == \"jupyter\" or extra == \"all\""}
 
 [[package]]
 name = "tqdm"
