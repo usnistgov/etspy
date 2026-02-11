@@ -21,4 +21,4 @@ dependencies:
   - sphinx==8.0.2
   - sphinx-immaterial
   - tomli
-  - typing_extensions
+  - typing-extensions

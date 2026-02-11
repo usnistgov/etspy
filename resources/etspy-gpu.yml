@@ -12,4 +12,4 @@ dependencies:
   - pystackreg
   - pip
   - numpy
-  - typing_extensions
+  - typing-extensions
