@@ -34,6 +34,7 @@ from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
 from etspy.transform import VolumeRotator, calculate_rotation
+from etspy.visualize import VolumeSlicer
 
 if TYPE_CHECKING:
     from types import FrameType
@@ -567,6 +568,30 @@ class CommonStack(Signal2D, ABC):
         trans_tomo_meta.yshift = cast("float", self_tomo_meta.yshift) + yshift
         trans_tomo_meta.tiltaxis = cast("float", self_tomo_meta.tiltaxis) + angle
         return transformed
+
+    def plot_3d(
+        self,
+        vmin_std: float = 0.1,
+        vmax_std: float = 10,
+        figsize: tuple = (10, 4),
+    ):
+        """Plot slices along three major axes interatively.
+
+        Parameters
+        ----------
+        stack : RecStack
+            Volume to rotate
+        vmin_std : float
+            Number of standard deviations from mean (lower bound) to use for scaling the
+            displayed slices
+        vmax_std : float
+            Number of standard deviations from mean (upper bound) to use for scaling the
+            displayed slices
+        figsize : tuple
+            Size of matplotlib figure to use
+        """
+        vs = VolumeSlicer(self, vmin_std, vmax_std, figsize)
+        vs.display()
 
 
 class TomoStack(CommonStack):
