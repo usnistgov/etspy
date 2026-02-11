@@ -3,7 +3,7 @@
 # pyright: reportPossiblyUnboundVariable=false
 
 import logging
-from typing import TYPE_CHECKING, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Literal, Union, cast
 
 import astra
 import matplotlib.pylab as plt
@@ -313,7 +313,7 @@ def pad_line(line: np.ndarray, paddedsize: int) -> np.ndarray:
 
 def calc_shifts_cl(
     stack: "TomoStack",
-    cl_ref_index: Optional[int],
+    cl_ref_index: int | None,
     cl_resolution: float,
     cl_div_factor: int,
 ) -> np.ndarray:
@@ -407,7 +407,7 @@ def calc_shifts_cl(
 
 def calculate_shifts_conservation_of_mass(
     stack: "TomoStack",
-    xrange: Optional[tuple[int, int]] = None,
+    xrange: tuple[int, int] | None = None,
     p: int = 20,
 ) -> np.ndarray:
     """
@@ -686,7 +686,7 @@ def calculate_shifts_pc(
 
 def calculate_shifts_stackreg(
     stack: "TomoStack",
-    start: Optional[int],
+    start: int | None,
     show_progressbar: bool,
 ) -> np.ndarray:
     """
@@ -743,7 +743,7 @@ def calculate_shifts_stackreg(
 def calc_shifts_com_cl(
     stack: "TomoStack",
     com_ref_index: int,
-    cl_ref_index: Optional[int] = None,
+    cl_ref_index: int | None = None,
     cl_resolution: float = 0.05,
     cl_div_factor: int = 8,
 ) -> np.ndarray:
@@ -810,16 +810,16 @@ def calc_shifts_com_cl(
 def align_stack(  # noqa: PLR0913
     stack: "TomoStack",
     method: AlignmentMethodType,
-    start: Optional[int],
+    start: int | None,
     show_progressbar: bool,
-    xrange: Optional[tuple[int, int]] = None,
+    xrange: tuple[int, int] | None = None,
     shift_type: Literal["fourier", "interp"] = "fourier",
     p: int = 20,
     nslices: int = 20,
     cuda: bool = False,
     upsample_factor: int = 3,
-    com_ref_index: Optional[int] = None,
-    cl_ref_index: Optional[int] = None,
+    com_ref_index: int | None = None,
+    cl_ref_index: int | None = None,
     cl_resolution: float = 0.05,
     cl_div_factor: int = 8,
 ) -> "TomoStack":
@@ -989,8 +989,8 @@ def align_stack(  # noqa: PLR0913
 
 def tilt_com(
     stack: "TomoStack",
-    slices: Optional[np.ndarray] = None,
-    nslices: Optional[int] = None,
+    slices: np.ndarray | None = None,
+    nslices: int | None = None,
 ) -> "TomoStack":
     """
     Perform tilt axis alignment using center of mass (CoM) tracking.
