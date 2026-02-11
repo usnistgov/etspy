@@ -559,7 +559,7 @@ version = "13.3.0"
 description = "CuPy: NumPy & SciPy for GPU"
 optional = true
 python-versions = ">=3.9"
-groups = ["main", "gpu"]
+groups = ["gpu"]
 files = [
     {file = "cupy-13.3.0.tar.gz", hash = "sha256:9a2a17af2b99cce91dd1366939c3805e3f51f9de5046df64f29ccbad3bdf78ed"},
 ]
@@ -732,7 +732,7 @@ version = "0.8.2"
 description = "Fast, re-entrant optimistic lock implemented in Cython"
 optional = true
 python-versions = "*"
-groups = ["main", "gpu"]
+groups = ["gpu"]
 files = [
     {file = "fastrlock-0.8.2-cp27-cp27m-macosx_10_15_x86_64.whl", hash = "sha256:94e348c72a1fd1f8191f25ea056448e4f5a87b8fbf005b39d290dcb0581a48cd"},
     {file = "fastrlock-0.8.2-cp27-cp27m-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:2d5595903444c854b99c42122b87edfe8a37cd698a4eae32f4fd1d2a7b6c115d"},
@@ -4147,11 +4147,11 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 type = ["pytest-mypy"]
 
 [extras]
-all = ["cupy", "ipykernel"]
-gpu = ["cupy"]
+all = ["ipykernel"]
+gpu = []
 jupyter = ["ipykernel"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <3.13"
-content-hash = "e95035695a8be3d37526a11ba0c82506cd0e6e7d02defb366e6e2a4add7382f7"
+content-hash = "d16172b5e05ee7585bf5151119c35164bbe59ef5ccafaaa324dac90b65d3747c"
