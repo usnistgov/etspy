@@ -28,5 +28,12 @@ runs:
       run: conda list
       shell: bash -el {0}
     - name: Install etspy development
-      run: which pip && pip install -e ./
+      # run: which pip && pip install -e ./
+      # Only install CUDA related packages if not on MacOS
+      run:
+        if [ "${{ inputs.macos }}" == "true" ]; then
+          pip install --no-deps -e .
+        else
+          pip install --no-deps -e ".[gpu]"
+        fi
       shell: bash -el {0}
