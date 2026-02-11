@@ -20,7 +20,7 @@ jobs:
         with:
           with-cuda: false
           poetry-options: "--with=dev --without=gpu"
-          python-version: "3.12"   # use 3.11 due to flaky pystackreg install on 3.12
+          # python-version: "3.12"
       - name: Check links
         run: |
           cd ${{ env.DOC_SOURCE_PATH }}
