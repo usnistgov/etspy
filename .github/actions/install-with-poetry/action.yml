@@ -2,7 +2,7 @@ name: Install ETSpy with poetry
 description: Uses poetry and CUDA action to install ETSpy and its dependencies
 inputs:
   python-version:
-    default: "3.12"
+    # default: "3.12"
     type: string
     required: true
   with-cuda:
