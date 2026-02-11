@@ -1,6 +1,11 @@
 name: CI
 on: [push, pull_request]
 
+env:
+  # Set the Matplotlib backend to 'agg' to avoid issues with rendering plots
+  # in headless environments during testing.
+  MPLBACKEND: agg
+  
 jobs:
   format-checks:
     runs-on: ubuntu-latest
