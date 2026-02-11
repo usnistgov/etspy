@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 from hyperspy._signals.signal2d import (
@@ -20,7 +20,7 @@ from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-PathLike = Union[str, Path]
+PathLike = str | Path
 
 # declare known file types for later use
 hspy_file_types = [".hdf5", ".h5", ".hspy"]
@@ -30,9 +30,9 @@ known_file_types = hspy_file_types + mrc_file_types + dm_file_types
 
 
 def get_mrc_tilts(
-    stack: Union[Signal2D, TomoStack],
+    stack: Signal2D | TomoStack,
     filename: PathLike,
-) -> Optional[np.ndarray]:
+) -> np.ndarray | None:
     """Extract tilts from an MRC file.
 
     Parameters
@@ -78,7 +78,7 @@ def get_mrc_tilts(
     return tilts
 
 
-def get_dm_tilts(s: Union[Signal2D, TomoStack]) -> np.ndarray:
+def get_dm_tilts(s: Signal2D | TomoStack) -> np.ndarray:
     """Extract tilts from DM tags.
 
     Parameters
@@ -114,7 +114,7 @@ def get_dm_tilts(s: Union[Signal2D, TomoStack]) -> np.ndarray:
 def parse_mdoc(
     mdoc_file: PathLike,
     series: bool = False,
-) -> tuple[dict, Union[np.ndarray, float]]:
+) -> tuple[dict, np.ndarray | float]:
     """Parse experimental parameters from a SerialEM MDOC file.
 
     Parameters
@@ -223,8 +223,8 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
 
 
 def load_serialem_series(
-    mrcfiles: Union[list[str], list[Path]],
-    mdocfiles: Union[list[str], list[Path]],
+    mrcfiles: list[str] | list[Path],
+    mdocfiles: list[str] | list[Path],
 ) -> tuple[Signal2D, np.ndarray]:
     """
     Load a multi-frame series collected by SerialEM.
@@ -424,9 +424,9 @@ def _load_single_file(filename: Path) -> TomoStack:
 
 
 def load(
-    filename: Union[PathLike, list[str], list[Path]],
-    tilts: Optional[Union[list[float], np.ndarray]] = None,
-    mdocs: Optional[Union[list[str], list[Path]]] = None,
+    filename: PathLike | list[str] | list[Path],
+    tilts: list[float] | np.ndarray | None = None,
+    mdocs: list[str] | list[Path] | None = None,
 ) -> TomoStack:
     """
     Create a TomoStack object using data from a file.

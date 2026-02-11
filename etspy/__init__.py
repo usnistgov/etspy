@@ -4,8 +4,9 @@ import importlib.metadata
 
 __version__ = importlib.metadata.version("etspy")
 
+from collections.abc import Callable
 from enum import Enum
-from typing import Callable, Literal, Union, get_args, get_type_hints
+from typing import Literal, get_args, get_type_hints
 
 
 class AlignmentMethod(str, Enum):
@@ -47,10 +48,7 @@ class AlignmentMethod(str, Enum):
         return [v.value for _, v in cls.__members__.items()]
 
 
-AlignmentMethodType = Union[
-    AlignmentMethod,
-    Literal["PC", "COM", "COM-CL", "StackReg"],
-]
+AlignmentMethodType = AlignmentMethod | Literal["PC", "COM", "COM-CL", "StackReg"]
 
 FbpMethodType = Literal[
     "ram-lak",

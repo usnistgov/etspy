@@ -2,7 +2,7 @@
 
 import logging
 from multiprocessing import Pool
-from typing import TYPE_CHECKING, Literal, Optional, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 import tqdm
@@ -356,7 +356,7 @@ def calc_golden_ratio_angles(tilt_range: int, nangles: int) -> np.ndarray:
 
 def get_radial_mask(
     mask_shape: tuple[int, int],
-    center: Optional[tuple[int, int]] = None,
+    center: tuple[int, int] | None = None,
 ) -> np.ndarray:
     """
     Calculate a radial mask given a shape and center position.

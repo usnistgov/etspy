@@ -2,7 +2,6 @@ name: Install ETSpy with poetry
 description: Uses poetry and CUDA action to install ETSpy and its dependencies
 inputs:
   python-version:
-    # default: "3.12"
     type: string
     required: true
   with-cuda:
@@ -30,5 +29,10 @@ runs:
         sub-packages: '["cudart"]'
         non-cuda-sub-packages: '["libcufft"]'
     - name: Install ETSpy using poetry
-      run: poetry install ${{ inputs.poetry-options }}
+      run: |
+        OPTIONS="${{ inputs.poetry-options }}"
+        if [ "${{ inputs.with-cuda }}" == "true" ]; then
+          OPTIONS="$OPTIONS --extras gpu"
+        fi
+        poetry install $OPTIONS
       shell: bash -el {0}

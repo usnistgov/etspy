@@ -584,7 +584,7 @@ def astra_error(
         if cuda:  # coverage: nocuda
             residual_error[i] = astra.algorithm.get_res_norm(alg)
         else:
-            curr_id, curr = astra.create_sino(rec[i], proj_id)
+            _, curr = astra.create_sino(rec[i], proj_id)
             residual_error[i] = np.linalg.norm(sinogram - curr)
     astra.clear()
 

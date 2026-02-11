@@ -12,4 +12,5 @@ dependencies:
   - pystackreg
   - pip
   - numpy
-  - typing_extensions
+  - scikit-image
+  - typing-extensions

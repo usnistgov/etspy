@@ -9,7 +9,7 @@ import inspect
 import logging
 from abc import ABC
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 try:
     from typing import Self  # type: ignore
@@ -299,7 +299,7 @@ class CommonStack(Signal2D, ABC):
 
     def __init__(
         self,
-        data: Union[np.ndarray, Signal2D],
+        data: np.ndarray | Signal2D,
         *args,
         **kwargs,
     ):
@@ -344,7 +344,7 @@ class CommonStack(Signal2D, ABC):
         """
         super().plot(navigator=navigator, *args, **kwargs)  # noqa: B026
 
-    def change_data_type(self, dtype: Union[str, np.dtype]):
+    def change_data_type(self, dtype: str | np.dtype):
         """
         Change the data type of a stack.
 
@@ -431,7 +431,7 @@ class CommonStack(Signal2D, ABC):
         normalized.data = normalized.data / (meanvals + width * stdvals)
         return normalized
 
-    def save_raw(self, filename: Optional[Union[str, Path]] = None) -> Path:
+    def save_raw(self, filename: str | Path | None = None) -> Path:
         """
         Save Stack data as a .raw/.rpl file pair.
 
@@ -739,9 +739,9 @@ class TomoStack(CommonStack):
 
     def __init__(
         self,
-        data: Union[np.ndarray, Signal2D],
-        tilts: Optional[TomoTilts] = None,
-        shifts: Optional[Union[TomoShifts, np.ndarray]] = None,
+        data: np.ndarray | Signal2D,
+        tilts: TomoTilts | None = None,
+        shifts: TomoShifts | np.ndarray | None = None,
         *args,
         **kwargs,
     ):
@@ -834,9 +834,9 @@ class TomoStack(CommonStack):
 
     def _check_array_shape(
         self,
-        array: Union[TomoShifts, TomoTilts, np.ndarray],
+        array: TomoShifts | TomoTilts | np.ndarray,
         mode: Literal["shifts", "tilts"],
-    ) -> Union[TomoShifts, TomoTilts, np.ndarray]:
+    ) -> TomoShifts | TomoTilts | np.ndarray:
         """
         Check if a signal or array shape is appropriate for the current stack.
 
@@ -868,8 +868,8 @@ class TomoStack(CommonStack):
     def shift_and_tilt_setter(
         self,
         mode: Literal["shifts", "tilts"],
-        value: Optional[Union[TomoShifts, TomoTilts, np.ndarray]],
-    ) -> Union[TomoShifts, TomoTilts]:
+        value: TomoShifts | TomoTilts | np.ndarray | None,
+    ) -> TomoShifts | TomoTilts:
         """
         Set either ``self._tilts`` or ``self._shifts`` to an array.
 
@@ -916,12 +916,12 @@ class TomoStack(CommonStack):
         else:
             # value is already a Signal, so test the dimensions
             value = cast(
-                "Union[TomoTilts, TomoShifts]",
+                "TomoTilts | TomoShifts",
                 self._check_array_shape(value, mode),
             )
             # Using the TomoTilts/TomoShifts constructor strips metadata and axis
             # info, so copy it back:
-            target = cast("Union[TomoTilts, TomoShifts]", _cls(data=value))
+            target = cast("TomoTilts | TomoShifts", _cls(data=value))
             target.metadata.add_dictionary(value.metadata.as_dictionary())
             target.axes_manager.update_axes_attributes_from(
                 (*value.axes_manager.navigation_axes, *value.axes_manager.signal_axes),
@@ -961,7 +961,7 @@ class TomoStack(CommonStack):
         return self._shifts
 
     @shifts.setter
-    def shifts(self, new_shifts: Optional[Union[TomoShifts, np.ndarray]]):
+    def shifts(self, new_shifts: TomoShifts | np.ndarray | None):
         self._shifts = cast(
             "TomoShifts",
             self.shift_and_tilt_setter("shifts", new_shifts),
@@ -986,7 +986,7 @@ class TomoStack(CommonStack):
         return self._tilts
 
     @tilts.setter
-    def tilts(self, new_tilts: Optional[Union[TomoTilts, np.ndarray]]):
+    def tilts(self, new_tilts: TomoTilts | np.ndarray | None):
         self._tilts = cast(
             "TomoTilts",
             self.shift_and_tilt_setter("tilts", new_tilts),
@@ -1060,7 +1060,7 @@ class TomoStack(CommonStack):
             **kwargs,
         )
 
-    def remove_projections(self, projections: Optional[list] = None) -> "TomoStack":
+    def remove_projections(self, projections: list | None = None) -> "TomoStack":
         """
         Return a copy of the TomoStack with certain projections removed from the series.
 
@@ -1128,7 +1128,7 @@ class TomoStack(CommonStack):
 
     def test_correlation(
         self,
-        images: Optional[Union[list[int], tuple[int, int]]] = None,
+        images: list[int] | tuple[int, int] | None = None,
     ) -> Figure:
         """
         Test output of cross-correlation prior to alignment.
@@ -1321,14 +1321,14 @@ class TomoStack(CommonStack):
     def stack_register(  # noqa: PLR0913
         self,
         method: AlignmentMethodType = AlignmentMethod.PC,
-        start: Optional[int] = None,
+        start: int | None = None,
         show_progressbar: bool = False,
         crop: bool = False,
-        xrange: Optional[tuple[int, int]] = None,
+        xrange: tuple[int, int] | None = None,
         p: int = 20,
         nslices: int = 20,
-        com_ref_index: Optional[int] = None,
-        cl_ref_index: Optional[int] = None,
+        com_ref_index: int | None = None,
+        cl_ref_index: int | None = None,
         cl_resolution: float = 0.05,
         cl_div_factor: int = 8,
         cuda: bool = False,
@@ -1452,8 +1452,8 @@ class TomoStack(CommonStack):
     def tilt_align(
         self,
         method: Literal["CoM", "MaxImage"],
-        slices: Optional[np.ndarray] = None,
-        nslices: Optional[int] = None,
+        slices: np.ndarray | None = None,
+        nslices: int | None = None,
         limit: float = 10,
         delta: float = 0.1,
         plot_results: bool = False,
@@ -1561,14 +1561,14 @@ class TomoStack(CommonStack):
         iterations: int = 5,
         constrain: bool = False,
         thresh: float = 0,
-        cuda: Optional[bool] = None,
-        thickness: Optional[int] = None,
+        cuda: bool | None = None,
+        thickness: int | None = None,
         show_progressbar: bool = True,
         p: float = 0.99,
-        ncores: Optional[int] = None,
+        ncores: int | None = None,
         sino_filter: FbpMethodType = "shepp-logan",
-        dart_iterations: Optional[int] = 5,
-        gray_levels: Optional[Union[list, np.ndarray]] = None,
+        dart_iterations: int | None = 5,
+        gray_levels: list | np.ndarray | None = None,
     ) -> "RecStack":
         """
         Reconstruct a TomoStack series using one of the available methods.
@@ -1722,12 +1722,12 @@ class TomoStack(CommonStack):
         self,
         tilt_shift: float = 0.0,
         tilt_rotation: float = 0.0,
-        slices: Optional[np.ndarray] = None,
-        thickness: Optional[int] = None,
+        slices: np.ndarray | None = None,
+        thickness: int | None = None,
         method: Literal["FBP", "SIRT", "SART"] = "FBP",
         iterations: int = 50,
         constrain: bool = True,
-        cuda: Optional[bool] = None,
+        cuda: bool | None = None,
         thresh: float = 0,
         vmin_std: float = 0.1,
         vmax_std: float = 10,
@@ -1948,11 +1948,11 @@ class TomoStack(CommonStack):
 
     def recon_error(
         self,
-        nslice: Optional[int] = None,
+        nslice: int | None = None,
         algorithm: Literal["SIRT", "SART"] = "SIRT",
         iterations: int = 50,
         constrain: bool = True,
-        cuda: Optional[bool] = None,
+        cuda: bool | None = None,
         thresh: float = 0,
     ) -> tuple[Signal2D, Signal1D]:
         """
@@ -2040,7 +2040,7 @@ class TomoStack(CommonStack):
 
     def extract_sinogram(
         self,
-        column: Union[int, float],  # noqa: PYI041
+        column: int | float,  # noqa: PYI041
     ) -> Signal2D:
         """
         Extract a sinogram from a single column of the TomoStack.
@@ -2148,8 +2148,8 @@ class RecStack(CommonStack):
 
     def forward_project(
         self,
-        tilts: Optional[Union[TomoTilts, np.ndarray]],
-        cuda: Optional[bool] = None,
+        tilts: TomoTilts | np.ndarray | None,
+        cuda: bool | None = None,
     ) -> TomoStack:
         """
         Forward project the RecStack signal.
@@ -2203,9 +2203,9 @@ class RecStack(CommonStack):
 
     def plot_slices(
         self,
-        xslice: Optional[int] = None,
-        yslice: Optional[int] = None,
-        zslice: Optional[int] = None,
+        xslice: int | None = None,
+        yslice: int | None = None,
+        zslice: int | None = None,
         vmin_std: float = 0.1,
         vmax_std: float = 5,
         figsize: tuple = (10, 4),
@@ -2268,9 +2268,9 @@ class RecStack(CommonStack):
 
     def interactive_rotation(
         self,
-        slices: Optional[Union[list, np.ndarray]] = None,
-        order: Optional[int] = 3,
-        figsize: Optional[tuple] = (10, 4),
+        slices: list | np.ndarray | None = None,
+        order: int | None = 3,
+        figsize: tuple | None = (10, 4),
     ):
         """
         Interactively determine 3D rotation angles for RecStack.
@@ -2292,8 +2292,8 @@ class RecStack(CommonStack):
 
     def rotate_volume(
         self,
-        rotation_angles: Optional[Union[list, np.ndarray]] = None,
-        cuda: Optional[bool] = False,
+        rotation_angles: list | np.ndarray | None = None,
+        cuda: bool | None = False,
     ):
         """Apply a 3D transformation to the RecStack data.
 

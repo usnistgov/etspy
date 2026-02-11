@@ -1,6 +1,6 @@
 """Simulation module for ETSpy package."""
 
-from typing import Literal, Optional, Union, cast
+from typing import Literal, cast
 
 import astra
 import hyperspy.api as hs
@@ -181,9 +181,9 @@ def create_cylinder_model(
 
 
 def create_model_tilt_series(
-    model: Union[np.ndarray, hs.signals.Signal2D],
-    angles: Optional[np.ndarray] = None,
-    cuda: Optional[bool] = None,
+    model: np.ndarray | hs.signals.Signal2D,
+    angles: np.ndarray | None = None,
+    cuda: bool | None = None,
 ) -> TomoStack:
     """
     Create a tilt series from a 3D volume.
@@ -242,7 +242,7 @@ def create_model_tilt_series(
         )  # coverage: nocuda
 
     for i in range(model.shape[0]):
-        sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
+        _, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
 
     stack = TomoStack(proj_data, angles)
     return stack

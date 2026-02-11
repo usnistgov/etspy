@@ -5,13 +5,12 @@ inputs:
     default: etspy
     type: string
   python-version:
-    # default: "3.12"
     type: string
     required: true
   macos:
     default: false
     type: boolean
-    description: Whether to use MacOS conda environment (no cupy)
+    description: Whether to use MacOS conda environment which does not support CUDA
 
 runs:
   using: "composite"
@@ -28,5 +27,11 @@ runs:
       run: conda list
       shell: bash -el {0}
     - name: Install etspy development
-      run: which pip && pip install -e ./
+      # Only install CUDA related packages if not on MacOS
+      run: |
+        if [ "${{ inputs.macos }}" == "true" ]; then
+          pip install --no-deps -e .
+        else
+          pip install --no-deps -e ".[gpu]"
+        fi
       shell: bash -el {0}

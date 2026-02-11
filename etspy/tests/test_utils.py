@@ -19,6 +19,7 @@ except TypeError:
 else:
     hspy_mrc_broken = False
 
+
 @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestMultiframeAverage:
     """Test taking a multiframe average of a stack."""
@@ -45,7 +46,7 @@ class TestMultiframeAverage:
         dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
         files = dirname.glob("*.mrc")
         stack = io.load(list(files))
-        ntilts, nframes, ny, nx = stack.data.shape
+        _, nframes, ny, nx = stack.data.shape
         stack_avg = utils.multiaverage(stack.data[0], nframes, ny, nx)
         assert isinstance(stack_avg, np.ndarray)
         assert stack_avg.shape == (ny, nx)
