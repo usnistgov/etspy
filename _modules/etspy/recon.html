@@ -33,8 +33,8 @@
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
-        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.9badc98c4f78aac06.min.css?v=60124955" />
-        <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+        <link rel="stylesheet" type="text/css" href="../../_static/sphinx_immaterial_theme.58d549dac8fe20eca.min.css?v=7776979a" />
+        <link rel="stylesheet" type="text/css" href="../../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
         <link rel="stylesheet" type="text/css" href="../../_static/custom_css.css?v=3df925f6" />
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -486,20 +486,20 @@ $(document).ready(function(){
 <span></span><code><span class="c1"># ruff: noqa: UP007</span>
 <span class="sd">&quot;&quot;&quot;Reconstruction module for ETSpy package.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span> <span class="nn">copy</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
-<span class="kn">import</span> <span class="nn">astra</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">tqdm</span>
-<span class="kn">from</span> <span class="nn">dask.base</span> <span class="kn">import</span> <span class="n">compute</span> <span class="k">as</span> <span class="n">dask_compute</span>
-<span class="kn">from</span> <span class="nn">dask.delayed</span> <span class="kn">import</span> <span class="n">delayed</span> <span class="k">as</span> <span class="n">dask_delayed</span>
-<span class="kn">from</span> <span class="nn">dask.diagnostics.progress</span> <span class="kn">import</span> <span class="n">ProgressBar</span>
-<span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">convolve</span><span class="p">,</span> <span class="n">gaussian_filter</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">astra</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tqdm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dask.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute</span> <span class="k">as</span> <span class="n">dask_compute</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dask.delayed</span><span class="w"> </span><span class="kn">import</span> <span class="n">delayed</span> <span class="k">as</span> <span class="n">dask_delayed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dask.diagnostics.progress</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProgressBar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">convolve</span><span class="p">,</span> <span class="n">gaussian_filter</span>
 
 <span class="n">ncpus</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -508,7 +508,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="run_alg">
 <a class="viewcode-back" href="../../api/etspy.recon.run_alg.html#etspy.recon.run_alg">[docs]</a>
-<span class="k">def</span> <span class="nf">run_alg</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_alg</span><span class="p">(</span>
     <span class="n">sino</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
@@ -558,7 +558,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="run_dart">
 <a class="viewcode-back" href="../../api/etspy.recon.run_dart.html#etspy.recon.run_dart">[docs]</a>
-<span class="k">def</span> <span class="nf">run_dart</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_dart</span><span class="p">(</span>
     <span class="n">sino</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">dart_iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -658,7 +658,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="run">
 <a class="viewcode-back" href="../../api/etspy.recon.run.html#etspy.recon.run">[docs]</a>
-<span class="k">def</span> <span class="nf">run</span><span class="p">(</span>  <span class="c1"># noqa: PLR0912, PLR0913, PLR0915</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>  <span class="c1"># noqa: PLR0912, PLR0913, PLR0915</span>
     <span class="n">stack</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">tilts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;FBP&quot;</span><span class="p">,</span> <span class="s2">&quot;SIRT&quot;</span><span class="p">,</span> <span class="s2">&quot;SART&quot;</span><span class="p">,</span> <span class="s2">&quot;DART&quot;</span><span class="p">],</span>
@@ -929,7 +929,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="dart_segment">
 <a class="viewcode-back" href="../../api/etspy.recon.dart_segment.html#etspy.recon.dart_segment">[docs]</a>
-<span class="k">def</span> <span class="nf">dart_segment</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dart_segment</span><span class="p">(</span>
     <span class="n">rec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">thresholds</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
     <span class="n">gray_vals</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
@@ -963,7 +963,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="get_dart_boundaries">
 <a class="viewcode-back" href="../../api/etspy.recon.get_dart_boundaries.html#etspy.recon.get_dart_boundaries">[docs]</a>
-<span class="k">def</span> <span class="nf">get_dart_boundaries</span><span class="p">(</span><span class="n">segmented</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_dart_boundaries</span><span class="p">(</span><span class="n">segmented</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Boundary step for DART Reconstruction.</span>
 
@@ -990,7 +990,7 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="astra_error">
 <a class="viewcode-back" href="../../api/etspy.recon.astra_error.html#etspy.recon.astra_error">[docs]</a>
-<span class="k">def</span> <span class="nf">astra_error</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">astra_error</span><span class="p">(</span>
     <span class="n">sinogram</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">angles</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;SIRT&quot;</span><span class="p">,</span> <span class="s2">&quot;SART&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SIRT&quot;</span><span class="p">,</span>
@@ -1170,7 +1170,7 @@ $(document).ready(function(){
     <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.expand", "navigation.instant", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "toc.follow", "toc.sticky", "content.tabs.link", "content.code.annotate", "announce.dismiss"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
       
-        <script src="../../_static/sphinx_immaterial_theme.f9d9eeeb247ace16c.min.js?v=8ec58cb5"></script>
+        <script src="../../_static/sphinx_immaterial_theme.48b1f36c1777f6fe9.min.js?v=64a73510"></script>
     
   </body>
 </html>
