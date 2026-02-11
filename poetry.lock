@@ -4764,4 +4764,4 @@ jupyter = ["ipykernel"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "1bc98fc67130c8db954d399ba422b0cde17bca16dc4924b2928b5a79ab037491"
+content-hash = "aac19443928cb6ff961985c89f3c3d2b83ddd9bcf73afa93dbe867d19fd0b152"
