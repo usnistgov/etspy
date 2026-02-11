@@ -485,7 +485,7 @@ $(document).ready(function(){
 <h1>Source code for etspy.simulation</h1><div class="highlight"><pre>
 <span></span><code><span class="sd">&quot;&quot;&quot;Simulation module for ETSpy package.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">astra</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">hyperspy.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hs</span>
@@ -674,9 +674,9 @@ $(document).ready(function(){
 <div class="viewcode-block" id="create_model_tilt_series">
 <a class="viewcode-back" href="../../api/etspy.simulation.create_model_tilt_series.html#etspy.simulation.create_model_tilt_series">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">create_model_tilt_series</span><span class="p">(</span>
-    <span class="n">model</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">hs</span><span class="o">.</span><span class="n">signals</span><span class="o">.</span><span class="n">Signal2D</span><span class="p">],</span>
-    <span class="n">angles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">cuda</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">hs</span><span class="o">.</span><span class="n">signals</span><span class="o">.</span><span class="n">Signal2D</span><span class="p">,</span>
+    <span class="n">angles</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoStack</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a tilt series from a 3D volume.</span>
@@ -735,7 +735,7 @@ $(document).ready(function(){
         <span class="p">)</span>  <span class="c1"># coverage: nocuda</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-        <span class="n">sino_id</span><span class="p">,</span> <span class="n">proj_data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_sino</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">proj_id</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">proj_data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">astra</span><span class="o">.</span><span class="n">create_sino</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">proj_id</span><span class="p">)</span>
 
     <span class="n">stack</span> <span class="o">=</span> <span class="n">TomoStack</span><span class="p">(</span><span class="n">proj_data</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">stack</span></div>

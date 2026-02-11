@@ -17,8 +17,8 @@ If using conda, create and activate a new environment using one of the *developm
 
 | Description | Link |
 | ----------- | ---- |
-| Development environment without `cupy` | [`etspy-dev.yml`](https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-dev.yml) |
-| Development environment with `cupy` and CUDA packages for GPU operations | [`etspy-gpu-dev.yml`](https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-gpu-dev.yml) |
+| Development environment without `gpu` | [`etspy-dev.yml`](https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-dev.yml) |
+| Development environment with `gpu` and CUDA packages for GPU operations | [`etspy-gpu-dev.yml`](https://raw.githubusercontent.com/usnistgov/etspy/refs/heads/master/resources/etspy-gpu-dev.yml) |
 
 
 Then you will need to [fork the repository on Github](https://github.com/usnistgov/etspy/fork), clone the repo locally, and

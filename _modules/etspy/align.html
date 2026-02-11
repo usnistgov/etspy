@@ -488,7 +488,7 @@ $(document).ready(function(){
 <span class="c1"># pyright: reportPossiblyUnboundVariable=false</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">astra</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pylab</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
@@ -815,7 +815,7 @@ $(document).ready(function(){
 <a class="viewcode-back" href="../../api/etspy.align.calc_shifts_cl.html#etspy.align.calc_shifts_cl">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">calc_shifts_cl</span><span class="p">(</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
-    <span class="n">cl_ref_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">cl_ref_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">cl_resolution</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">cl_div_factor</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -912,7 +912,7 @@ $(document).ready(function(){
 <a class="viewcode-back" href="../../api/etspy.align.calculate_shifts_conservation_of_mass.html#etspy.align.calculate_shifts_conservation_of_mass">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">calculate_shifts_conservation_of_mass</span><span class="p">(</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
-    <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">xrange</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1200,7 +1200,7 @@ $(document).ready(function(){
 <a class="viewcode-back" href="../../api/etspy.align.calculate_shifts_stackreg.html#etspy.align.calculate_shifts_stackreg">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">calculate_shifts_stackreg</span><span class="p">(</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
-    <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">show_progressbar</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1260,7 +1260,7 @@ $(document).ready(function(){
 <span class="k">def</span><span class="w"> </span><span class="nf">calc_shifts_com_cl</span><span class="p">(</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
     <span class="n">com_ref_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="n">cl_ref_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cl_ref_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">cl_resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">cl_div_factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1330,16 +1330,16 @@ $(document).ready(function(){
 <span class="k">def</span><span class="w"> </span><span class="nf">align_stack</span><span class="p">(</span>  <span class="c1"># noqa: PLR0913</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
     <span class="n">method</span><span class="p">:</span> <span class="n">AlignmentMethodType</span><span class="p">,</span>
-    <span class="n">start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">show_progressbar</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
-    <span class="n">xrange</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">xrange</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">shift_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;fourier&quot;</span><span class="p">,</span> <span class="s2">&quot;interp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fourier&quot;</span><span class="p">,</span>
     <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
     <span class="n">nslices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
     <span class="n">cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">upsample_factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="n">com_ref_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">cl_ref_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">com_ref_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cl_ref_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">cl_resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">cl_div_factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
@@ -1512,8 +1512,8 @@ $(document).ready(function(){
 <a class="viewcode-back" href="../../api/etspy.align.tilt_com.html#etspy.align.tilt_com">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tilt_com</span><span class="p">(</span>
     <span class="n">stack</span><span class="p">:</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">,</span>
-    <span class="n">slices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">nslices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">slices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">nslices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Perform tilt axis alignment using center of mass (CoM) tracking.</span>

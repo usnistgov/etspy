@@ -489,8 +489,9 @@ $(document).ready(function(){
 
 <span class="n">__version__</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">version</span><span class="p">(</span><span class="s2">&quot;etspy&quot;</span><span class="p">)</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">get_args</span><span class="p">,</span> <span class="n">get_type_hints</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">get_args</span><span class="p">,</span> <span class="n">get_type_hints</span>
 
 
 <div class="viewcode-block" id="AlignmentMethod">
@@ -541,10 +542,7 @@ $(document).ready(function(){
 
 
 
-<span class="n">AlignmentMethodType</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span>
-    <span class="n">AlignmentMethod</span><span class="p">,</span>
-    <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;PC&quot;</span><span class="p">,</span> <span class="s2">&quot;COM&quot;</span><span class="p">,</span> <span class="s2">&quot;COM-CL&quot;</span><span class="p">,</span> <span class="s2">&quot;StackReg&quot;</span><span class="p">],</span>
-<span class="p">]</span>
+<span class="n">AlignmentMethodType</span> <span class="o">=</span> <span class="n">AlignmentMethod</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;PC&quot;</span><span class="p">,</span> <span class="s2">&quot;COM&quot;</span><span class="p">,</span> <span class="s2">&quot;COM-CL&quot;</span><span class="p">,</span> <span class="s2">&quot;StackReg&quot;</span><span class="p">]</span>
 
 <span class="n">FbpMethodType</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span>
     <span class="s2">&quot;ram-lak&quot;</span><span class="p">,</span>
