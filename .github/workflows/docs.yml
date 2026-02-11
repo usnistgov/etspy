@@ -20,7 +20,7 @@ jobs:
         with:
           with-cuda: false
           poetry-options: "--with=dev"
-          # python-version: "3.12"
+          python-version: "3.13"
       - name: Check links
         run: |
           cd ${{ env.DOC_SOURCE_PATH }}
