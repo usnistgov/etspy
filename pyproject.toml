@@ -23,10 +23,14 @@ hyperspy = "^2.1.1"
 hyperspy-gui-ipywidgets = "^2.0.2"
 typing-extensions = "^4.12.2"
 h5py = "^3.12.1"
+scikit-image = [
+    { version = ">=0.24,<0.26", python = "3.10" },
+    { version = "^0.26", python = ">=3.11" }
+]
 
 # extra optional dependencies for the "extras" groups (for "pip install etspy[...]")
 ipykernel = {version = "^6.29.5", optional = true}
-cupy = {version = "^13.3.0", optional = true}
+# cupy = {version = "^13.3.0", optional = true}
 numpy = ">1.26"
 
 [tool.poetry.group.dev.dependencies]

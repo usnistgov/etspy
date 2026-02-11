@@ -37,7 +37,7 @@ extensions = [
     "sphinx_immaterial.apidoc.python.apigen",
     "sphinx.ext.duration",
     "sphinx.ext.doctest",
-    "myst_nb"
+    "myst_nb",
 ]
 
 myst_enable_extensions = [
@@ -58,11 +58,12 @@ myst_enable_extensions = [
 ]
 
 nitpicky = True
-today_fmt = '%B %-d, %Y at %I:%M %p'
+today_fmt = "%B %-d, %Y at %I:%M %p"
 master_doc = "index"
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
-source_suffix = [".rst", ".md", '.ipynb']
+source_suffix = [".rst", ".md", ".ipynb"]
+autodoc_mock_imports = ["astra", "cupy", "pystackreg", "numba"]
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "hyperspy": ("https://hyperspy.org/hyperspy-doc/current", None),
@@ -70,7 +71,7 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
-    "astra": ("https://astra-toolbox.com", None)
+    "astra": ("https://astra-toolbox.com", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -170,12 +171,15 @@ autodoc_typehints = "signature"
 autodoc_typehints_description_target = "documented"
 autodoc_typehints_format = "short"
 
-# make sure "Examples", "Notes", etc. rubrics are included in right-side ToC 
+# make sure "Examples", "Notes", etc. rubrics are included in right-side ToC
 object_description_options = [
-    ("py:.*", dict(
-        include_object_type_in_xref_tooltip=False,
-        include_rubrics_in_toc=True,
-    )),
+    (
+        "py:.*",
+        dict(
+            include_object_type_in_xref_tooltip=False,
+            include_rubrics_in_toc=True,
+        ),
+    ),
 ]
 
 # -- Sphinx Immaterial configs -------------------------------------------------
@@ -199,7 +203,7 @@ python_apigen_show_base_classes = True
 python_module_names_to_strip_from_xrefs = [
     "hyperspy._signals.signal1d",
     "hyperspy._signals.signal2d",
-    "etspy.base"
+    "etspy.base",
 ]
 
 # set up "automatic" groupings for members
@@ -272,33 +276,42 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
             # skip if member does not come from ETSpy
             return True
     except TypeError as e:
-        if 'AlignmentMethod' in str(obj):
+        if "AlignmentMethod" in str(obj):
             return False
-        return 'etspy' not in str(obj)
+        return "etspy" not in str(obj)
 
     return skip
 
-def autodoc_process_signature(app, what, name, obj, options, signature, return_annotation):
+
+def autodoc_process_signature(
+    app, what, name, obj, options, signature, return_annotation
+):
     if return_annotation == "~typing.Self":
-        print(f"SIGNATURE: {what}, {name}, {obj}, {options}, {signature}, {return_annotation}")
-    
+        print(
+            f"SIGNATURE: {what}, {name}, {obj}, {options}, {signature}, {return_annotation}"
+        )
+
     # replace "Self" annotations with current class name
     if return_annotation == "~typing.Self" and name[:11] == "etspy.base.TomoStack":
-        replaced_annotation = "~" + '.'.join(name.split('.')[:-1])
+        replaced_annotation = "~" + ".".join(name.split(".")[:-1])
         return signature, replaced_annotation
-    
+
+
 def autodoc_process_docstring(app, what, name, obj, options, lines):
-    if 'TomoStack' in name:
+    if "TomoStack" in name:
         print(f"DOCSTRING: {what}, {name}, {obj}, {options}, {lines}")
     pass
+
 
 def autodoc_process_bases(app, name, obj, options, bases):
     # remove abc.ABC from displayed base class for CommonStack
     from abc import ABC
+
     if name == "etspy.base.CommonStack":
         for cls in bases[:]:
-            if cls == ABC: 
+            if cls == ABC:
                 bases.remove(cls)
+
 
 def setup(app):
     app.connect("autodoc-skip-member", autodoc_skip_member)
@@ -311,9 +324,9 @@ def setup(app):
 
 linkcheck_ignore = [
     "https://doi.org/10.1103/PhysRevB.72.052103",  # 403 Client Error: Forbidden for url: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.72.052103
-    "https://pages.nist.gov/etspy", # temporarily not published
-    "https://pypi.org/project/etspy", # temporarily not published
-    "https://github.com/usnistgov/etspy/tree/master/docs/examples/etspy_demo.ipynb" # temporarily not published
+    "https://pages.nist.gov/etspy",  # temporarily not published
+    "https://pypi.org/project/etspy",  # temporarily not published
+    "https://github.com/usnistgov/etspy/tree/master/docs/examples/etspy_demo.ipynb",  # temporarily not published
 ]
 linkcheck_retries = 3
 linkcheck_exclude_documents = []
@@ -322,4 +335,4 @@ linkcheck_exclude_documents = []
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54"
 
 # prevent documentation from executing notebook:
-nb_execution_excludepatterns = ['etspy_demo.ipynb']
+nb_execution_excludepatterns = ["etspy_demo.ipynb"]
