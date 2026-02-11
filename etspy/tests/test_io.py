@@ -111,7 +111,7 @@ class TestLoadMRC:
         )
         with pytest.raises(
             ValueError,
-            match="Number of tilts in .rawtlt file inconsistent with data shape",
+            match=r"Number of tilts in .rawtlt file inconsistent with data shape",
         ):
             etspy.io.get_mrc_tilts(stack, filename)
 

@@ -109,7 +109,7 @@ class TestAstraSIRTGPU:
 
     def test_astra_sirt_error_gpu_bad_dims(self):
         stack = ds.get_needle_data(aligned=True)
-        _, ny, _ = stack.data.shape
+        _, _, _ = stack.data.shape
         angles = stack.tilts.data.squeeze()
         stack = stack.isig[120:121, :]
         with pytest.raises(
