@@ -3,7 +3,6 @@
 import re
 import sys
 from importlib import reload
-from importlib.util import find_spec
 from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
@@ -16,7 +15,15 @@ from etspy import datasets as ds
 if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
-cupy_in_test_env = find_spec("cupy") is not None
+
+# Check if CUDA capable GPU is available
+cupy_in_test_env = True
+try:
+    import cupy as cp
+
+    has_gpu = cp.cuda.runtime.getDeviceCount() > 0
+except Exception:
+    cupy_in_test_env = False
 
 
 class TestAlignFunctions:
