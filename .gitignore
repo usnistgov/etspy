@@ -125,3 +125,6 @@ hyperspy_log.py
 
 # poetry
 poetry.toml
+
+# uv
+uv.lock
