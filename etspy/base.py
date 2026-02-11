@@ -33,12 +33,20 @@ from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMeth
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
+from etspy.transform import VolumeRotator, calculate_rotation
 
 if TYPE_CHECKING:
     from types import FrameType
 
     from hyperspy.axes import UniformDataAxis as Uda
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
+
+has_cupy = True
+try:
+    import cupy as cp  # type: ignore
+    from cupyx.scipy.ndimage import affine_transform as affine_transform_gpu
+except ImportError:
+    has_cupy = False
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -1247,7 +1255,7 @@ class TomoStack(CommonStack):
             hp_freq = 0.05
             lp_sigma = 1.5
             hp_sigma = 1.5
-            [nprojs, rows, cols] = self.data.shape
+            [_, rows, cols] = self.data.shape
 
             fft = np.fft.fftshift(np.fft.fft2(self.data))
 
@@ -1902,7 +1910,7 @@ class TomoStack(CommonStack):
             new_im2 = new_im2 - new_im2.min()
             new_im2 = new_im2 / new_im2.max()
 
-            fig, ax = plt.subplots(2, 3)
+            _, ax = plt.subplots(2, 3)
             ax[0, 0].imshow(old_im1)
             ax[0, 1].imshow(old_im2)
             ax[0, 2].imshow(old_im1 - old_im2, clim=[-0.5, 0.5])
@@ -2108,6 +2116,10 @@ class RecStack(CommonStack):
 
         self.inav = _RecStackSlicer(self, isNavigation=True)
         self.isig = _RecStackSlicer(self, isNavigation=False)
+        self.rotator = None
+        self.rotation_angles = None
+        self.rotation_matrix = None
+        self.rotation_offset = None
 
     def forward_project(
         self,
@@ -2171,6 +2183,7 @@ class RecStack(CommonStack):
         zslice: Optional[int] = None,
         vmin_std: float = 0.1,
         vmax_std: float = 5,
+        figsize: tuple = (10, 4),
     ):
         """
         Plot slices along all three axes of a reconstruction stack.
@@ -2197,12 +2210,7 @@ class RecStack(CommonStack):
         if zslice is None:
             zslice = self.data.shape[2] // 2
 
-        if "ipympl" in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 3))
-        elif "nbagg" in mpl.get_backend().lower():
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
-        else:
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize)
 
         slices = [
             self.data[xslice, :, :],
@@ -2227,8 +2235,92 @@ class RecStack(CommonStack):
         ax3.set_title(f"Z-X Slice {yslice}")
         ax3.set_ylabel("Z")
         ax3.set_xlabel("X")
-        fig.tight_layout()
 
         [i.set_xticks([]) for i in [ax1, ax2, ax3]]
         [i.set_yticks([]) for i in [ax1, ax2, ax3]]
+        fig.tight_layout()
         return fig
+
+    def interactive_rotation(
+        self,
+        slices: Optional[Union[list, np.ndarray]] = None,
+        order: Optional[int] = 3,
+        figsize: Optional[tuple] = (10, 4),
+    ):
+        """
+        Interactively determine 3D rotation angles for RecStack.
+
+        Parameters
+        ----------
+        slices : list or numpy.ndarray
+            Indices of slices to plot. If None (default), the
+            central slice along each dimension is used.
+
+        """
+        self.rotator = VolumeRotator(
+            self,
+            slices=slices,
+            order=order,
+            figsize=figsize,
+        )
+        self.rotator.display()
+
+    def rotate_volume(
+        self,
+        rotation_angles: Optional[Union[list, np.ndarray]] = None,
+        cuda: Optional[bool] = False,
+    ):
+        """Apply a 3D transformation to the RecStack data.
+
+        Parameters
+        ----------
+        rotation_angles : list or numpy.ndarray
+            Rotation angles (degrees) to apply to data. If None (default), angles
+            provided by RecStack.rotator are used.  The angles define rotation about the
+            [X, Z, and Y] axes, respectively.
+
+        Returns
+        -------
+        rotated : RecStack
+            Rotated version of input :py:class:`~etspy.base.RecStack`.
+        """
+        if rotation_angles is not None:
+            logger.info("Using user-defined rotation angles")
+            rotation_angles = np.array(rotation_angles)
+        elif self.rotator is not None:
+            logger.info("Rotator detected")
+            rotation_angles = self.rotator.slider_values
+            if not np.any(self.rotator.slider_values):
+                logger.warning("Rotation angles have not been defined")
+                return None
+
+        rotation_matrix, offset = calculate_rotation(rotation_angles, self.data.shape)
+        rotated = self.deepcopy()
+
+        if not cuda:
+            rotated.data = ndimage.affine_transform(
+                self.data,
+                rotation_matrix,
+                offset,
+                output_shape=self.data.shape,
+                cval=0.0,
+                order=3,
+            )
+        else:
+            data_gpu = cp.asarray(self.data.astype(np.float32))
+
+            rotated_gpu = affine_transform_gpu(
+                data_gpu,
+                cp.asarray(rotation_matrix),
+                offset=cp.asarray(offset),
+                output_shape=self.data.shape,
+                order=3,
+                cval=0.0,
+            )
+
+            rotated.data = cp.asnumpy(rotated_gpu)
+
+        rotated.rotation_angles = rotation_angles
+        rotated.rotation_matrix = rotation_matrix
+        rotated.rotation_offet = offset
+        return rotated

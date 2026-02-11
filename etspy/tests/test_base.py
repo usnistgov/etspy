@@ -976,8 +976,8 @@ class TestOperations:
         im[:, 40:60, 40:60] = 10
         stack = TomoStack(im)
         invert = cast("TomoStack", stack.invert())
-        hist, bins = np.histogram(stack.data)
-        hist_inv, bins_inv = np.histogram(invert.data)
+        hist, _ = np.histogram(stack.data)
+        hist_inv, _ = np.histogram(invert.data)
         assert hist[0] > hist_inv[0]
 
     def test_stack_stats(self, capsys):
@@ -1423,27 +1423,6 @@ class TestRecStackPlotSlices:
         rec = RecStack(np.zeros([10, 10, 10]))
         fig = rec.plot_slices()
         assert isinstance(fig, Figure)
-
-    @patch("matplotlib.get_backend", new=lambda: "widget")
-    def test_plot_slices_widget_backend(self):
-        rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices()
-        assert isinstance(fig, Figure)
-        assert np.all(fig.get_size_inches() == np.array([12, 4]))
-
-    @patch("matplotlib.get_backend", new=lambda: "ipympl")
-    def test_plot_slices_ipympl_backend(self):
-        rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices()
-        assert isinstance(fig, Figure)
-        assert np.all(fig.get_size_inches() == np.array([7, 3]))
-
-    @patch("matplotlib.get_backend", new=lambda: "nbagg")
-    def test_plot_slices_nbagg_backend(self):
-        rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices()
-        assert isinstance(fig, Figure)
-        assert np.all(fig.get_size_inches() == np.array([8, 4]))
 
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
