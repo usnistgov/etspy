@@ -12,5 +12,5 @@ def test_version():
     pyproject = etspy_path.parent / "pyproject.toml"
     with pyproject.open("rb") as f:
         data = tomli.load(f)
-        toml_version = data["tool"]["poetry"]["version"]
+        toml_version = data["project"]["version"]
     assert importlib.metadata.version("etspy") == toml_version
