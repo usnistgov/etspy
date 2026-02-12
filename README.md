@@ -72,10 +72,10 @@ of whatever packages are required.
   the [CUDA libraries](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)),
   ETSpy should be able to be installed with a simple `pip` command (it is recommended to install
   ETSpy in a dedicated virtual environment). Pick one of the following options depending on your needs:
+  
+  > [!TIP]
+  > On Ubuntu-based systems, the NVIDIA/CUDA dependencies installed via the system-provided `nvidia-cuda-toolkit` apt package may be out of date and incompatible with the ASTRA toolkit. We recommend installing the version directly from NVIDIA.
 
-  ```{tip}
-  On Ubuntu-based systems, the NVIDIA/CUDA dependencies installed via the system-provided `nvidia-cuda-toolkit` apt package may be out of date and incompatible with the ASTRA toolkit. We recommend installing the version directly from NVIDIA.
-  ```
 
   * ```shell
     $ pip install etspy

@@ -31,7 +31,7 @@ $ conda env create -f https://raw.githubusercontent.com/usnistgov/etspy/refs/hea
 $ conda activate etspy-dev
 $ git clone https://github.com/<your_account_name>/etspy
 $ cd etspy
-$ pip install -e .
+$ pip install -e .   # (to add the cupy dependency use "pip install .[gpu]")
 ```
 
 If using Poetry (currently only working on Linux due to some limitations of dependency packages),
