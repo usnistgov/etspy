@@ -10,13 +10,23 @@ import pytest
 
 import etspy.datasets as ds
 from etspy import recon
-from etspy.align import apply_shifts_cuda
 from etspy.base import RecStack, TomoStack
+
+# Check if CuPy is available and if a CUDA-capable GPU is
+# present in the test environment
+cupy_in_test_env = True
+try:
+    import cupy as cp
+
+    has_gpu = cp.cuda.runtime.getDeviceCount() > 0
+    from etspy.align import apply_shifts_cuda
+except Exception:
+    cupy_in_test_env = False
+    apply_shifts_cuda = None
 
 NUM_FIG_AXES = 3
 
 
-# TODO(jat) test cuda functionality and coverage
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestAlignCUDA:
     """Test alignment of a TomoStack using CUDA."""
@@ -183,7 +193,7 @@ class TestReconRunCUDA:
         assert isinstance(rec, np.ndarray)
 
 
-@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+@pytest.mark.skipif(not cupy_in_test_env, reason="CuPy not available")
 class TestStackRegisterCUDA:
     """Test StackReg alignment of a TomoStack using CUDA."""
 
@@ -200,7 +210,7 @@ class TestStackRegisterCUDA:
         )
 
 
-@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+@pytest.mark.skipif(not cupy_in_test_env, reason="CuPy not available")
 class TestApplyShiftsCUDA:
     """Test StackReg alignment of a TomoStack using CUDA."""
 
