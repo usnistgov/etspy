@@ -524,7 +524,7 @@ install the package in “editable” mode using <code class="docutils literal n
 $<span class="w"> </span>conda<span class="w"> </span>activate<span class="w"> </span>etspy-dev
 $<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/&lt;your_account_name&gt;/etspy
 $<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>etspy
-$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="w">   </span><span class="c1"># (to add the cupy dependency use &quot;pip install .[gpu]&quot;)</span>
 </code></pre></div>
 </div>
 <p>If using Poetry (currently only working on Linux due to some limitations of dependency packages),
