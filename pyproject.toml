@@ -21,6 +21,21 @@ dependencies = [
     "scikit-image>=0.26,<1.0.0; python_version >= '3.11'",
 ]
 
+[dependency-groups]
+dev = [
+    "pydocstyle>=6.3.0, <7.0.0",
+    "pytest>=8.3.3, <9.0.0",
+    "ruff>=0.9.0, <0.15.0",
+    "isort>=5.13.2, <6.0.0",
+    "sphinx==8.0.2",
+    "numpydoc>=1.8.0, <2.0.0",
+    "myst-parser>=4.0.0, <5.0.0",
+    "sphinx-immaterial>=0.12.2, <0.13.0",
+    "myst-nb>=1.1.2, <2.0.0",
+    "pytest-cov>=5.0.0, <6.0.0",
+    "tomli>=2.0.2, <3.0.0",
+]
+
 [project.optional-dependencies]
 gpu = ["cupy-cuda12x>=13.3.0"]
 jupyter = ["ipykernel>=6.29.5"]
@@ -33,19 +48,6 @@ documentation = "https://pages.nist.gov/etspy/"
 
 [tool.poetry]
 packages = [{ include = "etspy" }]
-
-[tool.poetry.group.dev.dependencies]
-pydocstyle = "^6.3.0"
-pytest = "^8.3.3"
-ruff = ">=0.9.0"
-isort = "^5.13.2"
-sphinx = "8.0.2"
-numpydoc = "^1.8.0"
-myst-parser = "^4.0.0"
-sphinx-immaterial = "^0.12.2"
-myst-nb = "^1.1.2"
-pytest-cov = "^5.0.0"
-tomli = "^2.0.2"
 
 [tool.poetry.plugins."hyperspy.extensions"]
 etspy = "etspy"
@@ -102,20 +104,5 @@ addopts = "--cov=etspy --cov-report html:etspy/tests/htmlcov --cov-report=xml:et
 [tool.mypy]
 disable_error_code = "import-untyped"
 exclude = [
-    '^docs/conf\.py$'
-]
-
-[tool.uv]
-dev-dependencies = [
-    "pydocstyle>=6.3.0",
-    "pytest>=8.3.3",
-    "ruff<0.15.0",
-    "isort>=5.13.2",
-    "sphinx>=8.0.2",
-    "numpydoc>=1.8.0",
-    "myst-parser>=4.0.0",
-    "sphinx-immaterial>=0.12.2",
-    "myst-nb>=1.1.2",
-    "pytest-cov>=5.0.0",
-    "tomli>=2.0.2",
+    '^docs/conf\.py$',
 ]
