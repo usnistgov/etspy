@@ -1,0 +1,45 @@
+name: Install ETSpy with uv
+description: Uses uv and CUDA action to install ETSpy and its dependencies
+inputs:
+  python-version:
+    type: string
+    required: true
+  with-cuda:
+    default: "false"
+    type: string # Using string to match the logic in your poetry action
+  uv-options:
+    default: ""
+    type: string
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+
+    - name: Set up Python
+      run: uv python install ${{ inputs.python-version }}
+      shell: bash
+
+    - name: Install CUDA dependencies
+      if: ${{ inputs.with-cuda == 'true' }}
+      uses: Jimver/cuda-toolkit@v0.2.17
+      with:
+        method: network
+        sub-packages: '["cudart"]'
+        non-cuda-sub-packages: '["libcufft"]'
+
+    - name: Install ETSpy using uv
+      run: |
+        OPTIONS="${{ inputs.uv-options }}"
+        if [ "${{ inputs.with-cuda }}" == "true" ]; then
+          # uv uses --extra instead of --extras (though it often aliases)
+          OPTIONS="$OPTIONS --extra gpu"
+        fi
+        # 'uv sync' is the preferred way to lock the environment
+        uv sync $OPTIONS
+      shell: bash
