@@ -6,7 +6,7 @@ inputs:
     required: true
   with-cuda:
     default: "false"
-    type: string # Using string to match the logic in your poetry action
+    type: string
   uv-options:
     default: ""
     type: string
