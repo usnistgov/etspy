@@ -11,13 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up poetry
-        uses: ./.github/actions/install-with-poetry
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          with-cuda: false
-          poetry-options: "--only=dev"
-      - run: poetry run isort . --check
-      - run: poetry run ruff check
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Run Checks
+        run: |
+          uv run isort . --check
+          uv run ruff check
 
   conda-pytest:
     name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
