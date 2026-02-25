@@ -3,6 +3,7 @@
 # pyright: reportPossiblyUnboundVariable=false
 
 import logging
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Literal, Union, cast
 
 import astra
@@ -36,6 +37,119 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
+
+
+class AlignmentMethod(ABC):
+    """Abstract Base class for Alignment methods."""
+
+    @abstractmethod
+    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+        """
+        Calculate the shifts to be applied to the stack.
+
+        Parameters
+        ----------
+        stack
+            The image series to be aligned
+        """
+
+
+class StackAligner:
+    """Class for aligning a TomoStack using a specified alignment strategy."""
+
+    def __init__(self, stack: "TomoStack"):
+        self.stack = stack
+        self.shifts = None
+
+    def align(
+        self,
+        align_method: AlignmentMethod,
+        shift_method: str = "fourier",
+    ) -> "TomoStack":
+        """Align stack using the specified strategy and method for applying shifts."""
+        # 1. Calculate
+        self.shifts = align_method.calculate(self.stack)
+
+        # 2. Apply (Determine if CUDA is needed automatically)
+        if hasattr(align_method, "cuda") and align_method.cuda and has_cupy:
+            return apply_shifts_cuda(self.stack, self.shifts, shift_method)
+        return apply_shifts(self.stack, self.shifts, shift_method)
+
+
+class PhaseCorrelationAligner(AlignmentMethod):
+    """Phase correlation alignment strategy."""
+
+    def __init__(
+        self,
+        start=None,
+        upsample_factor=3,
+        cuda=False,
+        show_progressbar=True,
+    ):
+        self.start = start
+        self.upsample_factor = upsample_factor
+        self.cuda = cuda
+        self.show_progress = show_progressbar
+
+    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+        """
+        Calculate shifts using the phase correlation algorithm.
+
+        Parameters
+        ----------
+        stack
+            The image series to be aligned
+        start
+            Position in tilt series to use as starting point for the alignment
+        show_progressbar
+            Enable/disable progress bar
+        upsample_factor
+            Factor by which to resample the data
+        cuda
+            Enable/disable the use of GPU-accelerated processes using CUDA
+
+        Returns
+        -------
+        shifts : :py:class:`~numpy.ndarray`
+            The X- and Y-shifts to be applied to each image
+
+        Group
+        -----
+        align
+        """
+        if has_cupy and astra.use_cuda() and self.cuda:
+            shifts = _cupy_calculate_shifts(
+                stack,
+                self.start,
+                self.show_progressbar,
+                self.upsample_factor,
+            )
+
+        else:
+            shifts = np.zeros((stack.data.shape[0], 2))
+            with tqdm.tqdm(
+                total=stack.data.shape[0] - 1,
+                desc="Calculating shifts",
+                disable=not self.show_progressbar,
+            ) as pbar:
+                for i in range(self.start, 0, -1):
+                    shift = pcc(
+                        stack.data[i],
+                        stack.data[i - 1],
+                        upsample_factor=self.upsample_factor,
+                    )[0]
+                    shifts[i - 1] = shifts[i] + shift
+                    pbar.update(1)
+
+                for i in range(self.start, stack.data.shape[0] - 1):
+                    shift = pcc(
+                        stack.data[i],
+                        stack.data[i + 1],
+                        upsample_factor=self.upsample_factor,
+                    )[0]
+                    shifts[i + 1] = shifts[i] + shift
+                    pbar.update(1)
+        return shifts
 
 
 def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
@@ -621,69 +735,6 @@ def _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor):
     return shifts
 
 
-def calculate_shifts_pc(
-    stack: "TomoStack",
-    start: int,
-    show_progressbar: bool = False,
-    upsample_factor: int = 3,
-    cuda: bool = False,
-) -> np.ndarray:
-    """
-    Calculate shifts using the phase correlation algorithm.
-
-    Parameters
-    ----------
-    stack
-        The image series to be aligned
-    start
-        Position in tilt series to use as starting point for the alignment
-    show_progressbar
-        Enable/disable progress bar
-    upsample_factor
-        Factor by which to resample the data
-    cuda
-        Enable/disable the use of GPU-accelerated processes using CUDA
-
-    Returns
-    -------
-    shifts : :py:class:`~numpy.ndarray`
-        The X- and Y-shifts to be applied to each image
-
-    Group
-    -----
-    align
-    """
-    if has_cupy and astra.use_cuda() and cuda:
-        shifts = _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor)
-
-    else:
-        shifts = np.zeros((stack.data.shape[0], 2))
-        with tqdm.tqdm(
-            total=stack.data.shape[0] - 1,
-            desc="Calculating shifts",
-            disable=not show_progressbar,
-        ) as pbar:
-            for i in range(start, 0, -1):
-                shift = pcc(
-                    stack.data[i],
-                    stack.data[i - 1],
-                    upsample_factor=upsample_factor,
-                )[0]
-                shifts[i - 1] = shifts[i] + shift
-                pbar.update(1)
-
-            for i in range(start, stack.data.shape[0] - 1):
-                shift = pcc(
-                    stack.data[i],
-                    stack.data[i + 1],
-                    upsample_factor=upsample_factor,
-                )[0]
-                shifts[i + 1] = shifts[i] + shift
-                pbar.update(1)
-
-    return shifts
-
-
 def calculate_shifts_stackreg(
     stack: "TomoStack",
     start: int | None,
@@ -817,7 +868,6 @@ def align_stack(  # noqa: PLR0913
     p: int = 20,
     nslices: int = 20,
     cuda: bool = False,
-    upsample_factor: int = 3,
     com_ref_index: int | None = None,
     cl_ref_index: int | None = None,
     cl_resolution: float = 0.05,
@@ -937,21 +987,6 @@ def align_stack(  # noqa: PLR0913
         # calculate_shifts_com returns y-shifts (perpendicular to tilt axis)
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
-    elif method == AlignmentMethod.PC:
-        if cuda:
-            logger.info(  # pragma: no cover
-                "Performing stack registration using "
-                "CUDA-accelerated phase correlation",
-            )
-        else:
-            logger.info("Performing stack registration using phase correlation")
-        shifts = calculate_shifts_pc(
-            stack,
-            start,
-            show_progressbar,
-            upsample_factor,
-            cuda,
-        )
     elif method == AlignmentMethod.STACK_REG:
         logger.info("Performing stack registration using PyStackReg")
         shifts = calculate_shifts_stackreg(stack, start, show_progressbar)
