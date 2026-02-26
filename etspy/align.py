@@ -39,7 +39,7 @@ logger.setLevel(logging.INFO)
 CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 
 
-class AlignmentMethod(ABC):
+class AlignmentStrategy(ABC):
     """Abstract Base class for Alignment methods."""
 
     @abstractmethod
@@ -63,7 +63,7 @@ class StackAligner:
 
     def align(
         self,
-        align_method: AlignmentMethod,
+        align_method: AlignmentStrategy,
         shift_method: str = "fourier",
     ) -> "TomoStack":
         """Align stack using the specified strategy and method for applying shifts."""
@@ -76,7 +76,7 @@ class StackAligner:
         return apply_shifts(self.stack, self.shifts, shift_method)
 
 
-class PhaseCorrelationAligner(AlignmentMethod):
+class PhaseCorrelationAligner(AlignmentStrategy):
     """Phase correlation alignment strategy."""
 
     def __init__(
