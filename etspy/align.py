@@ -68,7 +68,7 @@ class StackAligner:
     ) -> "TomoStack":
         """Align stack using the specified strategy and method for applying shifts."""
         # 1. Calculate
-        self.shifts = align_method.calculate(self.stack)
+        self.shifts = align_method.calculate_shifts(self.stack)
 
         # 2. Apply (Determine if CUDA is needed automatically)
         if hasattr(align_method, "cuda") and align_method.cuda and has_cupy:
@@ -216,6 +216,7 @@ def apply_shifts(
     shifts: Union["TomoShifts", np.ndarray],
     method: Literal["interp", "fourier"] = "fourier",
     cuda: bool = False,
+    **kwargs,
 ) -> "TomoStack":
     """
     Apply a series of shifts to a TomoStack.
@@ -261,21 +262,23 @@ def apply_shifts(
 
     data = xp.array(shifted.data)
     if method.lower() == "interp":
+        order = kwargs.pop("order", 3)
         shift_func = shift_gpu if cuda else ndimage.shift
         for i in range(data.shape[0]):
             data[i, :, :] = shift_func(
                 data[i, :, :],
                 shift=[shifts[i, 0], shifts[i, 1]],
+                order=order,
             )
     elif method.lower() == "fourier":
         fourier_shift_func = fourier_shift_gpu if cuda else ndimage.fourier_shift
         _, ny, nx = data.shape
-        y_pad_min = xp.abs(shifts[:, 0]).max() + ny
-        ny_pad = int(2 ** xp.ceil(np.log2(y_pad_min)))
+        y_pad_min = np.abs(shifts[:, 0]).max() + ny
+        ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
         y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
 
-        x_pad_min = xp.abs(shifts[:, 1]).max() + nx
-        nx_pad = int(2 ** xp.ceil(np.log2(x_pad_min)))
+        x_pad_min = np.abs(shifts[:, 1]).max() + nx
+        nx_pad = int(2 ** np.ceil(np.log2(x_pad_min)))
         x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
 
         data = xp.pad(
@@ -285,7 +288,7 @@ def apply_shifts(
         )
 
         _, ny, nx = data.shape
-        data_fft = fft_module.fft2(shifted.data, axes=(1, 2))
+        data_fft = fft_module.fft2(data, axes=(1, 2))
         for i in range(data.shape[0]):
             data_fft[i, :, :] = fft_module.ifft2(
                 fourier_shift_func(
@@ -306,7 +309,7 @@ def apply_shifts(
         raise ValueError(msg)
 
     shifted.data = cp.asnumpy(data) if cuda else data
-    shifted.shifts.data = shifted.shifts.data + (cp.asnumpy(shifts) if cuda else shifts)
+    shifted.shifts.data = shifted.shifts.data + shifts
     return shifted
 
 
