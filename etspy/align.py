@@ -4,7 +4,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Literal, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Union, cast
 
 import astra
 import matplotlib.pylab as plt
@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 has_cupy = True
 try:
     import cupy as cp  # type: ignore
-    from cupyx.scipy.ndimage import fourier_shift as fourier_shift_gpu
     from cupyx.scipy.ndimage import shift as shift_gpu
 except ImportError:
     has_cupy = False
@@ -66,7 +65,10 @@ class StackAligner:
 
         # Pass the strategy's CUDA preference to the applicator
         return apply_shifts(
-            self.stack, shifts, method=apply_method, cuda=strategy.use_cuda
+            self.stack,
+            shifts,
+            method=apply_method,
+            cuda=strategy.use_cuda,
         )
 
 
@@ -245,12 +247,14 @@ def apply_shifts(
         shifts = shifts.data
     shifts = cast("np.ndarray", shifts)
 
-    if len(shifts.data) != stack.data.shape[0]:
+    if len(shifts) != stack.data.shape[0]:
         msg = (
             f"Number of shifts ({len(shifts)}) is not consistent "
             f"with number of images in the stack ({stack.data.shape[0]})"
         )
         raise ValueError(msg)
+
+    shifts = xp.array(shifts)
 
     data = xp.array(shifted.data)
     if method.lower() == "interp":
@@ -263,8 +267,7 @@ def apply_shifts(
                 order=order,
             )
     elif method.lower() == "fourier":
-        fourier_shift_func = fourier_shift_gpu if cuda else ndimage.fourier_shift
-        _, ny, nx = data.shape
+        ntilts, ny, nx = data.shape
         y_pad_min = np.abs(shifts[:, 0]).max() + ny
         ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
         y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
@@ -281,14 +284,25 @@ def apply_shifts(
 
         _, ny, nx = data.shape
         data_fft = fft_module.fft2(data, axes=(1, 2))
-        for i in range(data.shape[0]):
-            data_fft[i, :, :] = fft_module.ifft2(
-                fourier_shift_func(
-                    data_fft[i],
-                    shift=[shifts[i, 0], shifts[i, 1]],
-                ),
-            )
-        data = xp.real(data_fft)
+        data_fft = cast("Any", data_fft)
+
+        # Create frequency grids
+        # v is vertical frequencies, u is horizontal
+        v = xp.fft.fftfreq(ny).reshape(1, ny, 1)
+        u = xp.fft.fftfreq(nx).reshape(1, 1, nx)
+
+        # Reshape shifts for broadcasting: (n_images, 1, 1)
+        sy = shifts[:, 0].reshape(ntilts, 1, 1)
+        sx = shifts[:, 1].reshape(ntilts, 1, 1)
+
+        # Compute the phase ramp
+        # The formula: exp(-2j * pi * (v * sy + u * sx))
+        phi = -2j * np.pi * (v * sy + u * sx)
+        kernel = xp.exp(phi)
+
+        # Apply shift and Inverse FFT
+        data = xp.fft.ifft2(data_fft * kernel, axes=(1, 2))
+        data = xp.real(data)
         slices = [
             slice(0, None),
         ]
@@ -301,6 +315,7 @@ def apply_shifts(
         raise ValueError(msg)
 
     shifted.data = cp.asnumpy(data) if cuda else data
+    shifts = cp.asnumpy(shifts) if cuda else shifts
     shifted.shifts.data = shifted.shifts.data + shifts
     return shifted
 
