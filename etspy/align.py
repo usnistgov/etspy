@@ -112,12 +112,7 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         align
         """
         if has_cupy and astra.use_cuda() and self.use_cuda:
-            shifts = _cupy_calculate_shifts(
-                stack,
-                self.start,
-                self.show_progressbar,
-                self.upsample_factor,
-            )
+            shifts = self._cupy_calculate_shifts(stack)
 
         else:
             shifts = np.zeros((stack.data.shape[0], 2))
@@ -144,6 +139,116 @@ class PhaseCorrelationAligner(AlignmentStrategy):
                     shifts[i + 1] = shifts[i] + shift
                     pbar.update(1)
         return shifts
+
+    def _cupy_calculate_shifts(self, stack):
+        stack_cp = cp.array(stack.data)
+        shifts = cp.zeros([stack_cp.shape[0], 2])
+        ref_cp = stack_cp[0]
+        ref_fft = cp.fft.fftn(ref_cp)
+        shape = ref_fft.shape
+        with tqdm.tqdm(
+            total=stack.data.shape[0] - 1,
+            desc="Calculating shifts",
+            disable=not self.show_progressbar,
+        ) as pbar:
+            for i in range(self.start, 0, -1):
+                shift = self._cupy_phase_correlate(
+                    stack_cp[i],
+                    stack_cp[i - 1],
+                    shape=shape,
+                )
+                shifts[i - 1] = shifts[i] + shift
+                pbar.update(1)
+            for i in range(self.start, stack.data.shape[0] - 1):
+                shift = self._cupy_phase_correlate(
+                    stack_cp[i],
+                    stack_cp[i + 1],
+                    shape=shape,
+                )
+                shifts[i + 1] = shifts[i] + shift
+                pbar.update(1)
+        shifts = shifts.get()
+        return shifts
+
+    def _cupy_phase_correlate(self, ref_cp, mov_cp, shape):
+        # missing coverage b/c of CUDA
+        ref_fft = cp.fft.fftn(ref_cp)
+        mov_fft = cp.fft.fftn(mov_cp)
+
+        cross_power_spectrum = ref_fft * mov_fft.conj()
+        eps = cp.finfo(cross_power_spectrum.real.dtype).eps
+        cross_power_spectrum /= cp.maximum(cp.abs(cross_power_spectrum), 100 * eps)
+        phase_correlation = cp.fft.ifft2(cross_power_spectrum)
+
+        maxima = cp.unravel_index(
+            cp.argmax(cp.abs(phase_correlation)),
+            phase_correlation.shape,
+        )
+        midpoint = cp.array([cp.fix(axis_size / 2) for axis_size in shape])
+
+        float_dtype = cross_power_spectrum.real.dtype
+
+        shift = cp.stack(maxima).astype(float_dtype, copy=False)
+        shift[shift > midpoint] -= cp.array(shape)[shift > midpoint]
+
+        if self.upsample_factor > 1:
+            upsample_factor = cp.array(self.upsample_factor, dtype=float_dtype)
+            upsampled_region_size = cp.ceil(upsample_factor * 1.5)
+            dftshift = cp.fix(upsampled_region_size / 2.0)
+
+            shift = cp.round(shift * upsample_factor) / upsample_factor
+
+            sample_region_offset = dftshift - shift * upsample_factor
+            phase_correlation = self._upsampled_dft(
+                cross_power_spectrum.conj(),
+                upsampled_region_size,
+                upsample_factor,
+                sample_region_offset,
+            ).conj()
+            maxima = np.unravel_index(
+                cp.argmax(np.abs(phase_correlation)),
+                phase_correlation.shape,
+            )
+
+            maxima = cp.stack(maxima).astype(float_dtype, copy=False)
+            maxima -= dftshift
+
+            shift += maxima / upsample_factor
+        return shift
+
+    def _upsampled_dft(
+        self,
+        data,
+        upsampled_region_size,
+        upsample_factor,
+        axis_offsets,
+    ):
+        # missing coverage because of CUDA
+        upsampled_region_size = [
+            upsampled_region_size,
+        ] * data.ndim
+
+        im2pi = 1j * 2 * cp.pi
+
+        dim_properties = list(
+            zip(
+                data.shape,
+                upsampled_region_size,
+                axis_offsets,
+                strict=False,
+            ),
+        )
+
+        for n_items, ups_size, ax_offset in dim_properties[::-1]:
+            kernel = (cp.arange(ups_size) - ax_offset)[:, None] * cp.fft.fftfreq(
+                n_items,
+                upsample_factor,
+            )
+            kernel = cp.exp(-im2pi * kernel)
+            # use kernel with same precision as the data
+            kernel = kernel.astype(data.dtype, copy=False)
+            data = cp.tensordot(kernel, data, axes=(1, -1))  # type: ignore
+        return data
 
 
 def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
@@ -542,120 +647,6 @@ def calculate_shifts_com(stack: "TomoStack", nslices: int) -> np.ndarray:
 
     yshifts = -cx[:, 0]
     return yshifts
-
-
-def _upsampled_dft(
-    data,
-    upsampled_region_size,
-    upsample_factor,
-    axis_offsets,
-):
-    # missing coverage because of CUDA
-    upsampled_region_size = [
-        upsampled_region_size,
-    ] * data.ndim
-
-    im2pi = 1j * 2 * cp.pi
-
-    dim_properties = list(
-        zip(
-            data.shape,
-            upsampled_region_size,
-            axis_offsets,
-            strict=False,
-        ),
-    )
-
-    for n_items, ups_size, ax_offset in dim_properties[::-1]:
-        kernel = (cp.arange(ups_size) - ax_offset)[:, None] * cp.fft.fftfreq(
-            n_items,
-            upsample_factor,
-        )
-        kernel = cp.exp(-im2pi * kernel)
-        # use kernel with same precision as the data
-        kernel = kernel.astype(data.dtype, copy=False)
-        data = cp.tensordot(kernel, data, axes=(1, -1))  # type: ignore
-    return data
-
-
-def _cupy_phase_correlate(ref_cp, mov_cp, upsample_factor, shape):
-    # missing coverage b/c of CUDA
-    ref_fft = cp.fft.fftn(ref_cp)
-    mov_fft = cp.fft.fftn(mov_cp)
-
-    cross_power_spectrum = ref_fft * mov_fft.conj()
-    eps = cp.finfo(cross_power_spectrum.real.dtype).eps
-    cross_power_spectrum /= cp.maximum(cp.abs(cross_power_spectrum), 100 * eps)
-    phase_correlation = cp.fft.ifft2(cross_power_spectrum)
-
-    maxima = cp.unravel_index(
-        cp.argmax(cp.abs(phase_correlation)),
-        phase_correlation.shape,
-    )
-    midpoint = cp.array([cp.fix(axis_size / 2) for axis_size in shape])
-
-    float_dtype = cross_power_spectrum.real.dtype
-
-    shift = cp.stack(maxima).astype(float_dtype, copy=False)
-    shift[shift > midpoint] -= cp.array(shape)[shift > midpoint]
-
-    if upsample_factor > 1:
-        upsample_factor = cp.array(upsample_factor, dtype=float_dtype)
-        upsampled_region_size = cp.ceil(upsample_factor * 1.5)
-        dftshift = cp.fix(upsampled_region_size / 2.0)
-
-        shift = cp.round(shift * upsample_factor) / upsample_factor
-
-        sample_region_offset = dftshift - shift * upsample_factor
-        phase_correlation = _upsampled_dft(
-            cross_power_spectrum.conj(),
-            upsampled_region_size,
-            upsample_factor,
-            sample_region_offset,
-        ).conj()
-        maxima = np.unravel_index(
-            cp.argmax(np.abs(phase_correlation)),
-            phase_correlation.shape,
-        )
-
-        maxima = cp.stack(maxima).astype(float_dtype, copy=False)
-        maxima -= dftshift
-
-        shift += maxima / upsample_factor
-    return shift
-
-
-def _cupy_calculate_shifts(stack, start, show_progressbar, upsample_factor):
-    stack_cp = cp.array(stack.data)
-    shifts = cp.zeros([stack_cp.shape[0], 2])
-    ref_cp = stack_cp[0]
-    ref_fft = cp.fft.fftn(ref_cp)
-    shape = ref_fft.shape
-    with tqdm.tqdm(
-        total=stack.data.shape[0] - 1,
-        desc="Calculating shifts",
-        disable=not show_progressbar,
-    ) as pbar:
-        for i in range(start, 0, -1):
-            shift = _cupy_phase_correlate(
-                stack_cp[i],
-                stack_cp[i - 1],
-                upsample_factor=upsample_factor,
-                shape=shape,
-            )
-            shifts[i - 1] = shifts[i] + shift
-            pbar.update(1)
-        for i in range(start, stack.data.shape[0] - 1):
-            shift = _cupy_phase_correlate(
-                stack_cp[i],
-                stack_cp[i + 1],
-                upsample_factor=upsample_factor,
-                shape=shape,
-            )
-            shifts[i + 1] = shifts[i] + shift
-            pbar.update(1)
-    shifts = shifts.get()
-    return shifts
 
 
 def calculate_shifts_stackreg(
