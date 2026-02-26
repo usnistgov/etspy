@@ -42,54 +42,46 @@ CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 class AlignmentStrategy(ABC):
     """Abstract Base class for Alignment methods."""
 
+    def __init__(self, use_cuda: bool = False):
+        self.use_cuda = use_cuda
+
     @abstractmethod
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
-        """
-        Calculate the shifts to be applied to the stack.
-
-        Parameters
-        ----------
-        stack
-            The image series to be aligned
-        """
+        pass
 
 
 class StackAligner:
-    """Class for aligning a TomoStack using a specified alignment strategy."""
+    """Handles the orchestration of alignment."""
 
     def __init__(self, stack: "TomoStack"):
         self.stack = stack
-        self.shifts = None
 
     def align(
         self,
-        align_method: AlignmentStrategy,
-        shift_method: str = "fourier",
+        strategy: AlignmentStrategy,
+        apply_method: Literal["interp", "fourier"] = "fourier",
     ) -> "TomoStack":
-        """Align stack using the specified strategy and method for applying shifts."""
-        # 1. Calculate
-        self.shifts = align_method.calculate_shifts(self.stack)
+        # Strategy handles its own CUDA logic internally
+        shifts = strategy.calculate_shifts(self.stack)
 
-        # 2. Apply (Determine if CUDA is needed automatically)
-        if hasattr(align_method, "cuda") and align_method.cuda and has_cupy:
-            return apply_shifts(self.stack, self.shifts, shift_method, cuda=True)
-        return apply_shifts(self.stack, self.shifts, shift_method)
+        # Pass the strategy's CUDA preference to the applicator
+        return apply_shifts(
+            self.stack, shifts, method=apply_method, cuda=strategy.use_cuda
+        )
 
 
 class PhaseCorrelationAligner(AlignmentStrategy):
-    """Phase correlation alignment strategy."""
-
     def __init__(
         self,
-        start=None,
-        upsample_factor=3,
-        cuda=False,
-        show_progressbar=True,
+        start: int = 0,
+        upsample_factor: int = 3,
+        use_cuda: bool = False,
+        show_progressbar: bool = True,
     ):
+        super().__init__(use_cuda=use_cuda)
         self.start = start
         self.upsample_factor = upsample_factor
-        self.cuda = cuda
-        self.show_progress = show_progressbar
+        self.show_progressbar = show_progressbar
 
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
         """
@@ -117,7 +109,7 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         -----
         align
         """
-        if has_cupy and astra.use_cuda() and self.cuda:
+        if has_cupy and astra.use_cuda() and self.use_cuda:
             shifts = _cupy_calculate_shifts(
                 stack,
                 self.start,
