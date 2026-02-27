@@ -29,6 +29,10 @@ has_cupy = True
 try:
     import cupy as cp  # type: ignore
     from cupyx.scipy.ndimage import shift as shift_gpu
+
+    if not cp.is_available():
+        has_cupy = False
+
 except ImportError:
     has_cupy = False
 
@@ -41,8 +45,14 @@ CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 class AlignmentStrategy(ABC):
     """Abstract Base class for Alignment methods."""
 
-    def __init__(self, use_cuda: bool = False):
+    def __init__(
+        self,
+        use_cuda: bool | None = False,
+        show_progressbar: bool = False,
+    ):
+        use_cuda = cast("bool", use_cuda)
         self.use_cuda = use_cuda
+        self.show_progressbar = show_progressbar
 
     @abstractmethod
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
@@ -52,7 +62,10 @@ class AlignmentStrategy(ABC):
 class StackAligner:
     """Handles the orchestration of alignment."""
 
-    def __init__(self, stack: "TomoStack"):
+    def __init__(
+        self,
+        stack: "TomoStack",
+    ):
         self.stack = stack
 
     def align(
@@ -73,6 +86,34 @@ class StackAligner:
 
 
 class PhaseCorrelationAligner(AlignmentStrategy):
+    """
+    Aligner class for phase correlation (PC) strategy.
+
+    If `use_cuda` is False, shifts are determined using PC as implemented in
+    scikit-image. Based on:
+    Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup.
+    Efficient subpixel image registration algorithms, Optics Letters vol. 33
+    (2008) pp. 156-158.
+    https://doi.org/10.1364/OL.33.000156
+
+    If `use_cuda` is True, shifts are determined using a custom implementation of the
+    same PC algorithm which is optimized for GPU-acceleration using CuPy and CUDA.
+
+    Initialiazer for phase correlation alignment strategy.
+
+    Atrributes
+    ----------
+    start : py:class:`~int`
+        Position in tilt series to use as starting point for the alignment
+    upsample_factor : py:class:`~int`
+        Factor by which to resample the data for phase correlation
+    use_cuda : py:class:`~bool`
+        Enable/disable the use of GPU-accelerated processes using CUDA
+    show_progressbar : py:class:`~bool`
+        Enable/disable progress bar
+
+    """
+
     def __init__(
         self,
         start: int = 0,
@@ -80,10 +121,9 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         use_cuda: bool = False,
         show_progressbar: bool = True,
     ):
-        super().__init__(use_cuda=use_cuda)
+        super().__init__(use_cuda=use_cuda, show_progressbar=show_progressbar)
         self.start = start
         self.upsample_factor = upsample_factor
-        self.show_progressbar = show_progressbar
 
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
         """
@@ -91,16 +131,8 @@ class PhaseCorrelationAligner(AlignmentStrategy):
 
         Parameters
         ----------
-        stack
-            The image series to be aligned
-        start
-            Position in tilt series to use as starting point for the alignment
-        show_progressbar
-            Enable/disable progress bar
-        upsample_factor
-            Factor by which to resample the data
-        cuda
-            Enable/disable the use of GPU-accelerated processes using CUDA
+        stack : :py:class:`~TomoStack`
+            The image stack to be aligned
 
         Returns
         -------
@@ -141,6 +173,7 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         return shifts
 
     def _cupy_calculate_shifts(self, stack):
+        """Calculate shifts of stack using CUDA-implementation of phase correlation."""
         stack_cp = cp.array(stack.data)
         shifts = cp.zeros([stack_cp.shape[0], 2])
         ref_cp = stack_cp[0]
@@ -171,6 +204,7 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         return shifts
 
     def _cupy_phase_correlate(self, ref_cp, mov_cp, shape):
+        """CUDA-implementation of phase correlation."""
         # missing coverage b/c of CUDA
         ref_fft = cp.fft.fftn(ref_cp)
         mov_fft = cp.fft.fftn(mov_cp)
@@ -223,6 +257,34 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         upsample_factor,
         axis_offsets,
     ):
+        """
+        CuPy-implmentation of DFT upsampling algorithm.
+
+        This code is a CuPy adaptation of the algorithm used in:
+
+        scikit-image.registration._phase_cross_correlation.
+        https://github.com/scikit-image/scikit-image/blob/v0.26.0/src/skimage/registration/_phase_cross_correlation.py
+
+        It is intended to achieve sub-pixel precision while avoiding padding of the
+        dataset and the related risk of memory limitations. See scikit-image source for
+        more detail.
+
+        Parameters
+        ----------
+        data : :py:class:`~numpy.ndarray`
+            DFT of original data to upsample.
+        upsampled_region_size : :py:class:`~int`
+            The size of the region to be sampled.
+        upsample_factor : :py:class:`~int`
+            Factor by which to upsample the DFT.
+        axis_offsets : :py:class:`~list` of :py:class:`~int`
+            The offsets of the region to be sampled.
+
+        Returns
+        -------
+        output : :py:class:`~numpy.ndarray`
+            The upsampled DFT of the specified region.
+        """
         # missing coverage because of CUDA
         upsampled_region_size = [
             upsampled_region_size,
