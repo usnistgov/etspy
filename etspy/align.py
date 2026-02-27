@@ -315,6 +315,137 @@ class StackRegAligner(AlignmentStrategy):
         return shifts
 
 
+class CoMAligner(AlignmentStrategy):
+    def __init__(
+        self,
+        start: int = 0,
+        show_progressbar: bool = True,
+        xrange: tuple[int, int] | None = None,
+        p: int = 20,
+        nslices: int = 20,
+    ):
+        super().__init__(use_cuda=False)
+        self.start = start
+        self.show_progressbar = show_progressbar
+        self.xrange = xrange
+        self.p = p
+        self.nslices = nslices
+
+    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+        logger.info("Performing stack registration using center of mass method")
+        shifts = np.zeros([stack.data.shape[0], 2])
+        # calculate_shifts_conservation_of_mass returns x-shifts (parallel to tilt axis)
+        # calculate_shifts_com returns y-shifts (perpendicular to tilt axis)
+        shifts[:, 1] = self._calculate_shifts_conservation_of_mass(
+            stack,
+            self.xrange,
+            self.p,
+        )
+        shifts[:, 0] = self._calculate_shifts_com(stack, self.nslices)
+        return shifts
+
+    def _calculate_shifts_conservation_of_mass(
+        self,
+        stack: "TomoStack",
+        xrange: tuple[int, int] | None = None,
+        p: int = 20,
+    ) -> np.ndarray:
+        """
+        Calculate shifts parallel to the tilt axis using conservation of mass.
+
+        Slices which have the highest ratio of total mass to mass variance
+        and their location are returned.
+
+        Parameters
+        ----------
+        stack
+            Tilt series to be aligned.
+        xrange
+            The range for performing alignment
+        p
+            Padding element
+
+        Returns
+        -------
+        xshifts : :py:class:`~numpy.ndarray`
+            Calculated shifts parallel to tilt axis.
+
+        Group
+        -----
+        align
+        """
+        logger.info("Refinining X-shifts using conservation of mass method")
+        ntilts, _, nx = stack.data.shape
+
+        if xrange is None:
+            xrange = (round(nx / 5), round(4 / 5 * nx))
+        else:
+            xrange = (round(xrange[0]) + p, round(xrange[1]) - p)
+
+        xshifts = np.zeros([ntilts, 1])
+        total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
+
+        for i in range(ntilts):
+            total_mass[i, :] = np.sum(
+                stack.data[i, :, xrange[0] - p - 1 : xrange[1] + p],
+                0,
+            )
+
+        mean_mass = np.mean(total_mass[:, p:-p], 0)
+
+        for i in range(ntilts):
+            s = 0
+            for j in range(-p, p):
+                resid = np.linalg.norm(mean_mass - total_mass[i, p + j : -p + j])
+                if resid < s or j == -p:
+                    s = resid
+                    xshifts[i] = -j
+        return xshifts[:, 0]
+
+    def _calculate_shifts_com(self, stack: "TomoStack", nslices: int) -> np.ndarray:
+        """
+        Align stack using a center of mass method.
+
+        Data is first registered using PyStackReg. Then, the shifts
+        perpendicular to the tilt axis are refined by a center of
+        mass analysis.
+
+        Parameters
+        ----------
+        stack
+            The image series to be aligned
+
+        nslices
+            Number of slices to return
+
+        Returns
+        -------
+        shifts : :py:class:`~numpy.ndarray`
+            The X- and Y-shifts to be applied to each image
+
+        Group
+        -----
+        align
+        """
+        logger.info("Refinining Y-shifts using center of mass method")
+        slices = get_best_slices(stack, nslices)
+
+        angles = stack.tilts.data.squeeze()
+        ntilts, _, _ = stack.data.shape
+        thetas = np.pi * cast("np.ndarray", angles) / 180
+
+        coms = get_coms(stack, slices)
+        i_tilts = np.eye(ntilts)
+        gam = np.array([np.cos(thetas), np.sin(thetas)]).T
+        gam = np.dot(gam, np.linalg.pinv(gam)) - i_tilts
+        b = np.dot(gam, coms)
+
+        cx = np.linalg.lstsq(gam, b, rcond=-1)[0]
+
+        yshifts = -cx[:, 0]
+        return yshifts
+
+
 def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
     """
     Get best nslices for center of mass analysis.
