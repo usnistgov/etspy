@@ -341,7 +341,7 @@ class CoMAligner(AlignmentStrategy):
             self.xrange,
             self.p,
         )
-        shifts[:, 0] = self._calculate_shifts_com(stack, self.nslices)
+        shifts[:, 0] = self._calculate_shifts_com(stack)
         return shifts
 
     def _calculate_shifts_conservation_of_mass(
@@ -402,7 +402,10 @@ class CoMAligner(AlignmentStrategy):
                     xshifts[i] = -j
         return xshifts[:, 0]
 
-    def _calculate_shifts_com(self, stack: "TomoStack", nslices: int) -> np.ndarray:
+    def _calculate_shifts_com(
+        self,
+        stack: "TomoStack",
+    ) -> np.ndarray:
         """
         Align stack using a center of mass method.
 
@@ -428,7 +431,7 @@ class CoMAligner(AlignmentStrategy):
         align
         """
         logger.info("Refinining Y-shifts using center of mass method")
-        slices = get_best_slices(stack, nslices)
+        slices = get_best_slices(stack, self.nslices)
 
         angles = stack.tilts.data.squeeze()
         ntilts, _, _ = stack.data.shape
@@ -444,6 +447,112 @@ class CoMAligner(AlignmentStrategy):
 
         yshifts = -cx[:, 0]
         return yshifts
+
+
+class CommonLineAligner(AlignmentStrategy):
+    def __init__(
+        self,
+        start: int = 0,
+        show_progressbar: bool = True,
+        com_ref_index: int | None = None,
+        cl_ref_index: int | None = None,
+        cl_resolution: float = 0.05,
+        cl_div_factor: int = 8,
+    ):
+        super().__init__(use_cuda=False)
+        self.start = start
+        self.show_progressbar = show_progressbar
+        self.com_ref_index = com_ref_index
+        self.cl_ref_index = cl_ref_index
+        self.cl_resolution = cl_resolution
+        self.cl_div_factor = cl_div_factor
+
+    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+        logger.info(
+            "Performing stack registration using combined "
+            "center of mass and common line methods",
+        )
+        if self.com_ref_index is None:
+            self.com_ref_index = stack.data.shape[1] // 2
+        if self.cl_ref_index is None:
+            self.cl_ref_index = stack.data.shape[0] // 2
+
+        # explicit type casts for type checking
+        self.com_ref_index = cast("int", self.com_ref_index)
+        self.cl_ref_index = cast("int", self.cl_ref_index)
+
+        shifts = self._calc_shifts_com_cl(
+            stack,
+        )
+        return shifts
+
+    def _calc_shifts_com_cl(
+        self,
+        stack: "TomoStack",
+    ) -> np.ndarray:
+        """
+        Calculate shifts using combined center of mass and common line methods.
+
+        Center of mass aligns stack perpendicular to the tilt axis and
+        common line is used to align the stack parallel to the tilt axis.
+
+        Parameters
+        ----------
+        stack
+            Tilt series to be aligned
+        com_ref_index
+            Reference slice for center of mass alignment.  All other slices
+            will be aligned to this reference.
+        cl_ref_index
+            Reference slice for common line alignment.  All other slices
+            will be aligned to this reference. If not provided the projection
+            closest to the middle of the stack will be chosen.
+        cl_resolution
+            Resolution for subpixel common line alignment. Default is 0.05.
+            Should be less than 0.5.
+        cl_div_factor
+            Factor which determines the number of iterations of common line
+            alignment to perform.  Default is 8.
+
+        Returns
+        -------
+        reg : :py:class:`~numpy.ndarray`
+            The X- and Y-shifts to be applied to each image
+
+        Group
+        -----
+        align
+        """
+
+        def calc_yshifts(stack, com_ref):
+            ntilts = stack.data.shape[0]
+            ali_x = stack.deepcopy()
+            coms = np.zeros(ntilts)
+            yshifts = np.zeros_like(coms)
+
+            for i in tqdm.tqdm(range(ntilts)):
+                im = ali_x.data[i, :, :]
+                coms[i], _ = ndimage.center_of_mass(im)
+                yshifts[i] = com_ref - coms[i]
+            return yshifts
+
+        if self.cl_resolution >= CL_RES_THRESHOLD:
+            msg = f"Resolution should be less than {CL_RES_THRESHOLD}"
+            raise ValueError(msg)
+
+        logger.info("Center of mass reference slice: %s", self.com_ref_index)
+        logger.info("Common line reference slice: %s", self.cl_ref_index)
+        xshifts = np.zeros(stack.data.shape[0])
+        yshifts = np.zeros(stack.data.shape[0])
+        yshifts = calc_yshifts(stack, self.com_ref_index)
+        xshifts = calc_shifts_cl(
+            stack,
+            self.cl_ref_index,
+            self.cl_resolution,
+            self.cl_div_factor,
+        )
+        shifts = np.stack([yshifts, xshifts], axis=1)
+        return shifts
 
 
 def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
@@ -911,14 +1020,11 @@ def calc_shifts_com_cl(
     return shifts
 
 
-def align_stack(  # noqa: PLR0913
+def align_stack(
     stack: "TomoStack",
     method: AlignmentMethodType,
     start: int | None,
-    xrange: tuple[int, int] | None = None,
     shift_type: Literal["fourier", "interp"] = "fourier",
-    p: int = 20,
-    nslices: int = 20,
     cuda: bool = False,
     com_ref_index: int | None = None,
     cl_ref_index: int | None = None,
@@ -1032,14 +1138,7 @@ def align_stack(  # noqa: PLR0913
         )  # Use the slice closest to the midpoint if start is not provided
     start = cast("int", start)  # explicit type cast for type checking
 
-    if method == AlignmentMethod.COM:
-        logger.info("Performing stack registration using center of mass method")
-        shifts = np.zeros([stack.data.shape[0], 2])
-        # calculate_shifts_conservation_of_mass returns x-shifts (parallel to tilt axis)
-        # calculate_shifts_com returns y-shifts (perpendicular to tilt axis)
-        shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
-        shifts[:, 0] = calculate_shifts_com(stack, nslices)
-    elif method == AlignmentMethod.COM_CL:
+    if method == AlignmentMethod.COM_CL:
         logger.info(
             "Performing stack registration using combined "
             "center of mass and common line methods",
