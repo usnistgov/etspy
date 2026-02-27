@@ -226,27 +226,50 @@ def apply_shifts(
     return shifted
 
 
-class AlignmentStrategy(ABC):
+class StackAligner(ABC):
     """Abstract Base class for Alignment methods."""
 
     def __init__(
         self,
+        stack: "TomoStack",
+        start: int | None = None,
         use_cuda: bool | None = False,
         show_progressbar: bool = False,
     ):
         use_cuda = cast("bool", use_cuda)
+        self.stack = stack
+        self.shifts = np.zeros([stack.data.shape[0], 2])
+        if start is None:
+            start = stack.data.shape[0] // 2
+        start = cast("int", start)
+        self.start = start
         self.use_cuda = use_cuda
         self.show_progressbar = show_progressbar
 
+    def align(
+        self,
+        shift_method: Literal["interp", "fourier"] = "fourier",
+    ) -> "TomoStack":
+        """
+        Perform stack alignment.
+
+        Shifts are calculated using the provided strategy and then applied using the
+        specified shift method.
+        """
+        self.shifts = self.calculate_shifts()
+
+        # Pass the strategy's CUDA preference to the applicator
+        return apply_shifts(
+            self.stack,
+            self.shifts,
+            method=shift_method,
+            cuda=self.use_cuda,
+        )
+
     @abstractmethod
-    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+    def calculate_shifts(self) -> np.ndarray:
         """
         Calculate the alignment shifts using the selected strategy.
-
-        Parameters
-        ----------
-        stack : :py:class:`~TomoStack`
-            The TomoStack series to be analyzed.
 
         Returns
         -------
@@ -259,50 +282,7 @@ class AlignmentStrategy(ABC):
         """
 
 
-class StackAligner:
-    """
-    Handles the orchestration of alignment.
-
-    Attributes
-    ----------
-    stack : :py:class:`~TomoStack`
-        The TomoStack to be aligned.
-
-    shifts : :py:class:`~numpy.ndarray`
-        The X- and Y-shifts to be applied to each image. Initialized
-        to an array of zeros with shape (n_images, 2).
-    """
-
-    def __init__(
-        self,
-        stack: "TomoStack",
-    ):
-        self.stack = stack
-        self.shifts = np.zeros([stack.data.shape[0], 2])
-
-    def align(
-        self,
-        strategy: AlignmentStrategy,
-        shift_method: Literal["interp", "fourier"] = "fourier",
-    ) -> "TomoStack":
-        """
-        Perform stack alignment.
-
-        Shifts are calculated using the provided strategy and then applied using the
-        specified shift method.
-        """
-        self.shifts = strategy.calculate_shifts(self.stack)
-
-        # Pass the strategy's CUDA preference to the applicator
-        return apply_shifts(
-            self.stack,
-            self.shifts,
-            method=shift_method,
-            cuda=strategy.use_cuda,
-        )
-
-
-class PhaseCorrelationAligner(AlignmentStrategy):
+class PhaseCorrelationAligner(StackAligner):
     """
     Aligner class for phase correlation (PC) strategy.
 
@@ -333,16 +313,21 @@ class PhaseCorrelationAligner(AlignmentStrategy):
 
     def __init__(
         self,
+        stack: "TomoStack",
         start: int = 0,
         upsample_factor: int = 3,
         use_cuda: bool = False,
         show_progressbar: bool = True,
     ):
-        super().__init__(use_cuda=use_cuda, show_progressbar=show_progressbar)
-        self.start = start
+        super().__init__(
+            stack=stack,
+            start=start,
+            use_cuda=use_cuda,
+            show_progressbar=show_progressbar,
+        )
         self.upsample_factor = upsample_factor
 
-    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+    def calculate_shifts(self) -> np.ndarray:
         """
         Calculate shifts using the phase correlation algorithm.
 
@@ -361,43 +346,43 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         align
         """
         if has_cupy and astra.use_cuda() and self.use_cuda:
-            shifts = self._cupy_calculate_shifts(stack)
+            shifts = self._cupy_calculate_shifts()
 
         else:
-            shifts = np.zeros((stack.data.shape[0], 2))
+            shifts = np.zeros((self.stack.data.shape[0], 2))
             with tqdm.tqdm(
-                total=stack.data.shape[0] - 1,
+                total=self.stack.data.shape[0] - 1,
                 desc="Calculating shifts",
                 disable=not self.show_progressbar,
             ) as pbar:
                 for i in range(self.start, 0, -1):
                     shift = pcc(
-                        stack.data[i],
-                        stack.data[i - 1],
+                        self.stack.data[i],
+                        self.stack.data[i - 1],
                         upsample_factor=self.upsample_factor,
                     )[0]
                     shifts[i - 1] = shifts[i] + shift
                     pbar.update(1)
 
-                for i in range(self.start, stack.data.shape[0] - 1):
+                for i in range(self.start, self.stack.data.shape[0] - 1):
                     shift = pcc(
-                        stack.data[i],
-                        stack.data[i + 1],
+                        self.stack.data[i],
+                        self.stack.data[i + 1],
                         upsample_factor=self.upsample_factor,
                     )[0]
                     shifts[i + 1] = shifts[i] + shift
                     pbar.update(1)
         return shifts
 
-    def _cupy_calculate_shifts(self, stack):
+    def _cupy_calculate_shifts(self):
         """Calculate shifts of stack using CUDA-implementation of phase correlation."""
-        stack_cp = cp.array(stack.data)
+        stack_cp = cp.array(self.stack.data)
         shifts = cp.zeros([stack_cp.shape[0], 2])
         ref_cp = stack_cp[0]
         ref_fft = cp.fft.fftn(ref_cp)
         shape = ref_fft.shape
         with tqdm.tqdm(
-            total=stack.data.shape[0] - 1,
+            total=self.stack.data.shape[0] - 1,
             desc="Calculating shifts",
             disable=not self.show_progressbar,
         ) as pbar:
@@ -409,7 +394,7 @@ class PhaseCorrelationAligner(AlignmentStrategy):
                 )
                 shifts[i - 1] = shifts[i] + shift
                 pbar.update(1)
-            for i in range(self.start, stack.data.shape[0] - 1):
+            for i in range(self.start, self.stack.data.shape[0] - 1):
                 shift = self._cupy_phase_correlate(
                     stack_cp[i],
                     stack_cp[i + 1],
@@ -530,7 +515,7 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         return data
 
 
-class StackRegAligner(AlignmentStrategy):
+class StackRegAligner(StackAligner):
     """
     Aligner class for StackReg strategy.
 
@@ -563,14 +548,18 @@ class StackRegAligner(AlignmentStrategy):
 
     def __init__(
         self,
+        stack: "TomoStack",
         start: int = 0,
         show_progressbar: bool = True,
     ):
-        super().__init__(use_cuda=False)
-        self.start = start
-        self.show_progressbar = show_progressbar
+        super().__init__(
+            stack=stack,
+            start=start,
+            use_cuda=False,
+            show_progressbar=show_progressbar,
+        )
 
-    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+    def calculate_shifts(self) -> np.ndarray:
         """
         Calculate shifts using PyStackReg.
 
@@ -585,11 +574,11 @@ class StackRegAligner(AlignmentStrategy):
             The shifts to be applied to each image
 
         """
-        shifts = np.zeros((stack.data.shape[0], 2))
+        shifts = np.zeros((self.stack.data.shape[0], 2))
 
         if self.start is None:
             self.start = (
-                stack.data.shape[0] // 2
+                self.stack.data.shape[0] // 2
             )  # Use the midpoint if start is not provided
         self.start = cast("int", self.start)
 
@@ -597,26 +586,32 @@ class StackRegAligner(AlignmentStrategy):
         reg = StackReg(StackReg.TRANSLATION)
 
         with tqdm.tqdm(
-            total=stack.data.shape[0] - 1,
+            total=self.stack.data.shape[0] - 1,
             desc="Calculating shifts",
             disable=not self.show_progressbar,
         ) as pbar:
             # Calculate shifts relative to the image at the 'start' index
             for i in range(self.start, 0, -1):
-                transformation = reg.register(stack.data[i], stack.data[i - 1])
+                transformation = reg.register(
+                    self.stack.data[i],
+                    self.stack.data[i - 1],
+                )
                 shift = -transformation[0:2, 2][::-1]
                 shifts[i - 1] = shifts[i] + shift
                 pbar.update(1)
 
-            for i in range(self.start, stack.data.shape[0] - 1):
-                transformation = reg.register(stack.data[i], stack.data[i + 1])
+            for i in range(self.start, self.stack.data.shape[0] - 1):
+                transformation = reg.register(
+                    self.stack.data[i],
+                    self.stack.data[i + 1],
+                )
                 shift = -transformation[0:2, 2][::-1]
                 shifts[i + 1] = shifts[i] + shift
                 pbar.update(1)
         return shifts
 
 
-class CoMAligner(AlignmentStrategy):
+class CoMAligner(StackAligner):
     """
     Center of mass (COM) tracking alignment strategy.
 
@@ -645,38 +640,37 @@ class CoMAligner(AlignmentStrategy):
 
     def __init__(
         self,
+        stack: "TomoStack",
         start: int = 0,
         show_progressbar: bool = True,
         xrange: tuple[int, int] | None = None,
         p: int = 20,
         nslices: int = 20,
     ):
-        super().__init__(use_cuda=False)
+        super().__init__(
+            stack=stack,
+            start=start,
+            use_cuda=False,
+            show_progressbar=show_progressbar,
+        )
         self.start = start
         self.show_progressbar = show_progressbar
         self.xrange = xrange
         self.p = p
         self.nslices = nslices
 
-    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+    def calculate_shifts(self) -> np.ndarray:
         """Calculate shifts using center of mass tracking method."""
         logger.info("Performing stack registration using center of mass method")
-        shifts = np.zeros([stack.data.shape[0], 2])
+        shifts = np.zeros([self.stack.data.shape[0], 2])
         # _calculate_shifts_conservation_of_mass: x-shifts (parallel to tilt axis)
         # _calculate_shifts_com: y-shifts (perpendicular to tilt axis)
-        shifts[:, 1] = self._calculate_shifts_conservation_of_mass(
-            stack,
-            self.xrange,
-            self.p,
-        )
-        shifts[:, 0] = self._calculate_shifts_com(stack)
+        shifts[:, 1] = self._calculate_shifts_conservation_of_mass()
+        shifts[:, 0] = self._calculate_shifts_com()
         return shifts
 
     def _calculate_shifts_conservation_of_mass(
         self,
-        stack: "TomoStack",
-        xrange: tuple[int, int] | None = None,
-        p: int = 20,
     ) -> np.ndarray:
         """
         Calculate shifts parallel to the tilt axis using conservation of mass.
@@ -703,36 +697,37 @@ class CoMAligner(AlignmentStrategy):
         align
         """
         logger.info("Refinining X-shifts using conservation of mass method")
-        ntilts, _, nx = stack.data.shape
+        ntilts, _, nx = self.stack.data.shape
 
-        if xrange is None:
+        if self.xrange is None:
             xrange = (round(nx / 5), round(4 / 5 * nx))
         else:
-            xrange = (round(xrange[0]) + p, round(xrange[1]) - p)
+            xrange = (round(self.xrange[0]) + self.p, round(self.xrange[1]) - self.p)
 
         xshifts = np.zeros([ntilts, 1])
-        total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
+        total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * self.p + 1])
 
         for i in range(ntilts):
             total_mass[i, :] = np.sum(
-                stack.data[i, :, xrange[0] - p - 1 : xrange[1] + p],
+                self.stack.data[i, :, xrange[0] - self.p - 1 : xrange[1] + self.p],
                 0,
             )
 
-        mean_mass = np.mean(total_mass[:, p:-p], 0)
+        mean_mass = np.mean(total_mass[:, self.p : -self.p], 0)
 
         for i in range(ntilts):
             s = 0
-            for j in range(-p, p):
-                resid = np.linalg.norm(mean_mass - total_mass[i, p + j : -p + j])
-                if resid < s or j == -p:
+            for j in range(-self.p, self.p):
+                resid = np.linalg.norm(
+                    mean_mass - total_mass[i, self.p + j : -self.p + j],
+                )
+                if resid < s or j == -self.p:
                     s = resid
                     xshifts[i] = -j
         return xshifts[:, 0]
 
     def _calculate_shifts_com(
         self,
-        stack: "TomoStack",
     ) -> np.ndarray:
         """
         Align stack using a center of mass method.
@@ -759,13 +754,13 @@ class CoMAligner(AlignmentStrategy):
         align
         """
         logger.info("Refinining Y-shifts using center of mass method")
-        slices = get_best_slices(stack, self.nslices)
+        slices = get_best_slices(self.stack, self.nslices)
 
-        angles = stack.tilts.data.squeeze()
-        ntilts, _, _ = stack.data.shape
+        angles = self.stack.tilts.data.squeeze()
+        ntilts, _, _ = self.stack.data.shape
         thetas = np.pi * cast("np.ndarray", angles) / 180
 
-        coms = get_coms(stack, slices)
+        coms = get_coms(self.stack, slices)
         i_tilts = np.eye(ntilts)
         gam = np.array([np.cos(thetas), np.sin(thetas)]).T
         gam = np.dot(gam, np.linalg.pinv(gam)) - i_tilts
@@ -777,7 +772,7 @@ class CoMAligner(AlignmentStrategy):
         return yshifts
 
 
-class CommonLineAligner(AlignmentStrategy):
+class CommonLineAligner(StackAligner):
     """
     Aligner class for common line (CL) strategy.
 
@@ -810,6 +805,7 @@ class CommonLineAligner(AlignmentStrategy):
 
     def __init__(
         self,
+        stack: "TomoStack",
         start: int = 0,
         show_progressbar: bool = True,
         com_ref_index: int | None = None,
@@ -817,44 +813,38 @@ class CommonLineAligner(AlignmentStrategy):
         cl_resolution: float = 0.05,
         cl_div_factor: int = 8,
     ):
-        super().__init__(use_cuda=False, show_progressbar=show_progressbar)
-        self.start = start
+        super().__init__(
+            stack=stack,
+            start=start,
+            use_cuda=False,
+            show_progressbar=show_progressbar,
+        )
         self.com_ref_index = com_ref_index
         self.cl_ref_index = cl_ref_index
         self.cl_resolution = cl_resolution
         self.cl_div_factor = cl_div_factor
 
-    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+    def calculate_shifts(self) -> np.ndarray:
         """Calculate shifts using combined center of mass and common line methods."""
         logger.info(
             "Performing stack registration using combined "
             "center of mass and common line methods",
         )
         if self.com_ref_index is None:
-            self.com_ref_index = stack.data.shape[1] // 2
+            self.com_ref_index = self.start
         if self.cl_ref_index is None:
-            self.cl_ref_index = stack.data.shape[0] // 2
+            self.cl_ref_index = self.start
 
         # explicit type casts for type checking
         self.com_ref_index = cast("int", self.com_ref_index)
         self.cl_ref_index = cast("int", self.cl_ref_index)
 
-        shifts = self._calc_shifts_com_cl(
-            stack,
-        )
+        shifts = self._calc_shifts_com_cl()
         return shifts
 
-    def _calc_shifts_com_cl(
-        self,
-        stack: "TomoStack",
-    ) -> np.ndarray:
+    def _calc_shifts_com_cl(self) -> np.ndarray:
         """
         Calculate shifts using combined center of mass and common line methods.
-
-        Parameters
-        ----------
-        stack : :py:class:`~TomoStack`
-            Tilt series to be aligned
 
         Returns
         -------
@@ -871,11 +861,10 @@ class CommonLineAligner(AlignmentStrategy):
 
         logger.info("Center of mass reference slice: %s", self.com_ref_index)
         logger.info("Common line reference slice: %s", self.cl_ref_index)
-        xshifts = np.zeros(stack.data.shape[0])
-        yshifts = np.zeros(stack.data.shape[0])
-        yshifts = self._calc_yshifts(stack, self.com_ref_index)
+        xshifts = np.zeros(self.stack.data.shape[0])
+        yshifts = np.zeros(self.stack.data.shape[0])
+        yshifts = self._calc_yshifts(self.com_ref_index)
         xshifts = self._calc_shifts_cl(
-            stack,
             self.cl_ref_index,
             self.cl_resolution,
             self.cl_div_factor,
@@ -883,21 +872,19 @@ class CommonLineAligner(AlignmentStrategy):
         shifts = np.stack([yshifts, xshifts], axis=1)
         return shifts
 
-    def _calc_yshifts(self, stack, com_ref):
-        ntilts = stack.data.shape[0]
-        ali_x = stack.deepcopy()
+    def _calc_yshifts(self, com_ref):
+        ntilts = self.stack.data.shape[0]
         coms = np.zeros(ntilts)
         yshifts = np.zeros_like(coms)
 
         for i in tqdm.tqdm(range(ntilts)):
-            im = ali_x.data[i, :, :]
+            im = self.stack.data[i, :, :]
             coms[i], _ = ndimage.center_of_mass(im)
             yshifts[i] = com_ref - coms[i]
         return yshifts
 
     def _calc_shifts_cl(
         self,
-        stack: "TomoStack",
         cl_ref_index: int | None,
         cl_resolution: float,
         cl_div_factor: int,
@@ -981,15 +968,15 @@ class CommonLineAligner(AlignmentStrategy):
             return -shift
 
         if cl_ref_index is None:
-            cl_ref_index = stack.data.shape[0] // 2
+            cl_ref_index = self.stack.data.shape[0] // 2
 
-        yshifts = np.zeros(stack.data.shape[0])
-        ref_cm_line = stack.data[cl_ref_index].sum(0)
+        yshifts = np.zeros(self.stack.data.shape[0])
+        ref_cm_line = self.stack.data[cl_ref_index].sum(0)
 
-        for i in tqdm.tqdm(range(stack.data.shape[0])):
+        for i in tqdm.tqdm(range(self.stack.data.shape[0])):
             if i == cl_ref_index:
                 continue
-            curr_cm_line = stack.data[i].sum(0)
+            curr_cm_line = self.stack.data[i].sum(0)
             yshifts[i] = align_line(
                 ref_cm_line,
                 curr_cm_line,
