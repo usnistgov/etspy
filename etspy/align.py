@@ -6,7 +6,6 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Literal, Union, cast
 
-import astra
 import matplotlib.pylab as plt
 import numpy as np
 import tqdm
@@ -345,7 +344,7 @@ class PhaseCorrelationAligner(StackAligner):
         -----
         align
         """
-        if has_cupy and astra.use_cuda() and self.use_cuda:
+        if has_cupy and self.use_cuda:
             shifts = self._cupy_calculate_shifts()
 
         else:
