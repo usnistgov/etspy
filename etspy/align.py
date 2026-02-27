@@ -17,8 +17,6 @@ from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 
-from etspy import AlignmentMethodType
-
 if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
@@ -1010,123 +1008,6 @@ class CommonLineAligner(StackAligner):
         padded_line = np.zeros(paddedsize)
         padded_line[start_index:end_index] = line
         return padded_line
-
-
-def align_stack(
-    stack: "TomoStack",
-    method: AlignmentMethodType,
-    start: int | None,
-) -> "TomoStack":
-    """
-    Compute the shifts for spatial registration.
-
-    Shifts are determined by one of three methods:
-        1.) Phase correlation (PC) as implemented in scikit-image. Based on:
-            Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup.
-            Efficient subpixel image registration algorithms, Optics Letters vol. 33
-            (2008) pp. 156-158.
-            https://doi.org/10.1364/OL.33.000156
-        2.) Center of mass (COM) tracking.  A Python implementation of
-            algorithms described in:
-            T. Sanders. Physically motivated global alignment method for electron
-            tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
-            https://doi.org/10.1186/s40679-015-0005-7
-        3.) Rigid translation using PyStackReg for shift calculation.
-            PyStackReg is a Python port of the StackReg plugin for ImageJ
-            which uses a pyramidal approach to minimize the least-squares
-            difference in image intensity between a source and target image.
-            StackReg is described in:
-            P. Thevenaz, U.E. Ruttimann, M. Unser. A Pyramid Approach to
-            Subpixel Registration Based on Intensity, IEEE Transactions
-            on Image Processing vol. 7, no. 1, pp. 27-41, January 1998.
-            https://doi.org/10.1109/83.650848
-        4.) A combination of center of mass tracking for aligment of
-            projections perpendicular to the tilt axis and common line
-            alignment for parallel to the tilt axis. This is a Python
-            implementation of Matlab code described in:
-            M. C. Scott, et al. Electron tomography at 2.4-ångström resolution,
-            Nature 483, 444-447 (2012).
-            https://doi.org/10.1038/nature10934
-
-    Shifts are then applied and the aligned stack is returned.  The tilts are
-    stored in stack.metadata.Tomography.shifts for later use.
-
-    Parameters
-    ----------
-    stack
-        3-D numpy array containing the tilt series data
-    method
-        Method by which to calculate the alignments. Valid options
-        are controlled by the :py:class:`etspy.AlignmentMethod` enum.
-    start
-        Position in tilt series to use as starting point for the alignment.
-        If None, the central projection is used.
-    show_progressbar
-        Enable/disable progress bar
-    xrange
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
-        The range for performing alignment. See
-        :py:func:`~etspy.align.calculate_shifts_com` for more details.
-    shift_type
-        Image shifts can be applied using either interpolation via scipy.ndimage.shift
-        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
-        either 'interp' or 'fourier'.
-    p
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
-        Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more
-        details.
-    nslices
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
-        Number of slices to return. See
-        :py:func:`~etspy.align.calculate_shifts_com` for more details.
-    cuda
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.PC`)
-        Enable/disable the use of GPU-accelerated processes using CUDA. See
-        :py:func:`~etspy.align.calculate_shifts_pc` for more details.
-    upsample_factor
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.PC`)
-        Factor by which to resample the data. See
-        :py:func:`~etspy.align.calculate_shifts_pc` for more details.
-    com_ref_index
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-        Reference slice for center of mass alignment.  All other slices will be aligned
-        to this reference. See :py:func:`~etspy.align.calc_shifts_com_cl` for more
-        details.
-    cl_ref_index
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-        Reference slice for common line alignment.  All other slices
-        will be aligned to this reference. If not provided the projection
-        closest to the middle of the stack will be chosen. See
-        :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
-    cl_resolution
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-        Resolution for subpixel common line alignment. Default is 0.05.
-        Should be less than 0.5. See :py:func:`~etspy.align.calc_shifts_com_cl` for
-        more details.
-    cl_div_factor
-        (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-        Factor which determines the number of iterations of common line
-        alignment to perform.  Default is 8. See
-        :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
-
-    Returns
-    -------
-    out : TomoStack
-        Spatially registered copy of the input stack
-
-    Group
-    -----
-    align
-    """
-    if start is None:
-        start = (
-            stack.data.shape[0] // 2
-        )  # Use the slice closest to the midpoint if start is not provided
-    start = cast("int", start)  # explicit type cast for type checking
-
-    msg = f"Invalid alignment method {method}"
-    raise ValueError(msg)
-    return
 
 
 def tilt_com(
