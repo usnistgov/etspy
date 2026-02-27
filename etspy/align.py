@@ -18,7 +18,7 @@ from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 
-from etspy import AlignmentMethod, AlignmentMethodType
+from etspy import AlignmentMethodType
 
 if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
