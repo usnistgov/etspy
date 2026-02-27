@@ -56,31 +56,64 @@ class AlignmentStrategy(ABC):
 
     @abstractmethod
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
-        pass
+        """
+        Calculate the alignment shifts using the selected strategy.
+
+        Parameters
+        ----------
+        stack : :py:class:`~TomoStack`
+            The TomoStack series to be analyzed.
+
+        Returns
+        -------
+        shifts : :py:class:`~numpy.ndarray`
+            An array of shape ``(n_images, 2)`` containing the calculated
+            shifts. The first column ``shifts[:, 0]`` should contain
+            Y-shifts (perpendicular to the tilt axis) and the second column
+            ``shifts[:, 1]`` should contain X-shifts (parallel to the tilt axis).
+
+        """
 
 
 class StackAligner:
-    """Handles the orchestration of alignment."""
+    """
+    Handles the orchestration of alignment.
+
+    Attributes
+    ----------
+    stack : :py:class:`~TomoStack`
+        The TomoStack to be aligned.
+
+    shifts : :py:class:`~numpy.ndarray`
+        The X- and Y-shifts to be applied to each image. Initialized
+        to an array of zeros with shape (n_images, 2).
+    """
 
     def __init__(
         self,
         stack: "TomoStack",
     ):
         self.stack = stack
+        self.shifts = np.zeros([stack.data.shape[0], 2])
 
     def align(
         self,
         strategy: AlignmentStrategy,
-        apply_method: Literal["interp", "fourier"] = "fourier",
+        shift_method: Literal["interp", "fourier"] = "fourier",
     ) -> "TomoStack":
-        # Strategy handles its own CUDA logic internally
-        shifts = strategy.calculate_shifts(self.stack)
+        """
+        Perform stack alignment.
+
+        Shifts are calculated using the provided strategy and then applied using the
+        specified shift method.
+        """
+        self.shifts = strategy.calculate_shifts(self.stack)
 
         # Pass the strategy's CUDA preference to the applicator
         return apply_shifts(
             self.stack,
-            shifts,
-            method=apply_method,
+            self.shifts,
+            method=shift_method,
             cuda=strategy.use_cuda,
         )
 
@@ -314,6 +347,36 @@ class PhaseCorrelationAligner(AlignmentStrategy):
 
 
 class StackRegAligner(AlignmentStrategy):
+    """
+    Aligner class for StackReg strategy.
+
+    Calculated rigid translational shifts using PyStackReg. PyStackReg is a Python port
+    of the StackReg plugin for ImageJ which uses a pyramidal approach to minimize the
+    least-squares difference in image intensity between a source and target image.
+    StackReg is described in:
+    P. Thevenaz, U.E. Ruttimann, M. Unser. A Pyramid Approach to
+    Subpixel Registration Based on Intensity, IEEE Transactions
+    on Image Processing vol. 7, no. 1, pp. 27-41, January 1998.
+    https://doi.org/10.1109/83.650848
+
+    Attributes
+    ----------
+    start
+        Position in tilt series to use as starting point for the alignment.
+        If ``None``, the slice closest to the midpoint will be used.
+    show_progressbar
+        Enable/disable progress bar
+
+    Returns
+    -------
+    shifts : :py:class:`~numpy.ndarray`
+        The X- and Y-shifts to be applied to each image
+
+    Group
+    -----
+    align
+    """
+
     def __init__(
         self,
         start: int = 0,
@@ -331,20 +394,12 @@ class StackRegAligner(AlignmentStrategy):
         ----------
         stack
             The image series to be aligned
-        start
-            Position in tilt series to use as starting point for the alignment.
-            If ``None``, the slice closest to the midpoint will be used.
-        show_progressbar
-            Enable/disable progress bar
 
         Returns
         -------
         shifts : :py:class:`~numpy.ndarray`
-            The X- and Y-shifts to be applied to each image
+            The shifts to be applied to each image
 
-        Group
-        -----
-        align
         """
         shifts = np.zeros((stack.data.shape[0], 2))
 
@@ -378,6 +433,32 @@ class StackRegAligner(AlignmentStrategy):
 
 
 class CoMAligner(AlignmentStrategy):
+    """
+    Center of mass (COM) tracking alignment strategy.
+
+    A Python implementation of algorithms described in:
+    T. Sanders. Physically motivated global alignment method for electron
+    tomography, Advanced Structural and Chemical Imaging vol. 1 (2015) pp 1-11.
+    https://doi.org/10.1186/s40679-015-0005-7
+
+    Attributes
+    ----------
+    start
+        Position in tilt series to use as starting point for the alignment.
+        If ``None``, the slice closest to the midpoint will be used.
+    show_progressbar
+        Enable/disable progress bar
+
+    Returns
+    -------
+    shifts : :py:class:`~numpy.ndarray`
+        The X- and Y-shifts to be applied to each image
+
+    Group
+    -----
+    align
+    """
+
     def __init__(
         self,
         start: int = 0,
@@ -394,6 +475,7 @@ class CoMAligner(AlignmentStrategy):
         self.nslices = nslices
 
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+        """Calculate shifts using center of mass tracking method."""
         logger.info("Performing stack registration using center of mass method")
         shifts = np.zeros([stack.data.shape[0], 2])
         # _calculate_shifts_conservation_of_mass: x-shifts (parallel to tilt axis)
@@ -512,6 +594,36 @@ class CoMAligner(AlignmentStrategy):
 
 
 class CommonLineAligner(AlignmentStrategy):
+    """
+    Aligner class for common line (CL) strategy.
+
+    A combination of center of mass tracking for aligment of projections perpendicular
+    to the tilt axis and common line alignment for parallel to the tilt axis. This is a
+    Python implementation of Matlab code described in:
+    M. C. Scott, et al. Electron tomography at 2.4-ångström resolution,
+    Nature 483, 444-447 (2012).
+    https://doi.org/10.1038/nature10934
+
+    Attributes
+    ----------
+    start : py:class:`~int`
+        Position in tilt series to use as starting point for the alignment. If ``None``,
+        the slice closest to the midpoint will be used.
+    com_ref_index : py:class:`~int`
+        Reference slice for center of mass alignment.  All other slices
+        will be aligned to this reference.
+    cl_ref_index : py:class:`~int`
+        Reference slice for common line alignment.  All other slices
+        will be aligned to this reference. If not provided the projection
+        closest to the middle of the stack will be chosen.
+    cl_resolution : py:class:`~float`
+        Resolution for subpixel common line alignment. Default is 0.05.
+        Should be less than 0.5.
+    cl_div_factor : py:class:`~int`
+        Factor which determines the number of iterations of common line
+        alignment to perform.  Default is 8.
+    """
+
     def __init__(
         self,
         start: int = 0,
@@ -521,15 +633,15 @@ class CommonLineAligner(AlignmentStrategy):
         cl_resolution: float = 0.05,
         cl_div_factor: int = 8,
     ):
-        super().__init__(use_cuda=False)
+        super().__init__(use_cuda=False, show_progressbar=show_progressbar)
         self.start = start
-        self.show_progressbar = show_progressbar
         self.com_ref_index = com_ref_index
         self.cl_ref_index = cl_ref_index
         self.cl_resolution = cl_resolution
         self.cl_div_factor = cl_div_factor
 
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+        """Calculate shifts using combined center of mass and common line methods."""
         logger.info(
             "Performing stack registration using combined "
             "center of mass and common line methods",
@@ -555,31 +667,15 @@ class CommonLineAligner(AlignmentStrategy):
         """
         Calculate shifts using combined center of mass and common line methods.
 
-        Center of mass aligns stack perpendicular to the tilt axis and
-        common line is used to align the stack parallel to the tilt axis.
-
         Parameters
         ----------
-        stack
+        stack : :py:class:`~TomoStack`
             Tilt series to be aligned
-        com_ref_index
-            Reference slice for center of mass alignment.  All other slices
-            will be aligned to this reference.
-        cl_ref_index
-            Reference slice for common line alignment.  All other slices
-            will be aligned to this reference. If not provided the projection
-            closest to the middle of the stack will be chosen.
-        cl_resolution
-            Resolution for subpixel common line alignment. Default is 0.05.
-            Should be less than 0.5.
-        cl_div_factor
-            Factor which determines the number of iterations of common line
-            alignment to perform.  Default is 8.
 
         Returns
         -------
-        reg : :py:class:`~numpy.ndarray`
-            The X- and Y-shifts to be applied to each image
+        shifts : :py:class:`~numpy.ndarray`
+            The calculated shifts to be applied to each image
 
         Group
         -----
@@ -686,20 +782,30 @@ def apply_shifts(
     """
     Apply a series of shifts to a TomoStack.
 
+    Shifts are applied to the data using either interpolation or Fourier shift methods.
+    These operations are carried out using either CPU or GPU resources depending on the
+    value of `cuda`. If `cuda` is True, the shifts will be applied using
+    GPU-acceleration via CuPy. The shifts are stored in
+    ``shifted.metadata.Tomography.shifts``.
+
     Parameters
     ----------
-    stack
+    stack : :py:class:`~TomoStack`
         The image series to be aligned
-    shifts
+    shifts : Union[:py:class:`~TomoShifts`, :py:class:`~numpy.ndarray`]
         The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
         each image. Should be of size
         ``(*stack.axes_manager.navigation_shape[::-1], 2)``,
         with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
         position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
-    method
+    method : :py:class:`~str`
         Image shifts can be applied using either interpolation via scipy.ndimage.shift
         or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
         either 'interp' or 'fourier'.
+    cuda : :py:class:`~bool`
+        Enable/disable the use of GPU-accelerated processes using CUDA. If True, shifts
+        will be applied using CuPy. If False, shifts will be applied using NumPy and
+        SciPy.
 
     Returns
     -------
