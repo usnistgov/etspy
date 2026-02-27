@@ -251,6 +251,70 @@ class PhaseCorrelationAligner(AlignmentStrategy):
         return data
 
 
+class StackRegAligner(AlignmentStrategy):
+    def __init__(
+        self,
+        start: int = 0,
+        show_progressbar: bool = True,
+    ):
+        super().__init__(use_cuda=False)
+        self.start = start
+        self.show_progressbar = show_progressbar
+
+    def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
+        """
+        Calculate shifts using PyStackReg.
+
+        Parameters
+        ----------
+        stack
+            The image series to be aligned
+        start
+            Position in tilt series to use as starting point for the alignment.
+            If ``None``, the slice closest to the midpoint will be used.
+        show_progressbar
+            Enable/disable progress bar
+
+        Returns
+        -------
+        shifts : :py:class:`~numpy.ndarray`
+            The X- and Y-shifts to be applied to each image
+
+        Group
+        -----
+        align
+        """
+        shifts = np.zeros((stack.data.shape[0], 2))
+
+        if self.start is None:
+            self.start = (
+                stack.data.shape[0] // 2
+            )  # Use the midpoint if start is not provided
+        self.start = cast("int", self.start)
+
+        # Initialize pystackreg object with TranslationTransform2D
+        reg = StackReg(StackReg.TRANSLATION)
+
+        with tqdm.tqdm(
+            total=stack.data.shape[0] - 1,
+            desc="Calculating shifts",
+            disable=not self.show_progressbar,
+        ) as pbar:
+            # Calculate shifts relative to the image at the 'start' index
+            for i in range(self.start, 0, -1):
+                transformation = reg.register(stack.data[i], stack.data[i - 1])
+                shift = -transformation[0:2, 2][::-1]
+                shifts[i - 1] = shifts[i] + shift
+                pbar.update(1)
+
+            for i in range(self.start, stack.data.shape[0] - 1):
+                transformation = reg.register(stack.data[i], stack.data[i + 1])
+                shift = -transformation[0:2, 2][::-1]
+                shifts[i + 1] = shifts[i] + shift
+                pbar.update(1)
+        return shifts
+
+
 def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
     """
     Get best nslices for center of mass analysis.
@@ -649,62 +713,6 @@ def calculate_shifts_com(stack: "TomoStack", nslices: int) -> np.ndarray:
     return yshifts
 
 
-def calculate_shifts_stackreg(
-    stack: "TomoStack",
-    start: int | None,
-    show_progressbar: bool,
-) -> np.ndarray:
-    """
-    Calculate shifts using PyStackReg.
-
-    Parameters
-    ----------
-    stack
-        The image series to be aligned
-    start
-        Position in tilt series to use as starting point for the alignment. If ``None``,
-        the slice closest to the midpoint will be used.
-    show_progressbar
-        Enable/disable progress bar
-
-    Returns
-    -------
-    shifts : :py:class:`~numpy.ndarray`
-        The X- and Y-shifts to be applied to each image
-
-    Group
-    -----
-    align
-    """
-    shifts = np.zeros((stack.data.shape[0], 2))
-
-    if start is None:
-        start = stack.data.shape[0] // 2  # Use the midpoint if start is not provided
-    start = cast("int", start)
-
-    # Initialize pystackreg object with TranslationTransform2D
-    reg = StackReg(StackReg.TRANSLATION)
-
-    with tqdm.tqdm(
-        total=stack.data.shape[0] - 1,
-        desc="Calculating shifts",
-        disable=not show_progressbar,
-    ) as pbar:
-        # Calculate shifts relative to the image at the 'start' index
-        for i in range(start, 0, -1):
-            transformation = reg.register(stack.data[i], stack.data[i - 1])
-            shift = -transformation[0:2, 2][::-1]
-            shifts[i - 1] = shifts[i] + shift
-            pbar.update(1)
-
-        for i in range(start, stack.data.shape[0] - 1):
-            transformation = reg.register(stack.data[i], stack.data[i + 1])
-            shift = -transformation[0:2, 2][::-1]
-            shifts[i + 1] = shifts[i] + shift
-            pbar.update(1)
-    return shifts
-
-
 def calc_shifts_com_cl(
     stack: "TomoStack",
     com_ref_index: int,
@@ -776,7 +784,6 @@ def align_stack(  # noqa: PLR0913
     stack: "TomoStack",
     method: AlignmentMethodType,
     start: int | None,
-    show_progressbar: bool,
     xrange: tuple[int, int] | None = None,
     shift_type: Literal["fourier", "interp"] = "fourier",
     p: int = 20,
@@ -901,9 +908,6 @@ def align_stack(  # noqa: PLR0913
         # calculate_shifts_com returns y-shifts (perpendicular to tilt axis)
         shifts[:, 1] = calculate_shifts_conservation_of_mass(stack, xrange, p)
         shifts[:, 0] = calculate_shifts_com(stack, nslices)
-    elif method == AlignmentMethod.STACK_REG:
-        logger.info("Performing stack registration using PyStackReg")
-        shifts = calculate_shifts_stackreg(stack, start, show_progressbar)
     elif method == AlignmentMethod.COM_CL:
         logger.info(
             "Performing stack registration using combined "
