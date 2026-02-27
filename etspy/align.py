@@ -42,6 +42,190 @@ logger.setLevel(logging.INFO)
 CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 
 
+def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
+    """
+    Get best nslices for center of mass analysis.
+
+    Slices which have the highest ratio of total mass to mass variance
+    and their location are returned.
+
+    Parameters
+    ----------
+    stack
+        Tilt series from which to select the best slices
+    nslices
+        Number of slices to return
+
+    Returns
+    -------
+    :py:class:`~numpy.ndarray`
+        Location along the x-axis of the best slices
+
+    Group
+    -----
+    align
+    """
+    total_mass = stack.data.sum((0, 1))
+    mass_std = stack.data.sum(1).std(0)
+    mass_std[mass_std == 0] = 1e-5
+    mass_ratio = total_mass / mass_std
+    best_slice_locations = mass_ratio.argsort()[::-1][0:nslices]
+    return best_slice_locations
+
+
+def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
+    """
+    Calculate the center of mass for indicated slices.
+
+    Parameters
+    ----------
+    stack
+        Tilt series from which to calculate the centers of mass.
+    slices
+        Location of slices to use for center of mass calculation.
+
+    Returns
+    -------
+    :py:class:`~numpy.ndarray`
+        Center of mass as a function of tilt for each slice [ntilts, nslices].
+
+    Group
+    -----
+    align
+    """
+    sinos = stack.data[:, :, slices]
+    com_range = int(sinos.shape[1] / 2)
+    y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1], dtype="int")
+    total_mass = sinos.sum(1)
+    coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y_coordinates, 2) / total_mass
+    return coms
+
+
+def apply_shifts(
+    stack: "TomoStack",
+    shifts: Union["TomoShifts", np.ndarray],
+    method: Literal["interp", "fourier"] = "fourier",
+    cuda: bool = False,
+    **kwargs,
+) -> "TomoStack":
+    """
+    Apply a series of shifts to a TomoStack.
+
+    Shifts are applied to the data using either interpolation or Fourier shift methods.
+    These operations are carried out using either CPU or GPU resources depending on the
+    value of `cuda`. If `cuda` is True, the shifts will be applied using
+    GPU-acceleration via CuPy. The shifts are stored in
+    ``shifted.metadata.Tomography.shifts``.
+
+    Parameters
+    ----------
+    stack : :py:class:`~TomoStack`
+        The image series to be aligned
+    shifts : Union[:py:class:`~TomoShifts`, :py:class:`~numpy.ndarray`]
+        The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
+        each image. Should be of size
+        ``(*stack.axes_manager.navigation_shape[::-1], 2)``,
+        with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
+        position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
+    method : :py:class:`~str`
+        Image shifts can be applied using either interpolation via scipy.ndimage.shift
+        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
+        either 'interp' or 'fourier'.
+    cuda : :py:class:`~bool`
+        Enable/disable the use of GPU-accelerated processes using CUDA. If True, shifts
+        will be applied using CuPy. If False, shifts will be applied using NumPy and
+        SciPy.
+
+    Returns
+    -------
+    shifted : TomoStack
+        Copy of input stack after shifts are applied
+
+    Group
+    -----
+    align
+    """
+    shifted = stack.deepcopy()
+    xp = cp if cuda else np
+    fft_module = cp.fft if cuda else fft
+
+    if isinstance(shifts, BaseSignal):
+        shifts = shifts.data
+    shifts = cast("np.ndarray", shifts)
+
+    if len(shifts) != stack.data.shape[0]:
+        msg = (
+            f"Number of shifts ({len(shifts)}) is not consistent "
+            f"with number of images in the stack ({stack.data.shape[0]})"
+        )
+        raise ValueError(msg)
+
+    shifts = xp.array(shifts)
+
+    data = xp.array(shifted.data)
+    if method.lower() == "interp":
+        order = kwargs.pop("order", 3)
+        shift_func = shift_gpu if cuda else ndimage.shift
+        for i in range(data.shape[0]):
+            data[i, :, :] = shift_func(
+                data[i, :, :],
+                shift=[shifts[i, 0], shifts[i, 1]],
+                order=order,
+            )
+    elif method.lower() == "fourier":
+        ntilts, ny, nx = data.shape
+        y_pad_min = np.abs(shifts[:, 0]).max() + ny
+        ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
+        y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
+
+        x_pad_min = np.abs(shifts[:, 1]).max() + nx
+        nx_pad = int(2 ** np.ceil(np.log2(x_pad_min)))
+        x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
+
+        data = xp.pad(
+            data,
+            ((0, 0), y_pad_width, x_pad_width),
+            mode="constant",
+        )
+
+        _, ny, nx = data.shape
+        data_fft = fft_module.fft2(data, axes=(1, 2))
+        data_fft = cast("Any", data_fft)
+
+        # Create frequency grids
+        # v is vertical frequencies, u is horizontal
+        v = xp.fft.fftfreq(ny).reshape(1, ny, 1)
+        u = xp.fft.fftfreq(nx).reshape(1, 1, nx)
+
+        # Reshape shifts for broadcasting: (n_images, 1, 1)
+        sy = shifts[:, 0].reshape(ntilts, 1, 1)
+        sx = shifts[:, 1].reshape(ntilts, 1, 1)
+
+        # Compute the phase ramp
+        # The formula: exp(-2j * pi * (v * sy + u * sx))
+        phi = -2j * np.pi * (v * sy + u * sx)
+        kernel = xp.exp(phi)
+
+        # Apply shift and Inverse FFT
+        data = xp.fft.ifft2(data_fft * kernel, axes=(1, 2))
+        data = xp.real(data)
+        slices = [
+            slice(0, None),
+        ]
+        for i in [y_pad_width, x_pad_width]:
+            i[1] = None if i[1] == 0 else -i[1]
+            slices.append(slice(i[0], i[1]))
+        data = data[tuple(slices)]
+    else:
+        msg = f"Invalid shift application method {method}."
+        raise ValueError(msg)
+
+    shifted.data = cp.asnumpy(data) if cuda else data
+    shifts = cp.asnumpy(shifts) if cuda else shifts
+    shifted.shifts.data = shifted.shifts.data + shifts
+    return shifted
+
+
 class AlignmentStrategy(ABC):
     """Abstract Base class for Alignment methods."""
 
@@ -681,19 +865,6 @@ class CommonLineAligner(AlignmentStrategy):
         -----
         align
         """
-
-        def calc_yshifts(stack, com_ref):
-            ntilts = stack.data.shape[0]
-            ali_x = stack.deepcopy()
-            coms = np.zeros(ntilts)
-            yshifts = np.zeros_like(coms)
-
-            for i in tqdm.tqdm(range(ntilts)):
-                im = ali_x.data[i, :, :]
-                coms[i], _ = ndimage.center_of_mass(im)
-                yshifts[i] = com_ref - coms[i]
-            return yshifts
-
         if self.cl_resolution >= CL_RES_THRESHOLD:
             msg = f"Resolution should be less than {CL_RES_THRESHOLD}"
             raise ValueError(msg)
@@ -702,8 +873,8 @@ class CommonLineAligner(AlignmentStrategy):
         logger.info("Common line reference slice: %s", self.cl_ref_index)
         xshifts = np.zeros(stack.data.shape[0])
         yshifts = np.zeros(stack.data.shape[0])
-        yshifts = calc_yshifts(stack, self.com_ref_index)
-        xshifts = calc_shifts_cl(
+        yshifts = self._calc_yshifts(stack, self.com_ref_index)
+        xshifts = self._calc_shifts_cl(
             stack,
             self.cl_ref_index,
             self.cl_resolution,
@@ -712,369 +883,147 @@ class CommonLineAligner(AlignmentStrategy):
         shifts = np.stack([yshifts, xshifts], axis=1)
         return shifts
 
+    def _calc_yshifts(self, stack, com_ref):
+        ntilts = stack.data.shape[0]
+        ali_x = stack.deepcopy()
+        coms = np.zeros(ntilts)
+        yshifts = np.zeros_like(coms)
 
-def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
-    """
-    Get best nslices for center of mass analysis.
+        for i in tqdm.tqdm(range(ntilts)):
+            im = ali_x.data[i, :, :]
+            coms[i], _ = ndimage.center_of_mass(im)
+            yshifts[i] = com_ref - coms[i]
+        return yshifts
 
-    Slices which have the highest ratio of total mass to mass variance
-    and their location are returned.
+    def _calc_shifts_cl(
+        self,
+        stack: "TomoStack",
+        cl_ref_index: int | None,
+        cl_resolution: float,
+        cl_div_factor: int,
+    ) -> np.ndarray:
+        """
+        Calculate shifts using the common line method.
 
-    Parameters
-    ----------
-    stack
-        Tilt series from which to select the best slices
-    nslices
-        Number of slices to return
+        Used to align stack in dimension parallel to the tilt axis
 
-    Returns
-    -------
-    :py:class:`~numpy.ndarray`
-        Location along the x-axis of the best slices
+        Parameters
+        ----------
+        stack
+            The stack on which to calculate shifts
+        cl_ref_index
+            Tilt index of reference projection. If not provided the projection
+            closest to the middle of the stack will be chosen.
+        cl_resolution
+            Degree of sub-pixel analysis
+        cl_div_factor
+            Factor used to determine number of iterations of alignment.
 
-    Group
-    -----
-    align
-    """
-    total_mass = stack.data.sum((0, 1))
-    mass_std = stack.data.sum(1).std(0)
-    mass_std[mass_std == 0] = 1e-5
-    mass_ratio = total_mass / mass_std
-    best_slice_locations = mass_ratio.argsort()[::-1][0:nslices]
-    return best_slice_locations
+        Returns
+        -------
+        yshifts : :py:class:`~numpy.ndarray`
+            Shifts parallel to tilt axis for each projection
 
+        Group
+        -----
+        align
+        """
 
-def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
-    """
-    Calculate the center of mass for indicated slices.
+        def align_line(ref_line, line, cl_resolution, cl_div_factor):
+            npad = len(ref_line) * 2 - 1
 
-    Parameters
-    ----------
-    stack
-        Tilt series from which to calculate the centers of mass.
-    slices
-        Location of slices to use for center of mass calculation.
+            # Pad with zeros while preserving the center location
+            ref_line_pad = self._pad_line(ref_line, npad)
+            line_pad = self._pad_line(line, npad)
 
-    Returns
-    -------
-    :py:class:`~numpy.ndarray`
-        Center of mass as a function of tilt for each slice [ntilts, nslices].
-
-    Group
-    -----
-    align
-    """
-    sinos = stack.data[:, :, slices]
-    com_range = int(sinos.shape[1] / 2)
-    y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1], dtype="int")
-    total_mass = sinos.sum(1)
-    coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y_coordinates, 2) / total_mass
-    return coms
-
-
-def apply_shifts(
-    stack: "TomoStack",
-    shifts: Union["TomoShifts", np.ndarray],
-    method: Literal["interp", "fourier"] = "fourier",
-    cuda: bool = False,
-    **kwargs,
-) -> "TomoStack":
-    """
-    Apply a series of shifts to a TomoStack.
-
-    Shifts are applied to the data using either interpolation or Fourier shift methods.
-    These operations are carried out using either CPU or GPU resources depending on the
-    value of `cuda`. If `cuda` is True, the shifts will be applied using
-    GPU-acceleration via CuPy. The shifts are stored in
-    ``shifted.metadata.Tomography.shifts``.
-
-    Parameters
-    ----------
-    stack : :py:class:`~TomoStack`
-        The image series to be aligned
-    shifts : Union[:py:class:`~TomoShifts`, :py:class:`~numpy.ndarray`]
-        The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
-        each image. Should be of size
-        ``(*stack.axes_manager.navigation_shape[::-1], 2)``,
-        with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
-        position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
-    method : :py:class:`~str`
-        Image shifts can be applied using either interpolation via scipy.ndimage.shift
-        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
-        either 'interp' or 'fourier'.
-    cuda : :py:class:`~bool`
-        Enable/disable the use of GPU-accelerated processes using CUDA. If True, shifts
-        will be applied using CuPy. If False, shifts will be applied using NumPy and
-        SciPy.
-
-    Returns
-    -------
-    shifted : TomoStack
-        Copy of input stack after shifts are applied
-
-    Group
-    -----
-    align
-    """
-    shifted = stack.deepcopy()
-    xp = cp if cuda else np
-    fft_module = cp.fft if cuda else fft
-
-    if isinstance(shifts, BaseSignal):
-        shifts = shifts.data
-    shifts = cast("np.ndarray", shifts)
-
-    if len(shifts) != stack.data.shape[0]:
-        msg = (
-            f"Number of shifts ({len(shifts)}) is not consistent "
-            f"with number of images in the stack ({stack.data.shape[0]})"
-        )
-        raise ValueError(msg)
-
-    shifts = xp.array(shifts)
-
-    data = xp.array(shifted.data)
-    if method.lower() == "interp":
-        order = kwargs.pop("order", 3)
-        shift_func = shift_gpu if cuda else ndimage.shift
-        for i in range(data.shape[0]):
-            data[i, :, :] = shift_func(
-                data[i, :, :],
-                shift=[shifts[i, 0], shifts[i, 1]],
-                order=order,
+            niters = int(
+                np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))),
             )
-    elif method.lower() == "fourier":
-        ntilts, ny, nx = data.shape
-        y_pad_min = np.abs(shifts[:, 0]).max() + ny
-        ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
-        y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
+            start, end = -0.5, 0.5
 
-        x_pad_min = np.abs(shifts[:, 1]).max() + nx
-        nx_pad = int(2 ** np.ceil(np.log2(x_pad_min)))
-        x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
+            ref_line_pad_ft = np.fft.fftshift(
+                np.fft.fft(np.fft.ifftshift(ref_line_pad)),
+            )
+            line_pad_ft = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(line_pad)))
 
-        data = xp.pad(
-            data,
-            ((0, 0), y_pad_width, x_pad_width),
-            mode="constant",
-        )
+            midpoint = (npad - 1) / 2
+            kx = np.arange(-midpoint, midpoint + 1)
 
-        _, ny, nx = data.shape
-        data_fft = fft_module.fft2(data, axes=(1, 2))
-        data_fft = cast("Any", data_fft)
+            for _ in range(niters):
+                boundary = np.linspace(start, end, cl_div_factor, endpoint=False)
+                index = (boundary[:-1] + boundary[1:]) / 2
 
-        # Create frequency grids
-        # v is vertical frequencies, u is horizontal
-        v = xp.fft.fftfreq(ny).reshape(1, ny, 1)
-        u = xp.fft.fftfreq(nx).reshape(1, 1, nx)
+                max_vals = np.zeros(len(index))
+                for j, idx in enumerate(index):
+                    pfactor = np.exp(2 * np.pi * 1j * (idx * kx / npad))
+                    conjugate = np.conj(ref_line_pad_ft) * line_pad_ft * pfactor
+                    xcorr = np.abs(
+                        np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))),
+                    )
+                    max_vals[j] = np.max(xcorr)
 
-        # Reshape shifts for broadcasting: (n_images, 1, 1)
-        sy = shifts[:, 0].reshape(ntilts, 1, 1)
-        sx = shifts[:, 1].reshape(ntilts, 1, 1)
+                max_loc = np.argmax(max_vals)
+                start, end = boundary[max_loc], boundary[max_loc + 1]
 
-        # Compute the phase ramp
-        # The formula: exp(-2j * pi * (v * sy + u * sx))
-        phi = -2j * np.pi * (v * sy + u * sx)
-        kernel = xp.exp(phi)
+            subpixel_shift = index[max_loc]
+            max_pfactor = np.exp(2 * np.pi * 1j * (subpixel_shift * kx / npad))
 
-        # Apply shift and Inverse FFT
-        data = xp.fft.ifft2(data_fft * kernel, axes=(1, 2))
-        data = xp.real(data)
-        slices = [
-            slice(0, None),
-        ]
-        for i in [y_pad_width, x_pad_width]:
-            i[1] = None if i[1] == 0 else -i[1]
-            slices.append(slice(i[0], i[1]))
-        data = data[tuple(slices)]
-    else:
-        msg = f"Invalid shift application method {method}."
-        raise ValueError(msg)
+            # Determine integer shift via cross correlation
+            conjugate = np.conj(ref_line_pad_ft) * line_pad_ft * max_pfactor
+            xcorr = np.abs(np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))))
+            max_loc = np.argmax(xcorr)
 
-    shifted.data = cp.asnumpy(data) if cuda else data
-    shifts = cp.asnumpy(shifts) if cuda else shifts
-    shifted.shifts.data = shifted.shifts.data + shifts
-    return shifted
+            integer_shift = max_loc
+            integer_shift = integer_shift - midpoint
 
+            # Calculate full shift
+            shift = integer_shift + subpixel_shift
+            return -shift
 
-def pad_line(line: np.ndarray, paddedsize: int) -> np.ndarray:
-    """
-    Pad a 1D array for FFT treatment without altering center location.
+        if cl_ref_index is None:
+            cl_ref_index = stack.data.shape[0] // 2
 
-    Parameters
-    ----------
-    line
-        The data to be padded (should be 1D)
-    paddedsize
-        The size of the desired padded data.
+        yshifts = np.zeros(stack.data.shape[0])
+        ref_cm_line = stack.data[cl_ref_index].sum(0)
 
-    Returns
-    -------
-    padded : :py:class:`~numpy.ndarray`
-        Padded version of input data (1 dimensional)
+        for i in tqdm.tqdm(range(stack.data.shape[0])):
+            if i == cl_ref_index:
+                continue
+            curr_cm_line = stack.data[i].sum(0)
+            yshifts[i] = align_line(
+                ref_cm_line,
+                curr_cm_line,
+                cl_resolution,
+                cl_div_factor,
+            )
+        return yshifts
 
-    Group
-    -----
-    align
-    """
-    npix = len(line)
-    start_index = (paddedsize - npix) // 2
-    end_index = start_index + npix
-    padded_line = np.zeros(paddedsize)
-    padded_line[start_index:end_index] = line
-    return padded_line
+    def _pad_line(self, line: np.ndarray, paddedsize: int) -> np.ndarray:
+        """
+        Pad a 1D array for FFT treatment without altering center location.
 
+        Parameters
+        ----------
+        line
+            The data to be padded (should be 1D)
+        paddedsize
+            The size of the desired padded data.
 
-def calc_shifts_cl(
-    stack: "TomoStack",
-    cl_ref_index: int | None,
-    cl_resolution: float,
-    cl_div_factor: int,
-) -> np.ndarray:
-    """
-    Calculate shifts using the common line method.
+        Returns
+        -------
+        padded : :py:class:`~numpy.ndarray`
+            Padded version of input data (1 dimensional)
 
-    Used to align stack in dimension parallel to the tilt axis
-
-    Parameters
-    ----------
-    stack
-        The stack on which to calculate shifts
-    cl_ref_index
-        Tilt index of reference projection. If not provided the projection
-        closest to the middle of the stack will be chosen.
-    cl_resolution
-        Degree of sub-pixel analysis
-    cl_div_factor
-        Factor used to determine number of iterations of alignment.
-
-    Returns
-    -------
-    yshifts : :py:class:`~numpy.ndarray`
-        Shifts parallel to tilt axis for each projection
-
-    Group
-    -----
-    align
-    """
-
-    def align_line(ref_line, line, cl_resolution, cl_div_factor):
-        npad = len(ref_line) * 2 - 1
-
-        # Pad with zeros while preserving the center location
-        ref_line_pad = pad_line(ref_line, npad)
-        line_pad = pad_line(line, npad)
-
-        niters = int(np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))))
-        start, end = -0.5, 0.5
-
-        ref_line_pad_ft = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(ref_line_pad)))
-        line_pad_ft = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(line_pad)))
-
-        midpoint = (npad - 1) / 2
-        kx = np.arange(-midpoint, midpoint + 1)
-
-        for _ in range(niters):
-            boundary = np.linspace(start, end, cl_div_factor, endpoint=False)
-            index = (boundary[:-1] + boundary[1:]) / 2
-
-            max_vals = np.zeros(len(index))
-            for j, idx in enumerate(index):
-                pfactor = np.exp(2 * np.pi * 1j * (idx * kx / npad))
-                conjugate = np.conj(ref_line_pad_ft) * line_pad_ft * pfactor
-                xcorr = np.abs(
-                    np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))),
-                )
-                max_vals[j] = np.max(xcorr)
-
-            max_loc = np.argmax(max_vals)
-            start, end = boundary[max_loc], boundary[max_loc + 1]
-
-        subpixel_shift = index[max_loc]
-        max_pfactor = np.exp(2 * np.pi * 1j * (subpixel_shift * kx / npad))
-
-        # Determine integer shift via cross correlation
-        conjugate = np.conj(ref_line_pad_ft) * line_pad_ft * max_pfactor
-        xcorr = np.abs(np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(conjugate))))
-        max_loc = np.argmax(xcorr)
-
-        integer_shift = max_loc
-        integer_shift = integer_shift - midpoint
-
-        # Calculate full shift
-        shift = integer_shift + subpixel_shift
-        return -shift
-
-    if cl_ref_index is None:
-        cl_ref_index = stack.data.shape[0] // 2
-
-    yshifts = np.zeros(stack.data.shape[0])
-    ref_cm_line = stack.data[cl_ref_index].sum(0)
-
-    for i in tqdm.tqdm(range(stack.data.shape[0])):
-        if i == cl_ref_index:
-            continue
-        curr_cm_line = stack.data[i].sum(0)
-        yshifts[i] = align_line(ref_cm_line, curr_cm_line, cl_resolution, cl_div_factor)
-    return yshifts
-
-
-def calculate_shifts_conservation_of_mass(
-    stack: "TomoStack",
-    xrange: tuple[int, int] | None = None,
-    p: int = 20,
-) -> np.ndarray:
-    """
-    Calculate shifts parallel to the tilt axis using conservation of mass.
-
-    Slices which have the highest ratio of total mass to mass variance
-    and their location are returned.
-
-    Parameters
-    ----------
-    stack
-        Tilt series to be aligned.
-    xrange
-        The range for performing alignment
-    p
-        Padding element
-
-    Returns
-    -------
-    xshifts : :py:class:`~numpy.ndarray`
-        Calculated shifts parallel to tilt axis.
-
-    Group
-    -----
-    align
-    """
-    logger.info("Refinining X-shifts using conservation of mass method")
-    ntilts, _, nx = stack.data.shape
-
-    if xrange is None:
-        xrange = (round(nx / 5), round(4 / 5 * nx))
-    else:
-        xrange = (round(xrange[0]) + p, round(xrange[1]) - p)
-
-    xshifts = np.zeros([ntilts, 1])
-    total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
-
-    for i in range(ntilts):
-        total_mass[i, :] = np.sum(
-            stack.data[i, :, xrange[0] - p - 1 : xrange[1] + p],
-            0,
-        )
-
-    mean_mass = np.mean(total_mass[:, p:-p], 0)
-
-    for i in range(ntilts):
-        s = 0
-        for j in range(-p, p):
-            resid = np.linalg.norm(mean_mass - total_mass[i, p + j : -p + j])
-            if resid < s or j == -p:
-                s = resid
-                xshifts[i] = -j
-    return xshifts[:, 0]
+        Group
+        -----
+        align
+        """
+        npix = len(line)
+        start_index = (paddedsize - npix) // 2
+        end_index = start_index + npix
+        padded_line = np.zeros(paddedsize)
+        padded_line[start_index:end_index] = line
+        return padded_line
 
 
 def align_stack(
