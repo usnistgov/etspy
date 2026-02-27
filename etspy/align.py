@@ -334,8 +334,8 @@ class CoMAligner(AlignmentStrategy):
     def calculate_shifts(self, stack: "TomoStack") -> np.ndarray:
         logger.info("Performing stack registration using center of mass method")
         shifts = np.zeros([stack.data.shape[0], 2])
-        # calculate_shifts_conservation_of_mass returns x-shifts (parallel to tilt axis)
-        # calculate_shifts_com returns y-shifts (perpendicular to tilt axis)
+        # _calculate_shifts_conservation_of_mass: x-shifts (parallel to tilt axis)
+        # _calculate_shifts_com: y-shifts (perpendicular to tilt axis)
         shifts[:, 1] = self._calculate_shifts_conservation_of_mass(
             stack,
             self.xrange,
@@ -909,127 +909,10 @@ def calculate_shifts_conservation_of_mass(
     return xshifts[:, 0]
 
 
-def calculate_shifts_com(stack: "TomoStack", nslices: int) -> np.ndarray:
-    """
-    Align stack using a center of mass method.
-
-    Data is first registered using PyStackReg. Then, the shifts
-    perpendicular to the tilt axis are refined by a center of
-    mass analysis.
-
-    Parameters
-    ----------
-    stack
-        The image series to be aligned
-
-    nslices
-        Number of slices to return
-
-    Returns
-    -------
-    shifts : :py:class:`~numpy.ndarray`
-        The X- and Y-shifts to be applied to each image
-
-    Group
-    -----
-    align
-    """
-    logger.info("Refinining Y-shifts using center of mass method")
-    slices = get_best_slices(stack, nslices)
-
-    angles = stack.tilts.data.squeeze()
-    ntilts, _, _ = stack.data.shape
-    thetas = np.pi * cast("np.ndarray", angles) / 180
-
-    coms = get_coms(stack, slices)
-    i_tilts = np.eye(ntilts)
-    gam = np.array([np.cos(thetas), np.sin(thetas)]).T
-    gam = np.dot(gam, np.linalg.pinv(gam)) - i_tilts
-    b = np.dot(gam, coms)
-
-    cx = np.linalg.lstsq(gam, b, rcond=-1)[0]
-
-    yshifts = -cx[:, 0]
-    return yshifts
-
-
-def calc_shifts_com_cl(
-    stack: "TomoStack",
-    com_ref_index: int,
-    cl_ref_index: int | None = None,
-    cl_resolution: float = 0.05,
-    cl_div_factor: int = 8,
-) -> np.ndarray:
-    """
-    Calculate shifts using combined center of mass and common line methods.
-
-    Center of mass aligns stack perpendicular to the tilt axis and
-    common line is used to align the stack parallel to the tilt axis.
-
-    Parameters
-    ----------
-    stack
-        Tilt series to be aligned
-    com_ref_index
-        Reference slice for center of mass alignment.  All other slices
-        will be aligned to this reference.
-    cl_ref_index
-        Reference slice for common line alignment.  All other slices
-        will be aligned to this reference. If not provided the projection
-        closest to the middle of the stack will be chosen.
-    cl_resolution
-        Resolution for subpixel common line alignment. Default is 0.05.
-        Should be less than 0.5.
-    cl_div_factor
-        Factor which determines the number of iterations of common line
-        alignment to perform.  Default is 8.
-
-    Returns
-    -------
-    reg : :py:class:`~numpy.ndarray`
-        The X- and Y-shifts to be applied to each image
-
-    Group
-    -----
-    align
-    """
-
-    def calc_yshifts(stack, com_ref):
-        ntilts = stack.data.shape[0]
-        ali_x = stack.deepcopy()
-        coms = np.zeros(ntilts)
-        yshifts = np.zeros_like(coms)
-
-        for i in tqdm.tqdm(range(ntilts)):
-            im = ali_x.data[i, :, :]
-            coms[i], _ = ndimage.center_of_mass(im)
-            yshifts[i] = com_ref - coms[i]
-        return yshifts
-
-    if cl_resolution >= CL_RES_THRESHOLD:
-        msg = f"Resolution should be less than {CL_RES_THRESHOLD}"
-        raise ValueError(msg)
-
-    logger.info("Center of mass reference slice: %s", com_ref_index)
-    logger.info("Common line reference slice: %s", cl_ref_index)
-    xshifts = np.zeros(stack.data.shape[0])
-    yshifts = np.zeros(stack.data.shape[0])
-    yshifts = calc_yshifts(stack, com_ref_index)
-    xshifts = calc_shifts_cl(stack, cl_ref_index, cl_resolution, cl_div_factor)
-    shifts = np.stack([yshifts, xshifts], axis=1)
-    return shifts
-
-
 def align_stack(
     stack: "TomoStack",
     method: AlignmentMethodType,
     start: int | None,
-    shift_type: Literal["fourier", "interp"] = "fourier",
-    cuda: bool = False,
-    com_ref_index: int | None = None,
-    cl_ref_index: int | None = None,
-    cl_resolution: float = 0.05,
-    cl_div_factor: int = 8,
 ) -> "TomoStack":
     """
     Compute the shifts for spatial registration.
@@ -1138,33 +1021,9 @@ def align_stack(
         )  # Use the slice closest to the midpoint if start is not provided
     start = cast("int", start)  # explicit type cast for type checking
 
-    if method == AlignmentMethod.COM_CL:
-        logger.info(
-            "Performing stack registration using combined "
-            "center of mass and common line methods",
-        )
-        if com_ref_index is None:
-            com_ref_index = stack.data.shape[1] // 2
-        if cl_ref_index is None:
-            cl_ref_index = stack.data.shape[0] // 2
-
-        # explicit type casts for type checking
-        com_ref_index = cast("int", com_ref_index)
-        cl_ref_index = cast("int", cl_ref_index)
-
-        shifts = calc_shifts_com_cl(
-            stack,
-            com_ref_index,
-            cl_ref_index,
-            cl_resolution,
-            cl_div_factor,
-        )
-    else:
-        msg = f"Invalid alignment method {method}"
-        raise ValueError(msg)
-    aligned = apply_shifts(stack, shifts, shift_type, cuda=cuda)
-    logger.info("Stack registration complete")
-    return aligned
+    msg = f"Invalid alignment method {method}"
+    raise ValueError(msg)
+    return
 
 
 def tilt_com(
