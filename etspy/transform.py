@@ -8,6 +8,8 @@ import numpy as np
 from IPython.display import display
 from scipy import ndimage
 
+from etspy.base import TomoStack
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -15,7 +17,13 @@ logger.setLevel(logging.INFO)
 class VolumeRotator:
     """_Class for interactive rotation of a volume."""
 
-    def __init__(self, stack, order=3, slices=None, figsize=(10, 4)):
+    def __init__(
+        self,
+        stack: TomoStack,
+        order: int = 3,
+        slices: list | np.ndarray | None = None,
+        figsize: tuple = (10, 4),
+    ):
         """Initialize the VolumeRotator Class.
 
         Parameters
@@ -28,6 +36,8 @@ class VolumeRotator:
         """
         if slices is None:
             slices = np.array(stack.data.shape) // 2
+        elif type(slices) is list:
+            slices = np.array(slices)
         self.order = order
         self.xslice = stack.data[slices[0], :, :]
         self.zslice = stack.data[:, slices[1], :].T
