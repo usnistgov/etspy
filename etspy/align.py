@@ -313,7 +313,7 @@ class PhaseCorrelationAligner(StackAligner):
     def __init__(
         self,
         stack: "TomoStack",
-        start: int = 0,
+        start: int | None = 0,
         use_cuda: bool = False,
         show_progressbar: bool = True,
         **kwargs,
@@ -549,7 +549,7 @@ class StackRegAligner(StackAligner):
     def __init__(
         self,
         stack: "TomoStack",
-        start: int = 0,
+        start: int | None = 0,
         use_cuda: bool = False,
         show_progressbar: bool = True,
         **kwargs,
@@ -644,7 +644,7 @@ class CoMAligner(StackAligner):
     def __init__(
         self,
         stack: "TomoStack",
-        start: int = 0,
+        start: int | None = 0,
         use_cuda: bool = False,
         show_progressbar: bool = True,
         **kwargs,
@@ -809,7 +809,7 @@ class CommonLineAligner(StackAligner):
     def __init__(
         self,
         stack: "TomoStack",
-        start: int = 0,
+        start: int | None = 0,
         use_cuda: bool = False,
         show_progressbar: bool = True,
         **kwargs,

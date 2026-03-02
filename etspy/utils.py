@@ -60,75 +60,74 @@ def multiaverage(stack: np.ndarray, nframes: int, ny: int, nx: int) -> np.ndarra
     return average
 
 
-# def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
-#     """
-#     Register a multi-frame series collected by SerialEM.
+# TODO: Create Multistack class to handle edge case of multi-frame stacks
+def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
+    """
+    Register a multi-frame series collected by SerialEM.
 
-#     Parameters
-#     ----------
-#     stack
-#         Signal of shape [ntilts, nframes, ny, nx].
+    Parameters
+    ----------
+    stack
+        Signal of shape [ntilts, nframes, ny, nx].
 
-#     Returns
-#     -------
-#     reg : TomoStack
-#         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
+    Returns
+    -------
+    reg : TomoStack
+        Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
 
-#     Group
-#     -----
-#     utilities
-#     """
-#     align_logger = logging.getLogger("etspy.align")
-#     log_level = align_logger.getEffectiveLevel()
-#     align_logger.setLevel(logging.ERROR)
-#     ntilts, nframes, ny, nx = stack.data.shape
+    Group
+    -----
+    utilities
+    """
+    align_logger = logging.getLogger("etspy.align")
+    log_level = align_logger.getEffectiveLevel()
+    align_logger.setLevel(logging.ERROR)
+    ntilts, nframes, ny, nx = stack.data.shape
 
-#     if ncpus == 1:
-#         reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
-#         for i in tqdm.tqdm(range(ntilts)):
-#             shifted = np.zeros([nframes, ny, nx])
-#             shifts = calculate_shifts_stackreg(
-#                 stack.inav[:, i],
-#                 start=None,
-#                 show_progressbar=False,
-#             )
-#             for k in range(nframes):
-#                 shifted[k, :, :] = ndimage.shift(
-#                     stack.data[i, k, :, :],
-#                     shift=[shifts[k, 0], shifts[k, 1]],
-#                 )
-#             reg[i, :, :] = shifted.mean(0)
-#     else:
-#         with Pool(ncpus) as pool:
-#             reg = pool.starmap(
-#                 multiaverage,
-#                 [(stack.inav[:, i].data, nframes, ny, nx) for i in range(ntilts)],
-#             )
-#         reg = np.array(reg)
+    if ncpus == 1:
+        reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
+        sr = StackReg(StackReg.TRANSLATION)
+        for i in tqdm.tqdm(range(ntilts)):
+            shifts = sr.register_stack(stack.data[i], reference="previous")
+            shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
+            shifted = np.zeros([nframes, ny, nx])
+            for k in range(nframes):
+                shifted[k, :, :] = ndimage.shift(
+                    stack.data[i, k, :, :],
+                    shift=[shifts[k, 0], shifts[k, 1]],
+                )
+            reg[i, :, :] = shifted.mean(0)
+    else:
+        with Pool(ncpus) as pool:
+            reg = pool.starmap(
+                multiaverage,
+                [(stack.inav[:, i].data, nframes, ny, nx) for i in range(ntilts)],
+            )
+        reg = np.array(reg)
 
-#     reg = TomoStack(reg)
-#     reg_ax_0, reg_ax_1, reg_ax_2 = (cast("Uda", reg.axes_manager[i]) for i in range(3))
-#     stack_ax_1, stack_ax_2, stack_ax_3 = (
-#         cast("Uda", stack.axes_manager[i]) for i in range(1, 4)
-#     )
-#     reg_ax_0.scale = stack_ax_1.scale
-#     reg_ax_0.offset = stack_ax_1.offset
-#     reg_ax_0.units = stack_ax_1.units
+    reg = TomoStack(reg)
+    reg_ax_0, reg_ax_1, reg_ax_2 = (cast("Uda", reg.axes_manager[i]) for i in range(3))
+    stack_ax_1, stack_ax_2, stack_ax_3 = (
+        cast("Uda", stack.axes_manager[i]) for i in range(1, 4)
+    )
+    reg_ax_0.scale = stack_ax_1.scale
+    reg_ax_0.offset = stack_ax_1.offset
+    reg_ax_0.units = stack_ax_1.units
 
-#     reg_ax_1.scale = stack_ax_2.scale
-#     reg_ax_1.offset = stack_ax_2.offset
-#     reg_ax_1.units = stack_ax_2.units
+    reg_ax_1.scale = stack_ax_2.scale
+    reg_ax_1.offset = stack_ax_2.offset
+    reg_ax_1.units = stack_ax_2.units
 
-#     reg_ax_2.scale = stack_ax_3.scale
-#     reg_ax_2.offset = stack_ax_3.offset
-#     reg_ax_2.units = stack_ax_3.units
+    reg_ax_2.scale = stack_ax_3.scale
+    reg_ax_2.offset = stack_ax_3.offset
+    reg_ax_2.units = stack_ax_3.units
 
-#     if stack.metadata.has_item("Acquisition_instrument"):
-#         reg.metadata.Acquisition_instrument = stack.metadata.Acquisition_instrument
-#     if stack.metadata.has_item("Tomography"):
-#         reg.metadata.Tomography = stack.metadata.Tomography
-#     align_logger.setLevel(log_level)
-#     return reg
+    if stack.metadata.has_item("Acquisition_instrument"):
+        reg.metadata.Acquisition_instrument = stack.metadata.Acquisition_instrument
+    if stack.metadata.has_item("Tomography"):
+        reg.metadata.Tomography = stack.metadata.Tomography
+    align_logger.setLevel(log_level)
+    return reg
 
 
 def weight_stack(
