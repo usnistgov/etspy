@@ -1320,7 +1320,7 @@ class TomoStack(CommonStack):
             )
         return filtered
 
-    def stack_register(  # noqa: PLR0913
+    def stack_register(
         self,
         method: AlignmentMethodType = AlignmentMethod.PC,
         start: int | None = None,
@@ -1357,7 +1357,8 @@ class TomoStack(CommonStack):
             scipy.ndimage.shift or via Fourier shift as implemented in
             scipy.ndimage.fourier_shift.  Must be either 'interp' or 'fourier'.
         **kwargs:
-            Remaining keyword arguments are passed to the underlying alignment functions.
+            Remaining keyword arguments are passed to the underlying alignment
+            functions.
 
         Keyword arguments that may be used include:
             xrange
@@ -1366,8 +1367,8 @@ class TomoStack(CommonStack):
                 :py:func:`~etspy.align.calculate_shifts_com` for more details.
             p
                 (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
-                Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more
-                details.
+                Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for
+                more details.
             nslices
                 (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
                 Number of slices to return. See
@@ -1376,8 +1377,8 @@ class TomoStack(CommonStack):
                 (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
                 Reference slice for center of mass alignment.  All other slices
                 will be aligned to this reference.  If not provided, the midpoint
-                of the stack will be chosen. See :py:func:`~etspy.align.calc_shifts_com_cl`
-                for more details.
+                of the stack will be chosen.
+                See :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
             cl_ref_index
                 (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
                 Reference slice for common line alignment.  All other slices

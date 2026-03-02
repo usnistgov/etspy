@@ -22,7 +22,7 @@ class VolumeRotator:
         stack: TomoStack,
         order: int = 3,
         slices: list | np.ndarray | None = None,
-        figsize: tuple = (10, 4),
+        figsize: tuple | None = (10, 4),
     ):
         """Initialize the VolumeRotator Class.
 
