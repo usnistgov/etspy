@@ -1432,9 +1432,9 @@ class TomoStack(CommonStack):
         if AlignmentMethod.is_valid_value(method):
             aligner = aligners[method](
                 self,
-                start,
-                show_progressbar,
-                cuda,
+                start=start,
+                show_progressbar=show_progressbar,
+                cuda=cuda,
                 **kwargs,
             )
             out = aligner.align(shift_type)
