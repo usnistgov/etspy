@@ -1,6 +1,7 @@
 """Tranformation module for ETSpy package."""
 
 import logging
+from typing import TYPE_CHECKING
 
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
@@ -8,7 +9,8 @@ import numpy as np
 from IPython.display import display
 from scipy import ndimage
 
-from etspy.base import TomoStack
+if TYPE_CHECKING:
+    from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -19,7 +21,7 @@ class VolumeRotator:
 
     def __init__(
         self,
-        stack: TomoStack,
+        stack: "TomoStack",
         order: int = 3,
         slices: list | np.ndarray | None = None,
         figsize: tuple | None = (10, 4),
