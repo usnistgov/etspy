@@ -323,6 +323,7 @@ class PhaseCorrelationAligner(StackAligner):
             start=start,
             use_cuda=use_cuda,
             show_progressbar=show_progressbar,
+            **kwargs,
         )
         self.upsample_factor = kwargs.get("upsample_factor", 3)
 
@@ -549,13 +550,16 @@ class StackRegAligner(StackAligner):
         self,
         stack: "TomoStack",
         start: int = 0,
+        use_cuda: bool = False,
         show_progressbar: bool = True,
+        **kwargs,
     ):
         super().__init__(
             stack=stack,
             start=start,
-            use_cuda=False,
+            use_cuda=use_cuda,
             show_progressbar=show_progressbar,
+            **kwargs,
         )
 
     def calculate_shifts(self) -> np.ndarray:
@@ -641,14 +645,16 @@ class CoMAligner(StackAligner):
         self,
         stack: "TomoStack",
         start: int = 0,
+        use_cuda: bool = False,
         show_progressbar: bool = True,
         **kwargs,
     ):
         super().__init__(
             stack=stack,
             start=start,
-            use_cuda=False,
+            use_cuda=use_cuda,
             show_progressbar=show_progressbar,
+            **kwargs,
         )
         self.start = start
         self.show_progressbar = show_progressbar
@@ -804,14 +810,16 @@ class CommonLineAligner(StackAligner):
         self,
         stack: "TomoStack",
         start: int = 0,
+        use_cuda: bool = False,
         show_progressbar: bool = True,
         **kwargs,
     ):
         super().__init__(
             stack=stack,
             start=start,
-            use_cuda=False,
+            use_cuda=use_cuda,
             show_progressbar=show_progressbar,
+            **kwargs,
         )
         self.com_ref_index = kwargs.get("com_ref_index")
         self.cl_ref_index = kwargs.get("cl_ref_index")
