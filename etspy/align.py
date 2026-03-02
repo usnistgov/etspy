@@ -866,7 +866,7 @@ class CommonLineAligner(StackAligner):
         xshifts = np.zeros(self.stack.data.shape[0])
         yshifts = np.zeros(self.stack.data.shape[0])
         yshifts = self._calc_yshifts(self.com_ref_index)
-        xshifts = self._calc_shifts_cl(
+        xshifts = self.calc_shifts_cl(
             self.cl_ref_index,
             self.cl_resolution,
             self.cl_div_factor,
@@ -875,6 +875,7 @@ class CommonLineAligner(StackAligner):
         return shifts
 
     def _calc_yshifts(self, com_ref):
+        """Calculate using center of mass tracking."""
         ntilts = self.stack.data.shape[0]
         coms = np.zeros(ntilts)
         yshifts = np.zeros_like(coms)
@@ -885,7 +886,7 @@ class CommonLineAligner(StackAligner):
             yshifts[i] = com_ref - coms[i]
         return yshifts
 
-    def _calc_shifts_cl(
+    def calc_shifts_cl(
         self,
         cl_ref_index: int | None,
         cl_resolution: float,
@@ -922,8 +923,8 @@ class CommonLineAligner(StackAligner):
             npad = len(ref_line) * 2 - 1
 
             # Pad with zeros while preserving the center location
-            ref_line_pad = self._pad_line(ref_line, npad)
-            line_pad = self._pad_line(line, npad)
+            ref_line_pad = self.pad_line(ref_line, npad)
+            line_pad = self.pad_line(line, npad)
 
             niters = int(
                 np.abs(np.floor(np.log(cl_resolution) / np.log(cl_div_factor))),
@@ -987,7 +988,7 @@ class CommonLineAligner(StackAligner):
             )
         return yshifts
 
-    def _pad_line(self, line: np.ndarray, paddedsize: int) -> np.ndarray:
+    def pad_line(self, line: np.ndarray, paddedsize: int) -> np.ndarray:
         """
         Pad a 1D array for FFT treatment without altering center location.
 

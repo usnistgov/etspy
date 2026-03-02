@@ -70,33 +70,33 @@ class TestAlignFunctions:
         claligner = etspy.align.CommonLineAligner(short_stack)
         line = np.zeros(100)
         padding = 200
-        padded = claligner._pad_line(line, padding)
+        padded = claligner.pad_line(line, padding)
         assert padded.shape[0] == padding
 
     def test_pad_line_uneven_line(self, short_stack):
         claligner = etspy.align.CommonLineAligner(short_stack)
         line = np.zeros(101)
         padding = 200
-        padded = claligner._pad_line(line, padding)
+        padded = claligner.pad_line(line, padding)
         assert padded.shape[0] == padding
 
     def test_pad_line_uneven_padded(self, short_stack):
         claligner = etspy.align.CommonLineAligner(short_stack)
         line = np.zeros(100)
         padding = 201
-        padded = claligner._pad_line(line, padding)
+        padded = claligner.pad_line(line, padding)
         assert padded.shape[0] == padding
 
     def test_pad_line_uneven_both(self, short_stack):
         claligner = etspy.align.CommonLineAligner(short_stack)
         line = np.zeros(101)
         padding = 201
-        padded = claligner._pad_line(line, padding)
+        padded = claligner.pad_line(line, padding)
         assert padded.shape[0] == padding
 
     def test_calc_shifts_cl_no_index(self, full_stack):
         claligner = etspy.align.CommonLineAligner(full_stack)
-        shifts = claligner._calc_shifts_cl(None, 0.05, 8)
+        shifts = claligner.calc_shifts_cl(None, 0.05, 8)
         assert isinstance(shifts, np.ndarray)
         assert shifts.shape == (77,)
 
@@ -168,9 +168,9 @@ class TestCUDAAlignFunctions:
 
     def test_cuda_cpu_consistency(self, short_stack):
         reg_cuda = short_stack.stack_register("PC", cuda=True)
-        shifts_cuda = reg_cuda._shifts.data
+        shifts_cuda = reg_cuda.shifts.data
         reg_cpu = short_stack.stack_register("PC", cuda=False)
-        shifts_cpu = reg_cpu._shifts.data
+        shifts_cpu = reg_cpu.shifts.data
         assert np.abs(shifts_cuda[0:5] - shifts_cpu[0:5]).sum() < 1.0
 
 
@@ -255,7 +255,8 @@ class TestTiltAlign:
         # also_shift should result in a yshift for the aligned stack
         assert aligned_full_stack.metadata.get_item("Tomography.yshift") == 0
         assert ali.metadata.get_item("Tomography.yshift") == pytest.approx(
-            2.0, rel=1e-1
+            2.0,
+            rel=1e-1,
         )
 
     def test_tilt_align_unknown_method(self, full_stack):
