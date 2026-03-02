@@ -1016,20 +1016,27 @@ class CommonLineAligner(StackAligner):
         return padded_line
 
 
-def tilt_com(
-    stack: "TomoStack",
-    slices: np.ndarray | None = None,
-    nslices: int | None = None,
-) -> "TomoStack":
-    """
+class TiltAligner(ABC):
+    """Abstract class for performing tilt axis alignment."""
+
+    def __init__(self, stack, **kwargs):
+        self.stack = stack
+        self.kwargs = kwargs
+
+    @abstractmethod
+    def align_tilt_axis(self) -> "TomoStack":
+        """Align the tilt axis using the selected strategy."""
+
+
+class TiltCOMAligner(TiltAligner):
+    """Tilt alignment class for center of mass method.
+
     Perform tilt axis alignment using center of mass (CoM) tracking.
 
     Compares path of specimen to the path expected for an ideal cylinder
 
     Parameters
     ----------
-    stack
-        TomoStack containing the tilt series data
     slices
         Locations at which to perform the Center of Mass analysis. If not
         provided, an appropriate list of slices will be automatically determined.
@@ -1049,84 +1056,105 @@ def tilt_com(
     align
     """
 
-    def com_motion(theta, r, x0, z0):
-        return r - x0 * np.cos(theta) - z0 * np.sin(theta)
+    def __init__(self, stack, **kwargs):
+        super().__init__(stack, **kwargs)
+        self.slices = kwargs.get("slices")
+        self.nslices = kwargs.get("nslices")
 
-    def fit_line(x, m, b):
-        return m * x + b
+    def align_tilt_axis(self) -> "TomoStack":
+        """Align tilt axis with center of mass tracking."""
 
-    _, ny, nx = stack.data.shape
-    nx_threshold = 3
+        def com_motion(theta, r, x0, z0):
+            return r - x0 * np.cos(theta) - z0 * np.sin(theta)
 
-    if np.all(stack.tilts.data == 0):
-        msg = (
-            "Tilts are not defined in stack.tilts (values were all zeros). "
-            "Please set tilt values before alignment."
+        def fit_line(x, m, b):
+            return m * x + b
+
+        _, ny, nx = self.stack.data.shape
+        nx_threshold = 3
+
+        if np.all(self.stack.tilts.data == 0):
+            msg = (
+                "Tilts are not defined in stack.tilts (values were all zeros). "
+                "Please set tilt values before alignment."
+            )
+            raise ValueError(msg)
+
+        if nx < nx_threshold:
+            msg = (
+                f"Dataset is only {self.stack.data.shape[2]} pixels in x dimension. "
+                "This method cannot be used."
+            )
+            raise ValueError(msg)
+
+        # Determine the best slice locations for the analysis
+        if self.slices is None:
+            if self.nslices is None:
+                self.nslices = int(0.1 * nx)
+                self.nslices = max(min(self.nslices, 50), 3)  # clamp nslices to [3, 50]
+            else:
+                if self.nslices > nx:
+                    msg = "nslices is greater than the X-dimension of the data."
+                    raise ValueError(msg)
+                if self.nslices > 0.3 * nx:
+                    self.nslices = int(0.3 * nx)
+                    msg = (
+                        "nslices is greater than 30% of number of x pixels. "
+                        f"Using {self.nslices} slices instead."
+                    )
+                    logger.warning(msg)
+
+            self.slices = get_best_slices(self.stack, self.nslices)
+            logger.info("Performing alignments using best %s slices", self.nslices)
+
+        self.slices = np.sort(self.slices)
+
+        coms = get_coms(self.stack, self.slices)
+        thetas = (
+            np.pi * self.stack.tilts.data.squeeze() / 180.0
+        )  # remove length 1 dimension
+
+        r, x0, z0 = (
+            np.zeros(len(self.slices)),
+            np.zeros(len(self.slices)),
+            np.zeros(
+                len(self.slices),
+            ),
         )
-        raise ValueError(msg)
 
-    if nx < nx_threshold:
-        msg = (
-            f"Dataset is only {stack.data.shape[2]} pixels in x dimension. "
-            "This method cannot be used."
-        )
-        raise ValueError(msg)
-
-    # Determine the best slice locations for the analysis
-    if slices is None:
-        if nslices is None:
-            nslices = int(0.1 * nx)
-            nslices = max(min(nslices, 50), 3)  # clamp nslices to [3, 50]
-        else:
-            if nslices > nx:
-                msg = "nslices is greater than the X-dimension of the data."
-                raise ValueError(msg)
-            if nslices > 0.3 * nx:
-                nslices = int(0.3 * nx)
-                msg = (
-                    "nslices is greater than 30% of number of x pixels. "
-                    f"Using {nslices} slices instead."
-                )
-                logger.warning(msg)
-
-        slices = get_best_slices(stack, nslices)
-        logger.info("Performing alignments using best %s slices", nslices)
-
-    slices = np.sort(slices)
-
-    coms = get_coms(stack, slices)
-    thetas = np.pi * stack.tilts.data.squeeze() / 180.0  # remove length 1 dimension
-
-    r, x0, z0 = np.zeros(len(slices)), np.zeros(len(slices)), np.zeros(len(slices))
-
-    for idx, _ in enumerate(slices):
-        r[idx], x0[idx], z0[idx] = optimize.curve_fit(
-            com_motion,
-            xdata=thetas,
-            ydata=coms[:, idx],
-            p0=[0, 0, 0],
+        for idx, _ in enumerate(self.slices):
+            r[idx], x0[idx], z0[idx] = optimize.curve_fit(
+                com_motion,
+                xdata=thetas,
+                ydata=coms[:, idx],
+                p0=[0, 0, 0],
+            )[0]
+        slope, intercept = optimize.curve_fit(
+            fit_line,
+            xdata=r,
+            ydata=self.slices,
+            p0=[0, 0],
         )[0]
-    slope, intercept = optimize.curve_fit(fit_line, xdata=r, ydata=slices, p0=[0, 0])[0]
-    tilt_shift = (ny / 2 - intercept) / slope
-    tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
+        tilt_shift = (ny / 2 - intercept) / slope
+        tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
 
-    final = cast("TomoStack", stack.trans_stack(yshift=tilt_shift, angle=tilt_rotation))
+        final = cast(
+            "TomoStack",
+            self.stack.trans_stack(
+                yshift=tilt_shift,
+                angle=tilt_rotation,
+            ),
+        )
 
-    logger.info("Calculated tilt-axis shift %.2f", tilt_shift)
-    logger.info("Calculated tilt-axis rotation %.2f", tilt_rotation)
+        logger.info("Calculated tilt-axis shift %.2f", tilt_shift)
+        logger.info("Calculated tilt-axis rotation %.2f", tilt_rotation)
 
-    return final
+        return final
 
 
-def tilt_maximage(
-    stack: "TomoStack",
-    limit: float = 10,
-    delta: float = 0.1,
-    plot_results: bool = False,
-    also_shift: bool = False,
-    shift_limit: float = 20,
-) -> "TomoStack":
-    """
+class TiltMaxImageAligner(TiltAligner):
+    """Tilt alignment class for maximum image method.
+
     Perform automated determination of the tilt axis of a TomoStack.
 
     The projected maximum image used to determine the tilt axis by a
@@ -1158,59 +1186,70 @@ def tilt_maximage(
     -----
     align
     """
-    image = stack.data.max(0)
-    image = image.astype("float32")
-    edges = sobel(image)
 
-    # Apply Canny edge detector for further edge enhancement
-    edges = canny(edges)
+    def __init__(self, stack, **kwargs):
+        super().__init__(stack, **kwargs)
+        self.limit = kwargs.get("limit", 10)
+        self.delta = kwargs.get("delta", 0.1)
+        self.plot_results = kwargs.get("plot_results", False)
+        self.also_shift = kwargs.get("also_shift", False)
+        self.shift_limit = kwargs.get("shift_limit", 20.0)
 
-    # Perform Hough transform to detect lines
-    angles = np.pi * np.arange(-limit, limit, delta) / 180.0
-    h, theta, d = hough_line(edges, angles)
+    def align_tilt_axis(self) -> "TomoStack":
+        """Align tilt axis with center of mass tracking."""
+        image = self.stack.data.max(0)
+        image = image.astype("float32")
+        edges = sobel(image)
 
-    # Find peaks in Hough space
-    _, angles, dists = hough_line_peaks(h, theta, d, num_peaks=5)
+        # Apply Canny edge detector for further edge enhancement
+        edges = canny(edges)
 
-    # Calculate average angle from detected lines
-    rotation_angle = np.degrees(np.mean(angles))
+        # Perform Hough transform to detect lines
+        angles = np.pi * np.arange(-self.limit, self.limit, self.delta) / 180.0
+        h, theta, d = hough_line(edges, angles)
 
-    if plot_results:
-        _, ax = plt.subplots(1)
-        ax.imshow(image, cmap="gray")
+        # Find peaks in Hough space
+        _, angles, dists = hough_line_peaks(h, theta, d, num_peaks=5)
 
-        for i in range(len(angles)):
-            (x0, y0) = dists[i] * np.array([np.cos(angles[i]), np.sin(angles[i])])
-            ax.axline((x0, y0), slope=np.tan(angles[i] + np.pi / 2))
+        # Calculate average angle from detected lines
+        rotation_angle = np.degrees(np.mean(angles))
 
-        plt.tight_layout()
+        if self.plot_results:
+            _, ax = plt.subplots(1)
+            ax.imshow(image, cmap="gray")
 
-    ali = cast("TomoStack", stack.trans_stack(angle=-rotation_angle))
-    tomo_meta = cast("Dtb", ali.metadata.Tomography)
-    tomo_meta.tiltaxis = -rotation_angle
+            for i in range(len(angles)):
+                (x0, y0) = dists[i] * np.array([np.cos(angles[i]), np.sin(angles[i])])
+                ax.axline((x0, y0), slope=np.tan(angles[i] + np.pi / 2))
 
-    logger.info("Calculated tilt-axis rotation %.2f", -rotation_angle)
+            plt.tight_layout()
 
-    if also_shift:
-        idx = ali.data.shape[2] // 2
-        shifts = np.arange(-shift_limit, shift_limit, 1)
-        nshifts = shifts.shape[0]
-        shifted = ali.isig[0:nshifts, :].deepcopy()
-        for i in range(nshifts):
-            shifted.data[:, :, i] = np.roll(
-                ali.isig[idx : idx + 1, :].data.squeeze(),
-                int(shifts[i]),
-            )
-        shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
-        image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2)))
-        tilt_shift = shifts[image_sum.data.argmin()]
-        tilt_shift = cast("float", tilt_shift)
-        ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
-        tomo_meta.yshift = -tilt_shift
+        ali = cast("TomoStack", self.stack.trans_stack(angle=-rotation_angle))
+        tomo_meta = cast("Dtb", ali.metadata.Tomography)
+        tomo_meta.tiltaxis = -rotation_angle
 
-        logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
+        logger.info("Calculated tilt-axis rotation %.2f", -rotation_angle)
 
-    return ali
+        if self.also_shift:
+            idx = ali.data.shape[2] // 2
+            shifts = np.arange(-self.shift_limit, self.shift_limit, 1)
+            nshifts = shifts.shape[0]
+            shifted = ali.isig[0:nshifts, :].deepcopy()
+            for i in range(nshifts):
+                shifted.data[:, :, i] = np.roll(
+                    ali.isig[idx : idx + 1, :].data.squeeze(),
+                    int(shifts[i]),
+                )
+            shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
+            image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2)))
+            tilt_shift = shifts[image_sum.data.argmin()]
+            tilt_shift = cast("float", tilt_shift)
+            ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
+            tomo_meta.yshift = -tilt_shift
+
+            logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
+
+        return ali
 
 
 def align_to_other(
