@@ -232,6 +232,7 @@ class StackAligner(ABC):
         start: int | None = None,
         use_cuda: bool | None = False,
         show_progressbar: bool = False,
+        **kwargs,
     ):
         use_cuda = cast("bool", use_cuda)
         self.stack = stack
@@ -242,6 +243,7 @@ class StackAligner(ABC):
         self.start = start
         self.use_cuda = use_cuda
         self.show_progressbar = show_progressbar
+        self.kwargs = kwargs
 
     def align(
         self,
@@ -312,9 +314,9 @@ class PhaseCorrelationAligner(StackAligner):
         self,
         stack: "TomoStack",
         start: int = 0,
-        upsample_factor: int = 3,
         use_cuda: bool = False,
         show_progressbar: bool = True,
+        **kwargs,
     ):
         super().__init__(
             stack=stack,
@@ -322,7 +324,7 @@ class PhaseCorrelationAligner(StackAligner):
             use_cuda=use_cuda,
             show_progressbar=show_progressbar,
         )
-        self.upsample_factor = upsample_factor
+        self.upsample_factor = kwargs.get("upsample_factor", 3)
 
     def calculate_shifts(self) -> np.ndarray:
         """
@@ -640,9 +642,7 @@ class CoMAligner(StackAligner):
         stack: "TomoStack",
         start: int = 0,
         show_progressbar: bool = True,
-        xrange: tuple[int, int] | None = None,
-        p: int = 20,
-        nslices: int = 20,
+        **kwargs,
     ):
         super().__init__(
             stack=stack,
@@ -652,9 +652,9 @@ class CoMAligner(StackAligner):
         )
         self.start = start
         self.show_progressbar = show_progressbar
-        self.xrange = xrange
-        self.p = p
-        self.nslices = nslices
+        self.xrange = kwargs.get("xrange")
+        self.p = kwargs.get("p", 20)
+        self.nslices = kwargs.get("nslices", 20)
 
     def calculate_shifts(self) -> np.ndarray:
         """Calculate shifts using center of mass tracking method."""
@@ -805,10 +805,7 @@ class CommonLineAligner(StackAligner):
         stack: "TomoStack",
         start: int = 0,
         show_progressbar: bool = True,
-        com_ref_index: int | None = None,
-        cl_ref_index: int | None = None,
-        cl_resolution: float = 0.05,
-        cl_div_factor: int = 8,
+        **kwargs,
     ):
         super().__init__(
             stack=stack,
@@ -816,10 +813,10 @@ class CommonLineAligner(StackAligner):
             use_cuda=False,
             show_progressbar=show_progressbar,
         )
-        self.com_ref_index = com_ref_index
-        self.cl_ref_index = cl_ref_index
-        self.cl_resolution = cl_resolution
-        self.cl_div_factor = cl_div_factor
+        self.com_ref_index = kwargs.get("com_ref_index")
+        self.cl_ref_index = kwargs.get("cl_ref_index")
+        self.cl_resolution = kwargs.get("cl_resolution", 0.05)
+        self.cl_div_factor = kwargs.get("cl_div_factor", 8)
 
     def calculate_shifts(self) -> np.ndarray:
         """Calculate shifts using combined center of mass and common line methods."""
