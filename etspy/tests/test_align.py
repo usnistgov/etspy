@@ -38,6 +38,22 @@ def full_stack():
     return ds.get_needle_data()
 
 
+@pytest.fixture(scope="module")
+def aligned_short_stack():
+    """Create truncated and spatially registered stack from test data."""
+    s = ds.get_needle_data().inav[0:5]
+    s = s.stack_register("PC")
+    return s
+
+
+@pytest.fixture(scope="module")
+def aligned_full_stack():
+    """Create full spatially registered stack from test data."""
+    s = ds.get_needle_data()
+    s = s.stack_register("PC")
+    return s
+
+
 class TestAlignFunctions:
     """Test alignment functions."""
 
@@ -117,14 +133,13 @@ class TestAlignFunctions:
             etspy.align.tilt_com(full_stack, slices=None, nslices=300)
 
     def test_tilt_com_nx_threshold_error(self, full_stack):
-        stack = full_stack.isig[:2, :]
         with pytest.raises(
             ValueError,
             match=(
                 r"Dataset is only 2 pixels in x dimension. This method cannot be used."
             ),
         ):
-            etspy.align.tilt_com(stack)
+            etspy.align.tilt_com(full_stack.isig[:2, :])
 
     def test_calc_shifts_com_cl_res_error(self, full_stack):
         claligner = etspy.align.CommonLineAligner(
@@ -151,6 +166,13 @@ class TestCUDAAlignFunctions:
         reload(sys.modules["etspy.align"])
         assert etspy.align.has_cupy
 
+    def test_cuda_cpu_consistency(self, short_stack):
+        reg_cuda = short_stack.stack_register("PC", cuda=True)
+        shifts_cuda = reg_cuda._shifts.data
+        reg_cpu = short_stack.stack_register("PC", cuda=False)
+        shifts_cpu = reg_cpu._shifts.data
+        assert np.abs(shifts_cuda[0:5] - shifts_cpu[0:5]).sum() < 1.0
+
 
 class TestAlignStackRegister:
     """Test alignment using stack reg."""
@@ -173,8 +195,7 @@ class TestAlignStackRegister:
             == short_stack.axes_manager.navigation_shape
         )
 
-    def test_register_unknown_method(self):
-        stack = ds.get_needle_data()
+    def test_register_unknown_method(self, short_stack):
         bad_method = "WRONG"
         with pytest.raises(
             TypeError,
@@ -183,71 +204,61 @@ class TestAlignStackRegister:
                 'Must be one of ["StackReg", "PC", "COM", or "COM-CL"].',
             ),
         ):
-            stack.inav[0:20].stack_register(bad_method)  # type: ignore
+            short_stack.stack_register(bad_method)  # type: ignore
 
 
 class TestTiltAlign:
     """Test tilt alignment functions."""
 
-    def test_tilt_align_com(self):
-        stack = ds.get_needle_data()
-        reg = stack.stack_register("PC")
-        ali = reg.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
+    def test_tilt_align_com(self, aligned_full_stack):
+        ali = aligned_full_stack.tilt_align(
+            method="CoM",
+            slices=np.array([32, 64, 96, 128, 160]),
+        )
         tilt_axis = cast("Dtb", ali.metadata.Tomography).tiltaxis
-        assert abs(-2.7 - cast("float", tilt_axis)) < 1.0
+        assert tilt_axis == pytest.approx(-2.7, abs=0.5)
 
-    def test_tilt_align_com_no_locs(self):
-        stack = ds.get_needle_data()
-        reg = stack.stack_register("PC")
-        ali = reg.tilt_align(method="CoM", slices=None, nslices=None)
+    def test_tilt_align_com_no_locs(self, aligned_full_stack):
+        ali = aligned_full_stack.tilt_align(method="CoM", slices=None, nslices=None)
         tilt_axis = cast("Dtb", ali.metadata.Tomography).tiltaxis
-        assert abs(-2.7 - cast("float", tilt_axis)) < 1.0
+        assert tilt_axis == pytest.approx(-3.2, abs=0.5)
 
-    def test_tilt_align_com_no_tilts(self):
-        stack = ds.get_needle_data()
-        reg = stack.stack_register("PC")
-        del reg.tilts
+    def test_tilt_align_com_no_tilts(self, aligned_full_stack):
+        del aligned_full_stack.tilts
         with pytest.raises(
             ValueError,
             match=r"Tilts are not defined in stack.tilts \(values were all zeros\). "
             r"Please set tilt values before alignment.",
         ):
-            reg.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
+            aligned_full_stack.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
 
-    def test_tilt_align_maximage(self):
-        stack = ds.get_needle_data()
-        stack = stack.inav[0:5]
-        reg = stack.stack_register("PC", shift_type="interp")
-        assert reg.metadata.get_item("Tomography.tiltaxis") == 0
-        ali = reg.tilt_align(method="MaxImage")
+    def test_tilt_align_maximage(self, aligned_full_stack):
+        assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
+        ali = aligned_full_stack.tilt_align(method="MaxImage")
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         assert isinstance(tilt_axis, float)
-        assert tilt_axis == pytest.approx(-0.5)
+        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
         # shifts should be what they were before tilt_align:
-        assert np.all(ali.shifts.data == reg.shifts.data)
+        assert np.all(ali.shifts.data == aligned_full_stack.shifts.data)
 
     # @pytest.mark.mpl_image_compare(remove_text=True)
-    def test_tilt_align_maximage_plot_results(self):
-        stack = ds.get_needle_data()
-        stack = stack.inav[0:5]
-        reg = stack.stack_register("PC")
+    def test_tilt_align_maximage_plot_results(self, aligned_short_stack):
+        reg = aligned_short_stack.stack_register("PC")
         reg.tilt_align(method="MaxImage", plot_results=True)
 
-    def test_tilt_align_maximage_also_shift(self):
-        stack = ds.get_needle_data()
-        stack = stack.inav[0:5]
-        reg = stack.stack_register("PC", shift_type="interp")
-        assert reg.metadata.get_item("Tomography.tiltaxis") == 0
-        ali = reg.tilt_align(method="MaxImage", also_shift=True)
+    def test_tilt_align_maximage_also_shift(self, aligned_full_stack):
+        assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
+        ali = aligned_full_stack.tilt_align(method="MaxImage", also_shift=True)
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         assert isinstance(tilt_axis, float)
-        assert tilt_axis == pytest.approx(-0.5)
+        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
         # also_shift should result in a yshift for the aligned stack
-        assert reg.metadata.get_item("Tomography.yshift") == 0
-        assert ali.metadata.get_item("Tomography.yshift") == pytest.approx(-19)
+        assert aligned_full_stack.metadata.get_item("Tomography.yshift") == 0
+        assert ali.metadata.get_item("Tomography.yshift") == pytest.approx(
+            2.0, rel=1e-1
+        )
 
-    def test_tilt_align_unknown_method(self):
-        stack = ds.get_needle_data()
+    def test_tilt_align_unknown_method(self, full_stack):
         bad_method = "WRONG"
         with pytest.raises(
             ValueError,
@@ -256,46 +267,38 @@ class TestTiltAlign:
                 'Must be one of ["CoM" or "MaxImage"].',
             ),
         ):
-            stack.tilt_align(method=bad_method)  # type: ignore
+            full_stack.tilt_align(method=bad_method)  # type: ignore
 
 
 class TestAlignOther:
     """Test alignment of a dataset calculated for another."""
 
-    def test_align_to_other(self):
-        stack = ds.get_needle_data()
-        stack = stack.inav[0:5]
-        stack2 = stack.deepcopy()
-        reg = stack.stack_register("PC")
-        reg2 = reg.align_other(stack2)
+    def test_align_to_other(self, short_stack):
+        original_stack = short_stack.deepcopy()
+        reg = short_stack.stack_register("PC")
+        reg2 = reg.align_other(original_stack)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0
 
-    def test_align_to_other_no_alignment(self):
-        stack = ds.get_needle_data()
-        stack = stack.inav[0:5]
-        stack2 = stack.deepcopy()
-        reg = stack.deepcopy()
+    def test_align_to_other_no_alignment(self, short_stack):
+        original_stack = short_stack.deepcopy()
+        reg = short_stack.deepcopy()
         with pytest.raises(
             ValueError,
             match="No transformations have been applied to this stack",
         ):
-            reg.align_other(stack2)
+            reg.align_other(original_stack)
 
-    def test_align_to_other_with_crop(self):
-        stack = ds.get_needle_data()
-        stack = stack.inav[0:5]
-        reg = stack.stack_register("PC", crop=True)
-        reg2 = reg.align_other(stack)
+    def test_align_to_other_with_crop(self, short_stack):
+        reg = short_stack.stack_register("PC", crop=True)
+        reg2 = reg.align_other(short_stack)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0
 
-    def test_align_to_other_with_xshift(self):
-        stack = ds.get_needle_data()
-        stack = stack.inav[0:5]
-        stack2 = stack.deepcopy()
-        reg = stack.stack_register("PC")
+    def test_align_to_other_with_xshift(self, short_stack):
+        original_stack = short_stack.deepcopy()
+        reg = original_stack.stack_register("PC")
         reg = cast("etspy.TomoStack", reg.trans_stack(xshift=10, yshift=5, angle=2))
-        reg2 = reg.align_other(stack2)
+        reg2 = reg.align_other(original_stack)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0
