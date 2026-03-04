@@ -27,7 +27,7 @@ from hyperspy.signal import BaseSignal, SpecialSlicersSignal
 from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
-from traits.api import Undefined
+from traits.api import Undefined  # type: ignore
 
 from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMethodType
 from etspy import _format_choices as _fmt
@@ -2269,7 +2269,7 @@ class RecStack(CommonStack):
     def interactive_rotation(
         self,
         slices: list | np.ndarray | None = None,
-        order: int | None = 3,
+        order: int = 3,
         figsize: tuple | None = (10, 4),
     ):
         """
