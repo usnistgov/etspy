@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from hyperspy._signals.signal2d import (
@@ -17,6 +17,9 @@ from hyperspy.misc.utils import (
 )
 
 from etspy.base import TomoStack
+
+if TYPE_CHECKING:
+    from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -201,6 +204,7 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
 
     meta, _ = parse_mdoc(mdocfile)
     stack = hs_load(mrcfile)
+    stack = cast("Signal2D", stack)
 
     stack.axes_manager[1].scale = stack.axes_manager[1].scale / 10
     stack.axes_manager[2].scale = stack.axes_manager[2].scale / 10
@@ -283,6 +287,7 @@ def load_serialem_series(
         else:
             mrc_filename = mdoc_filename.with_suffix(".mrc")
         frames = hs_load(mrc_filename)
+        frames = cast("Signal2D", frames)
         nav = frames.axes_manager.navigation_axes[0]
         del nav.scale
         nav.name = "Frames"
@@ -394,6 +399,7 @@ def _load_single_file(filename: Path) -> TomoStack:
     tilts, shifts = None, None
     if ext.lower() in hspy_file_types:
         stack = hs_load(filename, reader="HSPY")
+        stack = cast("Signal2D", stack)
         if stack.metadata.has_item("Tomography.tilts"):
             tilts = stack.metadata.Tomography.tilts
             del stack.metadata.Tomography.tilts
@@ -402,6 +408,7 @@ def _load_single_file(filename: Path) -> TomoStack:
             del stack.metadata.Tomography.shifts
     elif ext.lower() in dm_file_types:
         stack = hs_load(filename)
+        stack = cast("Signal2D", stack)
         stack.axes_manager.navigation_axes[0].name = "Projections"
         stack.axes_manager.navigation_axes[0].units = "degrees"
         stack.change_dtype(np.float32)
@@ -409,6 +416,7 @@ def _load_single_file(filename: Path) -> TomoStack:
     elif ext.lower() in mrc_file_types:
         try:
             stack = hs_load(filename, reader="mrc")
+            stack = cast("Signal2D", stack)
             # TODO(jat): does a single mrc file ever have multiple tilts,
             # or is it just multiframe?
             tilts = get_mrc_tilts(stack, filename)
@@ -469,12 +477,14 @@ def load(
         ext = first_filename.suffix
         if ext.lower() in dm_file_types:
             s = hs_load(filename)
+            s = cast("Signal2D", s)
             tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
             sorted_order = np.argsort(tilts)
             tilts = np.sort(tilts)
             files_sorted = list(np.array(filename)[sorted_order])
             del s
             stack = hs_load(files_sorted, stack=True, new_axis_name="Projections")
+            stack = cast("Signal2D", stack)
             stack.axes_manager.navigation_axes[0].units = "degrees"
             stack.axes_manager.navigation_axes[0].scale = np.diff(tilts).mean()
             stack.axes_manager.navigation_axes[0].offset = tilts[0]
