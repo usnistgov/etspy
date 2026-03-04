@@ -743,7 +743,7 @@ class TomoStack(CommonStack):
     def __init__(
         self,
         data: np.ndarray | Signal2D,
-        tilts: TomoTilts | None = None,
+        tilts: TomoTilts | np.ndarray | None = None,
         shifts: TomoShifts | np.ndarray | None = None,
         *args,
         **kwargs,
