@@ -119,27 +119,42 @@ class TestAlignFunctions:
         assert shifts.shape == (77, 2)
 
     def test_tilt_com_no_slices_yes_nslices_30_perc(self, full_stack, caplog):
-        etspy.align.tilt_com(full_stack, slices=None, nslices=100)
+        com_tilt_aligner = etspy.align.TiltCOMAligner(
+            full_stack,
+            slices=None,
+            nslices=100,
+        )
+        _ = com_tilt_aligner.align_tilt_axis()
         assert (
             "nslices is greater than 30% of number of x pixels. "
             "Using 76 slices instead."
         ) in caplog.text
 
     def test_tilt_com_no_slices_yes_nslices_too_big(self, full_stack):
+        com_tilt_aligner = etspy.align.TiltCOMAligner(
+            full_stack,
+            slices=None,
+            nslices=300,
+        )
         with pytest.raises(
             ValueError,
             match=r"nslices is greater than the X-dimension of the data\.",
         ):
-            etspy.align.tilt_com(full_stack, slices=None, nslices=300)
+            com_tilt_aligner.align_tilt_axis()
 
     def test_tilt_com_nx_threshold_error(self, full_stack):
+        com_tilt_aligner = etspy.align.TiltCOMAligner(
+            full_stack.isig[:2, :],
+            slices=None,
+            nslices=100,
+        )
         with pytest.raises(
             ValueError,
             match=(
                 r"Dataset is only 2 pixels in x dimension. This method cannot be used."
             ),
         ):
-            etspy.align.tilt_com(full_stack.isig[:2, :])
+            com_tilt_aligner.align_tilt_axis()
 
     def test_calc_shifts_com_cl_res_error(self, full_stack):
         claligner = etspy.align.CommonLineAligner(
@@ -211,15 +226,21 @@ class TestTiltAlign:
     """Test tilt alignment functions."""
 
     def test_tilt_align_com(self, aligned_full_stack):
-        ali = aligned_full_stack.tilt_align(
-            method="CoM",
+        com_tilt_aligner = etspy.align.TiltCOMAligner(
+            aligned_full_stack,
             slices=np.array([32, 64, 96, 128, 160]),
         )
+        ali = com_tilt_aligner.align_tilt_axis()
         tilt_axis = cast("Dtb", ali.metadata.Tomography).tiltaxis
         assert tilt_axis == pytest.approx(-2.7, abs=0.5)
 
     def test_tilt_align_com_no_locs(self, aligned_full_stack):
-        ali = aligned_full_stack.tilt_align(method="CoM", slices=None, nslices=None)
+        com_tilt_aligner = etspy.align.TiltCOMAligner(
+            aligned_full_stack,
+            slices=None,
+            nslices=None,
+        )
+        ali = com_tilt_aligner.align_tilt_axis()
         tilt_axis = cast("Dtb", ali.metadata.Tomography).tiltaxis
         assert tilt_axis == pytest.approx(-3.2, abs=0.5)
 
@@ -234,7 +255,10 @@ class TestTiltAlign:
 
     def test_tilt_align_maximage(self, aligned_full_stack):
         assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
-        ali = aligned_full_stack.tilt_align(method="MaxImage")
+        maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
+            aligned_full_stack,
+        )
+        ali = maximage_tilt_aligner.align_tilt_axis()
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         assert isinstance(tilt_axis, float)
         assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
@@ -243,12 +267,18 @@ class TestTiltAlign:
 
     # @pytest.mark.mpl_image_compare(remove_text=True)
     def test_tilt_align_maximage_plot_results(self, aligned_short_stack):
-        reg = aligned_short_stack.stack_register("PC")
-        reg.tilt_align(method="MaxImage", plot_results=True)
+        maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
+            aligned_short_stack,
+            plot_results=True,
+        )
+        _ = maximage_tilt_aligner.align_tilt_axis()
 
     def test_tilt_align_maximage_also_shift(self, aligned_full_stack):
         assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
-        ali = aligned_full_stack.tilt_align(method="MaxImage", also_shift=True)
+        maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
+            aligned_full_stack, also_shift=True
+        )
+        ali = maximage_tilt_aligner.align_tilt_axis()
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         assert isinstance(tilt_axis, float)
         assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)

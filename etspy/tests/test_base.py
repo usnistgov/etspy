@@ -21,6 +21,7 @@ from matplotlib.figure import Figure
 
 from etspy import datasets as ds
 from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
+from etspy.align import TiltCOMAligner, TiltMaxImageAligner
 
 from . import load_serialem_multiframe_data
 
@@ -1245,13 +1246,20 @@ class TestTiltAlign:
 
     def test_tilt_align_com_axis_zero(self):
         stack = ds.get_needle_data(aligned=True)
-        ali = stack.tilt_align("CoM", slices=np.array([64, 100, 114]))
+        com_tilt_aligner = TiltCOMAligner(
+            stack,
+            slices=np.array([64, 100, 114]),
+        )
+        ali = com_tilt_aligner.align_tilt_axis()
         assert isinstance(ali, TomoStack)
 
     def test_tilt_align_maximage(self):
         stack = ds.get_needle_data(aligned=True)
         stack = stack.inav[0:10]
-        ali = stack.tilt_align("MaxImage")
+        maximage_tilt_aligner = TiltMaxImageAligner(
+            stack,
+        )
+        ali = maximage_tilt_aligner.align_tilt_axis()
         assert isinstance(ali, TomoStack)
 
     def test_tilt_align_unknown_method(self):

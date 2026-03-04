@@ -1453,13 +1453,7 @@ class TomoStack(CommonStack):
     def tilt_align(
         self,
         method: Literal["CoM", "MaxImage"],
-        slices: np.ndarray | None = None,
-        nslices: int | None = None,
-        limit: float = 10,
-        delta: float = 0.1,
-        plot_results: bool = False,
-        also_shift: bool = False,
-        shift_limit: int = 20,
+        **kwargs,
     ):
         """
         Align the tilt axis of a TomoStack.
@@ -1487,38 +1481,44 @@ class TomoStack(CommonStack):
         method
             Algorithm to use for registration alignment. Must be either ``'CoM'`` or
             ``'MaxImage'``.
-        slices
-            (Only used when ``method == "CoM"``)
-            Locations at which to perform the Center of Mass analysis. If not
-            provided, an appropriate list of slices will be automatically determined.
-        nslices
-            (Only used when ``method == "CoM"``)
-            Nubmer of slices to use for the center of mass analysis (only used if the
-            ``slices`` parameter is not specified). If ``None``, a value of 10% of the
-            x-axis size will be used, clamped to the range [3, 50], as calculated in
-            the :py:func:`~etspy.align.tilt_com` function.
-        limit
-            (Only used when ``method == "MaxImage"``)
-            Maximum rotation angle for MaxImage calculation
-        delta
-            (Only used when ``method == "MaxImage"``)
-            Angular increment in degrees for MaxImage calculation
-        plot_results
-            (Only used when ``method == "MaxImage"``)
-            If ``True``, plot the maximum image along with the lines determined
-            by Hough analysis
-        also_shift
-            (Only used when ``method == "MaxImage"``)
-            If ``True``, also calculate and apply the global shift perpendicular to the
-            tilt by minimizing the sum of the reconstruction
-        shift_limit
-            (Only used when ``method == "MaxImage"``)
-            The limit of shifts applied if ``also_shift`` is set to ``True``
+        **kwargs:
+            Remaining keyword arguments are passed to the underlying alignment
+            functions.
+
+        Keyword arguments that may be used include:
+            slices
+                (Only used when ``method == "CoM"``)
+                Locations at which to perform the Center of Mass analysis. If not
+                provided, an appropriate list of slices will be automatically
+                determined.
+            nslices
+                (Only used when ``method == "CoM"``)
+                Nubmer of slices to use for the center of mass analysis (only used if
+                the ``slices`` parameter is not specified). If ``None``, a value of 10%
+                of the x-axis size will be used, clamped to the range [3, 50], as
+                calculated in the :py:func:`~etspy.align.TiltCOMAligner` class.
+            limit
+                (Only used when ``method == "MaxImage"``)
+                Maximum rotation angle for MaxImage calculation
+            delta
+                (Only used when ``method == "MaxImage"``)
+                Angular increment in degrees for MaxImage calculation
+            plot_results
+                (Only used when ``method == "MaxImage"``)
+                If ``True``, plot the maximum image along with the lines determined
+                by Hough analysis
+            also_shift
+                (Only used when ``method == "MaxImage"``)
+                If ``True``, also calculate and apply the global shift perpendicular to
+                the tilt by minimizing the sum of the reconstruction
+            shift_limit
+                (Only used when ``method == "MaxImage"``)
+                The limit of shifts applied if ``also_shift`` is set to ``True``
 
         Returns
         -------
         out : TomoStack
-            Copy of the input stack rotated by calculated angle
+            Copy of the input stack corrected for tilt axis alignment
 
         Examples
         --------
@@ -1537,17 +1537,17 @@ class TomoStack(CommonStack):
             >>> method = 'MaxImage'
             >>> ali = reg.tilt_align(method)
         """
-        if method == "CoM":
-            out = align.tilt_com(self, slices, nslices)
-        elif method == "MaxImage":
-            out = align.tilt_maximage(
-                self,
-                limit,
-                delta,
-                plot_results,
-                also_shift,
-                shift_limit,
-            )
+        tilt_aligners = {
+            "CoM": align.TiltCOMAligner,
+            "MaxImage": align.TiltMaxImageAligner,
+        }
+
+        if method in [
+            "CoM",
+            "MaxImage",
+        ]:
+            tilt_aligner = tilt_aligners[method](self, **kwargs)
+            out = tilt_aligner.align_tilt_axis()
         else:
             msg = (
                 f'Invalid alignment method "{method}". Must be one of '
