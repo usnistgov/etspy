@@ -22,8 +22,8 @@ class VolumeSlicer:
     def __init__(
         self,
         stack: "TomoStack",
-        vmin_std: float = 0.1,
-        vmax_std: float = 10,
+        vmin_std: float | np.ndarray = 0.1,
+        vmax_std: float | np.ndarray = 10.0,
         figsize: tuple = (10, 4),
     ):
         """Initialize the VolumeSlicer Class.
@@ -41,10 +41,10 @@ class VolumeSlicer:
         figsize : tuple
             Size of matplotlib figure to use
         """
-        if type(vmin_std) in [float, int]:
-            vmin_std = vmin_std * np.ones(3)
-        if type(vmax_std) in [float, int]:
-            vmax_std = vmax_std * np.ones(3)
+        if isinstance(vmin_std, (int, float)):
+            vmin_std = np.asarray([vmin_std] * 3)
+        if isinstance(vmax_std, (int, float)):
+            vmax_std = np.asarray([vmax_std] * 3)
 
         nx, nz, ny = stack.data.shape
         self.stackZY = stack.deepcopy()

@@ -27,7 +27,7 @@ from hyperspy.signal import BaseSignal, SpecialSlicersSignal
 from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
-from traits.api import Undefined
+from traits.api import Undefined  # type: ignore
 
 from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMethodType
 from etspy import _format_choices as _fmt
@@ -46,8 +46,10 @@ has_cupy = True
 try:
     import cupy as cp  # type: ignore
     from cupyx.scipy.ndimage import affine_transform as affine_transform_gpu
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     has_cupy = False
+    cp = None
+    affine_transform_gpu = None
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -740,7 +742,7 @@ class TomoStack(CommonStack):
     def __init__(
         self,
         data: np.ndarray | Signal2D,
-        tilts: TomoTilts | None = None,
+        tilts: TomoTilts | np.ndarray | None = None,
         shifts: TomoShifts | np.ndarray | None = None,
         *args,
         **kwargs,
@@ -2269,7 +2271,7 @@ class RecStack(CommonStack):
     def interactive_rotation(
         self,
         slices: list | np.ndarray | None = None,
-        order: int | None = 3,
+        order: int = 3,
         figsize: tuple | None = (10, 4),
     ):
         """
@@ -2331,7 +2333,7 @@ class RecStack(CommonStack):
                 cval=0.0,
                 order=3,
             )
-        else:
+        elif has_cupy and cp is not None and affine_transform_gpu is not None:
             data_gpu = cp.asarray(self.data.astype(np.float32))
 
             rotated_gpu = affine_transform_gpu(
@@ -2344,6 +2346,9 @@ class RecStack(CommonStack):
             )
 
             rotated.data = cp.asnumpy(rotated_gpu)
+        else:
+            msg = "CUDA selected buy CuPy is unavailable."
+            raise ValueError(msg)
 
         rotated.rotation_angles = rotation_angles
         rotated.rotation_matrix = rotation_matrix

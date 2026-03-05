@@ -167,10 +167,12 @@ def apply_shifts(
         shifted_fft = fft.fft2(shifted.data, axes=(1, 2))
         for i in range(shifted.data.shape[0]):
             shifted.data[i, :, :] = np.real(
-                fft.ifft2(
-                    ndimage.fourier_shift(
-                        shifted_fft[i],
-                        shift=[shifts[i, 0], shifts[i, 1]],
+                np.asarray(
+                    fft.ifft2(
+                        ndimage.fourier_shift(
+                            shifted_fft[i],
+                            shift=[shifts[i, 0], shifts[i, 1]],
+                        ),
                     ),
                 ),
             )
@@ -278,8 +280,8 @@ def apply_shifts_cuda(
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
 
-    shifted.data = data.get()
-    shifted.shifts.data = shifted.shifts.data + shifts.get()
+    shifted.data = cp.asnumpy(data)
+    shifted.shifts.data = shifted.shifts.data + cp.asnumpy(shifts)
     return shifted
 
 
