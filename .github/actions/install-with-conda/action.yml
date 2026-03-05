@@ -23,6 +23,8 @@ runs:
         auto-update-conda: true
         python-version: ${{ inputs.python-version }}
         auto-activate: false
+        conda-remove-defaults: true
+        channels: conda-forge
     - name: Conda list
       run: conda list
       shell: bash -el {0}
