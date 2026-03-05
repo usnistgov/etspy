@@ -49,7 +49,7 @@ try:
 
     has_gpu = cp.cuda.runtime.getDeviceCount() > 0
 
-except (ImportError, ModuleNotFoundError):
+except Exception:
     has_cupy = False
     cp = None
     affine_transform_gpu = None
