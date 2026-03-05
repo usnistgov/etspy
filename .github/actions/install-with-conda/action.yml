@@ -22,7 +22,7 @@ runs:
         environment-file: resources/etspy-dev.yml
         auto-update-conda: true
         python-version: ${{ inputs.python-version }}
-        auto-activate-base: false
+        auto-activate: false
     - name: Conda list
       run: conda list
       shell: bash -el {0}
