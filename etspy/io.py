@@ -398,7 +398,7 @@ def _load_single_file(filename: Path) -> TomoStack:
     ext = filename.suffix
     tilts, shifts = None, None
     if ext.lower() in hspy_file_types:
-        stack = hs_load(filename, reader="HSPY")
+        stack = hs_load(filename, file_format="HSPY")
         stack = cast("Signal2D", stack)
         if stack.metadata.has_item("Tomography.tilts"):
             tilts = stack.metadata.Tomography.tilts
@@ -415,7 +415,7 @@ def _load_single_file(filename: Path) -> TomoStack:
         tilts = get_dm_tilts(stack)
     elif ext.lower() in mrc_file_types:
         try:
-            stack = hs_load(filename, reader="mrc")
+            stack = hs_load(filename, file_format="mrc")
             stack = cast("Signal2D", stack)
             # TODO(jat): does a single mrc file ever have multiple tilts,
             # or is it just multiframe?

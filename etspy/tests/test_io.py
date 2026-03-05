@@ -134,7 +134,7 @@ class TestHspy:
 
     def test_load_hspy_hdf5(self):
         filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hdf5"
-        stack_orig = hs_load(filename, reader="HSPY")
+        stack_orig = hs_load(filename, file_format="HSPY")
         stack = etspy.io.load(filename)
         ax_list = cast("list[Uda]", stack.axes_manager)
         with h5py.File(filename, "r") as h5:
