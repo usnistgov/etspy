@@ -46,10 +46,14 @@ has_cupy = True
 try:
     import cupy as cp  # type: ignore
     from cupyx.scipy.ndimage import affine_transform as affine_transform_gpu
+
+    has_gpu = cp.cuda.runtime.getDeviceCount() > 0
+
 except (ImportError, ModuleNotFoundError):
     has_cupy = False
     cp = None
     affine_transform_gpu = None
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
