@@ -498,9 +498,9 @@ contribute to ETSpy.</p>
 </div>
 <h2 id="installing-a-development-version-of-etspy">Installing a development version of ETSpy<a class="headerlink" href="#installing-a-development-version-of-etspy" title="Link to this heading">¶</a></h2>
 <p>If you wish to contribute to ETSpy or otherwise install a development version,
-this can be accomplished using either <a class="reference external" href="https://www.anaconda.com/download/success">Anaconda</a>
-or <a class="reference external" href="https://python-poetry.org">Poetry</a>.</p>
-<p>If using conda, create and activate a new environment using one of the <em>development</em> specifications:</p>
+this can be accomplished using <a class="reference external" href="https://www.anaconda.com/download/success">Anaconda</a>, <a class="reference external" href="https://python-poetry.org">Poetry</a>, or <a class="reference external" href="https://docs.astral.sh/uv/">uv</a></p>
+<h3 id="option-1-using-conda">Option 1: Using Conda<a class="headerlink" href="#option-1-using-conda" title="Link to this heading">¶</a></h3>
+<p>Create and activate a new environment using one of the <em>development</em> specifications:</p>
 <table class="docutils data align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Description</p></th>
@@ -527,6 +527,7 @@ $<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>etspy
 $<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="w">   </span><span class="c1"># (to add the cupy dependency use &quot;pip install .[gpu]&quot;)</span>
 </code></pre></div>
 </div>
+<h3 id="option-2-using-poetry">Option 2: Using Poetry<a class="headerlink" href="#option-2-using-poetry" title="Link to this heading">¶</a></h3>
 <p>If using Poetry (currently only working on Linux due to some limitations of dependency packages),
 make sure you have <code class="docutils literal notranslate"><span class="pre">poetry</span></code> and the CUDA libraries installed, clone the <code class="docutils literal notranslate"><span class="pre">etspy</span></code> repository, and
 run the install command:</p>
@@ -543,8 +544,20 @@ command will hang due to an outstanding issue with handling the system keyring
 run the command <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring</span></code> prior to running
 <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">install</span></code>, and it should work.</p>
 </div>
-<p>At this point, you should have an “editable” version of the latest development
-version of ETSpy installed to hack on as you wish.</p>
+<h3 id="option-3-using-uv">Option 3: Using uv<a class="headerlink" href="#option-3-using-uv" title="Link to this heading">¶</a></h3>
+<p>If using uv (currently only working on Linux due to some limitations of dependency packages), make sure you have <code class="docutils literal notranslate"><span class="pre">uv</span></code> and the CUDA libraries installed, clone the <code class="docutils literal notranslate"><span class="pre">etspy</span></code> repository, and run the sync command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/&lt;your_account_name&gt;/etspy
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>etspy
+$<span class="w"> </span>uv<span class="w"> </span>sync<span class="w">  </span><span class="c1"># (to get the cupy dependency add &quot;--all-extras&quot; to the sync command)</span>
+</code></pre></div>
+</div>
+<p><em>Note: <code class="docutils literal notranslate"><span class="pre">uv</span></code> will automatically create a virtual environment in .venv and install the package in editable mode.</em></p>
+<p>To activate the venv use:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+</code></pre></div>
+</div>
+<h3 id="using-the-development-version">Using the development version<a class="headerlink" href="#using-the-development-version" title="Link to this heading">¶</a></h3>
+<p>Whichever installation path you choose, you should now have an “editable” installation of the latest development version of ETSpy installed to hack on as you wish.</p>
 <p>Contributions to the project are welcome, and can be submitted via the GitHub pull
 request mechanism.</p>
 <h2 id="coverage">Coverage<a class="headerlink" href="#coverage" title="Link to this heading">¶</a></h2>
@@ -553,7 +566,11 @@ When developing, you can run the tests from the main directory with the followin
 will output the coverage results to the terminal, as well as to a <code class="docutils literal notranslate"><span class="pre">etspy/tests/coverage.xml</span></code> file that can
 be interpreted by various editors to display the coverage stats interactively, and as html in the
 <code class="docutils literal notranslate"><span class="pre">etspy/tests/htmlcov</span></code> directory that can be viewed in a web browser:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>poetry<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>etspy/tests/
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># For Poetry installations:</span>
+$<span class="w"> </span>poetry<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>etspy/tests/
+
+<span class="c1"># For uv installations:</span>
+$<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>etspy/tests/
 </code></pre></div>
 </div>
 <p>By default, this will exclude CUDA-related code from the coverage
@@ -563,7 +580,11 @@ like to run the tests with coverage (including CUDA), you can use
 the <code class="docutils literal notranslate"><span class="pre">run_tests.sh</span></code> helper script (on Linux), which will detect whether
 or not CUDA is available, and choose whether or not to exclude those
 lines from the report depending:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>poetry<span class="w"> </span>run<span class="w"> </span>./run_tests.sh
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># For Poetry installations:</span>
+$<span class="w"> </span>poetry<span class="w"> </span>run<span class="w"> </span>./run_tests.sh
+
+<span class="c1"># For uv installations:</span>
+$<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>./run_tests.sh
 </code></pre></div>
 </div>
 <h2 id="debugging-when-using-coverage">Debugging when using coverage<a class="headerlink" href="#debugging-when-using-coverage" title="Link to this heading">¶</a></h2>
@@ -595,17 +616,25 @@ when running “Debug test” via the <code class="docutils literal notranslate"
 </div>
 <h2 id="releasing-a-version">Releasing a version<a class="headerlink" href="#releasing-a-version" title="Link to this heading">¶</a></h2>
 <h3 id="testing-a-pre-release">Testing a pre-release<a class="headerlink" href="#testing-a-pre-release" title="Link to this heading">¶</a></h3>
+<h3 id="using-poetry">Using Poetry:<a class="headerlink" href="#using-poetry" title="Link to this heading">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># bump version using poetry</span>
 $<span class="w"> </span>poetry<span class="w"> </span>version<span class="w"> </span>prerelease<span class="w">  </span><span class="c1"># this will append the version number and a pre-release indicator e.g &quot;.a0&quot;</span>
 $<span class="w"> </span>poetry<span class="w"> </span>lock<span class="w">  </span><span class="c1"># ensure you&#39;ve updated the lockfile and any dependencies</span>
-$<span class="w"> </span>poetry<span class="w"> </span>build<span class="w">  </span><span class="c1"># buildssource and binary &quot;wheel&quot; distributions</span>
+$<span class="w"> </span>poetry<span class="w"> </span>build<span class="w">  </span><span class="c1"># builds source and binary &quot;wheel&quot; distributions</span>
 $<span class="w"> </span>poetry<span class="w"> </span>publish<span class="w">  </span><span class="c1"># requires registering poetry with tokens for your PyPI account (see https://python-poetry.org/docs/repositories/#configuring-credentials )</span>
 </code></pre></div>
 </div>
-<p>You should then be able to install from PyPI with the new version (e.g. <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">etspy==0.9.3a2</span></code>)</p>
+<h3 id="using-uv">Using uv:<a class="headerlink" href="#using-uv" title="Link to this heading">¶</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span class="c1"># bump version using uv</span>
+$<span class="w"> </span>uv<span class="w"> </span>version<span class="w"> </span>--bump<span class="w"> </span>patch<span class="w"> </span>--bump<span class="w"> </span>alpha<span class="w"> </span><span class="c1"># this will append the version number and a pre-release indicator e.g &quot;.a1&quot;.  uv also will automatically update the uv.lock file</span>
+$<span class="w"> </span>uv<span class="w"> </span>build<span class="w">  </span><span class="c1"># builds source and binary &quot;wheel&quot; distributions</span>
+$<span class="w"> </span>uv<span class="w"> </span>publish<span class="w">  </span><span class="c1"># requires registering uv with tokens for your PyPI account (see https://docs.astral.sh/uv/guides/package/#publishing-your-package )</span>
+</code></pre></div>
+</div>
+<p>You should then be able to install from PyPI with the new version (e.g. <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">etspy==1.1.0a2</span></code>)</p>
 <h3 id="releasing-a-new-version">Releasing a new version<a class="headerlink" href="#releasing-a-new-version" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p>Basically the same as above, but run <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">version</span> <span class="pre">patch</span></code> rather than <code class="docutils literal notranslate"><span class="pre">prerelease</span></code>.</p></li>
+<li><p>Basically the same as above, but run <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">version</span> <span class="pre">patch</span></code> rather than <code class="docutils literal notranslate"><span class="pre">prerelease</span></code> or run <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">version</span> <span class="pre">--bump</span> <span class="pre">stable</span></code></p></li>
 <li><p>Should also create a git tag for the version, and create a release on GitHub. This may be done automatically in the future.</p></li>
 </ul>
 <h2 id="setting-up-conda-forge-packages">Setting up conda-forge packages<a class="headerlink" href="#setting-up-conda-forge-packages" title="Link to this heading">¶</a></h2>
