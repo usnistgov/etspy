@@ -133,7 +133,7 @@ class TestHspy:
         assert isinstance(stack, TomoStack)
 
     def test_load_hspy_hdf5(self):
-        filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hdf5"
+        filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hspy"
         stack_orig = hs_load(filename, file_format="HSPY")
         stack = etspy.io.load(filename)
         ax_list = cast("list[Uda]", stack.axes_manager)
