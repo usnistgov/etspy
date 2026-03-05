@@ -19,10 +19,9 @@ try:
     import cupy as cp
 
     has_gpu = cp.cuda.runtime.getDeviceCount() > 0
-    from etspy.align import apply_shifts_cuda
+    from etspy.align import apply_shifts  # type: ignore
 except Exception:
     cupy_in_test_env = False
-    apply_shifts_cuda = None
 
 NUM_FIG_AXES = 3
 
@@ -217,7 +216,7 @@ class TestApplyShiftsCUDA:
     def test_apply_shifts_fourier_cuda(self):
         stack = ds.get_needle_data(aligned=False)
         shifts = np.random.uniform(-2, 2, [20, 2])
-        shifted = apply_shifts_cuda(stack.inav[0:20], shifts, "fourier")
+        shifted = apply_shifts(stack.inav[0:20], shifts, "fourier", cuda=True)  # type: ignore
         assert isinstance(shifted, TomoStack)
         assert (
             shifted.axes_manager.signal_shape
@@ -231,7 +230,7 @@ class TestApplyShiftsCUDA:
     def test_apply_shifts_interp_cuda(self):
         stack = ds.get_needle_data(aligned=False)
         shifts = np.random.uniform(-2, 2, [20, 2])
-        shifted = apply_shifts_cuda(stack.inav[0:20], shifts, "interp")
+        shifted = apply_shifts(stack.inav[0:20], shifts, "interp", cuda=True)  # type: ignore
         assert isinstance(shifted, TomoStack)
         assert (
             shifted.axes_manager.signal_shape
