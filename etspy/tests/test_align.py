@@ -245,13 +245,14 @@ class TestTiltAlign:
         assert tilt_axis == pytest.approx(-3.2, abs=0.5)
 
     def test_tilt_align_com_no_tilts(self, aligned_full_stack):
-        del aligned_full_stack.tilts
+        stack_no_tilts = aligned_full_stack.deepcopy()
+        del stack_no_tilts.tilts
         with pytest.raises(
             ValueError,
             match=r"Tilts are not defined in stack.tilts \(values were all zeros\). "
             r"Please set tilt values before alignment.",
         ):
-            aligned_full_stack.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
+            stack_no_tilts.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
 
     def test_tilt_align_maximage(self, aligned_full_stack):
         assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
@@ -276,7 +277,8 @@ class TestTiltAlign:
     def test_tilt_align_maximage_also_shift(self, aligned_full_stack):
         assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
-            aligned_full_stack, also_shift=True
+            aligned_full_stack,
+            also_shift=True,
         )
         ali = maximage_tilt_aligner.align_tilt_axis()
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
