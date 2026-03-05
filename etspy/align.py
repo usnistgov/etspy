@@ -27,10 +27,9 @@ try:
     import cupy as cp  # type: ignore
     from cupyx.scipy.ndimage import shift as shift_gpu
 
-    if not cp.is_available():
-        has_cupy = False
+    has_gpu = cp.cuda.runtime.getDeviceCount() > 0
 
-except ImportError:
+except Exception:
     has_cupy = False
 
 logger = logging.getLogger(__name__)
