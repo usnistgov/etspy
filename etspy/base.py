@@ -42,15 +42,12 @@ if TYPE_CHECKING:
     from hyperspy.axes import UniformDataAxis as Uda
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
+has_cupy = True
 try:
-    import cupy as cp
+    import cupy as cp  # type: ignore
     from cupyx.scipy.ndimage import affine_transform as affine_transform_gpu
-
-    if cp.is_available():
-        has_cupy = True
 except ImportError:
     has_cupy = False
-    cp = None
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -2334,10 +2331,10 @@ class RecStack(CommonStack):
                 cval=0.0,
                 order=3,
             )
-        elif has_cupy and cp is not None:
+        else:
             data_gpu = cp.asarray(self.data.astype(np.float32))
 
-            rotated_gpu = affine_transform_gpu(  # type: ignore[name-defined]
+            rotated_gpu = affine_transform_gpu(
                 data_gpu,
                 cp.asarray(rotation_matrix),
                 offset=cp.asarray(offset),

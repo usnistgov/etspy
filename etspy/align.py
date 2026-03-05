@@ -24,13 +24,11 @@ if TYPE_CHECKING:
 
     from etspy.base import TomoShifts, TomoStack  # pragma: no cover
 
+has_cupy = True
 try:
     import cupy as cp  # type: ignore
     from cupyx.scipy.ndimage import fourier_shift as fourier_shift_gpu
     from cupyx.scipy.ndimage import shift as shift_gpu
-
-    if cp.is_available():
-        has_cupy = True
 except ImportError:
     has_cupy = False
 
