@@ -20,8 +20,8 @@ from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from etspy import datasets as ds
-from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
 from etspy.align import TiltCOMAligner, TiltMaxImageAligner
+from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
 
 from . import load_serialem_multiframe_data
 
