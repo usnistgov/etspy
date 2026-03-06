@@ -21,7 +21,7 @@ def get_needle_data(aligned: bool = False):
     datasets
     """
     if aligned:
-        filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hdf5"
+        filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hspy"
         needle = etspy.load(filename)
     else:
         filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
@@ -74,7 +74,7 @@ def get_catalyst_data(
     -----
     datasets
     """
-    filename = etspy_path / "tests" / "test_data" / "Catalyst3DModel_TiltSeries180.hdf5"
+    filename = etspy_path / "tests" / "test_data" / "Catalyst3DModel_TiltSeries180.hspy"
     catalyst = etspy.load(filename)
     if misalign:
         catalyst = misalign_stack(

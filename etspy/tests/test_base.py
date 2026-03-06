@@ -74,7 +74,7 @@ class TestCommonStack:
 
     def test_save(self, tmp_path):
         s = ds.get_needle_data()
-        fname = tmp_path / "save_test.hdf5"
+        fname = tmp_path / "save_test.hspy"
         s.save(fname, file_format="HSPY")
         with h5py.File(fname, "r") as h5:
             data = h5.get("/Experiments/__unnamed__/data")
