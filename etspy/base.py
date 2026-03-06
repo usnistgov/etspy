@@ -23,8 +23,8 @@ import numpy as np
 import pylab as plt
 from hyperspy._signals.signal1d import Signal1D
 from hyperspy._signals.signal2d import Signal2D
-from hyperspy.signal import BaseSignal, SpecialSlicersSignal
 from hyperspy.drawing.utils import plot_images as hs_plot_images
+from hyperspy.signal import BaseSignal, SpecialSlicersSignal
 from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
