@@ -86,7 +86,7 @@ jobs:
       steps:
         - uses: actions/checkout@v4
         - name: Install uv
-          uses: astral-sh/setup-uv@v5
+          uses: ./.github/actions/install-with-uv
           with:
             python-version: ${{ matrix.python-version }}
             with-cuda: ${{ matrix.os == 'ubuntu-latest' }} # Only enable CUDA on Linux
