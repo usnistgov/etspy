@@ -901,7 +901,7 @@ $(document).ready(function(){
     <span class="n">ext</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">suffix</span>
     <span class="n">tilts</span><span class="p">,</span> <span class="n">shifts</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">hspy_file_types</span><span class="p">:</span>
-        <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="s2">&quot;HSPY&quot;</span><span class="p">)</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">file_format</span><span class="o">=</span><span class="s2">&quot;HSPY&quot;</span><span class="p">)</span>
         <span class="n">stack</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Signal2D&quot;</span><span class="p">,</span> <span class="n">stack</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_item</span><span class="p">(</span><span class="s2">&quot;Tomography.tilts&quot;</span><span class="p">):</span>
             <span class="n">tilts</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">Tomography</span><span class="o">.</span><span class="n">tilts</span>
@@ -918,7 +918,7 @@ $(document).ready(function(){
         <span class="n">tilts</span> <span class="o">=</span> <span class="n">get_dm_tilts</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">mrc_file_types</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="s2">&quot;mrc&quot;</span><span class="p">)</span>
+            <span class="n">stack</span> <span class="o">=</span> <span class="n">hs_load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">file_format</span><span class="o">=</span><span class="s2">&quot;mrc&quot;</span><span class="p">)</span>
             <span class="n">stack</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;Signal2D&quot;</span><span class="p">,</span> <span class="n">stack</span><span class="p">)</span>
             <span class="c1"># TODO(jat): does a single mrc file ever have multiple tilts,</span>
             <span class="c1"># or is it just multiframe?</span>
