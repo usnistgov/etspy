@@ -1003,11 +1003,13 @@ class TestFiltering:
 class TestOperations:
     """Test various operations of a TomoStack."""
 
-    def test_stack_normalize(self):
-        stack = ds.get_needle_data()
-        norm = cast("TomoStack", stack.normalize())
-        assert norm.axes_manager.navigation_shape == stack.axes_manager.navigation_shape
-        assert norm.axes_manager.signal_shape == stack.axes_manager.signal_shape
+    def test_stack_normalize(self, short_stack):
+        norm = cast("TomoStack", short_stack.normalize())
+        assert (
+            norm.axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
+        )
+        assert norm.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
         assert norm.data.min() == 0.0
 
     def test_stack_invert(self):
@@ -1019,24 +1021,22 @@ class TestOperations:
         hist_inv, _ = np.histogram(invert.data)
         assert hist[0] > hist_inv[0]
 
-    def test_stack_stats(self, capsys):
-        stack = ds.get_needle_data()
-        stack.stats()
+    def test_stack_stats(self, capsys, short_stack):
+        short_stack.stats()
 
         # capture output stream to test print statements
         captured = capsys.readouterr()
         out = captured.out.split("\n")
 
-        assert out[0] == f"Mean: {stack.data.mean():.1f}"
-        assert out[1] == f"Std: {stack.data.std():.2f}"
-        assert out[2] == f"Max: {stack.data.max():.1f}"
-        assert out[3] == f"Min: {stack.data.min():.1f}"
+        assert out[0] == f"Mean: {short_stack.data.mean():.1f}"
+        assert out[1] == f"Std: {short_stack.data.std():.2f}"
+        assert out[2] == f"Max: {short_stack.data.max():.1f}"
+        assert out[3] == f"Min: {short_stack.data.min():.1f}"
 
-    def test_set_tilts(self):
-        stack = ds.get_needle_data()
+    def test_set_tilts(self, full_stack):
         start, increment = -50, 5
-        stack.set_tilts(start, increment)
-        ax = cast("Uda", stack.axes_manager[0])
+        full_stack.set_tilts(start, increment)
+        ax = cast("Uda", full_stack.axes_manager[0])
         assert ax.name == "Projections"
         assert ax.scale == increment
         assert ax.units == "degrees"
@@ -1045,13 +1045,13 @@ class TestOperations:
             ax.axis.all()
             == np.arange(
                 start,
-                stack.data.shape[0] * increment + start,
+                full_stack.data.shape[0] * increment + start,
                 increment,
             ).all()
         )
 
-    def test_set_tilts_no_metadata(self):
-        stack = ds.get_needle_data()
+    def test_set_tilts_no_metadata(self, full_stack):
+        stack = full_stack.deepcopy()
         del stack.metadata.Tomography  # pyright: ignore[reportAttributeAccessIssue]
         start, increment = -50, 5
         stack.set_tilts(start, increment)
