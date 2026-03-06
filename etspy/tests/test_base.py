@@ -951,58 +951,44 @@ class TestExtractSinogram:
 class TestFiltering:
     """Test filtering of TomoStack data."""
 
-    def test_correlation_check(self):
-        stack = ds.get_needle_data()
-        fig = stack.test_correlation()
+    def test_correlation_check(self, short_stack):
+        fig = short_stack.test_correlation()
         assert isinstance(fig, Figure)
         assert len(fig.axes) == NUM_AXES_THREE
 
-    def test_image_filter_median(self):
-        stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method="median")
+    def test_image_filter_median(self, short_stack):
+        filt = short_stack.filter(method="median")
         assert (
             filt.axes_manager.navigation_shape
-            == stack.inav[0:10].axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
         )
-        assert (
-            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
-        )
+        assert filt.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
 
-    def test_image_filter_sobel(self):
-        stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method="sobel")
+    def test_image_filter_sobel(self, short_stack):
+        filt = short_stack.filter(method="sobel")
         assert (
             filt.axes_manager.navigation_shape
-            == stack.inav[0:10].axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
         )
-        assert (
-            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
-        )
+        assert filt.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
 
-    def test_image_filter_both(self):
-        stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method="both")
+    def test_image_filter_both(self, short_stack):
+        filt = short_stack.filter(method="both")
         assert (
             filt.axes_manager.navigation_shape
-            == stack.inav[0:10].axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
         )
-        assert (
-            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
-        )
+        assert filt.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
 
-    def test_image_filter_bpf(self):
-        stack = ds.get_needle_data()
-        filt = stack.inav[0:10].filter(method="bpf")
+    def test_image_filter_bpf(self, short_stack):
+        filt = short_stack.filter(method="bpf")
         assert (
             filt.axes_manager.navigation_shape
-            == stack.inav[0:10].axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
         )
-        assert (
-            filt.axes_manager.signal_shape == stack.inav[0:10].axes_manager.signal_shape
-        )
+        assert filt.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
 
-    def test_image_filter_wrong_name(self):
-        stack = ds.get_needle_data()
+    def test_image_filter_wrong_name(self, short_stack):
         bad_name = "WRONG"
         with pytest.raises(
             ValueError,
@@ -1011,7 +997,7 @@ class TestFiltering:
                 'Must be one of ["median", "bpf", "both", or "sobel"]',
             ),
         ):
-            stack.inav[0:10].filter(method="WRONG")  # type: ignore
+            short_stack.filter(method="WRONG")  # type: ignore
 
 
 class TestOperations:
