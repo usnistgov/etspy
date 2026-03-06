@@ -714,38 +714,33 @@ class TestProperties:
 class TestSlicers:
     """Test inav/isig slicers."""
 
-    def test_tilt_nav_slicer(self):
-        stack = ds.get_needle_data()
-        t = stack.tilts.inav[:5]
+    def test_tilt_nav_slicer(self, full_stack):
+        t = full_stack.inav[:5].tilts
         assert isinstance(t, TomoTilts)
         assert t.data.shape == (5, 1)
 
-    def test_tilt_sig_slicer(self, caplog):
-        stack = ds.get_needle_data()
+    def test_tilt_sig_slicer(self, caplog, full_stack):
         with caplog.at_level(logging.WARNING):
-            t = stack.tilts.isig[:5]
+            t = full_stack.tilts.isig[:5]
             assert "TomoTilts does not support 'isig' slicing" in caplog.text
         assert isinstance(t, TomoTilts)
         assert t.data.shape == (77, 1)
 
-    def test_shift_nav_slicer(self):
-        stack = ds.get_needle_data()
-        t = stack.shifts.inav[:5]
+    def test_shift_nav_slicer(self, full_stack):
+        t = full_stack.shifts.inav[:5]
         assert isinstance(t, TomoShifts)
         assert t.data.shape == (5, 2)
 
-    def test_shift_sig_slicer(self, caplog):
-        stack = ds.get_needle_data()
+    def test_shift_sig_slicer(self, caplog, full_stack):
         with caplog.at_level(logging.WARNING):
-            t = stack.shifts.isig[:5]
+            t = full_stack.shifts.isig[:5]
             # warning should be triggered when slicing the TomoTilts directly
             assert "TomoShifts does not support 'isig' slicing" in caplog.text
         assert isinstance(t, TomoShifts)
         assert t.data.shape == (77, 2)
 
-    def test_tomostack_nav_slicer(self):
-        stack = ds.get_needle_data()
-        t = stack.inav[:5]
+    def test_tomostack_nav_slicer(self, full_stack):
+        t = full_stack.inav[:5]
         assert t.data.shape == (5, 256, 256)
         assert t.tilts.data.shape == (5, 1)
         assert t.shifts.data.shape == (5, 2)
@@ -753,10 +748,9 @@ class TestSlicers:
         assert isinstance(t.tilts, TomoTilts)
         assert isinstance(t.shifts, TomoShifts)
 
-    def test_tomostack_sig_slicer(self, caplog):
-        stack = ds.get_needle_data()
+    def test_tomostack_sig_slicer(self, caplog, full_stack):
         with caplog.at_level(logging.WARNING):
-            t = stack.isig[:5, :10]
+            t = full_stack.isig[:5, :10]
             # warning should not be triggered when slicing the TomoStack
             assert "TomoShifts does not support 'isig' slicing" not in caplog.text
         assert t.data.shape == (77, 10, 5)
@@ -766,14 +760,13 @@ class TestSlicers:
         assert isinstance(t.tilts, TomoTilts)
         assert isinstance(t.shifts, TomoShifts)
 
-    def test_two_d_tomo_stack_slicing(self):
+    def test_two_d_tomo_stack_slicing(self, multiframe_stack):
         """Test handling of multi-frame TomoStack with 2 navigation dimensions."""
-        s = load_serialem_multiframe_data()
-        assert s.axes_manager.shape == (2, 3, 1024, 1024)
-        assert s.data.shape == (3, 2, 1024, 1024)
+        assert multiframe_stack.axes_manager.shape == (2, 3, 1024, 1024)
+        assert multiframe_stack.data.shape == (3, 2, 1024, 1024)
         ax_0, ax_1, ax_2, ax_3 = cast(
             "list[Uda]",
-            [s.axes_manager[i] for i in range(4)],
+            [multiframe_stack.axes_manager[i] for i in range(4)],
         )
         assert ax_0.name == "Frames"
         assert ax_0.units == "images"
@@ -785,14 +778,14 @@ class TestSlicers:
         assert ax_3.units == "nm"
 
         # test inav and isig together with ranges
-        t = s.inav[:1, :2].isig[:20, :120]
+        t = multiframe_stack.inav[:1, :2].isig[:20, :120]
         assert t.axes_manager.shape == (1, 2, 20, 120)
         assert t.data.shape == (2, 1, 120, 20)
         assert t.tilts.axes_manager.shape == (1, 2, 1)
         assert t.shifts.axes_manager.shape == (1, 2, 2)
 
         # test extracting single projection
-        t2 = s.isig[:20, :120].inav[:, 2]
+        t2 = multiframe_stack.isig[:20, :120].inav[:, 2]
         assert t2.axes_manager.shape == (2, 20, 120)
         assert t2.data.shape == (2, 120, 20)
         assert t2.axes_manager[0].name == "Frames"  # type: ignore
@@ -800,7 +793,7 @@ class TestSlicers:
         assert t2.shifts.axes_manager.navigation_shape == (2,)
 
         # test extracting single frame
-        t3 = s.isig[:20, :120].inav[1, :]
+        t3 = multiframe_stack.isig[:20, :120].inav[1, :]
         assert t3.axes_manager.shape == (3, 20, 120)
         assert t3.data.shape == (3, 120, 20)
         assert t3.axes_manager[0].name == "Projections"  # type: ignore
@@ -808,7 +801,7 @@ class TestSlicers:
         assert t3.shifts.axes_manager.navigation_shape == (3,)
 
         # test extracting single frame and projection
-        t4 = s.isig[:20, :120].inav[1, 1]
+        t4 = multiframe_stack.isig[:20, :120].inav[1, 1]
         assert t4.axes_manager.shape == (20, 120)
         assert t4.data.shape == (120, 20)
         assert t4.axes_manager[0].name == "x"  # type: ignore
@@ -817,31 +810,29 @@ class TestSlicers:
         assert t4.shifts.axes_manager.navigation_shape == ()
         assert t4.tilts.data[0] == pytest.approx(-0.000488)
 
-    def test_single_pixel_nav_slicer(self):
-        stack = ds.get_needle_data()
-        t = stack.inav[30]
+    def test_single_pixel_nav_slicer(self, short_stack):
+        t = short_stack.inav[3]
         ax = t.axes_manager
         assert t.data.shape == (256, 256)
         assert ax.navigation_shape == ()
         assert ax.shape == (256, 256)
 
-    def test_single_pixel_sig_slicer_x(self, caplog):  # type: ignore
-        stack = ds.get_needle_data()
+    def test_single_pixel_sig_slicer_x(self, caplog, short_stack):  # type: ignore
         with caplog.at_level(logging.WARNING):
             # warning should be triggered and shape should be (77, 1, 256)
-            t = stack.isig[5, :]
+            t = short_stack.isig[5, :]
             assert (
                 "Slicing a TomoStack signal axis with a single pixel "
                 'is not supported. Returning a single pixel on the "x" '
                 "axis instead"
             ) in caplog.text
-        assert t.data.shape == (77, 256, 1)
-        assert t.axes_manager.shape == (77, 1, 256)
+        assert t.data.shape == (5, 256, 1)
+        assert t.axes_manager.shape == (5, 1, 256)
         ax_0, ax_1, ax_2 = cast("list[Uda]", [t.axes_manager[i] for i in range(3)])
         assert ax_0.name == "Projections"
         assert ax_1.name == "x"
         assert ax_2.name == "y"
-        assert ax_0.size == 77
+        assert ax_0.size == 5
         assert ax_1.size == 1
         assert ax_2.size == 256
         assert ax_0.units == "degrees"
@@ -850,23 +841,22 @@ class TestSlicers:
         assert ax_1.offset == pytest.approx(ax_1.scale * 5)
         assert ax_2.offset == 0
 
-    def test_single_pixel_sig_slicer_y(self, caplog):
-        stack = ds.get_needle_data()
+    def test_single_pixel_sig_slicer_y(self, caplog, short_stack):
         with caplog.at_level(logging.WARNING):
             # warning should be triggered and shape should be (77, 256, 1)
-            t = stack.isig[:, 128]
+            t = short_stack.isig[:, 128]
             assert (
                 "Slicing a TomoStack signal axis with a single pixel "
                 'is not supported. Returning a single pixel on the "y" '
                 "axis instead"
             ) in caplog.text
-        assert t.data.shape == (77, 1, 256)
-        assert t.axes_manager.shape == (77, 256, 1)
+        assert t.data.shape == (5, 1, 256)
+        assert t.axes_manager.shape == (5, 256, 1)
         ax_0, ax_1, ax_2 = cast("list[Uda]", [t.axes_manager[i] for i in range(3)])
         assert ax_0.name == "Projections"
         assert ax_1.name == "x"
         assert ax_2.name == "y"
-        assert ax_0.size == 77
+        assert ax_0.size == 5
         assert ax_1.size == 256
         assert ax_2.size == 1
         assert ax_0.units == "degrees"
@@ -875,23 +865,22 @@ class TestSlicers:
         assert ax_1.offset == 0
         assert ax_2.offset == pytest.approx(ax_2.scale * 128)
 
-    def test_single_pixel_sig_slicer_float(self, caplog):
-        stack = ds.get_needle_data()
+    def test_single_pixel_sig_slicer_float(self, caplog, short_stack):
         with caplog.at_level(logging.WARNING):
             # warning should be triggered and shape should be (77, 256, 1)
-            t = stack.isig[:, 30.4]
+            t = short_stack.isig[:, 30.4]
             assert (
                 "Slicing a TomoStack signal axis with a single pixel "
                 'is not supported. Returning a single pixel on the "y" '
                 "axis instead"
             ) in caplog.text
-        assert t.data.shape == (77, 1, 256)
-        assert t.axes_manager.shape == (77, 256, 1)
+        assert t.data.shape == (5, 1, 256)
+        assert t.axes_manager.shape == (5, 256, 1)
         ax_0, ax_1, ax_2 = cast("list[Uda]", [t.axes_manager[i] for i in range(3)])
         assert ax_0.name == "Projections"
         assert ax_1.name == "x"
         assert ax_2.name == "y"
-        assert ax_0.size == 77
+        assert ax_0.size == 5
         assert ax_1.size == 256
         assert ax_2.size == 1
         assert ax_0.units == "degrees"
@@ -903,14 +892,14 @@ class TestSlicers:
     # def test_single_pixel_nav_slicer(self):
     #     pass
 
-    def test_recstack_nav_slicer(self):
-        stack = RecStack(ds.get_needle_data())
+    def test_recstack_nav_slicer(self, full_stack):
+        stack = RecStack(full_stack)
         t = stack.inav[:5]
         assert t.data.shape == (5, 256, 256)
         assert isinstance(t, RecStack)
 
-    def test_recstack_sig_slicer(self, caplog):
-        stack = RecStack(ds.get_needle_data())
+    def test_recstack_sig_slicer(self, caplog, full_stack):
+        stack = RecStack(full_stack)
         with caplog.at_level(logging.WARNING):
             t = stack.isig[:5, :10]
             # warning should not be triggered when slicing the TomoStack
@@ -922,9 +911,8 @@ class TestSlicers:
 class TestExtractSinogram:
     """Test extract_sinogram method."""
 
-    def test_extract_sinogram(self):
-        stack = ds.get_catalyst_data()
-        sino = stack.extract_sinogram(300)
+    def test_extract_sinogram(self, full_stack):
+        sino = full_stack.extract_sinogram(300)
         ax_0, ax_1 = cast("list[Uda]", [sino.axes_manager[i] for i in range(2)])
         assert sino.axes_manager.shape == (600, 90)
         assert sino.metadata.get_item("Signal.signal_type") == ""
@@ -932,9 +920,8 @@ class TestExtractSinogram:
         assert ax_1.name == "Projections"
         assert sino.metadata.get_item("General.title") == "Sinogram at column 300"
 
-    def test_extract_sinogram_float(self):
-        stack = ds.get_catalyst_data()
-        sino = stack.extract_sinogram(106.32)
+    def test_extract_sinogram_float(self, full_stack):
+        sino = full_stack.extract_sinogram(106.32)
         ax_0, ax_1 = cast("list[Uda]", [sino.axes_manager[i] for i in range(2)])
         assert sino.axes_manager.shape == (600, 90)
         assert sino.metadata.get_item("Signal.signal_type") == ""
@@ -942,8 +929,7 @@ class TestExtractSinogram:
         assert ax_1.name == "Projections"
         assert sino.metadata.get_item("General.title") == "Sinogram at x = 106.32 nm"
 
-    def test_extract_sinogram_bad_argument_type(self):
-        stack = ds.get_catalyst_data()
+    def test_extract_sinogram_bad_argument_type(self, full_stack):
         with pytest.raises(
             TypeError,
             match=re.escape(
@@ -951,15 +937,14 @@ class TestExtractSinogram:
                 "(was <class 'str'>)",
             ),
         ):
-            stack.extract_sinogram("bad_val")  # type: ignore
+            full_stack.extract_sinogram("bad_val")  # type: ignore
 
-    def test_extract_sinogram_exception_handling(self):
+    def test_extract_sinogram_exception_handling(self, full_stack):
         # test that on exception, logger is still enabled
-        stack = ds.get_catalyst_data()
         assert logging.getLogger("etspy.base").disabled is False
         with pytest.raises(IndexError):
             # using too large of a value should trigger an error
-            stack.extract_sinogram(column=10000)
+            full_stack.extract_sinogram(column=10000)
         assert logging.getLogger("etspy.base").disabled is False
 
 
