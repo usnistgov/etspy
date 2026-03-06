@@ -46,10 +46,14 @@ has_cupy = True
 try:
     import cupy as cp  # type: ignore
     from cupyx.scipy.ndimage import affine_transform as affine_transform_gpu
-except (ImportError, ModuleNotFoundError):
+
+    has_gpu = cp.cuda.runtime.getDeviceCount() > 0
+
+except Exception:
     has_cupy = False
     cp = None
     affine_transform_gpu = None
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -1320,21 +1324,15 @@ class TomoStack(CommonStack):
             )
         return filtered
 
-    def stack_register(  # noqa: PLR0913
+    def stack_register(
         self,
         method: AlignmentMethodType = AlignmentMethod.PC,
         start: int | None = None,
         show_progressbar: bool = False,
+        cuda: bool | None = False,
         crop: bool = False,
-        xrange: tuple[int, int] | None = None,
-        p: int = 20,
-        nslices: int = 20,
-        com_ref_index: int | None = None,
-        cl_ref_index: int | None = None,
-        cl_resolution: float = 0.05,
-        cl_div_factor: int = 8,
-        cuda: bool = False,
         shift_type: Literal["interp", "fourier"] = "fourier",
+        **kwargs,
     ) -> "TomoStack":
         """
         Register stack spatially.
@@ -1353,48 +1351,53 @@ class TomoStack(CommonStack):
             alignment. If ``None``, the central projection is used.
         show_progressbar
             Enable/disable progress bar
+        cuda
+            Whether or not to use CUDA-accelerated reconstruction algorithms.
         crop
             If True, crop aligned stack to eliminate border pixels. Default is
             False.
-        xrange
-            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
-            The range for performing alignment. See
-            :py:func:`~etspy.align.calculate_shifts_com` for more details.
-        p
-            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
-            Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more
-            details.
-        nslices
-            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
-            Number of slices to return. See
-            :py:func:`~etspy.align.calculate_shifts_com` for more details.
-        com_ref_index
-            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-            Reference slice for center of mass alignment.  All other slices
-            will be aligned to this reference.  If not provided, the midpoint
-            of the stack will be chosen. See :py:func:`~etspy.align.calc_shifts_com_cl`
-            for more details.
-        cl_ref_index
-            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-            Reference slice for common line alignment.  All other slices
-            will be aligned to this reference.  If not provided, the midpoint
-            of the stack will be chosen.
-        cl_resolution
-            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-            Resolution for subpixel common line alignment. Default is 0.05.
-            Should be less than 0.5. See
-            :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
-        cl_div_factor
-            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-            Factor which determines the number of iterations of common line
-            alignment to perform.  Default is 8. See
-            :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
-        cuda
-            Whether or not to use CUDA-accelerated reconstruction algorithms.
         shift_type
             Calculated image shifts can be applied using either interpolation via
             scipy.ndimage.shift or via Fourier shift as implemented in
             scipy.ndimage.fourier_shift.  Must be either 'interp' or 'fourier'.
+        **kwargs:
+            Remaining keyword arguments are passed to the underlying alignment
+            functions.
+
+        Keyword arguments that may be used include:
+            xrange
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
+                The range for performing alignment. See
+                :py:func:`~etspy.align.calculate_shifts_com` for more details.
+            p
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
+                Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for
+                more details.
+            nslices
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
+                Number of slices to return. See
+                :py:func:`~etspy.align.calculate_shifts_com` for more details.
+            com_ref_index
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
+                Reference slice for center of mass alignment.  All other slices
+                will be aligned to this reference.  If not provided, the midpoint
+                of the stack will be chosen.
+                See :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
+            cl_ref_index
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
+                Reference slice for common line alignment.  All other slices
+                will be aligned to this reference.  If not provided, the midpoint
+                of the stack will be chosen.
+            cl_resolution
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
+                Resolution for subpixel common line alignment. Default is 0.05.
+                Should be less than 0.5. See
+                :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
+            cl_div_factor
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
+                Factor which determines the number of iterations of common line
+                alignment to perform.  Default is 8. See
+                :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
 
         Returns
         -------
@@ -1424,22 +1427,22 @@ class TomoStack(CommonStack):
             >>> regCOMCL = stack.stack_register('COM-CL')
 
         """
+        aligners = {
+            "PC": align.PhaseCorrelationAligner,
+            "StackReg": align.StackRegAligner,
+            "COM": align.CoMAligner,
+            "COM-CL": align.CommonLineAligner,
+        }
+
         if AlignmentMethod.is_valid_value(method):
-            out = align.align_stack(
+            aligner = aligners[method](
                 self,
-                method,
-                start,
-                show_progressbar,
-                xrange=xrange,
-                p=p,
-                nslices=nslices,
-                com_ref_index=com_ref_index,
-                cl_ref_index=cl_ref_index,
-                cl_resolution=cl_resolution,
-                cl_div_factor=cl_div_factor,
+                start=start,
+                show_progressbar=show_progressbar,
                 cuda=cuda,
-                shift_type=shift_type,
+                **kwargs,
             )
+            out = aligner.align(shift_type)
         else:
             msg = (
                 f'Invalid registration method "{method}". '
@@ -1454,13 +1457,7 @@ class TomoStack(CommonStack):
     def tilt_align(
         self,
         method: Literal["CoM", "MaxImage"],
-        slices: np.ndarray | None = None,
-        nslices: int | None = None,
-        limit: float = 10,
-        delta: float = 0.1,
-        plot_results: bool = False,
-        also_shift: bool = False,
-        shift_limit: int = 20,
+        **kwargs,
     ):
         """
         Align the tilt axis of a TomoStack.
@@ -1488,38 +1485,44 @@ class TomoStack(CommonStack):
         method
             Algorithm to use for registration alignment. Must be either ``'CoM'`` or
             ``'MaxImage'``.
-        slices
-            (Only used when ``method == "CoM"``)
-            Locations at which to perform the Center of Mass analysis. If not
-            provided, an appropriate list of slices will be automatically determined.
-        nslices
-            (Only used when ``method == "CoM"``)
-            Nubmer of slices to use for the center of mass analysis (only used if the
-            ``slices`` parameter is not specified). If ``None``, a value of 10% of the
-            x-axis size will be used, clamped to the range [3, 50], as calculated in
-            the :py:func:`~etspy.align.tilt_com` function.
-        limit
-            (Only used when ``method == "MaxImage"``)
-            Maximum rotation angle for MaxImage calculation
-        delta
-            (Only used when ``method == "MaxImage"``)
-            Angular increment in degrees for MaxImage calculation
-        plot_results
-            (Only used when ``method == "MaxImage"``)
-            If ``True``, plot the maximum image along with the lines determined
-            by Hough analysis
-        also_shift
-            (Only used when ``method == "MaxImage"``)
-            If ``True``, also calculate and apply the global shift perpendicular to the
-            tilt by minimizing the sum of the reconstruction
-        shift_limit
-            (Only used when ``method == "MaxImage"``)
-            The limit of shifts applied if ``also_shift`` is set to ``True``
+        **kwargs:
+            Remaining keyword arguments are passed to the underlying alignment
+            functions.
+
+        Keyword arguments that may be used include:
+            slices
+                (Only used when ``method == "CoM"``)
+                Locations at which to perform the Center of Mass analysis. If not
+                provided, an appropriate list of slices will be automatically
+                determined.
+            nslices
+                (Only used when ``method == "CoM"``)
+                Nubmer of slices to use for the center of mass analysis (only used if
+                the ``slices`` parameter is not specified). If ``None``, a value of 10%
+                of the x-axis size will be used, clamped to the range [3, 50], as
+                calculated in the :py:func:`~etspy.align.TiltCOMAligner` class.
+            limit
+                (Only used when ``method == "MaxImage"``)
+                Maximum rotation angle for MaxImage calculation
+            delta
+                (Only used when ``method == "MaxImage"``)
+                Angular increment in degrees for MaxImage calculation
+            plot_results
+                (Only used when ``method == "MaxImage"``)
+                If ``True``, plot the maximum image along with the lines determined
+                by Hough analysis
+            also_shift
+                (Only used when ``method == "MaxImage"``)
+                If ``True``, also calculate and apply the global shift perpendicular to
+                the tilt by minimizing the sum of the reconstruction
+            shift_limit
+                (Only used when ``method == "MaxImage"``)
+                The limit of shifts applied if ``also_shift`` is set to ``True``
 
         Returns
         -------
         out : TomoStack
-            Copy of the input stack rotated by calculated angle
+            Copy of the input stack corrected for tilt axis alignment
 
         Examples
         --------
@@ -1538,17 +1541,17 @@ class TomoStack(CommonStack):
             >>> method = 'MaxImage'
             >>> ali = reg.tilt_align(method)
         """
-        if method == "CoM":
-            out = align.tilt_com(self, slices, nslices)
-        elif method == "MaxImage":
-            out = align.tilt_maximage(
-                self,
-                limit,
-                delta,
-                plot_results,
-                also_shift,
-                shift_limit,
-            )
+        tilt_aligners = {
+            "CoM": align.TiltCOMAligner,
+            "MaxImage": align.TiltMaxImageAligner,
+        }
+
+        if method in [
+            "CoM",
+            "MaxImage",
+        ]:
+            tilt_aligner = tilt_aligners[method](self, **kwargs)
+            out = tilt_aligner.align_tilt_axis()
         else:
             msg = (
                 f'Invalid alignment method "{method}". Must be one of '

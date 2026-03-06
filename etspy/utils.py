@@ -12,7 +12,6 @@ from scipy import ndimage
 
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
-from etspy.align import calculate_shifts_stackreg
 from etspy.base import TomoStack
 
 if TYPE_CHECKING:
@@ -61,6 +60,7 @@ def multiaverage(stack: np.ndarray, nframes: int, ny: int, nx: int) -> np.ndarra
     return average
 
 
+# TODO: Create Multistack class to handle edge case of multi-frame stacks
 def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
     """
     Register a multi-frame series collected by SerialEM.
@@ -86,13 +86,11 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
 
     if ncpus == 1:
         reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
+        sr = StackReg(StackReg.TRANSLATION)
         for i in tqdm.tqdm(range(ntilts)):
+            shifts = sr.register_stack(stack.data[i], reference="previous")
+            shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
             shifted = np.zeros([nframes, ny, nx])
-            shifts = calculate_shifts_stackreg(
-                stack.inav[:, i],
-                start=None,
-                show_progressbar=False,
-            )
             for k in range(nframes):
                 shifted[k, :, :] = ndimage.shift(
                     stack.data[i, k, :, :],
