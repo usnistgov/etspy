@@ -1068,55 +1068,46 @@ class TestOperations:
 class TestTestAlign:
     """Test test alignment of a TomoStack."""
 
-    def test_test_align_no_slices(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align()
+    def test_test_align_no_slices(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align()
         assert len(fig.axes) == NUM_AXES_THREE
 
-    def test_test_align_with_angle(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(tilt_rotation=3.0)
+    def test_test_align_with_angle(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(tilt_rotation=3.0)
         assert len(fig.axes) == NUM_AXES_THREE
 
-    def test_test_align_with_xshift(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(tilt_shift=3.0)
+    def test_test_align_with_xshift(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(tilt_shift=3.0)
         assert len(fig.axes) == NUM_AXES_THREE
 
-    def test_test_align_with_thickness(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(thickness=200)
+    def test_test_align_with_thickness(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(thickness=200)
         assert len(fig.axes) == NUM_AXES_THREE
 
-    def test_test_align_no_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(thickness=200, cuda=False)
+    def test_test_align_no_cuda(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(thickness=200, cuda=False)
         assert len(fig.axes) == NUM_AXES_THREE
 
     @patch("astra.use_cuda", new=lambda: False)
-    def test_test_align_cuda_none_mock_false(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(thickness=200, cuda=None)
+    def test_test_align_cuda_none_mock_false(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(thickness=200, cuda=None)
         assert len(fig.axes) == NUM_AXES_THREE
 
     @patch("matplotlib.get_backend", new=lambda: "widget")
-    def test_test_align_mock_mpl_backend_none(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(thickness=200)
+    def test_test_align_mock_mpl_backend_none(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(thickness=200)
         assert len(fig.axes) == NUM_AXES_THREE
         assert np.all(fig.get_size_inches() == np.array([12, 4]))
 
     @patch("matplotlib.get_backend", new=lambda: "ipympl")
-    def test_test_align_mock_mpl_backend_ipympl(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(thickness=200)
+    def test_test_align_mock_mpl_backend_ipympl(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(thickness=200)
         assert len(fig.axes) == NUM_AXES_THREE
         assert np.all(fig.get_size_inches() == np.array([7, 3]))
 
     @patch("matplotlib.get_backend", new=lambda: "nbagg")
-    def test_test_align_mock_mpl_backend_nbagg(self):
-        stack = ds.get_needle_data(aligned=True)
-        fig = stack.test_align(thickness=200)
+    def test_test_align_mock_mpl_backend_nbagg(self, aligned_short_stack):
+        fig = aligned_short_stack.test_align(thickness=200)
         assert len(fig.axes) == NUM_AXES_THREE
         assert np.all(fig.get_size_inches() == np.array([8, 4]))
 
