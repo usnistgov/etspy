@@ -1429,7 +1429,25 @@ class TestRecStackPlotSlices:
 
     def test_plot_slices(self):
         rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices()
+        fig = rec.plot_slices(return_fig=True)
+        assert isinstance(fig, Figure)
+
+    @patch("matplotlib.get_backend", new=lambda: "widget")
+    def test_plot_slices_widget_backend(self):
+        rec = RecStack(np.zeros([10, 10, 10]))
+        fig = rec.plot_slices(return_fig=True)
+        assert isinstance(fig, Figure)
+
+    @patch("matplotlib.get_backend", new=lambda: "ipympl")
+    def test_plot_slices_ipympl_backend(self):
+        rec = RecStack(np.zeros([10, 10, 10]))
+        fig = rec.plot_slices(return_fig=True)
+        assert isinstance(fig, Figure)
+
+    @patch("matplotlib.get_backend", new=lambda: "nbagg")
+    def test_plot_slices_nbagg_backend(self):
+        rec = RecStack(np.zeros([10, 10, 10]))
+        fig = rec.plot_slices(return_fig=True)
         assert isinstance(fig, Figure)
 
 
