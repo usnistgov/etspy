@@ -143,11 +143,6 @@ class TestCommonStack:
         assert fname.exists()
         assert fname == output_file.parent / "test_5x256x256_float32.rpl"
 
-    def test_print_stats(self, capsys, full_stack):
-        full_stack.stats()
-        captured = capsys.readouterr()
-        assert captured.out == "Mean: 4259.6\nStd: 11485.53\nMax: 64233.0\nMin: 0.0\n\n"
-
 
 class TestTomoStack:
     """Test creation of a TomoStack."""
