@@ -32,6 +32,34 @@ if TYPE_CHECKING:
 NUM_AXES_THREE = 3
 
 
+@pytest.fixture(scope="module")
+def short_stack():
+    """Load stack from test data and truncate to 5 images."""
+    return ds.get_needle_data().inav[0:5]
+
+
+@pytest.fixture(scope="module")
+def full_stack():
+    """Load stack from test data."""
+    return ds.get_needle_data()
+
+
+@pytest.fixture(scope="module")
+def aligned_short_stack():
+    """Create truncated and spatially registered stack from test data."""
+    s = ds.get_needle_data().inav[0:5]
+    s = s.stack_register("PC")
+    return s
+
+
+@pytest.fixture(scope="module")
+def aligned_full_stack():
+    """Create full spatially registered stack from test data."""
+    s = ds.get_needle_data()
+    s = s.stack_register("PC")
+    return s
+
+
 def _set_tomo_metadata(s: Signal2D) -> Signal2D:
     tomo_metadata = {
         "cropped": False,
