@@ -1718,10 +1718,9 @@ class TomoStack(CommonStack):
             axes_dict["axis-1"].copy(),
             axes_dict["axis-1"].copy(),
         ]
-        rec_axes_dict[2]["name"] = "z"
-        rec_axes_dict[2]["size"] = rec.shape[1]
+        rec_axes_dict[1]["name"] = "z"
+        rec_axes_dict[1]["size"] = rec.shape[1]
         rec = RecStack(rec, axes=rec_axes_dict)
-        rec = rec.swap_axes(1, 2)
 
         return rec
 
