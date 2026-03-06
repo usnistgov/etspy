@@ -24,6 +24,7 @@ import pylab as plt
 from hyperspy._signals.signal1d import Signal1D
 from hyperspy._signals.signal2d import Signal2D
 from hyperspy.signal import BaseSignal, SpecialSlicersSignal
+from hyperspy.drawing.utils import plot_images as hs_plot_images
 from matplotlib.figure import Figure
 from scipy import ndimage
 from skimage import transform
@@ -1713,13 +1714,14 @@ class TomoStack(CommonStack):
 
         axes_dict = self.axes_manager.as_dictionary()
         rec_axes_dict = [
-            axes_dict["axis-2"],
-            dict(axes_dict["axis-1"]),
-            axes_dict["axis-1"],
+            axes_dict["axis-2"].copy(),
+            axes_dict["axis-1"].copy(),
+            axes_dict["axis-1"].copy(),
         ]
-        rec_axes_dict[1]["name"] = "z"
-        rec_axes_dict[1]["size"] = rec.shape[1]
+        rec_axes_dict[2]["name"] = "z"
+        rec_axes_dict[2]["size"] = rec.shape[1]
         rec = RecStack(rec, axes=rec_axes_dict)
+        rec = rec.swap_axes(1, 2)
 
         return rec
 
@@ -2211,9 +2213,8 @@ class RecStack(CommonStack):
         xslice: int | None = None,
         yslice: int | None = None,
         zslice: int | None = None,
-        vmin_std: float = 0.1,
-        vmax_std: float = 5,
-        figsize: tuple = (10, 4),
+        return_fig: bool = False,
+        **kwargs,
     ):
         """
         Plot slices along all three axes of a reconstruction stack.
@@ -2224,14 +2225,10 @@ class RecStack(CommonStack):
             Indices of slices to plot. If ``None`` (default), the middle
             most slice will be used.
 
-        vmin_std, vmax_std
-            Number of standard deviations from mean to use for
-            scaling the displayed slices
+        kwargs
+            Additional keyword arguments passed to
+            :py:func:`~hyperspy.drawing.utils.plot_images`
 
-        Returns
-        -------
-        fig : ~matplotlib.figure.Figure
-            The figure containing a view of the three slices
         """
         if xslice is None:
             xslice = self.data.shape[0] // 2
@@ -2240,36 +2237,17 @@ class RecStack(CommonStack):
         if zslice is None:
             zslice = self.data.shape[2] // 2
 
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize)
-
-        slices = [
-            self.data[xslice, :, :],
-            self.data[:, zslice, :],
-            self.data[:, :, yslice],
-        ]
-        minvals = [slices[i].mean() - vmin_std * slices[i].std() for i in range(3)]
-        minvals = [x if x >= 0 else 0 for x in minvals]
-        maxvals = [slices[i].mean() + vmax_std * slices[i].std() for i in range(3)]
-
-        ax1.imshow(slices[0], cmap="afmhot", vmin=minvals[0], vmax=maxvals[0])
-        ax1.set_title(f"Z-Y Slice {xslice}")
-        ax1.set_ylabel("Z")
-        ax1.set_xlabel("Y")
-
-        ax2.imshow(slices[1], cmap="afmhot", vmin=minvals[1], vmax=maxvals[1])
-        ax2.set_title(f"Y-X Slice {zslice}")
-        ax2.set_ylabel("Y")
-        ax2.set_xlabel("X")
-
-        ax3.imshow(slices[2].T, cmap="afmhot", vmin=minvals[2], vmax=maxvals[2])
-        ax3.set_title(f"Z-X Slice {yslice}")
-        ax3.set_ylabel("Z")
-        ax3.set_xlabel("X")
-
-        [i.set_xticks([]) for i in [ax1, ax2, ax3]]
-        [i.set_yticks([]) for i in [ax1, ax2, ax3]]
-        fig.tight_layout()
-        return fig
+        hs_plot_images(
+            [
+                self.inav[xslice],
+                self.isig[yslice, :].as_signal2D((0, 1)),
+                self.isig[:, zslice].as_signal2D((0, 1)),
+            ],
+            **kwargs,
+        )
+        if return_fig:
+            return plt.gcf()
+        return None
 
     def interactive_rotation(
         self,
