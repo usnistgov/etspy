@@ -497,7 +497,6 @@ $(document).ready(function(){
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">etspy</span><span class="w"> </span><span class="kn">import</span> <span class="n">_format_choices</span> <span class="k">as</span> <span class="n">_fmt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">etspy</span><span class="w"> </span><span class="kn">import</span> <span class="n">_get_literal_hint_values</span> <span class="k">as</span> <span class="n">_get_lit</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">etspy.align</span><span class="w"> </span><span class="kn">import</span> <span class="n">calculate_shifts_stackreg</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">etspy.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">TomoStack</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
@@ -549,6 +548,7 @@ $(document).ready(function(){
 
 
 
+<span class="c1"># TODO: Create Multistack class to handle edge case of multi-frame stacks</span>
 <div class="viewcode-block" id="register_serialem_stack">
 <a class="viewcode-back" href="../../api/etspy.utils.register_serialem_stack.html#etspy.utils.register_serialem_stack">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">register_serialem_stack</span><span class="p">(</span><span class="n">stack</span><span class="p">:</span> <span class="n">Signal2D</span><span class="p">,</span> <span class="n">ncpus</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TomoStack</span><span class="p">:</span>
@@ -576,13 +576,11 @@ $(document).ready(function(){
 
     <span class="k">if</span> <span class="n">ncpus</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">reg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">ntilts</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">],</span> <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">sr</span> <span class="o">=</span> <span class="n">StackReg</span><span class="p">(</span><span class="n">StackReg</span><span class="o">.</span><span class="n">TRANSLATION</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">ntilts</span><span class="p">)):</span>
+            <span class="n">shifts</span> <span class="o">=</span> <span class="n">sr</span><span class="o">.</span><span class="n">register_stack</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">reference</span><span class="o">=</span><span class="s2">&quot;previous&quot;</span><span class="p">)</span>
+            <span class="n">shifts</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">shifts</span><span class="p">])</span>
             <span class="n">shifted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">nframes</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">])</span>
-            <span class="n">shifts</span> <span class="o">=</span> <span class="n">calculate_shifts_stackreg</span><span class="p">(</span>
-                <span class="n">stack</span><span class="o">.</span><span class="n">inav</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span>
-                <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">show_progressbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="p">)</span>
             <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nframes</span><span class="p">):</span>
                 <span class="n">shifted</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span>
                     <span class="n">stack</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span>

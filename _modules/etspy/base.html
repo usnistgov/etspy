@@ -531,10 +531,14 @@ $(document).ready(function(){
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">cupy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>  <span class="c1"># type: ignore</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">cupyx.scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">affine_transform</span> <span class="k">as</span> <span class="n">affine_transform_gpu</span>
-<span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">ModuleNotFoundError</span><span class="p">):</span>
+
+    <span class="n">has_gpu</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">runtime</span><span class="o">.</span><span class="n">getDeviceCount</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
     <span class="n">has_cupy</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">cp</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">affine_transform_gpu</span> <span class="o">=</span> <span class="kc">None</span>
+
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
@@ -1884,21 +1888,15 @@ $(document).ready(function(){
 
 <div class="viewcode-block" id="TomoStack.stack_register">
 <a class="viewcode-back" href="../../api/etspy.base.TomoStack.stack_register.html#etspy.base.TomoStack.stack_register">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">stack_register</span><span class="p">(</span>  <span class="c1"># noqa: PLR0913</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stack_register</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">method</span><span class="p">:</span> <span class="n">AlignmentMethodType</span> <span class="o">=</span> <span class="n">AlignmentMethod</span><span class="o">.</span><span class="n">PC</span><span class="p">,</span>
         <span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">show_progressbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">crop</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">xrange</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">p</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-        <span class="n">nslices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-        <span class="n">com_ref_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">cl_ref_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">cl_resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
-        <span class="n">cl_div_factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-        <span class="n">cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">shift_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;interp&quot;</span><span class="p">,</span> <span class="s2">&quot;fourier&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fourier&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TomoStack&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Register stack spatially.</span>
@@ -1917,48 +1915,53 @@ $(document).ready(function(){
 <span class="sd">            alignment. If ``None``, the central projection is used.</span>
 <span class="sd">        show_progressbar</span>
 <span class="sd">            Enable/disable progress bar</span>
+<span class="sd">        cuda</span>
+<span class="sd">            Whether or not to use CUDA-accelerated reconstruction algorithms.</span>
 <span class="sd">        crop</span>
 <span class="sd">            If True, crop aligned stack to eliminate border pixels. Default is</span>
 <span class="sd">            False.</span>
-<span class="sd">        xrange</span>
-<span class="sd">            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
-<span class="sd">            The range for performing alignment. See</span>
-<span class="sd">            :py:func:`~etspy.align.calculate_shifts_com` for more details.</span>
-<span class="sd">        p</span>
-<span class="sd">            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
-<span class="sd">            Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for more</span>
-<span class="sd">            details.</span>
-<span class="sd">        nslices</span>
-<span class="sd">            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
-<span class="sd">            Number of slices to return. See</span>
-<span class="sd">            :py:func:`~etspy.align.calculate_shifts_com` for more details.</span>
-<span class="sd">        com_ref_index</span>
-<span class="sd">            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
-<span class="sd">            Reference slice for center of mass alignment.  All other slices</span>
-<span class="sd">            will be aligned to this reference.  If not provided, the midpoint</span>
-<span class="sd">            of the stack will be chosen. See :py:func:`~etspy.align.calc_shifts_com_cl`</span>
-<span class="sd">            for more details.</span>
-<span class="sd">        cl_ref_index</span>
-<span class="sd">            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
-<span class="sd">            Reference slice for common line alignment.  All other slices</span>
-<span class="sd">            will be aligned to this reference.  If not provided, the midpoint</span>
-<span class="sd">            of the stack will be chosen.</span>
-<span class="sd">        cl_resolution</span>
-<span class="sd">            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
-<span class="sd">            Resolution for subpixel common line alignment. Default is 0.05.</span>
-<span class="sd">            Should be less than 0.5. See</span>
-<span class="sd">            :py:func:`~etspy.align.calc_shifts_com_cl` for more details.</span>
-<span class="sd">        cl_div_factor</span>
-<span class="sd">            (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
-<span class="sd">            Factor which determines the number of iterations of common line</span>
-<span class="sd">            alignment to perform.  Default is 8. See</span>
-<span class="sd">            :py:func:`~etspy.align.calc_shifts_com_cl` for more details.</span>
-<span class="sd">        cuda</span>
-<span class="sd">            Whether or not to use CUDA-accelerated reconstruction algorithms.</span>
 <span class="sd">        shift_type</span>
 <span class="sd">            Calculated image shifts can be applied using either interpolation via</span>
 <span class="sd">            scipy.ndimage.shift or via Fourier shift as implemented in</span>
 <span class="sd">            scipy.ndimage.fourier_shift.  Must be either &#39;interp&#39; or &#39;fourier&#39;.</span>
+<span class="sd">        **kwargs:</span>
+<span class="sd">            Remaining keyword arguments are passed to the underlying alignment</span>
+<span class="sd">            functions.</span>
+
+<span class="sd">        Keyword arguments that may be used include:</span>
+<span class="sd">            xrange</span>
+<span class="sd">                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
+<span class="sd">                The range for performing alignment. See</span>
+<span class="sd">                :py:func:`~etspy.align.calculate_shifts_com` for more details.</span>
+<span class="sd">            p</span>
+<span class="sd">                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
+<span class="sd">                Padding element. See :py:func:`~etspy.align.calculate_shifts_com` for</span>
+<span class="sd">                more details.</span>
+<span class="sd">            nslices</span>
+<span class="sd">                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)</span>
+<span class="sd">                Number of slices to return. See</span>
+<span class="sd">                :py:func:`~etspy.align.calculate_shifts_com` for more details.</span>
+<span class="sd">            com_ref_index</span>
+<span class="sd">                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
+<span class="sd">                Reference slice for center of mass alignment.  All other slices</span>
+<span class="sd">                will be aligned to this reference.  If not provided, the midpoint</span>
+<span class="sd">                of the stack will be chosen.</span>
+<span class="sd">                See :py:func:`~etspy.align.calc_shifts_com_cl` for more details.</span>
+<span class="sd">            cl_ref_index</span>
+<span class="sd">                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
+<span class="sd">                Reference slice for common line alignment.  All other slices</span>
+<span class="sd">                will be aligned to this reference.  If not provided, the midpoint</span>
+<span class="sd">                of the stack will be chosen.</span>
+<span class="sd">            cl_resolution</span>
+<span class="sd">                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
+<span class="sd">                Resolution for subpixel common line alignment. Default is 0.05.</span>
+<span class="sd">                Should be less than 0.5. See</span>
+<span class="sd">                :py:func:`~etspy.align.calc_shifts_com_cl` for more details.</span>
+<span class="sd">            cl_div_factor</span>
+<span class="sd">                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)</span>
+<span class="sd">                Factor which determines the number of iterations of common line</span>
+<span class="sd">                alignment to perform.  Default is 8. See</span>
+<span class="sd">                :py:func:`~etspy.align.calc_shifts_com_cl` for more details.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -1988,22 +1991,22 @@ $(document).ready(function(){
 <span class="sd">            &gt;&gt;&gt; regCOMCL = stack.stack_register(&#39;COM-CL&#39;)</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">aligners</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;PC&quot;</span><span class="p">:</span> <span class="n">align</span><span class="o">.</span><span class="n">PhaseCorrelationAligner</span><span class="p">,</span>
+            <span class="s2">&quot;StackReg&quot;</span><span class="p">:</span> <span class="n">align</span><span class="o">.</span><span class="n">StackRegAligner</span><span class="p">,</span>
+            <span class="s2">&quot;COM&quot;</span><span class="p">:</span> <span class="n">align</span><span class="o">.</span><span class="n">CoMAligner</span><span class="p">,</span>
+            <span class="s2">&quot;COM-CL&quot;</span><span class="p">:</span> <span class="n">align</span><span class="o">.</span><span class="n">CommonLineAligner</span><span class="p">,</span>
+        <span class="p">}</span>
+
         <span class="k">if</span> <span class="n">AlignmentMethod</span><span class="o">.</span><span class="n">is_valid_value</span><span class="p">(</span><span class="n">method</span><span class="p">):</span>
-            <span class="n">out</span> <span class="o">=</span> <span class="n">align</span><span class="o">.</span><span class="n">align_stack</span><span class="p">(</span>
+            <span class="n">aligner</span> <span class="o">=</span> <span class="n">aligners</span><span class="p">[</span><span class="n">method</span><span class="p">](</span>
                 <span class="bp">self</span><span class="p">,</span>
-                <span class="n">method</span><span class="p">,</span>
-                <span class="n">start</span><span class="p">,</span>
-                <span class="n">show_progressbar</span><span class="p">,</span>
-                <span class="n">xrange</span><span class="o">=</span><span class="n">xrange</span><span class="p">,</span>
-                <span class="n">p</span><span class="o">=</span><span class="n">p</span><span class="p">,</span>
-                <span class="n">nslices</span><span class="o">=</span><span class="n">nslices</span><span class="p">,</span>
-                <span class="n">com_ref_index</span><span class="o">=</span><span class="n">com_ref_index</span><span class="p">,</span>
-                <span class="n">cl_ref_index</span><span class="o">=</span><span class="n">cl_ref_index</span><span class="p">,</span>
-                <span class="n">cl_resolution</span><span class="o">=</span><span class="n">cl_resolution</span><span class="p">,</span>
-                <span class="n">cl_div_factor</span><span class="o">=</span><span class="n">cl_div_factor</span><span class="p">,</span>
+                <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
+                <span class="n">show_progressbar</span><span class="o">=</span><span class="n">show_progressbar</span><span class="p">,</span>
                 <span class="n">cuda</span><span class="o">=</span><span class="n">cuda</span><span class="p">,</span>
-                <span class="n">shift_type</span><span class="o">=</span><span class="n">shift_type</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">aligner</span><span class="o">.</span><span class="n">align</span><span class="p">(</span><span class="n">shift_type</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="sa">f</span><span class="s1">&#39;Invalid registration method &quot;</span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s1">&quot;. &#39;</span>
@@ -2021,13 +2024,7 @@ $(document).ready(function(){
     <span class="k">def</span><span class="w"> </span><span class="nf">tilt_align</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;CoM&quot;</span><span class="p">,</span> <span class="s2">&quot;MaxImage&quot;</span><span class="p">],</span>
-        <span class="n">slices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">nslices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
-        <span class="n">delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
-        <span class="n">plot_results</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">also_shift</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">shift_limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Align the tilt axis of a TomoStack.</span>
@@ -2055,38 +2052,44 @@ $(document).ready(function(){
 <span class="sd">        method</span>
 <span class="sd">            Algorithm to use for registration alignment. Must be either ``&#39;CoM&#39;`` or</span>
 <span class="sd">            ``&#39;MaxImage&#39;``.</span>
-<span class="sd">        slices</span>
-<span class="sd">            (Only used when ``method == &quot;CoM&quot;``)</span>
-<span class="sd">            Locations at which to perform the Center of Mass analysis. If not</span>
-<span class="sd">            provided, an appropriate list of slices will be automatically determined.</span>
-<span class="sd">        nslices</span>
-<span class="sd">            (Only used when ``method == &quot;CoM&quot;``)</span>
-<span class="sd">            Nubmer of slices to use for the center of mass analysis (only used if the</span>
-<span class="sd">            ``slices`` parameter is not specified). If ``None``, a value of 10% of the</span>
-<span class="sd">            x-axis size will be used, clamped to the range [3, 50], as calculated in</span>
-<span class="sd">            the :py:func:`~etspy.align.tilt_com` function.</span>
-<span class="sd">        limit</span>
-<span class="sd">            (Only used when ``method == &quot;MaxImage&quot;``)</span>
-<span class="sd">            Maximum rotation angle for MaxImage calculation</span>
-<span class="sd">        delta</span>
-<span class="sd">            (Only used when ``method == &quot;MaxImage&quot;``)</span>
-<span class="sd">            Angular increment in degrees for MaxImage calculation</span>
-<span class="sd">        plot_results</span>
-<span class="sd">            (Only used when ``method == &quot;MaxImage&quot;``)</span>
-<span class="sd">            If ``True``, plot the maximum image along with the lines determined</span>
-<span class="sd">            by Hough analysis</span>
-<span class="sd">        also_shift</span>
-<span class="sd">            (Only used when ``method == &quot;MaxImage&quot;``)</span>
-<span class="sd">            If ``True``, also calculate and apply the global shift perpendicular to the</span>
-<span class="sd">            tilt by minimizing the sum of the reconstruction</span>
-<span class="sd">        shift_limit</span>
-<span class="sd">            (Only used when ``method == &quot;MaxImage&quot;``)</span>
-<span class="sd">            The limit of shifts applied if ``also_shift`` is set to ``True``</span>
+<span class="sd">        **kwargs:</span>
+<span class="sd">            Remaining keyword arguments are passed to the underlying alignment</span>
+<span class="sd">            functions.</span>
+
+<span class="sd">        Keyword arguments that may be used include:</span>
+<span class="sd">            slices</span>
+<span class="sd">                (Only used when ``method == &quot;CoM&quot;``)</span>
+<span class="sd">                Locations at which to perform the Center of Mass analysis. If not</span>
+<span class="sd">                provided, an appropriate list of slices will be automatically</span>
+<span class="sd">                determined.</span>
+<span class="sd">            nslices</span>
+<span class="sd">                (Only used when ``method == &quot;CoM&quot;``)</span>
+<span class="sd">                Nubmer of slices to use for the center of mass analysis (only used if</span>
+<span class="sd">                the ``slices`` parameter is not specified). If ``None``, a value of 10%</span>
+<span class="sd">                of the x-axis size will be used, clamped to the range [3, 50], as</span>
+<span class="sd">                calculated in the :py:func:`~etspy.align.TiltCOMAligner` class.</span>
+<span class="sd">            limit</span>
+<span class="sd">                (Only used when ``method == &quot;MaxImage&quot;``)</span>
+<span class="sd">                Maximum rotation angle for MaxImage calculation</span>
+<span class="sd">            delta</span>
+<span class="sd">                (Only used when ``method == &quot;MaxImage&quot;``)</span>
+<span class="sd">                Angular increment in degrees for MaxImage calculation</span>
+<span class="sd">            plot_results</span>
+<span class="sd">                (Only used when ``method == &quot;MaxImage&quot;``)</span>
+<span class="sd">                If ``True``, plot the maximum image along with the lines determined</span>
+<span class="sd">                by Hough analysis</span>
+<span class="sd">            also_shift</span>
+<span class="sd">                (Only used when ``method == &quot;MaxImage&quot;``)</span>
+<span class="sd">                If ``True``, also calculate and apply the global shift perpendicular to</span>
+<span class="sd">                the tilt by minimizing the sum of the reconstruction</span>
+<span class="sd">            shift_limit</span>
+<span class="sd">                (Only used when ``method == &quot;MaxImage&quot;``)</span>
+<span class="sd">                The limit of shifts applied if ``also_shift`` is set to ``True``</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        out : TomoStack</span>
-<span class="sd">            Copy of the input stack rotated by calculated angle</span>
+<span class="sd">            Copy of the input stack corrected for tilt axis alignment</span>
 
 <span class="sd">        Examples</span>
 <span class="sd">        --------</span>
@@ -2105,17 +2108,17 @@ $(document).ready(function(){
 <span class="sd">            &gt;&gt;&gt; method = &#39;MaxImage&#39;</span>
 <span class="sd">            &gt;&gt;&gt; ali = reg.tilt_align(method)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;CoM&quot;</span><span class="p">:</span>
-            <span class="n">out</span> <span class="o">=</span> <span class="n">align</span><span class="o">.</span><span class="n">tilt_com</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slices</span><span class="p">,</span> <span class="n">nslices</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;MaxImage&quot;</span><span class="p">:</span>
-            <span class="n">out</span> <span class="o">=</span> <span class="n">align</span><span class="o">.</span><span class="n">tilt_maximage</span><span class="p">(</span>
-                <span class="bp">self</span><span class="p">,</span>
-                <span class="n">limit</span><span class="p">,</span>
-                <span class="n">delta</span><span class="p">,</span>
-                <span class="n">plot_results</span><span class="p">,</span>
-                <span class="n">also_shift</span><span class="p">,</span>
-                <span class="n">shift_limit</span><span class="p">,</span>
-            <span class="p">)</span>
+        <span class="n">tilt_aligners</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;CoM&quot;</span><span class="p">:</span> <span class="n">align</span><span class="o">.</span><span class="n">TiltCOMAligner</span><span class="p">,</span>
+            <span class="s2">&quot;MaxImage&quot;</span><span class="p">:</span> <span class="n">align</span><span class="o">.</span><span class="n">TiltMaxImageAligner</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;CoM&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MaxImage&quot;</span><span class="p">,</span>
+        <span class="p">]:</span>
+            <span class="n">tilt_aligner</span> <span class="o">=</span> <span class="n">tilt_aligners</span><span class="p">[</span><span class="n">method</span><span class="p">](</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">tilt_aligner</span><span class="o">.</span><span class="n">align_tilt_axis</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="sa">f</span><span class="s1">&#39;Invalid alignment method &quot;</span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s1">&quot;. Must be one of &#39;</span>
