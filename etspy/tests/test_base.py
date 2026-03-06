@@ -60,6 +60,13 @@ def aligned_full_stack():
     return s
 
 
+@pytest.fixture(scope="module")
+def multiframe_stack():
+    """Create multiframe stack."""
+    s = load_serialem_multiframe_data()
+    return s
+
+
 def _set_tomo_metadata(s: Signal2D) -> Signal2D:
     tomo_metadata = {
         "cropped": False,
@@ -88,63 +95,56 @@ class TestCommonStack:
         ):
             CommonStack(np.random.rand(10, 100, 100))
 
-    def test_slicing(self):
-        s = ds.get_needle_data()
-        s2 = s.inav[:5]
-        assert s2.data.shape == (5, 256, 256)
-        assert s2.shifts.data.shape == (5, 2)
-        assert s2.tilts.data.shape == (5, 1)
+    def test_slicing(self, short_stack):
+        assert short_stack.data.shape == (5, 256, 256)
+        assert short_stack.shifts.data.shape == (5, 2)
+        assert short_stack.tilts.data.shape == (5, 1)
 
-    def test_plot(self):
-        s = ds.get_needle_data()
-        s.plot()
+    def test_plot(self, short_stack):
+        short_stack.plot()
         f = plt.gcf()
         plt.close(f)
 
-    def test_save(self, tmp_path):
-        s = ds.get_needle_data()
+    def test_save(self, tmp_path, short_stack):
         fname = tmp_path / "save_test.hspy"
-        s.save(fname, file_format="HSPY")
+        short_stack.save(fname, file_format="HSPY")
         with h5py.File(fname, "r") as h5:
             data = h5.get("/Experiments/__unnamed__/data")
-            assert data.shape == (77, 256, 256)  # type: ignore
+            assert data.shape == (5, 256, 256)  # type: ignore
             tilts = h5.get("/Experiments/__unnamed__/metadata/Tomography/_sig_tilts")
-            assert tilts.get("data").shape == (77, 1)  # type: ignore
+            assert tilts.get("data").shape == (5, 1)  # type: ignore
             shifts = h5.get("/Experiments/__unnamed__/metadata/Tomography/_sig_shifts")
-            assert shifts.get("data").shape == (77, 2)  # type: ignore
+            assert shifts.get("data").shape == (5, 2)  # type: ignore
 
-    def test_save_raw(self, tmp_path):
+    def test_save_raw(self, tmp_path, short_stack):
         os.chdir(tmp_path)
-        s = ds.get_needle_data()
-        fname = s.save_raw()
+        fname = short_stack.save_raw()
         hs_s = hs_load(fname)
         assert isinstance(hs_s, Signal2D)
         assert isinstance(fname, Path)
         assert fname.exists()
 
-    def test_save_raw_with_fname(self, tmp_path):
-        s = ds.get_needle_data()
+    def test_save_raw_with_fname(self, tmp_path, short_stack):
         output_file = tmp_path / "test.rpl"
-        fname = s.save_raw(filename=output_file)
+        fname = short_stack.save_raw(filename=output_file)
         hs_s = hs_load(fname)
         assert isinstance(hs_s, Signal2D)
         assert isinstance(fname, Path)
         assert fname.exists()
-        assert fname == output_file.parent / "test_77x256x256_float32.rpl"
+        assert fname == output_file.parent / "test_5x256x256_float32.rpl"
 
-    def test_save_raw_with_fname_str(self, tmp_path):
-        s = ds.get_needle_data()
+    def test_save_raw_with_fname_str(self, tmp_path, short_stack):
         output_file = tmp_path / "test.rpl"
         output_file_str = str(output_file)
-        fname = s.save_raw(filename=output_file_str)
+        fname = short_stack.save_raw(filename=output_file_str)
         hs_s = hs_load(fname)
         assert isinstance(hs_s, Signal2D)
         assert isinstance(fname, Path)
         assert fname.exists()
-        assert fname == output_file.parent / "test_77x256x256_float32.rpl"
+        assert fname == output_file.parent / "test_5x256x256_float32.rpl"
 
-    def test_print_stats(self, capsys):
-        ds.get_needle_data().stats()
+    def test_print_stats(self, capsys, full_stack):
+        full_stack.stats()
         captured = capsys.readouterr()
         assert captured.out == "Mean: 4259.6\nStd: 11485.53\nMax: 64233.0\nMin: 0.0\n\n"
 
@@ -153,7 +153,7 @@ class TestTomoStack:
     """Test creation of a TomoStack."""
 
     def test_tomostack_create_by_signal(self):
-        s = hs.signals.Signal2D(np.random.random([10, 100, 100]))
+        s = hs.signals.Signal2D(np.random.random([5, 100, 100]))
         stack = TomoStack(s)
         assert isinstance(stack, TomoStack)
         assert hasattr(stack, "tilts")
@@ -162,7 +162,7 @@ class TestTomoStack:
         assert stack.metadata.get_item("Tomography.yshift") == 0
 
     def test_tomostack_create_by_signal_with_existing_tomometa(self):
-        s = hs.signals.Signal2D(np.random.random([10, 100, 100]))
+        s = hs.signals.Signal2D(np.random.random([5, 100, 100]))
         s = _set_tomo_metadata(s)
         s.metadata.set_item("General.title", "Test title")
         stack = TomoStack(s)
@@ -176,7 +176,7 @@ class TestTomoStack:
         assert stack.metadata.get_item("General.title") == "Test title"
 
     def test_tomostack_create_by_signal_with_tomometa_dict(self):
-        s = hs.signals.Signal2D(np.random.random([10, 100, 100]))
+        s = hs.signals.Signal2D(np.random.random([5, 100, 100]))
         meta_dict = {
             "General": {"title": "test signal"},
             "Tomography": {
@@ -197,7 +197,7 @@ class TestTomoStack:
         assert stack.metadata.get_item("General.title") == "test signal"
 
     def test_tomostack_create_by_signal_without_tomometa_dict(self):
-        s = hs.signals.Signal2D(np.random.random([10, 100, 100]))
+        s = hs.signals.Signal2D(np.random.random([5, 100, 100]))
         meta_dict = {
             "General": {"title": "test signal"},
         }
@@ -212,7 +212,7 @@ class TestTomoStack:
         assert stack.metadata.get_item("General.title") == "test signal"
 
     def test_tomostack_create_by_signal_original_metadata(self):
-        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([5, 100, 100])))
         s.metadata.set_item("General.title", "original_metadata test")
         s.original_metadata.set_item("Level1.level2", "the value")
         stack = TomoStack(s)
@@ -220,7 +220,7 @@ class TestTomoStack:
         assert stack.original_metadata.get_item("Level1.level2") == "the value"
 
     def test_tomostack_create_by_signal_original_metadata_arg(self):
-        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([5, 100, 100])))
         s.metadata.set_item("General.title", "original_metadata test")
         s.original_metadata.set_item("Level1.level2", "the value")
         stack = TomoStack(s, original_metadata={"A1": {"B1": "C", "B2": "C2"}})
@@ -230,7 +230,7 @@ class TestTomoStack:
         assert stack.original_metadata.get_item("A1.B2") == "C2"
 
     def test_tomostack_create_by_signal_axes(self):
-        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([5, 100, 100])))
         s.axes_manager[0].name = "Test nav"  # type: ignore
         s.axes_manager[0].units = "Nav units"  # type: ignore
         stack = TomoStack(s)
@@ -238,14 +238,14 @@ class TestTomoStack:
         assert stack.axes_manager[0].units == "Nav units"  # type: ignore
 
     def test_tomostack_create_by_signal_axes_list_arg(self):
-        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([5, 100, 100])))
         ax_list = [
             {
                 "_type": "UniformDataAxis",
                 "name": "nav_from_list",
                 "units": "test units",
                 "navigate": True,
-                "size": 10,
+                "size": 5,
                 "scale": 1.0,
                 "offset": 1,
             },
@@ -278,9 +278,9 @@ class TestTomoStack:
         assert stack.axes_manager[-1].scale == 0.123  # type: ignore
 
     def test_tomostack_create_by_signal_undefined_axes(self):
-        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([10, 100, 100])))
+        s = cast("Signal2D", hs.signals.Signal2D(np.random.random([5, 100, 100])))
         axes = [
-            {"size": 10, "name": "Axis0", "units": ""},
+            {"size": 5, "name": "Axis0", "units": ""},
             {"size": 100, "name": "Axis1", "units": ""},
             {"size": 100, "name": "Axis2", "units": ""},
         ]
@@ -289,7 +289,7 @@ class TestTomoStack:
         assert stack.axes_manager[0].units == "degrees"  # type: ignore
 
     def test_tomostack_create_by_array_multiframe(self):
-        n = np.random.random([20, 5, 110, 120])
+        n = np.random.random([5, 2, 110, 120])
         stack = TomoStack(n)
         ax0, ax1, ax2, ax3 = (cast("Uda", stack.axes_manager[i]) for i in range(4))
         assert ax0.name == "Frames"
@@ -300,8 +300,8 @@ class TestTomoStack:
         assert ax1.units == "degrees"
         assert ax2.units == "pixels"
         assert ax3.units == "pixels"
-        assert ax0.size == 5
-        assert ax1.size == 20
+        assert ax0.size == 2
+        assert ax1.size == 5
         assert ax2.size == 120
         assert ax3.size == 110
 
@@ -316,61 +316,58 @@ class TestTomoStack:
         ):
             TomoStack(n)
 
-    def test_deepcopy(self):
-        s = ds.get_needle_data()
-        s2 = s.deepcopy()
-        assert np.all(s.data == s2.data)
-        assert np.all(s.tilts.data == s2.tilts.data)
-        assert np.all(s.shifts.data == s2.shifts.data)
-        assert s is not s2
-        assert s.data is not s2.data
-        assert s.tilts.data is not s2.tilts.data
-        assert s.shifts.data is not s2.shifts.data
+    def test_deepcopy(self, short_stack):
+        s2 = short_stack.deepcopy()
+        assert np.all(short_stack.data == s2.data)
+        assert np.all(short_stack.tilts.data == s2.tilts.data)
+        assert np.all(short_stack.shifts.data == s2.shifts.data)
+        assert short_stack is not s2
+        assert short_stack.data is not s2.data
+        assert short_stack.tilts.data is not s2.tilts.data
+        assert short_stack.shifts.data is not s2.shifts.data
         np.testing.assert_equal(
-            s.metadata.as_dictionary(),
+            short_stack.metadata.as_dictionary(),
             s2.metadata.as_dictionary(),
         )
 
-    def test_copy(self):
-        s = ds.get_needle_data()
-        s2 = s.copy()
-        assert np.all(s.data == s2.data)
-        assert np.all(s.tilts.data == s2.tilts.data)
-        assert np.all(s.shifts.data == s2.shifts.data)
-        assert s is not s2
-        assert s.data is s2.data
-        assert s.tilts.data is s2.tilts.data
-        assert s.shifts.data is s2.shifts.data
+    def test_copy(self, short_stack):
+        s2 = short_stack.copy()
+        assert np.all(short_stack.data == s2.data)
+        assert np.all(short_stack.tilts.data == s2.tilts.data)
+        assert np.all(short_stack.shifts.data == s2.shifts.data)
+        assert short_stack is not s2
+        assert short_stack.data is s2.data
+        assert short_stack.tilts.data is s2.tilts.data
+        assert short_stack.shifts.data is s2.shifts.data
         np.testing.assert_equal(
-            s.metadata.as_dictionary(),
+            short_stack.metadata.as_dictionary(),
             s2.metadata.as_dictionary(),
         )
 
-    def test_remove_projections(self):
-        s = ds.get_needle_data(aligned=True)
-        s_new = s.remove_projections([0, 5, 10, 15, 20])
-        # original shape is (77, 256, 256)
-        assert s_new.data.shape == (72, 256, 256)
-        assert s_new.tilts.data.shape == (72, 1)
-        assert s_new.shifts.data.shape == (72, 2)
-        for t in [-76, -66, -56, -46, -36]:
+    def test_remove_projections(self, short_stack):
+        remove_indices = [0, 1, 3]
+        tilts_to_remove = [short_stack.tilts.data[i] for i in remove_indices]
+        s_new = short_stack.remove_projections(remove_indices)
+        # original shape is (5, 256, 256)
+        assert s_new.data.shape == (2, 256, 256)
+        assert s_new.tilts.data.shape == (2, 1)
+        assert s_new.shifts.data.shape == (2, 2)
+        for t in tilts_to_remove:
             assert t not in s_new.tilts.data
 
-    def test_remove_projections_none(self):
-        s = ds.get_needle_data(aligned=True)
+    def test_remove_projections_none(self, short_stack):
         with pytest.raises(ValueError, match="No projections provided"):
-            s.remove_projections(None)
+            short_stack.remove_projections(None)
 
-    def test_plot_sinos(self):
-        s = ds.get_needle_data(aligned=True)
-        s.plot_sinos()
+    def test_plot_sinos(self, short_stack):
+        short_stack.plot_sinos()
         f = plt.gcf()
         xlim = f.axes[0].get_xlim()
         ylim = f.axes[0].get_ylim()
         assert xlim[0] == pytest.approx(-1.68)
         assert xlim[1] == pytest.approx(858.48)
-        assert ylim[0] == pytest.approx(77)
-        assert ylim[1] == pytest.approx(-77)
+        assert ylim[0] == pytest.approx(4.5)
+        assert ylim[1] == pytest.approx(-0.5)
         assert f.axes[0].title.get_text() == " Signal"
         assert f.axes[0].get_xlabel() == "y axis (nm)"
         assert f.axes[0].get_ylabel() == "Projections axis (degrees)"
@@ -452,31 +449,50 @@ class TestProperties:
         ):
             TomoShifts(n)
 
-    def test_tilt_setter(self):
-        s = ds.get_needle_data()
-        s.tilts = np.random.rand(77, 1)
-        assert s.tilts.metadata.get_item("General.title") == "Image tilt values"
-        assert s.tilts.axes_manager.shape == (77, 1)
-        assert s.tilts.data.shape == (77, 1)
+    def test_tilt_setter(self, full_stack):
+        full_stack_random_tilts = full_stack.deepcopy()
+        full_stack_random_tilts.tilts = np.random.rand(77, 1)
+        assert (
+            full_stack_random_tilts.tilts.metadata.get_item("General.title")
+            == "Image tilt values"
+        )
+        assert full_stack_random_tilts.tilts.axes_manager.shape == (77, 1)
+        assert full_stack_random_tilts.tilts.data.shape == (77, 1)
 
-    def test_tilt_setter_1d_array(self):
-        s = ds.get_needle_data()
-        s.tilts = np.random.rand(77)  # should be coerced to (77, 1)
+    def test_tilt_setter_1d_array(self, full_stack):
+        full_stack_random_tilts = full_stack.deepcopy()
+        full_stack_random_tilts.tilts = np.random.rand(
+            77
+        )  # should be coerced to (77, 1)
 
-        assert s.tilts.metadata.get_item("General.title") == "Image tilt values"
-        assert s.tilts.axes_manager.shape == (77, 1)
-        assert s.tilts.data.shape == (77, 1)
-        assert s.tilts.axes_manager[-1].name == "Tilt values"  # type: ignore
-        assert s.tilts.axes_manager[-1].units == "degrees"  # type: ignore
+        assert (
+            full_stack_random_tilts.tilts.metadata.get_item("General.title")
+            == "Image tilt values"
+        )
+        assert full_stack_random_tilts.tilts.axes_manager.shape == (77, 1)
+        assert full_stack_random_tilts.tilts.data.shape == (77, 1)
+        assert full_stack_random_tilts.tilts.axes_manager[-1].name == "Tilt values"  # type: ignore
+        assert full_stack_random_tilts.tilts.axes_manager[-1].units == "degrees"  # type: ignore
 
         # check that tilt axes info matches signal
-        assert s.tilts.axes_manager[0].name == s.axes_manager[0].name  # type: ignore
-        assert s.tilts.axes_manager[0].units == s.axes_manager[0].units  # type: ignore
-        assert s.tilts.axes_manager[0].scale == s.axes_manager[0].scale  # type: ignore
-        assert s.tilts.axes_manager[0].offset == s.axes_manager[0].offset  # type: ignore
+        assert (
+            full_stack_random_tilts.tilts.axes_manager[0].name
+            == full_stack.axes_manager[0].name
+        )  # type: ignore
+        assert (
+            full_stack_random_tilts.tilts.axes_manager[0].units
+            == full_stack.axes_manager[0].units
+        )  # type: ignore
+        assert (
+            full_stack_random_tilts.tilts.axes_manager[0].scale
+            == full_stack.axes_manager[0].scale
+        )  # type: ignore
+        assert (
+            full_stack_random_tilts.tilts.axes_manager[0].offset
+            == full_stack.axes_manager[0].offset
+        )  # type: ignore
 
-    def test_tilt_setter_bad_dims(self):
-        s = ds.get_needle_data()
+    def test_tilt_setter_bad_dims(self, full_stack):
         with pytest.raises(
             ValueError,
             match=re.escape(
@@ -484,18 +500,20 @@ class TestProperties:
                 "size of the stack (was (20, 1))",
             ),
         ):
-            s.tilts = np.random.rand(20, 1)
+            full_stack.tilts = np.random.rand(20, 1)
 
-    def test_tilt_setter_tomotilt(self):
-        s = ds.get_needle_data()
+    def test_tilt_setter_tomotilt(self, full_stack):
+        full_stack_random_tilts = full_stack.deepcopy()
         n = np.random.rand(77, 1)
         tilts = TomoTilts(n)
         assert tilts.metadata.get_item("General.title") == ""
-        s.tilts = tilts  # title should be set since it was empty
-        assert s.tilts.metadata.get_item("General.title") == "Image tilt values"
+        full_stack_random_tilts.tilts = tilts  # title should be set since it was empty
+        assert (
+            full_stack_random_tilts.tilts.metadata.get_item("General.title")
+            == "Image tilt values"
+        )
 
-    def test_tilt_setter_tomotilt_bad_dims(self):
-        s = ds.get_needle_data()
+    def test_tilt_setter_tomotilt_bad_dims(self, full_stack):
         n = np.random.rand(20, 1)
         tilts = TomoTilts(n)
         assert tilts.metadata.get_item("General.title") == ""
@@ -506,25 +524,42 @@ class TestProperties:
                 "of the stack (was (20, 1))",
             ),
         ):
-            s.tilts = tilts
+            full_stack.tilts = tilts
 
-    def test_shift_setter(self):
-        s = ds.get_needle_data()
-        s.shifts = np.random.rand(77, 2)
-        assert s.shifts.metadata.get_item("General.title") == "Image shift values"
-        assert s.shifts.axes_manager.shape == (77, 2)
-        assert s.shifts.data.shape == (77, 2)
-        assert s.shifts.axes_manager[-1].name == "Shift values (x/y)"  # type: ignore
-        assert s.shifts.axes_manager[-1].units == "pixels"  # type: ignore
+    def test_shift_setter(self, full_stack):
+        full_stack_random_shifts = full_stack.deepcopy()
+        full_stack_random_shifts.shifts = np.random.rand(77, 2)
+        assert (
+            full_stack_random_shifts.shifts.metadata.get_item("General.title")
+            == "Image shift values"
+        )
+        assert full_stack_random_shifts.shifts.axes_manager.shape == (77, 2)
+        assert full_stack_random_shifts.shifts.data.shape == (77, 2)
+        assert (
+            full_stack_random_shifts.shifts.axes_manager[-1].name
+            == "Shift values (x/y)"
+        )  # type: ignore
+        assert full_stack_random_shifts.shifts.axes_manager[-1].units == "pixels"  # type: ignore
 
         # check that tilt axes info matches signal
-        assert s.shifts.axes_manager[0].name == s.axes_manager[0].name  # type: ignore
-        assert s.shifts.axes_manager[0].units == s.axes_manager[0].units  # type: ignore
-        assert s.shifts.axes_manager[0].scale == s.axes_manager[0].scale  # type: ignore
-        assert s.shifts.axes_manager[0].offset == s.axes_manager[0].offset  # type: ignore
+        assert (
+            full_stack_random_shifts.shifts.axes_manager[0].name
+            == full_stack_random_shifts.axes_manager[0].name
+        )  # type: ignore
+        assert (
+            full_stack_random_shifts.shifts.axes_manager[0].units
+            == full_stack_random_shifts.axes_manager[0].units
+        )  # type: ignore
+        assert (
+            full_stack_random_shifts.shifts.axes_manager[0].scale
+            == full_stack.axes_manager[0].scale
+        )  # type: ignore
+        assert (
+            full_stack.shifts.axes_manager[0].offset
+            == full_stack_random_shifts.axes_manager[0].offset
+        )  # type: ignore
 
-    def test_shift_setter_bad_dims(self):
-        s = ds.get_needle_data()
+    def test_shift_setter_bad_dims(self, full_stack):
         with pytest.raises(
             ValueError,
             match=re.escape(
@@ -532,7 +567,7 @@ class TestProperties:
                 "size of the stack (was (77,))",
             ),
         ):
-            s.shifts = np.random.rand(77)
+            full_stack.shifts = np.random.rand(77)
         with pytest.raises(
             ValueError,
             match=re.escape(
@@ -540,18 +575,18 @@ class TestProperties:
                 "size of the stack (was (20, 1, 5))",
             ),
         ):
-            s.shifts = np.random.rand(20, 1, 5)
+            full_stack.shifts = np.random.rand(20, 1, 5)
 
-    def test_shift_setter_tomoshift(self):
-        s = ds.get_needle_data()
+    def test_shift_setter_tomoshift(self, full_stack):
         n = np.random.rand(77, 2)
         shifts = TomoShifts(n)
         assert shifts.metadata.get_item("General.title") == ""
-        s.shifts = shifts  # title should be set since it was empty
-        assert s.shifts.metadata.get_item("General.title") == "Image shift values"
+        full_stack.shifts = shifts  # title should be set since it was empty
+        assert (
+            full_stack.shifts.metadata.get_item("General.title") == "Image shift values"
+        )
 
-    def test_shift_setter_tomoshift_bad_dims(self):
-        s = ds.get_needle_data()
+    def test_shift_setter_tomoshift_bad_dims(self, full_stack):
         n = np.random.rand(20, 2)
         shifts = TomoShifts(n)
         assert shifts.metadata.get_item("General.title") == ""
@@ -562,40 +597,43 @@ class TestProperties:
                 "of the stack (was (20, 2))",
             ),
         ):
-            s.shifts = shifts
+            full_stack.shifts = shifts
 
-    def test_multiframe_tilt_setter(self):
-        s = load_serialem_multiframe_data()
-        assert s.axes_manager.shape == (2, 3, 1024, 1024)
-        assert s.data.shape == (3, 2, 1024, 1024)
-        assert s.tilts.axes_manager.shape == (2, 3, 1)
-        assert s.tilts.data.shape == (3, 2, 1)
+    def test_multiframe_tilt_setter(self, multiframe_stack):
+        assert multiframe_stack.axes_manager.shape == (2, 3, 1024, 1024)
+        assert multiframe_stack.data.shape == (3, 2, 1024, 1024)
+        assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
+        assert multiframe_stack.tilts.data.shape == (3, 2, 1)
 
         n = np.random.rand(3, 2, 1)
-        s.tilts = n
-        assert s.tilts.axes_manager.shape == (2, 3, 1)
-        assert s.tilts.data.shape == (3, 2, 1)
-        assert s.tilts.metadata.get_item("General.title") == "Image tilt values"
+        multiframe_stack.tilts = n
+        assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
+        assert multiframe_stack.tilts.data.shape == (3, 2, 1)
+        assert (
+            multiframe_stack.tilts.metadata.get_item("General.title")
+            == "Image tilt values"
+        )
 
-    def test_multiframe_tilt_setter_2d(self):
-        s = load_serialem_multiframe_data()
-        assert s.axes_manager.shape == (2, 3, 1024, 1024)
-        assert s.data.shape == (3, 2, 1024, 1024)
-        assert s.tilts.axes_manager.shape == (2, 3, 1)
-        assert s.tilts.data.shape == (3, 2, 1)
+    def test_multiframe_tilt_setter_2d(self, multiframe_stack):
+        assert multiframe_stack.axes_manager.shape == (2, 3, 1024, 1024)
+        assert multiframe_stack.data.shape == (3, 2, 1024, 1024)
+        assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
+        assert multiframe_stack.tilts.data.shape == (3, 2, 1)
 
         n = np.random.rand(3, 2)
-        s.tilts = n
-        assert s.tilts.axes_manager.shape == (2, 3, 1)
-        assert s.tilts.data.shape == (3, 2, 1)
-        assert s.tilts.metadata.get_item("General.title") == "Image tilt values"
+        multiframe_stack.tilts = n
+        assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
+        assert multiframe_stack.tilts.data.shape == (3, 2, 1)
+        assert (
+            multiframe_stack.tilts.metadata.get_item("General.title")
+            == "Image tilt values"
+        )
 
-    def test_multiframe_tilt_setter_bad_dims(self):
-        s = load_serialem_multiframe_data()
-        assert s.axes_manager.shape == (2, 3, 1024, 1024)
-        assert s.data.shape == (3, 2, 1024, 1024)
-        assert s.tilts.axes_manager.shape == (2, 3, 1)
-        assert s.tilts.data.shape == (3, 2, 1)
+    def test_multiframe_tilt_setter_bad_dims(self, multiframe_stack):
+        assert multiframe_stack.axes_manager.shape == (2, 3, 1024, 1024)
+        assert multiframe_stack.data.shape == (3, 2, 1024, 1024)
+        assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
+        assert multiframe_stack.tilts.data.shape == (3, 2, 1)
 
         n = np.random.rand(2, 3, 1)
         with pytest.raises(
@@ -605,7 +643,7 @@ class TestProperties:
                 "of the stack (was (2, 3, 1))",
             ),
         ):
-            s.tilts = n
+            multiframe_stack.tilts = n
 
         n = np.random.rand(3, 2, 10)
         with pytest.raises(
@@ -615,27 +653,28 @@ class TestProperties:
                 "of the stack (was (3, 2, 10))",
             ),
         ):
-            s.tilts = n
+            multiframe_stack.tilts = n
 
-    def test_multiframe_shift__setter(self):
-        s = load_serialem_multiframe_data()
-        assert s.axes_manager.shape == (2, 3, 1024, 1024)
-        assert s.data.shape == (3, 2, 1024, 1024)
-        assert s.shifts.axes_manager.shape == (2, 3, 2)
-        assert s.shifts.data.shape == (3, 2, 2)
+    def test_multiframe_shift__setter(self, multiframe_stack):
+        assert multiframe_stack.axes_manager.shape == (2, 3, 1024, 1024)
+        assert multiframe_stack.data.shape == (3, 2, 1024, 1024)
+        assert multiframe_stack.shifts.axes_manager.shape == (2, 3, 2)
+        assert multiframe_stack.shifts.data.shape == (3, 2, 2)
 
         n = np.random.rand(3, 2, 2)
-        s.shifts = n
-        assert s.shifts.axes_manager.shape == (2, 3, 2)
-        assert s.shifts.data.shape == (3, 2, 2)
-        assert s.shifts.metadata.get_item("General.title") == "Image shift values"
+        multiframe_stack.shifts = n
+        assert multiframe_stack.shifts.axes_manager.shape == (2, 3, 2)
+        assert multiframe_stack.shifts.data.shape == (3, 2, 2)
+        assert (
+            multiframe_stack.shifts.metadata.get_item("General.title")
+            == "Image shift values"
+        )
 
-    def test_multiframe_shift__setter_bad_dims(self):
-        s = load_serialem_multiframe_data()
-        assert s.axes_manager.shape == (2, 3, 1024, 1024)
-        assert s.data.shape == (3, 2, 1024, 1024)
-        assert s.shifts.axes_manager.shape == (2, 3, 2)
-        assert s.shifts.data.shape == (3, 2, 2)
+    def test_multiframe_shift__setter_bad_dims(self, multiframe_stack):
+        assert multiframe_stack.axes_manager.shape == (2, 3, 1024, 1024)
+        assert multiframe_stack.data.shape == (3, 2, 1024, 1024)
+        assert multiframe_stack.shifts.axes_manager.shape == (2, 3, 2)
+        assert multiframe_stack.shifts.data.shape == (3, 2, 2)
 
         n = np.random.rand(2, 3, 2)
         with pytest.raises(
@@ -645,7 +684,7 @@ class TestProperties:
                 "of the stack (was (2, 3, 2))",
             ),
         ):
-            s.shifts = n
+            multiframe_stack.shifts = n
 
         n = np.random.rand(3, 2, 10)
         with pytest.raises(
@@ -655,21 +694,21 @@ class TestProperties:
                 "of the stack (was (3, 2, 10))",
             ),
         ):
-            s.shifts = n
+            multiframe_stack.shifts = n
 
-    def test_property_deleters(self):
-        s = ds.get_needle_data()
-
+    def test_property_deleters(self, full_stack):
         # tilts
-        assert np.all(s.tilts.data.squeeze() == np.arange(-76, 78, 2))
-        del s.tilts
-        assert np.all(s.tilts.data.squeeze() == np.zeros((77, 1)))
+        full_stack_no_tilts = full_stack.deepcopy()
+        assert np.all(full_stack.tilts.data.squeeze() == np.arange(-76, 78, 2))
+        del full_stack_no_tilts.tilts
+        assert np.all(full_stack_no_tilts.tilts.data.squeeze() == np.zeros((77, 1)))
 
         # shifts
-        s.shifts = np.random.rand(77, 2) + 2  # offset to ensure non-zero
-        assert np.all(s.shifts.data != np.zeros((77, 2)))
-        del s.shifts
-        assert np.all(s.shifts.data == np.zeros((77, 2)))
+        full_stack_no_shifts = full_stack.deepcopy()
+        full_stack.shifts = np.random.rand(77, 2) + 2  # offset to ensure non-zero
+        assert np.all(full_stack.shifts.data != np.zeros((77, 2)))
+        del full_stack_no_shifts.shifts
+        assert np.all(full_stack_no_shifts.shifts.data == np.zeros((77, 2)))
 
 
 class TestSlicers:
