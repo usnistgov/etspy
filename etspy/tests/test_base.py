@@ -457,7 +457,7 @@ class TestProperties:
     def test_tilt_setter_1d_array(self, full_stack):
         full_stack_random_tilts = full_stack.deepcopy()
         full_stack_random_tilts.tilts = np.random.rand(
-            77
+            77,
         )  # should be coerced to (77, 1)
 
         assert (
@@ -803,7 +803,7 @@ class TestSlicers:
         assert t4.axes_manager[1].name == "y"  # type: ignore
         assert t4.tilts.axes_manager.navigation_shape == ()
         assert t4.shifts.axes_manager.navigation_shape == ()
-        # assert t4.tilts.data[0] == pytest.approx(-0.000488)
+        assert t4.tilts.data[0] == pytest.approx(-0.000488)
 
     def test_single_pixel_nav_slicer(self, short_stack):
         t = short_stack.inav[3]
@@ -1139,8 +1139,7 @@ class TestAlignOther:
 class TestStackRegister:
     """Test StackReg alignment of a TomoStack."""
 
-    def test_stack_register_unknown_method(self):
-        stack = ds.get_needle_data(aligned=False).inav[0:5]
+    def test_stack_register_unknown_method(self, short_stack):
         bad_method = "UNKNOWN"
         with pytest.raises(
             TypeError,
@@ -1149,87 +1148,90 @@ class TestStackRegister:
                 'Must be one of ["StackReg", "PC", "COM", or "COM-CL"].',
             ),
         ):
-            stack.stack_register(bad_method)  # type: ignore
+            short_stack.stack_register(bad_method)  # type: ignore
 
-    def test_stack_register_pc(self):
-        stack = ds.get_needle_data(aligned=False).inav[0:5]
-        reg = stack.stack_register("PC")
+    def test_stack_register_pc(self, short_stack):
+        reg = short_stack.stack_register("PC")
         assert isinstance(reg, TomoStack)
 
-    def test_stack_register_com(self):
-        stack = ds.get_needle_data(aligned=False).inav[0:5]
-        reg = stack.stack_register("COM")
+    def test_stack_register_com(self, short_stack):
+        reg = short_stack.stack_register("COM")
         assert isinstance(reg, TomoStack)
 
-    def test_stack_register_stackreg(self):
-        stack = ds.get_needle_data(aligned=False).inav[0:5]
-        reg = stack.stack_register("COM-CL")
+    def test_stack_register_stackreg(self, short_stack):
+        reg = short_stack.stack_register("COM-CL")
         assert isinstance(reg, TomoStack)
 
-    def test_stack_register_with_crop(self):
-        stack = ds.get_needle_data(aligned=False).inav[0:5]
-        reg = stack.stack_register("PC", crop=True)
+    def test_stack_register_with_crop(self, short_stack):
+        reg = short_stack.stack_register("PC", crop=True)
         assert isinstance(reg, TomoStack)
-        assert np.sum(reg.data.shape) < np.sum(stack.data.shape)
+        assert np.sum(reg.data.shape) < np.sum(short_stack.data.shape)
 
 
 class TestErrorPlots:
     """Test error plots for TomoStack."""
 
-    def test_sirt_error(self):
-        stack = ds.get_needle_data(aligned=True)
-        rec_stack, error = stack.recon_error(
+    def test_sirt_error(self, aligned_full_stack):
+        rec_stack, error = aligned_full_stack.recon_error(
             128,
             iterations=2,
             constrain=True,
             cuda=False,
         )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (
+            aligned_full_stack.data.shape[1],
+            aligned_full_stack.data.shape[1],
+        )
 
-    def test_sirt_error_no_slice(self):
-        stack = ds.get_needle_data(aligned=True)
-        rec_stack, error = stack.recon_error(
+    def test_sirt_error_no_slice(self, aligned_full_stack):
+        rec_stack, error = aligned_full_stack.recon_error(
             None,
             iterations=2,
             constrain=True,
             cuda=False,
         )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (
+            aligned_full_stack.data.shape[1],
+            aligned_full_stack.data.shape[1],
+        )
 
-    def test_recon_error_no_tilts(self):
-        stack = ds.get_needle_data(aligned=True)
-        del stack.tilts
+    def test_recon_error_no_tilts(self, aligned_full_stack):
+        stack_no_tilts = aligned_full_stack.deepcopy()
+        del stack_no_tilts.tilts
         with pytest.raises(ValueError, match="Tilt angles not defined"):
-            stack.recon_error(None, iterations=2, constrain=True, cuda=False)
+            stack_no_tilts.recon_error(None, iterations=2, constrain=True, cuda=False)
 
-    def test_sirt_error_no_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        rec_stack, error = stack.recon_error(
+    def test_sirt_error_no_cuda(self, aligned_full_stack):
+        rec_stack, error = aligned_full_stack.recon_error(
             128,
             iterations=50,
             constrain=True,
             cuda=None,
         )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (
+            aligned_full_stack.data.shape[1],
+            aligned_full_stack.data.shape[1],
+        )
 
     @patch("astra.use_cuda", new=lambda: False)
-    def test_recon_error_astra_detect_use_cuda_false(self):
-        stack = ds.get_needle_data(aligned=True)
-        rec_stack, error = stack.recon_error(
+    def test_recon_error_astra_detect_use_cuda_false(self, aligned_full_stack):
+        rec_stack, error = aligned_full_stack.recon_error(
             128,
             iterations=50,
             constrain=True,
             cuda=None,
         )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (
+            aligned_full_stack.data.shape[1],
+            aligned_full_stack.data.shape[1],
+        )
 
-    def test_sart_error(self):
-        stack = ds.get_needle_data(aligned=True)
-        rec_stack, error = stack.recon_error(
+    def test_sart_error(self, aligned_full_stack):
+        rec_stack, error = aligned_full_stack.recon_error(
             128,
             algorithm="SART",
             iterations=2,
@@ -1237,11 +1239,13 @@ class TestErrorPlots:
             cuda=False,
         )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (
+            aligned_full_stack.data.shape[1],
+            aligned_full_stack.data.shape[1],
+        )
 
-    def test_sart_error_no_slice(self):
-        stack = ds.get_needle_data(aligned=True)
-        rec_stack, error = stack.recon_error(
+    def test_sart_error_no_slice(self, aligned_full_stack):
+        rec_stack, error = aligned_full_stack.recon_error(
             None,
             algorithm="SART",
             iterations=2,
@@ -1249,11 +1253,13 @@ class TestErrorPlots:
             cuda=False,
         )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (
+            aligned_full_stack.data.shape[1],
+            aligned_full_stack.data.shape[1],
+        )
 
-    def test_sart_error_no_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        rec_stack, error = stack.recon_error(
+    def test_sart_error_no_cuda(self, aligned_full_stack):
+        rec_stack, error = aligned_full_stack.recon_error(
             128,
             algorithm="SART",
             iterations=50,
@@ -1261,32 +1267,31 @@ class TestErrorPlots:
             cuda=None,
         )
         assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (stack.data.shape[1], stack.data.shape[1])
+        assert rec_stack.data.shape[1:] == (
+            aligned_full_stack.data.shape[1],
+            aligned_full_stack.data.shape[1],
+        )
 
 
 class TestTiltAlign:
     """Test tilt alignment of a TomoStack."""
 
-    def test_tilt_align_com_axis_zero(self):
-        stack = ds.get_needle_data(aligned=True)
+    def test_tilt_align_com_axis_zero(self, aligned_full_stack):
         com_tilt_aligner = TiltCOMAligner(
-            stack,
+            aligned_full_stack,
             slices=np.array([64, 100, 114]),
         )
         ali = com_tilt_aligner.align_tilt_axis()
         assert isinstance(ali, TomoStack)
 
-    def test_tilt_align_maximage(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:10]
+    def test_tilt_align_maximage(self, aligned_short_stack):
         maximage_tilt_aligner = TiltMaxImageAligner(
-            stack,
+            aligned_short_stack,
         )
         ali = maximage_tilt_aligner.align_tilt_axis()
         assert isinstance(ali, TomoStack)
 
-    def test_tilt_align_unknown_method(self):
-        stack = ds.get_needle_data(aligned=True)
+    def test_tilt_align_unknown_method(self, aligned_short_stack):
         bad_method = "UNKNOWN"
         with pytest.raises(
             ValueError,
@@ -1295,29 +1300,25 @@ class TestTiltAlign:
                 'Must be one of ["CoM" or "MaxImage"]',
             ),
         ):
-            stack.tilt_align(bad_method)  # pyright: ignore[reportArgumentType]
+            aligned_short_stack.tilt_align(bad_method)  # pyright: ignore[reportArgumentType]
 
 
 class TestTransStack:
     """Test translation of a TomoStack."""
 
-    def test_test_trans_stack_linear(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.trans_stack(1, 1, 1, "linear")
+    def test_test_trans_stack_linear(self, aligned_full_stack):
+        shifted = aligned_full_stack.trans_stack(1, 1, 1, "linear")
         assert isinstance(shifted, TomoStack)
 
-    def test_test_trans_stack_nearest(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.trans_stack(1, 1, 1, "nearest")
+    def test_test_trans_stack_nearest(self, aligned_full_stack):
+        shifted = aligned_full_stack.trans_stack(1, 1, 1, "nearest")
         assert isinstance(shifted, TomoStack)
 
-    def test_test_trans_stack_cubic(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.trans_stack(1, 1, 1, "cubic")
+    def test_test_trans_stack_cubic(self, aligned_full_stack):
+        shifted = aligned_full_stack.trans_stack(1, 1, 1, "cubic")
         assert isinstance(shifted, TomoStack)
 
-    def test_test_trans_stack_unknown(self):
-        stack = ds.get_needle_data(aligned=True)
+    def test_test_trans_stack_unknown(self, aligned_full_stack):
         bad_method = "UNKNOWN"
         with pytest.raises(
             ValueError,
@@ -1326,7 +1327,7 @@ class TestTransStack:
                 '["linear", "cubic", "nearest", or "none"].',
             ),
         ):
-            stack.trans_stack(
+            aligned_full_stack.trans_stack(
                 1,
                 1,
                 1,
@@ -1337,93 +1338,81 @@ class TestTransStack:
 class TestReconstruct:
     """Test reconstruction of a TomoStack."""
 
-    def test_cuda_detect(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[:, 120:121].deepcopy()
-        rec = slices.reconstruct("FBP", cuda=None)
+    def test_cuda_detect(self, aligned_short_stack):
+        rec = aligned_short_stack.reconstruct("FBP", cuda=None)
         assert isinstance(rec, RecStack)
 
     @patch("astra.use_cuda", new=lambda: False)
-    def test_astra_detect_use_cuda_false(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[:, 120:121].deepcopy()
-        rec = slices.reconstruct("FBP", cuda=None)
+    def test_astra_detect_use_cuda_false(self, aligned_short_stack):
+        rec = aligned_short_stack.reconstruct("FBP", cuda=None)
         assert isinstance(rec, RecStack)
 
-    def test_reconstruct_dart_no_gray_levels(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[:, 120:121].deepcopy()
+    def test_reconstruct_dart_no_gray_levels(self, aligned_short_stack):
         with pytest.raises(ValueError, match="gray_levels must be provided for DART"):
-            slices.reconstruct("DART", gray_levels=None)
+            aligned_short_stack.reconstruct("DART", gray_levels=None)
 
-    def test_reconstruct_dart_gray_levels_bad_type(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[:, 120:121].deepcopy()
+    def test_reconstruct_dart_gray_levels_bad_type(self, aligned_short_stack):
         with pytest.raises(
             ValueError,
             match=re.escape("Unknown type (<class 'str'>) for gray_levels"),
         ):
-            slices.reconstruct("DART", gray_levels="bad_type")  # type: ignore
+            aligned_short_stack.reconstruct("DART", gray_levels="bad_type")  # type: ignore
 
-    def test_reconstruct_dart_dart_iterations_none(self, caplog):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[:, 120:121].deepcopy()
-        gray_levels = [0.0, slices.data.max() / 2, slices.data.max()]
-        slices.reconstruct("DART", dart_iterations=None, gray_levels=gray_levels)
+    def test_reconstruct_dart_dart_iterations_none(self, caplog, aligned_short_stack):
+        gray_levels = [
+            0.0,
+            aligned_short_stack.data.max() / 2,
+            aligned_short_stack.data.max(),
+        ]
+        aligned_short_stack.reconstruct(
+            "DART",
+            dart_iterations=None,
+            gray_levels=gray_levels,
+        )
         assert "Using default number of DART iterations (5)" in caplog.text
 
 
 class TestManualAlign:
     """Test manual alignment of a TomoStack."""
 
-    def test_manual_align_positive_x(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, xshift=10)
+    def test_manual_align_positive_x(self, short_stack):
+        shifted = short_stack.manual_align(2, xshift=10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_negative_x(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, xshift=-10)
+    def test_manual_align_negative_x(self, short_stack):
+        shifted = short_stack.manual_align(2, xshift=-10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_positive_y(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, yshift=10)
+    def test_manual_align_positive_y(self, short_stack):
+        shifted = short_stack.manual_align(2, yshift=10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_negative_y(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, yshift=-10)
+    def test_manual_align_negative_y(self, short_stack):
+        shifted = short_stack.manual_align(2, yshift=-10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_negative_y_positive_x(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, yshift=-10, xshift=10)
+    def test_manual_align_negative_y_positive_x(self, short_stack):
+        shifted = short_stack.manual_align(2, yshift=-10, xshift=10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_negative_x_positive_y(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, yshift=10, xshift=-10)
+    def test_manual_align_negative_x_positive_y(self, short_stack):
+        shifted = short_stack.manual_align(2, yshift=10, xshift=-10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_negative_y_negative_x(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, yshift=-10, xshift=-10)
+    def test_manual_align_negative_y_negative_x(self, short_stack):
+        shifted = short_stack.manual_align(2, yshift=-10, xshift=-10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_positive_y_positive_x(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128, yshift=10, xshift=10)
+    def test_manual_align_positive_y_positive_x(self, short_stack):
+        shifted = short_stack.manual_align(2, yshift=10, xshift=10)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_no_shifts(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(128)
+    def test_manual_align_no_shifts(self, short_stack):
+        shifted = short_stack.manual_align(2)
         assert isinstance(shifted, TomoStack)
 
-    def test_manual_align_with_display(self):
-        stack = ds.get_needle_data(aligned=True)
-        shifted = stack.manual_align(64, display=True)
+    def test_manual_align_with_display(self, short_stack):
+        shifted = short_stack.manual_align(2, yshift=10, xshift=-10, display=True)
         assert isinstance(shifted, TomoStack)
 
 
