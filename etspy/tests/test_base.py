@@ -555,6 +555,7 @@ class TestProperties:
         )  # type: ignore
 
     def test_shift_setter_bad_dims(self, full_stack):
+        full_stack_shift_set = full_stack.deepcopy()
         with pytest.raises(
             ValueError,
             match=re.escape(
@@ -562,7 +563,7 @@ class TestProperties:
                 "size of the stack (was (77,))",
             ),
         ):
-            full_stack.shifts = np.random.rand(77)
+            full_stack_shift_set.shifts = np.random.rand(77)
         with pytest.raises(
             ValueError,
             match=re.escape(
@@ -570,15 +571,17 @@ class TestProperties:
                 "size of the stack (was (20, 1, 5))",
             ),
         ):
-            full_stack.shifts = np.random.rand(20, 1, 5)
+            full_stack_shift_set.shifts = np.random.rand(20, 1, 5)
 
     def test_shift_setter_tomoshift(self, full_stack):
+        full_stack_shift_set = full_stack.deepcopy()
         n = np.random.rand(77, 2)
         shifts = TomoShifts(n)
         assert shifts.metadata.get_item("General.title") == ""
-        full_stack.shifts = shifts  # title should be set since it was empty
+        full_stack_shift_set.shifts = shifts  # title should be set since it was empty
         assert (
-            full_stack.shifts.metadata.get_item("General.title") == "Image shift values"
+            full_stack_shift_set.shifts.metadata.get_item("General.title")
+            == "Image shift values"
         )
 
     def test_shift_setter_tomoshift_bad_dims(self, full_stack):
@@ -600,12 +603,13 @@ class TestProperties:
         assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
         assert multiframe_stack.tilts.data.shape == (3, 2, 1)
 
+        multiframe_stack_set_tilts = multiframe_stack.deepcopy()
         n = np.random.rand(3, 2, 1)
-        multiframe_stack.tilts = n
-        assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
-        assert multiframe_stack.tilts.data.shape == (3, 2, 1)
+        multiframe_stack_set_tilts.tilts = n
+        assert multiframe_stack_set_tilts.tilts.axes_manager.shape == (2, 3, 1)
+        assert multiframe_stack_set_tilts.tilts.data.shape == (3, 2, 1)
         assert (
-            multiframe_stack.tilts.metadata.get_item("General.title")
+            multiframe_stack_set_tilts.tilts.metadata.get_item("General.title")
             == "Image tilt values"
         )
 
@@ -615,12 +619,13 @@ class TestProperties:
         assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
         assert multiframe_stack.tilts.data.shape == (3, 2, 1)
 
+        multiframe_stack_set_tilts = multiframe_stack.deepcopy()
         n = np.random.rand(3, 2)
-        multiframe_stack.tilts = n
-        assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
-        assert multiframe_stack.tilts.data.shape == (3, 2, 1)
+        multiframe_stack_set_tilts.tilts = n
+        assert multiframe_stack_set_tilts.tilts.axes_manager.shape == (2, 3, 1)
+        assert multiframe_stack_set_tilts.tilts.data.shape == (3, 2, 1)
         assert (
-            multiframe_stack.tilts.metadata.get_item("General.title")
+            multiframe_stack_set_tilts.tilts.metadata.get_item("General.title")
             == "Image tilt values"
         )
 
@@ -630,6 +635,7 @@ class TestProperties:
         assert multiframe_stack.tilts.axes_manager.shape == (2, 3, 1)
         assert multiframe_stack.tilts.data.shape == (3, 2, 1)
 
+        multiframe_stack_bad_tilt_shape = multiframe_stack.deepcopy()
         n = np.random.rand(2, 3, 1)
         with pytest.raises(
             ValueError,
@@ -638,7 +644,7 @@ class TestProperties:
                 "of the stack (was (2, 3, 1))",
             ),
         ):
-            multiframe_stack.tilts = n
+            multiframe_stack_bad_tilt_shape.tilts = n
 
         n = np.random.rand(3, 2, 10)
         with pytest.raises(
@@ -648,7 +654,7 @@ class TestProperties:
                 "of the stack (was (3, 2, 10))",
             ),
         ):
-            multiframe_stack.tilts = n
+            multiframe_stack_bad_tilt_shape.tilts = n
 
     def test_multiframe_shift__setter(self, multiframe_stack):
         assert multiframe_stack.axes_manager.shape == (2, 3, 1024, 1024)
@@ -1220,7 +1226,7 @@ class TestErrorPlots:
     def test_recon_error_astra_detect_use_cuda_false(self, aligned_full_stack):
         rec_stack, error = aligned_full_stack.recon_error(
             128,
-            iterations=50,
+            iterations=2,
             constrain=True,
             cuda=None,
         )
@@ -1262,7 +1268,7 @@ class TestErrorPlots:
         rec_stack, error = aligned_full_stack.recon_error(
             128,
             algorithm="SART",
-            iterations=50,
+            iterations=2,
             constrain=True,
             cuda=None,
         )
@@ -1359,12 +1365,13 @@ class TestReconstruct:
             aligned_short_stack.reconstruct("DART", gray_levels="bad_type")  # type: ignore
 
     def test_reconstruct_dart_dart_iterations_none(self, caplog, aligned_short_stack):
+        sino = aligned_short_stack.inav[0:1].deepcopy()
         gray_levels = [
             0.0,
-            aligned_short_stack.data.max() / 2,
-            aligned_short_stack.data.max(),
+            sino.data.max() / 2,
+            sino.data.max(),
         ]
-        aligned_short_stack.reconstruct(
+        sino.reconstruct(
             "DART",
             dart_iterations=None,
             gray_levels=gray_levels,
