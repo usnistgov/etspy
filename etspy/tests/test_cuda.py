@@ -25,14 +25,29 @@ except Exception:
 
 NUM_FIG_AXES = 3
 
+pytest.fixture(scope="module")
+
+
+@pytest.fixture(scope="module")
+def short_stack():
+    """Load stack from test data and truncate to 5 images."""
+    return ds.get_needle_data().inav[0:5]
+
+
+@pytest.fixture(scope="module")
+def aligned_full_stack():
+    """Create full spatially registered stack from test data."""
+    s = ds.get_needle_data()
+    s = s.stack_register("PC")
+    return s
+
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestAlignCUDA:
     """Test alignment of a TomoStack using CUDA."""
 
-    def test_test_align_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack.test_align(thickness=200, cuda=True)
+    def test_test_align_cuda(self, aligned_full_stack):
+        aligned_full_stack.test_align(thickness=200, cuda=True)
         fig = plt.gcf()
         assert len(fig.axes) == NUM_FIG_AXES
         plt.close(fig)
@@ -42,17 +57,15 @@ class TestAlignCUDA:
 class TestReconCUDA:
     """Test reconstruction of a TomoStack using CUDA."""
 
-    def test_recon_fbp_gpu(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_recon_fbp_gpu(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         rec = slices.reconstruct("FBP", cuda=True)
-        assert isinstance(stack, TomoStack)
+        assert isinstance(aligned_full_stack, TomoStack)
         assert isinstance(rec, RecStack)
         assert rec.data.shape[2] == slices.data.shape[1]
 
-    def test_recon_sirt_gpu(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_recon_sirt_gpu(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         rec = slices.reconstruct(
             "SIRT",
             constrain=True,
@@ -60,13 +73,12 @@ class TestReconCUDA:
             thresh=0,
             cuda=True,
         )
-        assert isinstance(stack, TomoStack)
+        assert isinstance(aligned_full_stack, TomoStack)
         assert isinstance(rec, RecStack)
         assert rec.data.shape[2] == slices.data.shape[1]
 
-    def test_recon_sart_gpu(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_recon_sart_gpu(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         rec = slices.reconstruct(
             "SART",
             constrain=True,
@@ -74,13 +86,12 @@ class TestReconCUDA:
             thresh=0,
             cuda=True,
         )
-        assert isinstance(stack, TomoStack)
+        assert isinstance(aligned_full_stack, TomoStack)
         assert isinstance(rec, RecStack)
         assert rec.data.shape[2] == slices.data.shape[1]
 
-    def test_recon_dart_gpu(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_recon_dart_gpu(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         gray_levels = [0.0, slices.data.max() / 2, slices.data.max()]
         rec = slices.reconstruct(
             "DART",
@@ -91,7 +102,7 @@ class TestReconCUDA:
             gray_levels=gray_levels,
             dart_iterations=1,
         )
-        assert isinstance(stack, TomoStack)
+        assert isinstance(aligned_full_stack, TomoStack)
         assert isinstance(rec, RecStack)
         assert rec.data.shape[2] == slices.data.shape[1]
 
@@ -100,11 +111,10 @@ class TestReconCUDA:
 class TestAstraSIRTGPU:
     """Test SIRT TomoStack reconstruction using Astra toolbox."""
 
-    def test_astra_sirt_error_gpu(self):
-        stack = ds.get_needle_data(aligned=True)
-        _, ny, _ = stack.data.shape
-        angles = stack.tilts.data.squeeze()
-        stack = stack.isig[120:121, :].squeeze()
+    def test_astra_sirt_error_gpu(self, aligned_full_stack):
+        _, ny, _ = aligned_full_stack.data.shape
+        angles = aligned_full_stack.tilts.data.squeeze()
+        stack = aligned_full_stack.isig[120:121, :].deepcopy().squeeze()
         rec_stack, error = recon.astra_error(
             stack.data,
             angles,
@@ -116,11 +126,10 @@ class TestAstraSIRTGPU:
         assert isinstance(error, np.ndarray)
         assert rec_stack.shape == (2, ny, ny)
 
-    def test_astra_sirt_error_gpu_bad_dims(self):
-        stack = ds.get_needle_data(aligned=True)
-        _, _, _ = stack.data.shape
-        angles = stack.tilts.data.squeeze()
-        stack = stack.isig[120:121, :]
+    def test_astra_sirt_error_gpu_bad_dims(self, aligned_full_stack):
+        _, _, _ = aligned_full_stack.data.shape
+        angles = aligned_full_stack.tilts.data.squeeze()
+        stack = aligned_full_stack.isig[120:121, :].deepcopy()
         with pytest.raises(
             ValueError,
             match=re.escape(
@@ -142,9 +151,8 @@ class TestAstraSIRTGPU:
 class TestReconRunCUDA:
     """Test reconstruction of TomoStack using CUDA features."""
 
-    def test_run_fbp_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_run_fbp_cuda(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "FBP", cuda=True)
         data_shape = cast("tuple[int, int, int]", rec.data.shape)
@@ -152,9 +160,8 @@ class TestReconRunCUDA:
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
 
-    def test_run_sirt_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_run_sirt_cuda(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SIRT", niterations=2, cuda=True)
         data_shape = cast("tuple[int, int, int]", rec.data.shape)
@@ -162,9 +169,8 @@ class TestReconRunCUDA:
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
 
-    def test_run_sart_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_run_sart_cuda(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(slices.data, tilts, "SART", niterations=2, cuda=True)
         data_shape = cast("tuple[int, int, int]", rec.data.shape)
@@ -172,9 +178,8 @@ class TestReconRunCUDA:
         assert data_shape[0] == slices.data.shape[2]
         assert isinstance(rec, np.ndarray)
 
-    def test_run_dart_cuda(self):
-        stack = ds.get_needle_data(aligned=True)
-        slices = stack.isig[120:121, :].deepcopy()
+    def test_run_dart_cuda(self, aligned_full_stack):
+        slices = aligned_full_stack.isig[120:121, :].deepcopy()
         gray_levels = [0.0, slices.data.max() / 2, slices.data.max()]
         tilts = slices.tilts.data.squeeze()
         rec = recon.run(
@@ -196,16 +201,13 @@ class TestReconRunCUDA:
 class TestStackRegisterCUDA:
     """Test StackReg alignment of a TomoStack using CUDA."""
 
-    def test_register_pc_cuda(self):
-        stack = ds.get_needle_data(aligned=False)
-        reg = stack.inav[0:20].stack_register("PC", cuda=True)
+    def test_register_pc_cuda(self, short_stack):
+        reg = short_stack.stack_register("PC", cuda=True)
         assert isinstance(reg, TomoStack)
-        assert (
-            reg.axes_manager.signal_shape == stack.inav[0:20].axes_manager.signal_shape
-        )
+        assert reg.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
         assert (
             reg.axes_manager.navigation_shape
-            == stack.inav[0:20].axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
         )
 
 
@@ -213,30 +215,26 @@ class TestStackRegisterCUDA:
 class TestApplyShiftsCUDA:
     """Test StackReg alignment of a TomoStack using CUDA."""
 
-    def test_apply_shifts_fourier_cuda(self):
-        stack = ds.get_needle_data(aligned=False)
-        shifts = np.random.uniform(-2, 2, [20, 2])
-        shifted = apply_shifts(stack.inav[0:20], shifts, "fourier", cuda=True)  # type: ignore
+    def test_apply_shifts_fourier_cuda(self, short_stack):
+        shifts = np.random.uniform(-2, 2, [5, 2])
+        shifted = apply_shifts(short_stack, shifts, "fourier", cuda=True)  # type: ignore
         assert isinstance(shifted, TomoStack)
         assert (
-            shifted.axes_manager.signal_shape
-            == stack.inav[0:20].axes_manager.signal_shape
+            shifted.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
         )
         assert (
             shifted.axes_manager.navigation_shape
-            == stack.inav[0:20].axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
         )
 
-    def test_apply_shifts_interp_cuda(self):
-        stack = ds.get_needle_data(aligned=False)
-        shifts = np.random.uniform(-2, 2, [20, 2])
-        shifted = apply_shifts(stack.inav[0:20], shifts, "interp", cuda=True)  # type: ignore
+    def test_apply_shifts_interp_cuda(self, short_stack):
+        shifts = np.random.uniform(-2, 2, [5, 2])
+        shifted = apply_shifts(short_stack, shifts, "interp", cuda=True)  # type: ignore
         assert isinstance(shifted, TomoStack)
         assert (
-            shifted.axes_manager.signal_shape
-            == stack.inav[0:20].axes_manager.signal_shape
+            shifted.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
         )
         assert (
             shifted.axes_manager.navigation_shape
-            == stack.inav[0:20].axes_manager.navigation_shape
+            == short_stack.axes_manager.navigation_shape
         )
