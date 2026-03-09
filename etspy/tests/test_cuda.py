@@ -25,8 +25,6 @@ except Exception:
 
 NUM_FIG_AXES = 3
 
-pytest.fixture(scope="module")
-
 
 @pytest.fixture(scope="module")
 def short_stack():
@@ -37,8 +35,7 @@ def short_stack():
 @pytest.fixture(scope="module")
 def aligned_full_stack():
     """Create full spatially registered stack from test data."""
-    s = ds.get_needle_data()
-    s = s.stack_register("PC")
+    s = ds.get_needle_data(aligned=True)
     return s
 
 
