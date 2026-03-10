@@ -20,6 +20,14 @@ else:
     hspy_mrc_broken = False
 
 
+@pytest.fixture(scope="module")
+def aligned_short_stack():
+    """Create truncated and spatially registered stack from test data."""
+    s = ds.get_needle_data().inav[0:5]
+    s = s.stack_register("PC")
+    return s
+
+
 @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestMultiframeAverage:
     """Test taking a multiframe average of a stack."""
@@ -55,27 +63,19 @@ class TestMultiframeAverage:
 class TestWeightStack:
     """Test weighting a stack."""
 
-    def test_weight_stack_low(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
-        reg = utils.weight_stack(stack, accuracy="low")
+    def test_weight_stack_low(self, aligned_short_stack):
+        reg = utils.weight_stack(aligned_short_stack, accuracy="low")
         assert isinstance(reg, TomoStack)
 
-    def test_weight_stack_medium(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
-        reg = utils.weight_stack(stack, accuracy="medium")
+    def test_weight_stack_medium(self, aligned_short_stack):
+        reg = utils.weight_stack(aligned_short_stack, accuracy="medium")
         assert isinstance(reg, TomoStack)
 
-    def test_weight_stack_high(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
-        reg = utils.weight_stack(stack, accuracy="high")
+    def test_weight_stack_high(self, aligned_short_stack):
+        reg = utils.weight_stack(aligned_short_stack, accuracy="high")
         assert isinstance(reg, TomoStack)
 
-    def test_weight_stack_bad_accuracy(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
+    def test_weight_stack_bad_accuracy(self, aligned_short_stack):
         bad_accuracy = "wrong"
         with pytest.raises(
             ValueError,
@@ -85,7 +85,7 @@ class TestWeightStack:
             ),
         ):
             utils.weight_stack(
-                stack,
+                aligned_short_stack,
                 accuracy="wrong",  # pyright: ignore[reportArgumentType]
             )
 
@@ -123,39 +123,37 @@ class TestHelperUtils:
 class TestWeightingFilter:
     """Test weighting filter."""
 
-    def test_weighting_filter_shepp_logan(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
-        filtered = utils.filter_stack(stack, filter_name="shepp-logan", cutoff=0.5)
+    def test_weighting_filter_shepp_logan(self, aligned_short_stack):
+        filtered = utils.filter_stack(
+            aligned_short_stack, filter_name="shepp-logan", cutoff=0.5
+        )
         assert isinstance(filtered, TomoStack)
 
-    def test_weighting_filter_ram_lak(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
-        filtered = utils.filter_stack(stack, filter_name="ram-lak", cutoff=0.5)
+    def test_weighting_filter_ram_lak(self, aligned_short_stack):
+        filtered = utils.filter_stack(
+            aligned_short_stack, filter_name="ram-lak", cutoff=0.5
+        )
         assert isinstance(filtered, TomoStack)
 
-    def test_weighting_filter_cosine(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
-        filtered = utils.filter_stack(stack, filter_name="cosine", cutoff=0.5)
+    def test_weighting_filter_cosine(self, aligned_short_stack):
+        filtered = utils.filter_stack(
+            aligned_short_stack, filter_name="cosine", cutoff=0.5
+        )
         assert isinstance(filtered, TomoStack)
 
-    def test_weighting_filter_shepp_hanning(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
-        filtered = utils.filter_stack(stack, filter_name="hanning", cutoff=0.5)
+    def test_weighting_filter_shepp_hanning(self, aligned_short_stack):
+        filtered = utils.filter_stack(
+            aligned_short_stack, filter_name="hanning", cutoff=0.5
+        )
         assert isinstance(filtered, TomoStack)
 
-    def test_weighting_filter_two_dimensional_data(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0]
-        filtered = utils.filter_stack(stack, filter_name="hanning", cutoff=0.5)
+    def test_weighting_filter_two_dimensional_data(self, aligned_short_stack):
+        filtered = utils.filter_stack(
+            aligned_short_stack, filter_name="hanning", cutoff=0.5
+        )
         assert isinstance(filtered, TomoStack)
 
-    def test_weighting_filter_bad_filter(self):
-        stack = ds.get_needle_data(aligned=True)
-        stack = stack.inav[0:3]
+    def test_weighting_filter_bad_filter(self, aligned_short_stack):
         bad_filter = "wrong"
         with pytest.raises(
             ValueError,
@@ -165,7 +163,7 @@ class TestWeightingFilter:
             ),
         ):
             utils.filter_stack(
-                stack,
+                aligned_short_stack,
                 filter_name="wrong",  # pyright: ignore[reportArgumentType]
                 cutoff=0.5,
             )
