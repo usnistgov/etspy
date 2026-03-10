@@ -6,8 +6,7 @@ import numpy as np
 import pytest
 
 from etspy import datasets as ds
-from etspy import io, utils
-from etspy.api import etspy_path
+from etspy import utils
 from etspy.base import TomoStack
 
 from . import hspy_mrc_reader_check, load_serialem_multiframe_data
@@ -131,31 +130,41 @@ class TestWeightingFilter:
 
     def test_weighting_filter_shepp_logan(self, aligned_short_stack):
         filtered = utils.filter_stack(
-            aligned_short_stack, filter_name="shepp-logan", cutoff=0.5
+            aligned_short_stack,
+            filter_name="shepp-logan",
+            cutoff=0.5,
         )
         assert isinstance(filtered, TomoStack)
 
     def test_weighting_filter_ram_lak(self, aligned_short_stack):
         filtered = utils.filter_stack(
-            aligned_short_stack, filter_name="ram-lak", cutoff=0.5
+            aligned_short_stack,
+            filter_name="ram-lak",
+            cutoff=0.5,
         )
         assert isinstance(filtered, TomoStack)
 
     def test_weighting_filter_cosine(self, aligned_short_stack):
         filtered = utils.filter_stack(
-            aligned_short_stack, filter_name="cosine", cutoff=0.5
+            aligned_short_stack,
+            filter_name="cosine",
+            cutoff=0.5,
         )
         assert isinstance(filtered, TomoStack)
 
     def test_weighting_filter_shepp_hanning(self, aligned_short_stack):
         filtered = utils.filter_stack(
-            aligned_short_stack, filter_name="hanning", cutoff=0.5
+            aligned_short_stack,
+            filter_name="hanning",
+            cutoff=0.5,
         )
         assert isinstance(filtered, TomoStack)
 
     def test_weighting_filter_two_dimensional_data(self, aligned_short_stack):
         filtered = utils.filter_stack(
-            aligned_short_stack, filter_name="hanning", cutoff=0.5
+            aligned_short_stack,
+            filter_name="hanning",
+            cutoff=0.5,
         )
         assert isinstance(filtered, TomoStack)
 
