@@ -28,34 +28,40 @@ def aligned_short_stack():
     return s
 
 
+@pytest.fixture(scope="module")
+def multiframe_small_stack():
+    """Load multiframe stack."""
+    s = load_serialem_multiframe_data()
+    return s.isig[500:524, 500:524]
+
+
 @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
 class TestMultiframeAverage:
     """Test taking a multiframe average of a stack."""
 
-    def test_register_serialem_stack(self):
-        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
-        files = dirname.glob("*.mrc")
-        stack = io.load(list(files))
-        stack_avg = utils.register_serialem_stack(stack, ncpus=1)
+    def test_register_serialem_stack(self, multiframe_small_stack):
+        stack_avg = utils.register_serialem_stack(
+            multiframe_small_stack,
+            ncpus=1,
+        )
         data_shape = 3
         assert isinstance(stack_avg, TomoStack)
         assert stack_avg.data.shape[0] == data_shape
 
-    def test_register_serialem_stack_multicpu(self):
-        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
-        files = dirname.glob("*.mrc")
-        stack = io.load(list(files))
-        stack_avg = utils.register_serialem_stack(stack, ncpus=2)
+    def test_register_serialem_stack_multicpu(self, multiframe_small_stack):
+        stack_avg = utils.register_serialem_stack(multiframe_small_stack, ncpus=2)
         data_shape = 3
         assert isinstance(stack_avg, TomoStack)
         assert stack_avg.data.shape[0] == data_shape
 
-    def test_multiaverage(self):
-        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
-        files = dirname.glob("*.mrc")
-        stack = io.load(list(files))
-        _, nframes, ny, nx = stack.data.shape
-        stack_avg = utils.multiaverage(stack.data[0], nframes, ny, nx)
+    def test_multiaverage(self, multiframe_small_stack):
+        _, nframes, ny, nx = multiframe_small_stack.data.shape
+        stack_avg = utils.multiaverage(
+            multiframe_small_stack.data[0],
+            nframes,
+            ny,
+            nx,
+        )
         assert isinstance(stack_avg, np.ndarray)
         assert stack_avg.shape == (ny, nx)
 
@@ -168,10 +174,9 @@ class TestWeightingFilter:
                 cutoff=0.5,
             )
 
-    def test_weighting_filter_bad_stack_shape(self):
-        stack = load_serialem_multiframe_data()
+    def test_weighting_filter_bad_stack_shape(self, multiframe_small_stack):
         with pytest.raises(
             ValueError,
             match="Method can only be applied to 2 or 3-dimensional stacks",
         ):
-            utils.filter_stack(stack)
+            utils.filter_stack(multiframe_small_stack)
