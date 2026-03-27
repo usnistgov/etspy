@@ -66,7 +66,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           with-cuda: true
-          poetry-options: "--with=dev --extras gpu"
+          poetry-options: "--with=dev --extras cuda12"
       - name: Run docstring example tests
         run: poetry run pytest --doctest-modules --ignore=etspy/tests etspy/ 
       - name: Run full test suite
