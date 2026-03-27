@@ -38,7 +38,7 @@ runs:
         OPTIONS="${{ inputs.uv-options }}"
         if [ "${{ inputs.with-cuda }}" == "true" ]; then
           # uv uses --extra instead of --extras (though it often aliases)
-          OPTIONS="$OPTIONS --extra gpu"
+          OPTIONS="$OPTIONS --extra cuda12"
         fi
         # 'uv sync' is the preferred way to lock the environment
         uv sync $OPTIONS

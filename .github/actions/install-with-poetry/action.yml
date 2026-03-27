@@ -32,7 +32,7 @@ runs:
       run: |
         OPTIONS="${{ inputs.poetry-options }}"
         if [ "${{ inputs.with-cuda }}" == "true" ]; then
-          OPTIONS="$OPTIONS --extras gpu"
+          OPTIONS="$OPTIONS --extras cuda12"
         fi
         poetry install $OPTIONS
       shell: bash -el {0}
