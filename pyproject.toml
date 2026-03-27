@@ -37,7 +37,8 @@ dev = [
 ]
 
 [project.optional-dependencies]
-gpu = ["cupy-cuda12x>=13.3.0"]
+cuda12 = ["cupy-cuda12x>=13.3.0"]
+cuda13 = ["cupy-cuda13x>=14.0.0"]
 jupyter = ["ipykernel>=6.29.5"]
 all = ["cupy-cuda12x>=13.3.0", "ipykernel>=6.29.5"]
 
