@@ -1,17 +1,19 @@
 """Projection matching alignment."""
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, cast
 
 import astra
 import numpy as np
 import tqdm
 from hyperspy.signals import Signal1D, Signal2D
-from scipy.fft import fft, fftfreq, ifft, fft2, ifft2
+from scipy.fft import fft, fft2, fftfreq, ifft, ifft2
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
 if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
     from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
@@ -42,9 +44,9 @@ class ProjMatch:
     def __init__(
         self,
         stack: "TomoStack",
-        nslice: int = None,
+        nslice: int | None = None,
         cuda: bool = False,
-        params: Optional[dict] = None,
+        params: dict | None = None,
     ):
         """Create a ProjMatch instance.
 
@@ -61,7 +63,7 @@ class ProjMatch:
 
         """
         self.stack = stack
-        if len(self.stack.data.squeeze()) == 2:
+        if len(self.stack.data.squeeze()) == DIM_2D:
             self.sino = stack.data.squeeze()
         elif type(nslice) is int:
             self.sino = stack.data[:, :, nslice]
@@ -87,10 +89,10 @@ class ProjMatch:
             self.params = params
         self.levels = self.params.get("levels", [8, 4, 2, 1])
         self.iterations = self.params.get("iterations", 100)
-        self.error = [np.empty(0)] * len(self.levels)
+        self.error: list[NDArray[Any]] = [np.empty(0) for _ in range(len(self.levels))]
 
-        self.sino_update = [None] * len(self.levels)
-        self.rec_update = [None] * len(self.levels)
+        self.sino_update: list[NDArray | None] = [None] * len(self.levels)
+        self.rec_update: list[NDArray | None] = [None] * len(self.levels)
 
         self.recon_algorithm = self.params.get("recon_algorithm", "FBP")
         if self.recon_algorithm.lower() == "fbp":
@@ -133,6 +135,8 @@ class ProjMatch:
             self.sino_id = None
             self.update_geometries(sino_rebin.shape[1])
 
+            mass = 0
+
             for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
                 current_sino = shift_sinogram(sino_rebin, current_shifts)
 
@@ -160,11 +164,17 @@ class ProjMatch:
                     self.rec_update[idx] = rec[np.newaxis, :, :]
                 else:
                     self.sino_update[idx] = np.concatenate(
-                        [self.sino_update[idx], current_sino[np.newaxis, :, :]],
+                        [
+                            cast("NDArray", self.sino_update[idx]),
+                            current_sino[np.newaxis, :, :],
+                        ],
                         axis=0,
                     )
                     self.rec_update[idx] = np.concatenate(
-                        [self.rec_update[idx], rec[np.newaxis, :, :]],
+                        [
+                            cast("NDArray", self.rec_update[idx]),
+                            rec[np.newaxis, :, :],
+                        ],
                         axis=0,
                     )
                 self.error[idx] = np.append(
@@ -207,7 +217,7 @@ class ProjMatch:
             If True, use CUDA acceleration for reconstruction
 
         """
-        self.recon_config = {"option": {}}
+        self.recon_config = {"option": {}, "type": ""}
         if cuda:
             self.recon_config["type"] = method.upper() + "_CUDA"
         else:
@@ -281,9 +291,6 @@ class ProjMatch:
         """
         Apply calculated shifts to input stack.
 
-        Parameters
-        ----------
-
         Returns
         -------
         shifted : TomoStack
@@ -299,13 +306,6 @@ class ProjMatch:
             raise ValueError(msg)
         shifts = np.stack([self.total_shifts, np.zeros(self.nangles)], axis=1)
 
-        # if method.lower() == "interp":
-        #     for i in range(shifted.data.shape[0]):
-        #         shifted.data[i, :, :] = ndimage.shift(
-        #             shifted.data[i, :, :],
-        #             shift=[shifts[i, 0], shifts[i, 1]],
-        #         )
-        # elif method.lower() == "fourier":
         _, ny, nx = shifted.data.shape
         y_pad_min = np.abs(shifts[:, 0]).max() + ny
         ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
@@ -324,14 +324,10 @@ class ProjMatch:
         _, ny, nx = shifted.data.shape
         shifted_fft = fft2(shifted.data, axes=(1, 2))
         for i in range(shifted.data.shape[0]):
-            shifted.data[i, :, :] = np.real(
-                ifft2(
-                    fourier_shift(
-                        shifted_fft[i],
-                        shift=[shifts[i, 0], shifts[i, 1]],
-                    ),
-                ),
+            shifted_fft_slice = ifft2(
+                fourier_shift(shifted_fft[i], shift=[shifts[i, 0], shifts[i, 1]]),
             )
+            shifted.data[i, :, :] = np.real(cast("np.ndarray", shifted_fft_slice))
         slices = [
             slice(0, None),
         ]
@@ -342,99 +338,6 @@ class ProjMatch:
 
         shifted.shifts.data = shifted.shifts.data + shifts
         return shifted
-
-    # def apply_shifts_cuda(
-    #     stack: "TomoStack",
-    #     shifts: Union["TomoShifts", np.ndarray],
-    #     method: Literal["interp", "fourier"] = "fourier",
-    # ) -> "TomoStack":
-    #     """
-    #     Apply a series of shifts to a TomoStack using CUDA acceleration.
-
-    #     Parameters
-    #     ----------
-    #     stack
-    #         The image series to be aligned
-    #     shifts
-    #         The X- (tilt parallel) and Y-shifts (tilt perpendicular) to be applied to
-    #         each image. Should be of size
-    #         ``(*stack.axes_manager.navigation_shape[::-1], 2)``,
-    #         with Y-shifts in the ``shifts[:, 0]`` position and X-shifts in ``shifts[:, 1]``
-    #         position (if ``shifts`` is a :py:class:`~numpy.ndarray`).
-    #     method
-    #         Image shifts can be applied using either interpolation via scipy.ndimage.shift
-    #         or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
-    #         either 'interp' or 'fourier'.
-
-    #     Returns
-    #     -------
-    #     shifted : TomoStack
-    #         Copy of input stack after shifts are applied
-
-    #     Group
-    #     -----
-    #     align
-    #     """
-    #     shifted = stack.deepcopy()
-
-    #     data = cp.array(shifted.data)
-    #     if isinstance(shifts, BaseSignal):
-    #         shifts = shifts.data
-    #     shifts = cp.array(shifts)
-
-    #     if len(shifts) != stack.data.shape[0]:
-    #         msg = (
-    #             f"Number of shifts ({len(shifts)}) is not consistent "
-    #             f"with number of images in the stack ({stack.data.shape[0]})"
-    #         )
-    #         raise ValueError(msg)
-
-    #     if method.lower() == "interp":
-    #         for i in range(data.shape[0]):
-    #             data[i, :, :] = shift_gpu(
-    #                 data[i, :, :],
-    #                 shift=[shifts[i, 0], shifts[i, 1]],
-    #             )
-    #     elif method.lower() == "fourier":
-    #         _, ny, nx = data.shape
-    #         y_pad_min = cp.abs(shifts[:, 0]).max() + ny
-    #         ny_pad = int(2 ** np.ceil(cp.log2(y_pad_min)))
-    #         y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
-
-    #         x_pad_min = cp.abs(shifts[:, 1]).max() + nx
-    #         nx_pad = int(2 ** cp.ceil(np.log2(x_pad_min)))
-    #         x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
-
-    #         padded = cp.pad(
-    #             data,
-    #             ((0, 0), y_pad_width, x_pad_width),
-    #             mode="constant",
-    #         )
-    #         data = padded
-    #         _, ny, nx = data.shape
-    #         data_fft = cp.fft.fft2(data, axes=(1, 2))
-    #         for i in range(data.shape[0]):
-    #             data_fft[i, :, :] = cp.fft.ifft2(
-    #                 fourier_shift_gpu(
-    #                     data_fft[i],
-    #                     shift=[shifts[i, 0], shifts[i, 1]],
-    #                 ),
-    #             )
-    #         data = cp.real(data_fft)
-    #         slices = [
-    #             slice(0, None),
-    #         ]
-    #         for i in [y_pad_width, x_pad_width]:
-    #             i[1] = None if i[1] == 0 else -i[1]
-    #             slices.append(slice(i[0], i[1]))
-    #         data = data[tuple(slices)]
-    #     else:
-    #         msg = f"Invalid shift application method {method}."
-    #         raise ValueError(msg)
-
-    #     shifted.data = data.get()
-    #     shifted.shifts.data = shifted.shifts.data + shifts.get()
-    #     return shifted
 
 
 def shift_sinogram(
@@ -469,7 +372,8 @@ def shift_sinogram(
     shift_array = np.exp((-2j * np.pi) * shift_array)
 
     shifted_fft = shifted_fft * shift_array
-    shifted = np.real(ifft(shifted_fft, axis=1))
+    shifted_ifft = ifft(shifted_fft, axis=1)
+    shifted = np.real(cast("np.ndarray", shifted_ifft))
 
     if y_pad_width[1] == 0:
         slices = slice(y_pad_width[0], None)
@@ -595,7 +499,7 @@ def high_pass_fourier_filter(
     _, ny = sino.shape
 
     if apply_fft:
-        sino_fft = fft(sino)
+        sino = cast("np.ndarray", fft(sino))
 
     freq = fftfreq(ny)
     sigma = 256 / (ny) * sigma
@@ -605,7 +509,7 @@ def high_pass_fourier_filter(
     else:
         high_pass_filter = 1 - np.exp(-0.5 * (freq / sigma) ** 2)
 
-    sino_filtered = sino_fft * high_pass_filter
+    sino_filtered = sino * high_pass_filter
 
     if apply_fft:
         sino_filtered = np.fft.ifft(sino_filtered)
@@ -715,9 +619,9 @@ def sino_gradient(
     sino = blur_edges(sino, blur_window, blur_sigma)
     x = 2j * np.pi * fftfreq(ny)
 
-    sino_fft = fft(sino, axis=1)
+    sino_fft = cast("np.ndarray", fft(sino, axis=1))
     sino_fft = sino_fft * x[np.newaxis, :]
 
     sino_grad = ifft(sino_fft, axis=1)
-    sino_grad = np.real(sino_grad)
+    sino_grad = np.real(cast("np.ndarray", sino_grad))
     return sino_grad
