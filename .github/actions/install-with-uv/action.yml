@@ -42,11 +42,10 @@ runs:
       run: |
         OPTIONS="${{ inputs.uv-options }}"
         if [ "${{ inputs.with-cuda }}" == "true" ]; then
-          # uv uses --extra instead of --extras (though it often aliases)
           if [ "${{ inputs.cuda-version }}" == "13" ]; then
-            OPTIONS="$OPTIONS --extras cuda13"
+            OPTIONS="$OPTIONS --extra cuda13"
           else
-            OPTIONS="$OPTIONS --extras cuda12"
+            OPTIONS="$OPTIONS --extra cuda12"
           fi
         fi
         # 'uv sync' is the preferred way to lock the environment
