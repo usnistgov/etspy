@@ -327,6 +327,7 @@ linkcheck_ignore = [
     "https://pages.nist.gov/etspy",  # temporarily not published
     "https://pypi.org/project/etspy",  # temporarily not published
     "https://github.com/usnistgov/etspy/tree/master/docs/examples/etspy_demo.ipynb",  # temporarily not published
+    "https://github.com/usnistgov/etspy/tree/master/docs/examples/projection_matching_demo.ipynb",  # temporarily not published
 ]
 linkcheck_retries = 3
 linkcheck_exclude_documents = []
@@ -336,6 +337,6 @@ user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 # prevent documentation from executing notebook:
 nb_execution_excludepatterns = [
-    "etspy_demo.ipynb",
-    "projection_matching_demo.ipynb",
+    "**/examples/etspy_demo.ipynb",
+    "**/examples/projection_matching_demo.ipynb",
 ]
