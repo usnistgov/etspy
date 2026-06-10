@@ -665,12 +665,14 @@ the <code class="docutils literal notranslate"><span class="pre">[jupyter]</span
 </div>
 </li>
 <li><p>To use the <code class="docutils literal notranslate"><span class="pre">cupy</span></code> accelerated code in ETSpy, you will need to install <code class="docutils literal notranslate"><span class="pre">cupy</span></code>.
-This can be done by specifying the <code class="docutils literal notranslate"><span class="pre">[gpu]</span></code> group when installing ETSpy:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>etspy<span class="o">[</span>gpu<span class="o">]</span>
+This can be done by specifying the <code class="docutils literal notranslate"><span class="pre">[cuda]</span></code>, <code class="docutils literal notranslate"><span class="pre">[cuda12]</span></code> or <code class="docutils literal notranslate"><span class="pre">[cuda13]</span></code> group when installing ETSpy:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>etspy<span class="o">[</span>cuda<span class="o">]</span>
 </code></pre></div>
 </div>
+<p>Note that the <code class="docutils literal notranslate"><span class="pre">[cuda]</span></code> is a convenience and is functionally equivalent to <code class="docutils literal notranslate"><span class="pre">[cuda12]</span></code>.</p>
 </li>
-<li><p>A shortcut for doing both of the above is to install the <code class="docutils literal notranslate"><span class="pre">[all]</span></code> target:</p>
+<li><p>A shortcut for doing both of the above is to install the <code class="docutils literal notranslate"><span class="pre">[all]</span></code> target.  Note that this
+will install the <code class="docutils literal notranslate"><span class="pre">[cuda12]</span></code> libraries.</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>etspy<span class="o">[</span>all<span class="o">]</span>
 </code></pre></div>
 </div>
@@ -712,7 +714,7 @@ the <a class="reference external" href="https://pages.nist.gov/etspy/examples/et
 <li><p><a class="reference external" href="https://hyperspy.org/">https://hyperspy.org/</a></p></li>
 <li><p><a class="reference external" href="https://astra-toolbox.com/">https://astra-toolbox.com/</a></p></li>
 </ul>
-<p><em>Documentation last generated:</em> June 10, 2026 at 07:08 PM</p>
+<p><em>Documentation last generated:</em> June 10, 2026 at 09:06 PM</p>
 
 
 

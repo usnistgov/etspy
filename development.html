@@ -524,7 +524,7 @@ install the package in “editable” mode using <code class="docutils literal n
 $<span class="w"> </span>conda<span class="w"> </span>activate<span class="w"> </span>etspy-dev
 $<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/&lt;your_account_name&gt;/etspy
 $<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>etspy
-$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="w">   </span><span class="c1"># (to add the cupy dependency use &quot;pip install .[gpu]&quot;)</span>
+$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="w">   </span><span class="c1"># (to add the cupy dependency use &quot;pip install .[cuda12] or .[cuda13] as appropriate for your CUDA version&quot;)</span>
 </code></pre></div>
 </div>
 <h3 id="option-2-using-poetry">Option 2: Using Poetry<a class="headerlink" href="#option-2-using-poetry" title="Link to this heading">¶</a></h3>
@@ -548,7 +548,7 @@ run the command <code class="docutils literal notranslate"><span class="pre">exp
 <p>If using uv (currently only working on Linux due to some limitations of dependency packages), make sure you have <code class="docutils literal notranslate"><span class="pre">uv</span></code> and the CUDA libraries installed, clone the <code class="docutils literal notranslate"><span class="pre">etspy</span></code> repository, and run the sync command:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><code>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/&lt;your_account_name&gt;/etspy
 $<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>etspy
-$<span class="w"> </span>uv<span class="w"> </span>sync<span class="w">  </span><span class="c1"># (to get the cupy dependency add &quot;--all-extras&quot; to the sync command)</span>
+$<span class="w"> </span>uv<span class="w"> </span>sync<span class="w">  </span><span class="c1"># (to get the cupy dependency add &quot;--extra cuda12&quot; or &quot;--extra cuda13&quot; to the sync command)</span>
 </code></pre></div>
 </div>
 <p><em>Note: <code class="docutils literal notranslate"><span class="pre">uv</span></code> will automatically create a virtual environment in .venv and install the package in editable mode.</em></p>
