@@ -90,14 +90,16 @@ of whatever packages are required.
     ```
 
   * To use the `cupy` accelerated code in ETSpy, you will need to install `cupy`. 
-    This can be done by specifying the `[cuda12]` or `[cuda13]` group when installing ETSpy:
+    This can be done by specifying the `[cuda]`, `[cuda12]` or `[cuda13]` group when installing ETSpy:
 
     ```shell
-    $ pip install etspy[cuda13]
+    $ pip install etspy[cuda]
     ```
 
+    Note that the `[cuda]` is a convenience and is functionally equivalent to `[cuda12]`.
+
   * A shortcut for doing both of the above is to install the `[all]` target.  Note that this 
-    will install the `[cuda13]` libraries.
+    will install the `[cuda12]` libraries.
 
     ```shell
     $ pip install etspy[all]

@@ -741,6 +741,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+cuda = [
+    { name = "cupy-cuda12x" },
+]
 cuda12 = [
     { name = "cupy-cuda12x" },
 ]
@@ -769,6 +772,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "astra-toolbox", specifier = ">=2.1" },
+    { name = "cupy-cuda12x", marker = "extra == 'cuda'", specifier = ">=13.3.0" },
     { name = "cupy-cuda12x", marker = "extra == 'cuda12'", specifier = ">=13.3.0" },
     { name = "cupy-cuda13x", marker = "extra == 'cuda13'", specifier = ">=14.0.0" },
     { name = "h5py", specifier = ">=3.12.1,<4.0.0" },
@@ -781,7 +785,7 @@ requires-dist = [
     { name = "scikit-image", marker = "python_full_version >= '3.11'", specifier = ">=0.26,<1.0.0" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
 ]
-provides-extras = ["cuda12", "cuda13", "jupyter"]
+provides-extras = ["cuda", "cuda12", "cuda13", "jupyter"]
 
 [package.metadata.requires-dev]
 dev = [

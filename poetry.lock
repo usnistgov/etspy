@@ -713,7 +713,7 @@ description = "CuPy: NumPy & SciPy for GPU"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"cuda12\""
+markers = "extra == \"cuda\" or extra == \"cuda12\""
 files = [
     {file = "cupy_cuda12x-13.6.0-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:9e37f60f27ff9625dfdccc4688a09852707ec613e32ea9404f425dd22a386d14"},
     {file = "cupy_cuda12x-13.6.0-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:e78409ea72f5ac7d6b6f3d33d99426a94005254fa57e10617f430f9fd7c3a0a1"},
@@ -943,7 +943,7 @@ description = "Fast, re-entrant optimistic lock implemented in Cython"
 optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"cuda12\""
+markers = "extra == \"cuda\" or extra == \"cuda12\""
 files = [
     {file = "fastrlock-0.8.3-cp27-cp27m-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:bbbe31cb60ec32672969651bf68333680dacaebe1a1ec7952b8f5e6e23a70aa5"},
     {file = "fastrlock-0.8.3-cp27-cp27m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:45055702fe9bff719cdc62caa849aa7dbe9e3968306025f639ec62ef03c65e88"},
@@ -4796,6 +4796,7 @@ test = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more_it
 type = ["pytest-mypy"]
 
 [extras]
+cuda = ["cupy-cuda12x"]
 cuda12 = ["cupy-cuda12x"]
 cuda13 = ["cupy-cuda13x"]
 jupyter = ["ipykernel"]
@@ -4803,4 +4804,4 @@ jupyter = ["ipykernel"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "6986a8e4088986e5853c0c881e25f3296e0f5896a62259cf226b8fbbf8c9d004"
+content-hash = "877377c40c37f15eac178080621d2a71aad707288cb7a176ed3275c889f4f24a"
