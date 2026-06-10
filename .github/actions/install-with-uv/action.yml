@@ -7,6 +7,10 @@ inputs:
   with-cuda:
     default: "false"
     type: string
+  cuda-version:
+    default: "12"
+    type: string
+    required: false
   uv-options:
     default: ""
     type: string
@@ -19,7 +23,6 @@ runs:
       uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
-        cache-dependency-glob: "uv.lock"
 
     - name: Set up Python
       run: uv python install ${{ inputs.python-version }}
@@ -27,9 +30,10 @@ runs:
 
     - name: Install CUDA dependencies
       if: ${{ inputs.with-cuda == 'true' }}
-      uses: Jimver/cuda-toolkit@v0.2.17
+      uses: Jimver/cuda-toolkit@v0.2.35
       with:
         method: network
+        cuda: ${{ inputs.cuda-version == '13' && '13.2.0' || '12.6.1' }}
         sub-packages: '["cudart"]'
         non-cuda-sub-packages: '["libcufft"]'
 
@@ -37,9 +41,11 @@ runs:
       run: |
         OPTIONS="${{ inputs.uv-options }}"
         if [ "${{ inputs.with-cuda }}" == "true" ]; then
-          # uv uses --extra instead of --extras (though it often aliases)
-          OPTIONS="$OPTIONS --extra gpu"
+          if [ "${{ inputs.cuda-version }}" == "13" ]; then
+            OPTIONS="$OPTIONS --extra cuda13"
+          else
+            OPTIONS="$OPTIONS --extra cuda12"
+          fi
         fi
-        # 'uv sync' is the preferred way to lock the environment
         uv sync $OPTIONS
       shell: bash

@@ -31,7 +31,7 @@ $ conda env create -f https://raw.githubusercontent.com/usnistgov/etspy/refs/hea
 $ conda activate etspy-dev
 $ git clone https://github.com/<your_account_name>/etspy
 $ cd etspy
-$ pip install -e .   # (to add the cupy dependency use "pip install .[gpu]")
+$ pip install -e .   # (to add the cupy dependency use "pip install .[cuda12] or .[cuda13] as appropriate for your CUDA version")
 ```
 ### Option 2: Using Poetry
 If using Poetry (currently only working on Linux due to some limitations of dependency packages),
@@ -58,7 +58,7 @@ If using uv (currently only working on Linux due to some limitations of dependen
 ```shell
 $ git clone https://github.com/<your_account_name>/etspy
 $ cd etspy
-$ uv sync  # (to get the cupy dependency add "--all-extras" to the sync command)
+$ uv sync  # (to get the cupy dependency add "--extra cuda12" or "--extra cuda13" to the sync command)
 ```
 *Note: `uv` will automatically create a virtual environment in .venv and install the package in editable mode.*
 

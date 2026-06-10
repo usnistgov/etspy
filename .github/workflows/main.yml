@@ -33,7 +33,12 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.13"]
+        include:
+          - os: "ubuntu-latest"
+            python-version: "3.11"
+          - os: "ubuntu-latest"
+            python-version: "3.12"
     steps:
       - name: Checkout latest commit
         uses: actions/checkout@v4
@@ -50,14 +55,15 @@ jobs:
         run: pytest etspy/tests/
 
   poetry-pytest:
-    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
+    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
     runs-on: ${{ matrix.os }}
     needs: [ format-checks ]
     strategy:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.13"]
+        cuda-version: ["13"]
     steps:
       - name: Checkout latest commit
         uses: actions/checkout@v4
@@ -66,7 +72,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           with-cuda: true
-          poetry-options: "--with=dev --extras gpu"
+          cuda-version: ${{ matrix.cuda-version }}
+          poetry-options: "--with=dev"
       - name: Run docstring example tests
         run: poetry run pytest --doctest-modules --ignore=etspy/tests etspy/ 
       - name: Run full test suite
@@ -75,7 +82,7 @@ jobs:
         run: poetry run pytest etspy/tests/
 
   uv-pytest:
-      name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
+      name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
       runs-on: ${{ matrix.os }}
       needs: [ format-checks ]
       strategy:
@@ -83,13 +90,15 @@ jobs:
         matrix:
           os: ["ubuntu-latest"]
           python-version: ["3.10", "3.11", "3.12", "3.13"]
+          cuda-version: ["12", "13"]
       steps:
         - uses: actions/checkout@v4
         - name: Install uv
           uses: ./.github/actions/install-with-uv
           with:
             python-version: ${{ matrix.python-version }}
-            with-cuda: ${{ matrix.os == 'ubuntu-latest' }} # Only enable CUDA on Linux
+            with-cuda: ${{ matrix.os == 'ubuntu-latest' }}
+            cuda-version: ${{ matrix.cuda-version }}
             uv-options: "--dev"
 
         - name: Run tests

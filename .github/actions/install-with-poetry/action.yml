@@ -7,6 +7,10 @@ inputs:
   with-cuda:
     default: false
     type: boolean
+  cuda-version:
+    default: "12"
+    type: string
+    required: false
   poetry-options:
     default: ""
     type: string
@@ -23,16 +27,21 @@ runs:
       uses: abatilo/actions-poetry@v3.0.0
     - name: Install CUDA dependencies
       if: ${{ inputs.with-cuda == 'true' }}
-      uses: Jimver/cuda-toolkit@v0.2.17
+      uses: Jimver/cuda-toolkit@v0.2.35
       with:
         method: network
+        cuda: ${{ inputs.cuda-version == '13' && '13.2.0' || '12.6.1' }}
         sub-packages: '["cudart"]'
         non-cuda-sub-packages: '["libcufft"]'
     - name: Install ETSpy using poetry
       run: |
         OPTIONS="${{ inputs.poetry-options }}"
         if [ "${{ inputs.with-cuda }}" == "true" ]; then
-          OPTIONS="$OPTIONS --extras gpu"
+          if [ "${{ inputs.cuda-version }}" == "13" ]; then
+            OPTIONS="$OPTIONS --extras cuda13"
+          else
+            OPTIONS="$OPTIONS --extras cuda12"
+          fi
         fi
         poetry install $OPTIONS
       shell: bash -el {0}
