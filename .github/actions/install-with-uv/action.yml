@@ -7,6 +7,10 @@ inputs:
   with-cuda:
     default: "false"
     type: string
+  cuda-version:
+    default: "12"
+    type: string
+    required: false
   uv-options:
     default: ""
     type: string
@@ -27,9 +31,10 @@ runs:
 
     - name: Install CUDA dependencies
       if: ${{ inputs.with-cuda == 'true' }}
-      uses: Jimver/cuda-toolkit@v0.2.17
+      uses: Jimver/cuda-toolkit@v0.2.35
       with:
         method: network
+        cuda: ${{ inputs.cuda-version == '13' && '13.2.0' || '12.4.1' }}
         sub-packages: '["cudart"]'
         non-cuda-sub-packages: '["libcufft"]'
 
@@ -38,7 +43,11 @@ runs:
         OPTIONS="${{ inputs.uv-options }}"
         if [ "${{ inputs.with-cuda }}" == "true" ]; then
           # uv uses --extra instead of --extras (though it often aliases)
-          OPTIONS="$OPTIONS --extra cuda12"
+          if [ "${{ inputs.cuda-version }}" == "13" ]; then
+            OPTIONS="$OPTIONS --extras cuda13"
+          else
+            OPTIONS="$OPTIONS --extras cuda12"
+          fi
         fi
         # 'uv sync' is the preferred way to lock the environment
         uv sync $OPTIONS
