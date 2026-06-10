@@ -55,7 +55,7 @@ jobs:
         run: pytest etspy/tests/
 
   poetry-pytest:
-    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, CUDA ${{ matrix.cuda-version}})"
+    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
     runs-on: ${{ matrix.os }}
     needs: [ format-checks ]
     strategy:
@@ -82,7 +82,7 @@ jobs:
         run: poetry run pytest etspy/tests/
 
   uv-pytest:
-      name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, CUDA ${{ matrix.cuda-version}})"
+      name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
       runs-on: ${{ matrix.os }}
       needs: [ format-checks ]
       strategy:
@@ -97,8 +97,9 @@ jobs:
           uses: ./.github/actions/install-with-uv
           with:
             python-version: ${{ matrix.python-version }}
-            with-cuda: ${{ matrix.os == 'ubuntu-latest' }} # Only enable CUDA on Linux
-            uv-options: "--dev --extra cuda${{ matrix.cuda-version }}"
+            with-cuda: ${{ matrix.os == 'ubuntu-latest' }}
+            cuda-version: ${{ matrix.cuda-version }}
+            uv-options: "--dev"
 
         - name: Run tests
           run: |

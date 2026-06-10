@@ -23,7 +23,6 @@ runs:
       uses: astral-sh/setup-uv@v5
       with:
         enable-cache: true
-        cache-dependency-glob: "uv.lock"
 
     - name: Set up Python
       run: uv python install ${{ inputs.python-version }}
@@ -48,6 +47,5 @@ runs:
             OPTIONS="$OPTIONS --extra cuda12"
           fi
         fi
-        # 'uv sync' is the preferred way to lock the environment
         uv sync $OPTIONS
       shell: bash
