@@ -337,5 +337,5 @@ user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 # prevent documentation from executing notebook:
 nb_execution_excludepatterns = [
     "etspy_demo.ipynb",
-    "projction_matching_demo.ipynb",
+    "projection_matching_demo.ipynb",
 ]
