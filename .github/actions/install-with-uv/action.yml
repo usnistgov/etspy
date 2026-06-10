@@ -34,7 +34,7 @@ runs:
       uses: Jimver/cuda-toolkit@v0.2.35
       with:
         method: network
-        cuda: ${{ inputs.cuda-version == '13' && '13.2.0' || '12.4.1' }}
+        cuda: ${{ inputs.cuda-version == '13' && '13.2.0' || '12.6.1' }}
         sub-packages: '["cudart"]'
         non-cuda-sub-packages: '["libcufft"]'
 
