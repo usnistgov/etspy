@@ -58,6 +58,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+        cuda-version: ["12", "13"]
     steps:
       - name: Checkout latest commit
         uses: actions/checkout@v4
@@ -66,7 +67,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           with-cuda: true
-          poetry-options: "--with=dev --extras cuda12"
+          cuda-version: ${{ matrix.cuda-version }}
+          poetry-options: "--with=dev"
       - name: Run docstring example tests
         run: poetry run pytest --doctest-modules --ignore=etspy/tests etspy/ 
       - name: Run full test suite
@@ -83,6 +85,7 @@ jobs:
         matrix:
           os: ["ubuntu-latest"]
           python-version: ["3.10", "3.11", "3.12", "3.13"]
+          cuda-version: ["12", "13"]
       steps:
         - uses: actions/checkout@v4
         - name: Install uv
@@ -90,7 +93,7 @@ jobs:
           with:
             python-version: ${{ matrix.python-version }}
             with-cuda: ${{ matrix.os == 'ubuntu-latest' }} # Only enable CUDA on Linux
-            uv-options: "--dev"
+            uv-options: "--dev --extra cuda${{ matrix.cuda-version }}"
 
         - name: Run tests
           run: |
