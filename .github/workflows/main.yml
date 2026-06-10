@@ -23,7 +23,7 @@ jobs:
           uv run ruff check
 
   conda-pytest:
-    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
+    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, CUDA ${{ matrix.cuda-version}})"
     runs-on: ${{ matrix.os }}
     needs: [ format-checks ]
     defaults:
@@ -55,7 +55,7 @@ jobs:
         run: pytest etspy/tests/
 
   poetry-pytest:
-    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
+    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, CUDA ${{ matrix.cuda-version}})"
     runs-on: ${{ matrix.os }}
     needs: [ format-checks ]
     strategy:
@@ -82,7 +82,7 @@ jobs:
         run: poetry run pytest etspy/tests/
 
   uv-pytest:
-      name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
+      name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, CUDA ${{ matrix.cuda-version}})"
       runs-on: ${{ matrix.os }}
       needs: [ format-checks ]
       strategy:
