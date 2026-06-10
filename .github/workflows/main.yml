@@ -23,7 +23,7 @@ jobs:
           uv run ruff check
 
   conda-pytest:
-    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, CUDA ${{ matrix.cuda-version}})"
+    name: "conda pytest: (${{ matrix.python-version }}, ${{ matrix.os }})"
     runs-on: ${{ matrix.os }}
     needs: [ format-checks ]
     defaults:
