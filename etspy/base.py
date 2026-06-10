@@ -683,7 +683,7 @@ class TomoStack(CommonStack):
             ax.name = "Projections"
         if ax.units == Undefined:
             ax.units = "degrees"
-            del ax.scale
+            ax.scale = 1.0
 
     def _fix_frames_axis(self, axis_number: int):
         ax = cast("Uda", self.axes_manager[axis_number])
