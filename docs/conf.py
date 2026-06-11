@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 from typing import cast
 
-import etspy
-
 sys.path.insert(0, os.path.abspath(".."))
+
+import etspy
 
 # PACKAGE_PATH used to exclude autodoc members not from ETSpy
 PACKAGE_PATH = Path(__file__).parent.parent
@@ -72,6 +72,8 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
     "astra": ("https://astra-toolbox.com", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
+    "dask": ("https://docs.dask.org/en/stable", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -316,8 +318,6 @@ def autodoc_process_bases(app, name, obj, options, bases):
 def setup(app):
     app.connect("autodoc-skip-member", autodoc_skip_member)
     app.connect("autodoc-process-bases", autodoc_process_bases)
-    # app.connect("autodoc-process-docstring", autodoc_process_docstring)
-    # app.connect("autodoc-process-signature", autodoc_process_signature)
 
 
 # -- Link checking configs -------------------------------------------------
@@ -326,11 +326,31 @@ linkcheck_ignore = [
     "https://doi.org/10.1103/PhysRevB.72.052103",  # 403 Client Error: Forbidden for url: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.72.052103
     "https://pages.nist.gov/etspy",  # temporarily not published
     "https://pypi.org/project/etspy",  # temporarily not published
-    "https://github.com/usnistgov/etspy/tree/master/docs/examples/etspy_demo.ipynb",  # temporarily not published
-    "https://github.com/usnistgov/etspy/tree/master/docs/examples/projection_matching_demo.ipynb",  # temporarily not published
+    "https://youtrack.jetbrains.com/issue/PY-20186",
+    "https://www.pyopensci.org/.*",
+    "https://doi.org.*",
+    "https://www.spiedigitallibrary.org/.*",
+    "https://anaconda.org/.*",
+    "https://docs.anaconda.com/.*",
+    "https://stackoverflow.com/.*",
+    "https://pybaselines.readthedocs.io.*",
+    "https://raw.githubusercontent.com/usnistgov/etspy.*",  # ignore self-referential github raw links
+    "https://.*numpy.org.*",
+    "https://matplotlib.org.*",
+    "https://github.com.*",
+    "http://bigwww.epfl.ch.*",
+    "https://mathworld.wolfram.com.*",
+    "https://img.shields.io.*",
+    "https://hyperspy.org/hyperspy-doc/current/user_guide/visualisation.html#plot-markers",
+    "https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html",
+    "https://geostat-framework.readthedocs.io/projects/pentapy",
+    "https://www.anaconda.com.*",
+    "https://hyperspy.org/rosettasciio.*",
 ]
 linkcheck_retries = 3
 linkcheck_exclude_documents = []
+linkcheck_timeout = 15
+linkcheck_anchors = False
 
 # Specify a standard user agent, as Sphinx default is blocked on some sites
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54"
