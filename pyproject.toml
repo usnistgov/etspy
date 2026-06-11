@@ -48,15 +48,12 @@ homepage = "https://pages.nist.gov/etspy/"
 repository = "https://github.com/usnistgov/etspy/"
 documentation = "https://pages.nist.gov/etspy/"
 
-[tool.poetry]
-packages = [{ include = "etspy" }]
-
-[tool.poetry.plugins."hyperspy.extensions"]
+[project.entry-points."hyperspy.extensions"]
 etspy = "etspy"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.isort]
 profile = "black"
