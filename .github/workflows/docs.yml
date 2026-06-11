@@ -33,7 +33,7 @@ jobs:
           uv run make html
 
       - name: Upload built docs artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: ${{ env.DOC_BUILD_PATH }}
           name: ${{ env.DOC_ARTIFACT_NAME }}
