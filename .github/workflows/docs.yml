@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout latest commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up CUDA and uv
         uses: ./.github/actions/install-with-uv
@@ -47,7 +47,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout latest commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Commit to ${{ env.PAGES_BRANCH }}
         uses: ./.github/actions/push-doc
         with:
