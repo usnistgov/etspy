@@ -10,7 +10,7 @@
 ## Installing a development version of ETSpy
 
 If you wish to contribute to ETSpy or otherwise install a development version,
-this can be accomplished using [Anaconda](https://www.anaconda.com/download/success), [Poetry](https://python-poetry.org), or [uv](https://docs.astral.sh/uv/)
+this can be accomplished using [Anaconda](https://www.anaconda.com/download/success) or [uv](https://docs.astral.sh/uv/)
 
 ### Option 1: Using Conda
 Create and activate a new environment using one of the *development* specifications:
@@ -33,25 +33,7 @@ $ git clone https://github.com/<your_account_name>/etspy
 $ cd etspy
 $ pip install -e .   # (to add the cupy dependency use "pip install .[cuda12] or .[cuda13] as appropriate for your CUDA version")
 ```
-### Option 2: Using Poetry
-If using Poetry (currently only working on Linux due to some limitations of dependency packages),
-make sure you have `poetry` and the CUDA libraries installed, clone the `etspy` repository, and
-run the install command:
-
-```shell
-$ git clone https://github.com/<your_account_name>/etspy
-$ cd etspy
-$ poetry install   # (to get the cupy dependency add "--all-extras" to the install command)
-```
-
-```{note}
-Sometimes, on headless Linux systems without a desktop environment installed, the `poetry install`
-command will hang due to an outstanding issue with handling the system keyring
-(see [this issue](https://github.com/python-poetry/poetry/issues/8623)). To workaround the issue,
-run the command `export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring` prior to running
-`poetry install`, and it should work. 
-```
-### Option 3: Using uv
+### Option 2: Using uv
 
 If using uv (currently only working on Linux due to some limitations of dependency packages), make sure you have `uv` and the CUDA libraries installed, clone the `etspy` repository, and run the sync command:
 
@@ -83,9 +65,6 @@ be interpreted by various editors to display the coverage stats interactively, a
 `etspy/tests/htmlcov` directory that can be viewed in a web browser:
 
 ```shell
-# For Poetry installations:
-$ poetry run pytest etspy/tests/
-
 # For uv installations:
 $ uv run pytest etspy/tests/
 ```
@@ -99,9 +78,6 @@ or not CUDA is available, and choose whether or not to exclude those
 lines from the report depending:
 
 ```shell
-# For Poetry installations:
-$ poetry run ./run_tests.sh
-
 # For uv installations:
 $ uv run ./run_tests.sh
 ```
@@ -140,15 +116,6 @@ when running "Debug test" via the `PYTEST_ADDOPTS` environment variable:
 
 ### Testing a pre-release
 
-### Using Poetry:
-```bash
-# bump version using poetry
-$ poetry version prerelease  # this will append the version number and a pre-release indicator e.g ".a0"
-$ poetry lock  # ensure you've updated the lockfile and any dependencies
-$ poetry build  # builds source and binary "wheel" distributions
-$ poetry publish  # requires registering poetry with tokens for your PyPI account (see https://python-poetry.org/docs/repositories/#configuring-credentials )
-```
-
 ### Using uv:
 ```bash
 # bump version using uv
@@ -160,7 +127,7 @@ You should then be able to install from PyPI with the new version (e.g. `pip ins
 
 ### Releasing a new version
 
-- Basically the same as above, but run `poetry version patch` rather than `prerelease` or run `uv version --bump stable`
+- Basically the same as above, but run `uv version --bump stable`
 - Should also create a git tag for the version, and create a release on GitHub. This may be done automatically in the future.
 
 ## Setting up conda-forge packages
