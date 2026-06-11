@@ -54,33 +54,6 @@ jobs:
         if: always()
         run: pytest etspy/tests/
 
-  poetry-pytest:
-    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
-    runs-on: ${{ matrix.os }}
-    needs: [ format-checks ]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest"]
-        python-version: ["3.13"]
-        cuda-version: ["13"]
-    steps:
-      - name: Checkout latest commit
-        uses: actions/checkout@v4
-      - name: Install with poetry
-        uses: ./.github/actions/install-with-poetry
-        with:
-          python-version: ${{ matrix.python-version }}
-          with-cuda: true
-          cuda-version: ${{ matrix.cuda-version }}
-          poetry-options: "--with=dev"
-      - name: Run docstring example tests
-        run: poetry run pytest --doctest-modules --ignore=etspy/tests etspy/ 
-      - name: Run full test suite
-        id: full_poetry_tests
-        if: always()
-        run: poetry run pytest etspy/tests/
-
   uv-pytest:
       name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
       runs-on: ${{ matrix.os }}
