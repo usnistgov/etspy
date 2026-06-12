@@ -122,6 +122,3 @@ hyperspy_log.py
 
 # jetbrains
 .idea/
-
-# poetry
-poetry.toml

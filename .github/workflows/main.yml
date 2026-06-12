@@ -10,9 +10,9 @@ jobs:
   format-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
       - name: Set up Python
@@ -41,7 +41,7 @@ jobs:
             python-version: "3.12"
     steps:
       - name: Checkout latest commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install with conda
         uses: ./.github/actions/install-with-conda
         with:
@@ -54,33 +54,6 @@ jobs:
         if: always()
         run: pytest etspy/tests/
 
-  poetry-pytest:
-    name: "poetry pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
-    runs-on: ${{ matrix.os }}
-    needs: [ format-checks ]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest"]
-        python-version: ["3.13"]
-        cuda-version: ["13"]
-    steps:
-      - name: Checkout latest commit
-        uses: actions/checkout@v4
-      - name: Install with poetry
-        uses: ./.github/actions/install-with-poetry
-        with:
-          python-version: ${{ matrix.python-version }}
-          with-cuda: true
-          cuda-version: ${{ matrix.cuda-version }}
-          poetry-options: "--with=dev"
-      - name: Run docstring example tests
-        run: poetry run pytest --doctest-modules --ignore=etspy/tests etspy/ 
-      - name: Run full test suite
-        id: full_poetry_tests
-        if: always()
-        run: poetry run pytest etspy/tests/
-
   uv-pytest:
       name: "uv pytest: (${{ matrix.python-version }}, ${{ matrix.os }}, cuda${{ matrix.cuda-version}})"
       runs-on: ${{ matrix.os }}
@@ -92,7 +65,7 @@ jobs:
           python-version: ["3.10", "3.11", "3.12", "3.13"]
           cuda-version: ["12", "13"]
       steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v5
         - name: Install uv
           uses: ./.github/actions/install-with-uv
           with:

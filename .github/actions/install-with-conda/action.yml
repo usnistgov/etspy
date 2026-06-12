@@ -16,7 +16,7 @@ runs:
   using: "composite"
   steps:
     - name: Setup conda environment
-      uses: conda-incubator/setup-miniconda@v3
+      uses: conda-incubator/setup-miniconda@v4
       with:
         activate-environment: ${{ inputs.conda-env-name }}
         environment-file: resources/etspy-dev.yml
