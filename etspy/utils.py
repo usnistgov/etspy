@@ -378,7 +378,8 @@ def get_radial_mask(
     utilities
     """
     if center is None:
-        center = cast("tuple[int, int]", tuple(int(i / 2) for i in mask_shape))
+        # center is (x, y), so it maps to (cols, rows) of mask_shape (rows, cols).
+        center = (mask_shape[1] // 2, mask_shape[0] // 2)
     radius = min(
         center[0],
         center[1],
