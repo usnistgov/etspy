@@ -91,7 +91,7 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     """
     sinos = stack.data[:, :, slices]
     com_range = int(sinos.shape[1] / 2)
-    y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1], dtype="int")
+    y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1])
     total_mass = sinos.sum(1)
     coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y_coordinates, 2) / total_mass
     return coms
