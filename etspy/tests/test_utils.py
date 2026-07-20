@@ -124,6 +124,16 @@ class TestHelperUtils:
         assert isinstance(mask, np.ndarray)
         assert mask.shape == (100, 100)
 
+    def test_radial_mask_non_square(self):
+        # A non-square shape with the default center should still produce a
+        # usable mask. Previously the default center placed rows//2 in the x
+        # slot, which drove the radius negative and returned an all-False mask.
+        mask = utils.get_radial_mask((100, 40))
+        assert mask.shape == (100, 40)
+        assert mask.any()
+        # The masked region should be centered on the array.
+        assert mask[50, 20]
+
 
 class TestWeightingFilter:
     """Test weighting filter."""
