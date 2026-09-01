@@ -60,6 +60,7 @@ profile = "black"
 src_paths = ["etspy"]
 
 [tool.ruff]
+extend-exclude = ["pyproject.toml"]
 
 [tool.ruff.lint]
 select = [
