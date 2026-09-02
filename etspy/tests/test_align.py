@@ -266,6 +266,14 @@ class TestTiltAlign:
         # shifts should be what they were before tilt_align:
         assert np.all(ali.shifts.data == aligned_full_stack.shifts.data)
 
+    # @pytest.mark.mpl_image_compare(remove_text=True)
+    def test_tilt_align_maximage_plot_results(self, aligned_short_stack):
+        maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
+            aligned_short_stack,
+            plot_results=True,
+        )
+        _ = maximage_tilt_aligner.align_tilt_axis()
+
     def test_tilt_align_maximage_also_shift(self, aligned_full_stack):
         assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
