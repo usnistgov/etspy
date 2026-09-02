@@ -1440,7 +1440,7 @@ class TomoStack(CommonStack):
                 self,
                 start=start,
                 show_progressbar=show_progressbar,
-                cuda=cuda,
+                use_cuda=cuda,
                 **kwargs,
             )
             out = aligner.align(shift_type)
