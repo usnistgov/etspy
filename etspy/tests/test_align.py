@@ -54,6 +54,13 @@ def aligned_full_stack():
     return s
 
 
+@pytest.fixture(scope="module")
+def catalyst_stack():
+    """Create full spatially registered stack from test data."""
+    s = ds.get_catalyst_data()
+    return s
+
+
 class TestAlignFunctions:
     """Test alignment functions."""
 
@@ -254,17 +261,18 @@ class TestTiltAlign:
         ):
             stack_no_tilts.tilt_align(method="CoM", slices=np.array([64, 128, 192]))
 
-    def test_tilt_align_maximage(self, aligned_full_stack):
-        assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
+    def test_tilt_align_maximage(self, catalyst_stack):
+        assert catalyst_stack.metadata.get_item("Tomography.tiltaxis") == 0
+        rotated = catalyst_stack.trans_stack(angle=2.3)
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
-            aligned_full_stack,
+            rotated,
         )
         ali = maximage_tilt_aligner.align_tilt_axis()
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         assert isinstance(tilt_axis, float)
         assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
         # shifts should be what they were before tilt_align:
-        assert np.all(ali.shifts.data == aligned_full_stack.shifts.data)
+        assert np.all(ali.shifts.data == catalyst_stack.shifts.data)
 
     # @pytest.mark.mpl_image_compare(remove_text=True)
     def test_tilt_align_maximage_plot_results(self, aligned_short_stack):
@@ -274,22 +282,21 @@ class TestTiltAlign:
         )
         _ = maximage_tilt_aligner.align_tilt_axis()
 
-    def test_tilt_align_maximage_also_shift(self, aligned_full_stack):
-        assert aligned_full_stack.metadata.get_item("Tomography.tiltaxis") == 0
+    def test_tilt_align_maximage_also_shift(self, catalyst_stack):
+        assert catalyst_stack.metadata.get_item("Tomography.tiltaxis") == 0
+        assert catalyst_stack.metadata.get_item("Tomography.yshift") == 0
+        misaligned = catalyst_stack.trans_stack(angle=2.3, yshift=2)
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
-            aligned_full_stack,
-            also_shift=True,
+            misaligned,
         )
         ali = maximage_tilt_aligner.align_tilt_axis()
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
+        tilt_shift = ali.metadata.get_item("Tomography.yshift")
         assert isinstance(tilt_axis, float)
         assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
-        # also_shift should result in a yshift for the aligned stack
-        assert aligned_full_stack.metadata.get_item("Tomography.yshift") == 0
-        assert ali.metadata.get_item("Tomography.yshift") == pytest.approx(
-            2.0,
-            rel=1e-1,
-        )
+        assert round(tilt_shift, 1) == pytest.approx(2.0, rel=1e-1)
+        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
+        assert np.all(ali.shifts.data == catalyst_stack.shifts.data)
 
     def test_tilt_align_unknown_method(self, full_stack):
         bad_method = "WRONG"
