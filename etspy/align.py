@@ -155,9 +155,8 @@ def apply_shifts(
         )
         raise ValueError(msg)
 
-    shifts = xp.array(shifts)
+    shifts, data = xp.array(shifts), xp.array(shifted.data)
 
-    data = xp.array(shifted.data)
     if method.lower() == "interp":
         order = kwargs.pop("order", 3)
         shift_func = shift_gpu if cuda else ndimage.shift
@@ -173,25 +172,29 @@ def apply_shifts(
         dtype = data.dtype
         float_dtype = np.float64 if dtype == np.float64 else np.float32
         complex_dtype = np.complex128 if dtype == np.float64 else np.complex64
-        float_dtype = np.float64
-        complex_dtype = np.complex128
         data = data.astype(float_dtype)
 
         # Ensure padding covers shift distance on each side (2 * max_shift)
-        max_y_shift = float(xp.abs(shifts[:, 0]).max())
-        max_x_shift = float(xp.abs(shifts[:, 1]).max())
-
-        y_pad_min = int(np.ceil(ny + 2 * max_y_shift))
-        x_pad_min = int(np.ceil(nx + 2 * max_x_shift))
+        max_y_shift, max_x_shift = (
+            float(xp.abs(shifts[:, 0]).max()),
+            float(xp.abs(shifts[:, 1]).max()),
+        )
+        y_pad_min, x_pad_min = (
+            int(np.ceil(ny + 2 * max_y_shift)),
+            int(np.ceil(nx + 2 * max_x_shift)),
+        )
 
         # Power-of-2 dimensions for optimal FFT performance
-        ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
-        nx_pad = int(2 ** np.ceil(np.log2(x_pad_min)))
+        ny_pad, nx_pad = (
+            int(2 ** np.ceil(np.log2(y_pad_min))),
+            int(2 ** np.ceil(np.log2(x_pad_min))),
+        )
 
-        y_pad_before = (ny_pad - ny) // 2
-        y_pad_after = ny_pad - ny - y_pad_before
-        x_pad_before = (nx_pad - nx) // 2
-        x_pad_after = nx_pad - nx - x_pad_before
+        y_pad_before, x_pad_before = (ny_pad - ny) // 2, (nx_pad - nx) // 2
+        y_pad_after, x_pad_after = (
+            ny_pad - ny - y_pad_before,
+            nx_pad - nx - x_pad_before,
+        )
 
         # Pad original data
         padded_data = xp.pad(
@@ -211,8 +214,10 @@ def apply_shifts(
             .reshape(1, 1, nx_pad // 2 + 1)
         )
 
-        sy = shifts[:, 0].astype(float_dtype).reshape(ntilts, 1, 1)
-        sx = shifts[:, 1].astype(float_dtype).reshape(ntilts, 1, 1)
+        sy, sx = (
+            shifts[:, 0].astype(float_dtype).reshape(ntilts, 1, 1),
+            shifts[:, 1].astype(float_dtype).reshape(ntilts, 1, 1),
+        )
 
         # Phase ramp kernel calculation
         pi = float_dtype(np.pi)
@@ -226,11 +231,11 @@ def apply_shifts(
         data = xp.fft.irfft2(data_fft, s=(ny_pad, nx_pad), axes=(1, 2))
 
         # Immutable slice definitions (prevents mutation bugs)
-        slice_y = slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None)
-        slice_x = slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None)
-
-        data = data[:, slice_y, slice_x]
-        data = xp.clip(data, minvals, None)
+        slice_y, slice_x = (
+            slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
+            slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
+        )
+        data = xp.clip(data[:, slice_y, slice_x], minvals, None)
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
