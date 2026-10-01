@@ -4,14 +4,14 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal, Union, cast
+from typing import TYPE_CHECKING, Literal, Union, cast
 
 import matplotlib.pylab as plt
 import numpy as np
 import tqdm
 from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
-from scipy import fft, ndimage, optimize
+from scipy import ndimage, optimize
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
@@ -143,7 +143,6 @@ def apply_shifts(
     """
     shifted = stack.deepcopy()
     xp = cp if cuda else np
-    fft_module = cp.fft if cuda else fft
 
     if isinstance(shifts, BaseSignal):
         shifts = shifts.data
@@ -156,9 +155,8 @@ def apply_shifts(
         )
         raise ValueError(msg)
 
-    shifts = xp.array(shifts)
+    shifts, data = xp.array(shifts), xp.array(shifted.data)
 
-    data = xp.array(shifted.data)
     if method.lower() == "interp":
         order = kwargs.pop("order", 3)
         shift_func = shift_gpu if cuda else ndimage.shift
@@ -169,49 +167,75 @@ def apply_shifts(
                 order=order,
             )
     elif method.lower() == "fourier":
+        minvals = xp.min(data, axis=(1, 2), keepdims=True)
         ntilts, ny, nx = data.shape
-        y_pad_min = np.abs(shifts[:, 0]).max() + ny
-        ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
-        y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
+        dtype = data.dtype
+        float_dtype = np.float64 if dtype == np.float64 else np.float32
+        complex_dtype = np.complex128 if dtype == np.float64 else np.complex64
+        data = data.astype(float_dtype)
 
-        x_pad_min = np.abs(shifts[:, 1]).max() + nx
-        nx_pad = int(2 ** np.ceil(np.log2(x_pad_min)))
-        x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
+        # Ensure padding covers shift distance on each side (2 * max_shift)
+        max_y_shift, max_x_shift = (
+            float(xp.abs(shifts[:, 0]).max()),
+            float(xp.abs(shifts[:, 1]).max()),
+        )
+        y_pad_min, x_pad_min = (
+            int(np.ceil(ny + 2 * max_y_shift)),
+            int(np.ceil(nx + 2 * max_x_shift)),
+        )
 
-        data = xp.pad(
+        # Power-of-2 dimensions for optimal FFT performance
+        ny_pad, nx_pad = (
+            int(2 ** np.ceil(np.log2(y_pad_min))),
+            int(2 ** np.ceil(np.log2(x_pad_min))),
+        )
+
+        y_pad_before, x_pad_before = (ny_pad - ny) // 2, (nx_pad - nx) // 2
+        y_pad_after, x_pad_after = (
+            ny_pad - ny - y_pad_before,
+            nx_pad - nx - x_pad_before,
+        )
+
+        # Pad original data
+        padded_data = xp.pad(
             data,
-            ((0, 0), y_pad_width, x_pad_width),
+            ((0, 0), (y_pad_before, y_pad_after), (x_pad_before, x_pad_after)),
             mode="constant",
         )
 
-        _, ny, nx = data.shape
-        data_fft = fft_module.fft2(data, axes=(1, 2))
-        data_fft = cast("Any", data_fft)
+        # 2. Use Real FFT (rfft2) for 2x speedup and 50% memory savings
+        data_fft = xp.fft.rfft2(padded_data, axes=(1, 2))
 
-        # Create frequency grids
-        # v is vertical frequencies, u is horizontal
-        v = xp.fft.fftfreq(ny).reshape(1, ny, 1)
-        u = xp.fft.fftfreq(nx).reshape(1, 1, nx)
+        # 3. Construct frequency grids with explicit data types
+        v = xp.fft.fftfreq(ny_pad, d=1.0).astype(float_dtype).reshape(1, ny_pad, 1)
+        u = (
+            xp.fft.rfftfreq(nx_pad, d=1.0)
+            .astype(float_dtype)
+            .reshape(1, 1, nx_pad // 2 + 1)
+        )
 
-        # Reshape shifts for broadcasting: (n_images, 1, 1)
-        sy = shifts[:, 0].reshape(ntilts, 1, 1)
-        sx = shifts[:, 1].reshape(ntilts, 1, 1)
+        sy, sx = (
+            shifts[:, 0].astype(float_dtype).reshape(ntilts, 1, 1),
+            shifts[:, 1].astype(float_dtype).reshape(ntilts, 1, 1),
+        )
 
-        # Compute the phase ramp
-        # The formula: exp(-2j * pi * (v * sy + u * sx))
-        phi = -2j * np.pi * (v * sy + u * sx)
-        kernel = xp.exp(phi)
+        # Phase ramp kernel calculation
+        pi = float_dtype(np.pi)
+        phi = -2j * pi * (v * sy + u * sx)
+        kernel = xp.exp(phi).astype(complex_dtype)
 
-        # Apply shift and Inverse FFT
-        data = xp.fft.ifft2(data_fft * kernel, axes=(1, 2))
-        data = xp.real(data)
-        slices = [
-            slice(0, None),
-        ]
-        for i in [y_pad_width, x_pad_width]:
-            i[1] = None if i[1] == 0 else -i[1]
-            slices.append(slice(i[0], i[1]))
-        data = data[tuple(slices)]
+        # 4. In-place frequency multiplication to conserve memory
+        data_fft *= kernel
+
+        # 5. Inverse Real FFT and unpad
+        data = xp.fft.irfft2(data_fft, s=(ny_pad, nx_pad), axes=(1, 2))
+
+        # Immutable slice definitions (prevents mutation bugs)
+        slice_y, slice_x = (
+            slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
+            slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
+        )
+        data = xp.clip(data[:, slice_y, slice_x], minvals, None)
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
