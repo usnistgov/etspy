@@ -1244,30 +1244,38 @@ class TiltMaxImageAligner(TiltAligner):
             plt.tight_layout()
 
         ali = cast("TomoStack", self.stack.trans_stack(angle=-rotation_angle))
-        tomo_meta = cast("Dtb", ali.metadata.Tomography)
-        tomo_meta.tiltaxis = -rotation_angle
 
         logger.info("Calculated tilt-axis rotation %.2f", -rotation_angle)
 
         if self.also_shift:
             idx = ali.data.shape[2] // 2
-            shifts = np.arange(-self.shift_limit, self.shift_limit, 1)
+            shifts = np.arange(-self.shift_limit, self.shift_limit + 1, 1)
             nshifts = shifts.shape[0]
             shifted = ali.isig[0:nshifts, :].deepcopy()
             for i in range(nshifts):
                 shifted.data[:, :, i] = np.roll(
                     ali.isig[idx : idx + 1, :].data.squeeze(),
                     int(shifts[i]),
+                    axis=1,
                 )
-            shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
-            image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2)))
-            tilt_shift = shifts[image_sum.data.argmin()]
-            tilt_shift = cast("float", tilt_shift)
+            shifted_rec = shifted.reconstruct(
+                "SIRT",
+                100,
+                constrain=True,
+                show_progressbar=False,
+            )
+            image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2))).data
+            best = int(image_sum.argmin())
+            tilt_shift = float(shifts[best])
+            if 0 < best < nshifts - 1:
+                # parabolic interpolation of the minimum for subpixel precision
+                left, center, right = image_sum[best - 1 : best + 2]
+                curvature = left - 2 * center + right
+                if curvature > 0:
+                    tilt_shift += 0.5 * (left - right) / curvature
             ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
-            tomo_meta.yshift = -tilt_shift
 
             logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
-
         return ali
 
 
@@ -1302,18 +1310,12 @@ def align_to_other(
     """
     out = other.deepcopy()
     stack_tomo_meta = cast("Dtb", stack.metadata.Tomography)
-    out_tomo_meta = cast("Dtb", out.metadata.Tomography)
 
     out.shifts = np.zeros([out.data.shape[0], 2])
 
     tiltaxis = cast("float", stack_tomo_meta.tiltaxis)
-    out_tomo_meta.tiltaxis = tiltaxis
-
     xshift = cast("float", stack_tomo_meta.xshift)
-    out_tomo_meta.xshift = stack_tomo_meta.xshift
-
     yshift = cast("float", stack_tomo_meta.yshift)
-    out_tomo_meta.yshift = stack_tomo_meta.yshift
 
     out = apply_shifts(out, stack.shifts, shift_type, cuda=cuda)
 
