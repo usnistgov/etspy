@@ -380,24 +380,11 @@ class CommonStack(Signal2D, ABC):
             >>> stack = ds.get_needle_data()
             >>> s_inverted = stack.invert()
         """
-        maxvals = self.data.max(2).max(1)
-        maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
-        minvals = self.data.min(2).min(1)
-        minvals = minvals.reshape([self.data.shape[0], 1, 1])
-        ranges = maxvals - minvals
-
         inverted = self.deepcopy()
-        inverted.data = inverted.data - np.reshape(
-            inverted.data.mean(2).mean(1),
-            [self.data.shape[0], 1, 1],
-        )
-        inverted.data = (inverted.data - minvals) / ranges
+        maxvals = inverted.data.max((-2, -1), keepdims=True)
+        minvals = inverted.data.min((-2, -1), keepdims=True)
 
-        inverted.data = inverted.data - 1
-        inverted.data = np.sqrt(inverted.data**2)
-
-        inverted.data = (inverted.data * ranges) + minvals
-
+        inverted.data = (maxvals - inverted.data) + minvals
         return inverted
 
     def normalize(self, width: int = 3) -> Self:
