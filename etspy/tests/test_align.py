@@ -220,7 +220,7 @@ class TestAlignStackRegister:
     def test_register_unknown_method(self, short_stack):
         bad_method = "WRONG"
         with pytest.raises(
-            TypeError,
+            ValueError,
             match=re.escape(
                 f'Invalid registration method "{bad_method}". '
                 'Must be one of ["StackReg", "PC", "COM", or "COM-CL"].',

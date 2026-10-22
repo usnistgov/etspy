@@ -166,21 +166,19 @@ def weight_stack(
     # with default of "medium"
     niterations = 2000
     delta = 0.01
-    if accuracy.lower():
-        if accuracy == "low":
-            niterations = 800
-            delta = 0.025
-        elif accuracy == "medium":
-            pass
-        elif accuracy == "high":
-            niterations = 20000
-            delta = 0.001
-        else:
-            msg = (
-                f'Invalid accuracy level "{accuracy}". Must be one of '
-                f"{_fmt(_get_lit(weight_stack, 'accuracy'))}."
-            )
-            raise ValueError(msg)
+    level = accuracy.lower()
+    if level == "low":
+        niterations = 800
+        delta = 0.025
+    elif level == "high":
+        niterations = 20000
+        delta = 0.001
+    elif level != "medium":
+        msg = (
+            f'Invalid accuracy level "{accuracy}". Must be one of '
+            f"{_fmt(_get_lit(weight_stack, 'accuracy'))}."
+        )
+        raise ValueError(msg)
 
     weighted_stack = stack.deepcopy()
 
@@ -461,19 +459,20 @@ def filter_stack(
     ffilter = np.concatenate((ffilter, ffilter[-2:0:-1]))
 
     nfilter = ffilter.shape[0]
-    pad_length = int((nfilter - ny) / 2)
+    pad_before = (nfilter - ny) // 2
+    pad_after = nfilter - ny - pad_before
 
     if len(stack.data.shape) == 2:  # noqa: PLR2004
-        padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length]])
+        padded = np.pad(stack.data, [[0, 0], [pad_before, pad_after]])
         proj_fft = np.fft.fft(padded, axis=1)
         filtered = np.fft.ifft(proj_fft * ffilter, axis=1).real
-        filtered = filtered[:, pad_length:-pad_length]
+        filtered = filtered[:, pad_before : pad_before + ny]
 
     elif len(stack.data.shape) == 3:  # noqa: PLR2004
-        padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length], [0, 0]])
+        padded = np.pad(stack.data, [[0, 0], [pad_before, pad_after], [0, 0]])
         proj_fft = np.fft.fft(padded, axis=1)
         filtered = np.fft.ifft(proj_fft * ffilter[:, np.newaxis], axis=1).real
-        filtered = filtered[:, pad_length:-pad_length, :]
+        filtered = filtered[:, pad_before : pad_before + ny, :]
     else:
         msg = "Method can only be applied to 2 or 3-dimensional stacks"
         raise ValueError(msg)
