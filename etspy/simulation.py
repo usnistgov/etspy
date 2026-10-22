@@ -8,19 +8,11 @@ import numpy as np
 from hyperspy._signals.signal2d import Signal2D
 from scipy import ndimage
 
+from etspy import RngType, _as_rng
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
-
-RngType = np.random.Generator | int | None
-
-
-def _get_rng(rng: RngType) -> np.random.Generator:
-    """Return a Generator, seeded from NumPy's global state if ``rng`` is None."""
-    if rng is None:
-        # keeps results reproducible when using np.random.seed()
-        return np.random.default_rng(np.random.randint(0, 2**31 - 1))
-    return np.random.default_rng(rng)
+from etspy.recon import _AstraObjects
 
 
 def create_catalyst_model(
@@ -66,7 +58,7 @@ def create_catalyst_model(
     -----
     1
     """
-    rng = _get_rng(rng)
+    rng = _as_rng(rng)
     volsize_np = np.array(volsize)
     center = np.array(volsize_np / 2, dtype=np.int32)
 
@@ -259,17 +251,12 @@ def create_model_tilt_series(
     thetas = np.radians(angles)
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ydim, thetas)
-    if cuda is False:
-        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-    else:
-        proj_id = astra.create_projector(
-            "cuda",
-            proj_geom,
-            vol_geom,
-        )  # coverage: nocuda
+    projector = "linear" if cuda is False else "cuda"
 
-    for i in range(model.shape[0]):
-        _, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
+    with _AstraObjects() as astra_objects:
+        proj_id = astra_objects.projector(projector, proj_geom, vol_geom)
+        for i in range(model.shape[0]):
+            proj_data[:, :, i] = astra_objects.forward_project(model[i, :, :], proj_id)
 
     stack = TomoStack(proj_data, angles)
     return stack
@@ -323,7 +310,7 @@ def misalign_stack(
     -----
     5
     """
-    rng = _get_rng(rng)
+    rng = _as_rng(rng)
     misaligned = stack.deepcopy()
 
     if tilt_shift != 0:
@@ -399,7 +386,7 @@ def add_noise(
     -----
     4
     """
-    rng = _get_rng(rng)
+    rng = _as_rng(rng)
     noisy = stack.deepcopy()
 
     if noise_type == "gaussian":
