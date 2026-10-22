@@ -27,7 +27,6 @@ from hyperspy.drawing.utils import plot_images as hs_plot_images
 from hyperspy.signal import BaseSignal, SpecialSlicersSignal
 from matplotlib.figure import Figure
 from scipy import ndimage
-from skimage import transform
 from traits.api import Undefined  # type: ignore
 
 from etspy import (
@@ -51,6 +50,7 @@ if TYPE_CHECKING:
     from hyperspy.axes import UniformDataAxis as Uda
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -65,7 +65,7 @@ class MismatchedTiltError(ValueError):
 
     Order
     -----
-    6
+    7
     """
 
     def __init__(self, num_tilts, tilt_dimension):
@@ -84,6 +84,11 @@ class _TomoShiftSlicer(SpecialSlicersSignal):
 
 class _TomoTiltSlicer(SpecialSlicersSignal):
     def __getitem__(self, slices, out=None) -> "TomoTilts":
+        return super().__getitem__(slices, out=out)
+
+
+class _TomoTransformSlicer(SpecialSlicersSignal):
+    def __getitem__(self, slices, out=None) -> "TomoTransforms":
         return super().__getitem__(slices, out=out)
 
 
@@ -272,6 +277,86 @@ class TomoTilts(Signal1D):
         return super()._slicer(slices, isNavigation, out)
 
 
+IDENTITY_TRANSFORM = np.array([1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+
+
+class TomoTransforms(Signal1D):
+    """
+    Create a ``TomoTransforms`` instance to store the alignment of each projection.
+
+    Each projection's transform is a 2D affine transform in pixel coordinates,
+    stored as the six values ``(a, b, ty, c, d, tx)`` of the matrix
+    ``[[a, b, ty], [c, d, tx]]``. It maps a pixel position ``(y, x)`` in the
+    unaligned image to its position in the aligned image.
+
+    Group
+    -----
+    signals
+
+    Order
+    -----
+    6
+    """
+
+    _signal_type = "TomoTransforms"
+    _signal_dimension = 1
+
+    def __init__(self, data, *args, **kwargs):
+        """
+        Create a TomoTransforms signal instance.
+
+        Parameters
+        ----------
+        data
+            The signal data. Can be provided as either a HyperSpy
+            :py:class:`hyperspy.api.signals.Signal1D` or a Numpy array
+            of the shape `(ntilts, 6)`.
+        args
+            Additional non-keyword arguments passed to the
+            :py:class:`~hyperspy.api.signals.Signal1D` constructor.
+        kwargs
+            Additional keyword arguments passed to the
+            :py:class:`hyperspy.api.signals.Signal1D` constructor.
+
+        Raises
+        ------
+        ValueError
+            If the data provided does not result in a Signal with signal shape (6,).
+        """
+        super().__init__(data, *args, **kwargs)
+        if self.axes_manager.signal_shape != (6,):
+            msg = (
+                f"Transform values must have a signal shape of (6,), "
+                f"but was {self.axes_manager.signal_shape}"
+            )
+            raise ValueError(msg)
+        self.inav = _TomoTransformSlicer(self, isNavigation=True)
+        self.isig = _TomoTransformSlicer(self, isNavigation=False)
+
+    def _slicer(self, slices, isNavigation=None, out=None):  # noqa: N803
+        if not isNavigation:
+            f = cast("FrameType", inspect.currentframe())
+            co_names = cast("FrameType", f.f_back).f_code.co_names
+            if "_additional_slicing_targets" not in co_names:
+                logger.warning(
+                    "TomoTransforms does not support 'isig' slicing, as signal shape "
+                    "must be (6,). Signal was returned with its original shape: %s",
+                    self,
+                )
+            return self
+
+        return super()._slicer(slices, isNavigation, out)
+
+
+# signal class, signal size, and signal axis name and units of each per-projection
+# property of a TomoStack
+_NAV_SIGNALS = {
+    "shifts": (TomoShifts, 2, "Shift values (x/y)", "pixels"),
+    "tilts": (TomoTilts, 1, "Tilt values", "degrees"),
+    "transforms": (TomoTransforms, 6, "Affine transform (a, b, ty, c, d, tx)", ""),
+}
+
+
 class CommonStack(Signal2D, ABC):
     """
     An abstract base class for tomography data.
@@ -378,7 +463,7 @@ class CommonStack(Signal2D, ABC):
         inverted = self.deepcopy()
         maxvals = inverted.data.max((-2, -1), keepdims=True)
         minvals = inverted.data.min((-2, -1), keepdims=True)
-
+        # ordered to avoid overflow with unsigned integer data
         inverted.data = (maxvals - inverted.data) + minvals
         return inverted
 
@@ -456,7 +541,11 @@ class CommonStack(Signal2D, ABC):
         interpolation: Literal["linear", "cubic", "nearest", "none"] = "linear",
     ) -> Self:
         """
-        Create a copy of a Stack, transformed using the ``skimage`` Affine transform.
+        Create a copy of a Stack, rotated about the image center and then shifted.
+
+        Shifts follow the same convention as :py:func:`etspy.align.apply_shifts`:
+        positive values move image content toward larger x or y pixel indices.
+        Regions uncovered by the transform are filled with the nearest edge values.
 
         Parameters
         ----------
@@ -465,7 +554,8 @@ class CommonStack(Signal2D, ABC):
         yshift
             Number of pixels by which to shift the stack in the Y dimension
         angle
-            Angle in degrees by which to rotate the stack about the X-Y plane
+            Angle in degrees by which to rotate the stack about the X-Y plane,
+            around the pixel center of the images
         interpolation
             Mode of interpolation to employ. Must be either ``'linear'``,
             ``'cubic'``, ``'nearest'`` or ``'none'``.  Note that ``'nearest'``
@@ -494,32 +584,8 @@ class CommonStack(Signal2D, ABC):
         ):
             transformed.data = transformed.data.astype("float32")
             logger.debug("Data converted to float prior to transformation")
-        theta = np.pi * angle / 180.0
-        center_y, center_x = np.array(
-            np.array(transformed.data.shape[1:]) / 2,
-            dtype=np.float32,
-        )
-
-        rot_mat = np.array(
-            [
-                [np.cos(theta), -np.sin(theta), 0],
-                [np.sin(theta), np.cos(theta), 0],
-                [0, 0, 1],
-            ],
-        )
-
-        trans_mat = np.array([[1, 0, center_x], [0, 1, center_y], [0, 0, 1]])
-
-        rev_mat = np.array([[1, 0, -center_x], [0, 1, -center_y], [0, 0, 1]])
-
-        rotation_mat = np.dot(np.dot(trans_mat, rot_mat), rev_mat)
-
-        shift = np.array(
-            [[1, 0, np.float32(xshift)], [0, 1, np.float32(-yshift)], [0, 0, 1]],
-        )
-
-        full_transform = np.dot(shift, rotation_mat)
-        tform = transform.AffineTransform(full_transform)
+        matrix = align.rigid_matrix(self.data.shape[-2:], angle, yshift, xshift)
+        inverse = np.linalg.inv(matrix)
 
         if interpolation.lower() == "nearest" or interpolation.lower() == "none":
             interpolation_order = 0
@@ -535,10 +601,12 @@ class CommonStack(Signal2D, ABC):
             raise ValueError(msg)
 
         for i in range(self.data.shape[0]):
-            transformed.data[i, :, :] = transform.warp(
+            transformed.data[i, :, :] = ndimage.affine_transform(
                 transformed.data[i, :, :],
-                inverse_map=tform.inverse,
+                inverse[:2, :2],
+                offset=inverse[:2, 2],
                 order=interpolation_order,
+                mode="nearest",
             )
 
         trans_tomo_meta = cast("Dtb", transformed.metadata.Tomography)
@@ -546,6 +614,8 @@ class CommonStack(Signal2D, ABC):
         trans_tomo_meta.xshift = cast("float", self_tomo_meta.xshift) + xshift
         trans_tomo_meta.yshift = cast("float", self_tomo_meta.yshift) + yshift
         trans_tomo_meta.tiltaxis = cast("float", self_tomo_meta.tiltaxis) + angle
+        if isinstance(transformed, TomoStack):
+            align.compose_transforms(transformed, matrix)
         return transformed
 
     def plot_3d(
@@ -721,6 +791,7 @@ class TomoStack(CommonStack):
         data: np.ndarray | Signal2D,
         tilts: TomoTilts | np.ndarray | None = None,
         shifts: TomoShifts | np.ndarray | None = None,
+        transforms: TomoTransforms | np.ndarray | None = None,
         *args,
         **kwargs,
     ):
@@ -747,6 +818,10 @@ class TomoStack(CommonStack):
             :py:class:`~numpy.ndarray`, the Y-shifts (perpendicular to the tilt axis)
             should be in the ``shifts[:, 0]`` position and X-shifts (parallel to the
             tilt axis) in ``shifts[:, 1]``.
+        transforms
+            A :py:class:`~etspy.base.TomoTransforms` or :py:class:`~numpy.ndarray`
+            of shape `(nav_size, 6)` holding the composed alignment transform of each
+            projection. If ``None``, identity transforms are used.
         args
             Additional non-keyword arguments passed to the
             :py:class:`~hyperspy.api.signals.Signal2D` constructor
@@ -757,8 +832,8 @@ class TomoStack(CommonStack):
         Raises
         ------
         ValueError
-            If the ``tilts`` or ``shifts`` signals provided do not have the correct
-            dimensions.
+            If the ``tilts``, ``shifts`` or ``transforms`` provided do not have the
+            correct dimensions.
         """
         # copy axes and metadata if input was already a signal
         if isinstance(data, Signal2D):
@@ -768,6 +843,7 @@ class TomoStack(CommonStack):
 
         self.shifts = shifts
         self.tilts = tilts
+        self.transforms = transforms
         if self.axes_manager.navigation_axes:
             # normal single-frame mode:
             if (
@@ -801,11 +877,12 @@ class TomoStack(CommonStack):
             cast("Uda", self.axes_manager.signal_axes[0]).name = "x"
             cast("Uda", self.axes_manager.signal_axes[1]).name = "y"
 
-        # ensure that shifts and tilts will be sliced when the Signal is
+        # ensure that shifts, tilts and transforms will be sliced when the Signal is
         self._additional_slicing_targets = [
             "metadata.Signal.Noise_properties.variance",
             "_shifts",
             "_tilts",
+            "_transforms",
         ]
 
         self.inav = _TomoStackSlicer(self, isNavigation=True)
@@ -813,17 +890,17 @@ class TomoStack(CommonStack):
 
     def _check_array_shape(
         self,
-        array: TomoShifts | TomoTilts | np.ndarray,
-        mode: Literal["shifts", "tilts"],
-    ) -> TomoShifts | TomoTilts | np.ndarray:
+        array: TomoShifts | TomoTilts | TomoTransforms | np.ndarray,
+        mode: Literal["shifts", "tilts", "transforms"],
+    ) -> TomoShifts | TomoTilts | TomoTransforms | np.ndarray:
         """
         Check if a signal or array shape is appropriate for the current stack.
 
-        Used by the shifts and tilts setter methods as a sanity check on the
-        size of the arrays that are provided.
+        Used by the shifts, tilts and transforms setter methods as a sanity check on
+        the size of the arrays that are provided.
         """
         to_check = array.data if isinstance(array, BaseSignal) else array
-        signal_size = 2 if mode == "shifts" else 1
+        signal_size = _NAV_SIGNALS[mode][1]
         # if we have more than one navigation dimension, an ndarray should be
         # of shape (N, M, 1|2) if the signal's navigation shape is (M, N | X)
 
@@ -846,61 +923,60 @@ class TomoStack(CommonStack):
 
     def shift_and_tilt_setter(
         self,
-        mode: Literal["shifts", "tilts"],
-        value: TomoShifts | TomoTilts | np.ndarray | None,
-    ) -> TomoShifts | TomoTilts:
+        mode: Literal["shifts", "tilts", "transforms"],
+        value: TomoShifts | TomoTilts | TomoTransforms | np.ndarray | None,
+    ) -> TomoShifts | TomoTilts | TomoTransforms:
         """
-        Set either ``self._tilts`` or ``self._shifts`` to an array.
+        Set ``self._tilts``, ``self._shifts`` or ``self._transforms`` to an array.
 
         This method is split out to reduce duplication of code between the
-        :py:attr:`~etspy.base.TomoStack.tilts` and
-        :py:attr:`~etspy.base.TomoStack.shifts`
+        :py:attr:`~etspy.base.TomoStack.tilts`,
+        :py:attr:`~etspy.base.TomoStack.shifts` and
+        :py:attr:`~etspy.base.TomoStack.transforms`
         property setter functions, since they have significant
         overlap.
 
         Parameters
         ----------
         mode
-            Whether to work on the ``_shifts`` or the ``_tilts`` of the stack
+            Whether to work on the ``_shifts``, ``_tilts`` or ``_transforms`` of the
+            stack
         value:
             The values to set, as either an array, or
-            :py:class:`~etspy.base.TomoShifts`, or :py:class:`~etspy.base.TomoTilts`.
-            If ``None``, the values will be initialized to an array of zeros of the
-            appropriate shape.
+            :py:class:`~etspy.base.TomoShifts`, :py:class:`~etspy.base.TomoTilts` or
+            :py:class:`~etspy.base.TomoTransforms`. If ``None``, the values will be
+            initialized to zeros (identity transforms for ``transforms``).
 
         Returns
         -------
-        target : :py:class:`~etspy.base.TomoShifts` or :py:class:`~etspy.base.TomoTilts`
-            The signal that should be set as either the shifts or tilts property.
+        target : :py:class:`~etspy.base.TomoShifts`, :py:class:`~etspy.base.TomoTilts` or :py:class:`~etspy.base.TomoTransforms`
+            The signal that should be set as the shifts, tilts or transforms property.
 
         Raises
         ------
         ValueError
-            If the ``value`` is not the correct shape for either the `shapes` or `tilts`
-            property
-        """
-        signal_size = 2 if mode == "shifts" else 1
-        _cls = TomoShifts if mode == "shifts" else TomoTilts
+            If the ``value`` is not the correct shape for the property
+        """  # noqa: E501
+        _cls, signal_size, axis_name, axis_units = _NAV_SIGNALS[mode]
         if value is None:
-            # shifts should be shape (self.nav_size | 2), tilts (self.nav_size | 1)
             # numpy arrays should be the inverse of the navigation shape, so if
             # self.axes_manager.navigation shape is (N, M), then the data shape provided
-            # to TomoShifts or TomoTilts should be (M, N)
-            target = _cls(
-                data=np.zeros((*self.axes_manager.navigation_shape[::-1], signal_size)),
-            )
+            # to the signal should be (M, N | signal_size)
+            shape = (*self.axes_manager.navigation_shape[::-1], signal_size)
+            default = IDENTITY_TRANSFORM if mode == "transforms" else 0.0
+            target = _cls(data=np.broadcast_to(default, shape).copy())
         elif isinstance(value, np.ndarray):
             value = self._check_array_shape(value, mode)
             target = _cls(data=value)
         else:
             # value is already a Signal, so test the dimensions
             value = cast(
-                "TomoTilts | TomoShifts",
+                "TomoTilts | TomoShifts | TomoTransforms",
                 self._check_array_shape(value, mode),
             )
-            # Using the TomoTilts/TomoShifts constructor strips metadata and axis
-            # info, so copy it back:
-            target = cast("TomoTilts | TomoShifts", _cls(data=value))
+            # Using the signal constructor strips metadata and axis info, so copy it
+            # back:
+            target = cast("TomoTilts | TomoShifts | TomoTransforms", _cls(data=value))
             target.metadata.add_dictionary(value.metadata.as_dictionary())
             target.axes_manager.update_axes_attributes_from(
                 (*value.axes_manager.navigation_axes, *value.axes_manager.signal_axes),
@@ -921,10 +997,8 @@ class TomoStack(CommonStack):
 
             if target.axes_manager.signal_axes:
                 tilt_sig_ax = target.axes_manager.signal_axes[0]  # pyright: ignore[reportGeneralTypeIssues]
-                tilt_sig_ax.name = (
-                    "Shift values (x/y)" if mode == "shifts" else "Tilt values"
-                )
-                tilt_sig_ax.units = "pixels" if mode == "shifts" else "degrees"
+                tilt_sig_ax.name = axis_name
+                tilt_sig_ax.units = axis_units
 
         return target
 
@@ -978,6 +1052,30 @@ class TomoStack(CommonStack):
             self.shift_and_tilt_setter("tilts", np.zeros_like(self.tilts.data)),
         )
 
+    @property
+    def transforms(self) -> TomoTransforms:
+        """
+        The composed alignment transform of each projection.
+
+        A :py:class:`~etspy.base.TomoTransforms` signal with one 2D affine transform
+        per projection, mapping pixel positions in the unaligned data to the
+        current data. Every alignment operation composes into it, so it can be
+        applied to another stack in a single resampling step with
+        :py:meth:`~etspy.base.TomoStack.apply_transforms`.
+        """
+        return self._transforms
+
+    @transforms.setter
+    def transforms(self, new_transforms: TomoTransforms | np.ndarray | None):
+        self._transforms = cast(
+            "TomoTransforms",
+            self.shift_and_tilt_setter("transforms", new_transforms),
+        )
+
+    @transforms.deleter
+    def transforms(self):
+        self.transforms = None
+
     def deepcopy(self):
         """
         Return a "deep copy" of this Stack.
@@ -995,6 +1093,7 @@ class TomoStack(CommonStack):
         s = copy.deepcopy(self)
         s.tilts = copy.deepcopy(self.tilts)
         s.shifts = copy.deepcopy(self.shifts)
+        s.transforms = copy.deepcopy(self.transforms)
         return s
 
     def copy(self):
@@ -1015,6 +1114,7 @@ class TomoStack(CommonStack):
         s = copy.copy(self)
         s.tilts = copy.copy(self.tilts)
         s.shifts = copy.copy(self.shifts)
+        s.transforms = copy.copy(self.transforms)
         return s
 
     def plot_sinos(self, *args: tuple, **kwargs: dict):
@@ -1065,18 +1165,17 @@ class TomoStack(CommonStack):
         if projections is None:
             msg = "No projections provided"
             raise ValueError(msg)
-        nprojs = len(projections)
-        s_new = self.deepcopy()
-        s_ax = cast("Uda", s_new.axes_manager[0])
-        s_tilt_ax = cast("Uda", s_new.tilts.axes_manager[0])
-        s_shift_ax = cast("Uda", s_new.shifts.axes_manager[0])
-        for ax in (s_ax, s_tilt_ax, s_shift_ax):
-            ax.size -= nprojs
         mask = np.ones(self.data.shape[0], dtype=bool)
         mask[projections] = False
-        s_new.data = self.data[mask]
-        s_new.tilts.data = self.tilts.data[mask]
-        s_new.shifts.data = self.shifts.data[mask]
+        s_new = self.deepcopy()
+        for signal, source in (
+            (s_new, self),
+            (s_new.tilts, self.tilts),
+            (s_new.shifts, self.shifts),
+            (s_new.transforms, self.transforms),
+        ):
+            signal.data = source.data[mask]
+            signal.get_dimensions_from_data()
         return s_new
 
     def save(
@@ -1091,12 +1190,13 @@ class TomoStack(CommonStack):
         Save the signal in the specified format.
 
         Overloads the HyperSpy :py:meth:`~hyperspy.api.signals.BaseSignal.save` method
-        so that tilts and shifts are written to metadata prior to saving. All arguments
-        are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`, so please
-        consult that method's documentation for details.
+        so that tilts, shifts and transforms are written to metadata prior to saving.
+        All arguments are the same as :py:meth:`~hyperspy.api.signals.BaseSignal.save`,
+        so please consult that method's documentation for details.
         """
         self.metadata.set_item("Tomography.tilts", self.tilts)
         self.metadata.set_item("Tomography.shifts", self.shifts)
+        self.metadata.set_item("Tomography.transforms", self.transforms)
         try:
             super().save(
                 filename=filename,
@@ -1109,6 +1209,7 @@ class TomoStack(CommonStack):
             tomo_meta = cast("Dtb", self.metadata.Tomography)
             del tomo_meta.tilts
             del tomo_meta.shifts
+            del tomo_meta.transforms
 
     def test_correlation(
         self,
@@ -1164,56 +1265,75 @@ class TomoStack(CommonStack):
         """
         Apply the alignment calculated for one dataset to another.
 
-        This will include the spatial registration, tilt axis, and tilt axis
-        shift if they have been previously calculated.
+        This will include the spatial registration, cropping, tilt axis, and tilt
+        axis shift, in the order they were applied. See
+        :py:meth:`~etspy.base.TomoStack.apply_transforms`.
 
         Parameters
         ----------
         other
             The tilt series which is to be aligned using the previously
-            calculated parameters. The data array in the TomoStack must be of
-            the same size as that in ``self.data``
+            calculated parameters. Its images must be the same size as those this
+            stack was aligned from.
         shift_type
-            Image shifts can be applied using either interpolation via
-            scipy.ndimage.shift or via Fourier shift as implemented in
-            scipy.ndimage.fourier_shift.  Must be either 'interp' or 'fourier'.
+            If the alignment is a pure translation, ``'fourier'`` applies it with a
+            Fourier shift; otherwise, or with ``'interp'``, cubic spline
+            interpolation is used.
         cuda
-            Whether or not to use CUDA-accelerated reconstruction algorithms.
+            Whether or not to use CUDA-accelerated resampling.
 
         Returns
         -------
         out : TomoStack
             The result of applying the alignment to other
-        """
-        # Check if any transformations have been applied to the current stack
-        no_shifts = np.all(self.shifts.data == 0)
-        tomo_meta = cast("Dtb", self.metadata.Tomography)
-        no_xshift = any(
-            [
-                tomo_meta.xshift is None,
-                tomo_meta.xshift == 0.0,
-            ],
-        )
-        no_yshift = any(
-            [
-                tomo_meta.yshift is None,
-                tomo_meta.yshift == 0.0,
-            ],
-        )
-        no_rotation = any(
-            [
-                tomo_meta.tiltaxis is None,
-                tomo_meta.tiltaxis == 0.0,
-            ],
-        )
 
-        if all([no_shifts, no_xshift, no_yshift, no_rotation]):
+        Raises
+        ------
+        ValueError
+            If no transformations have been applied to this stack
+        """
+        identity = np.broadcast_to(IDENTITY_TRANSFORM, self.transforms.data.shape)
+        if np.allclose(self.transforms.data, identity):
             msg = "No transformations have been applied to this stack"
             raise ValueError(msg)
 
         out = align.align_to_other(self, other, shift_type, cuda)
 
         return out
+
+    def apply_transforms(
+        self,
+        source: "TomoStack",
+        shift_type: Literal["interp", "fourier"] = "fourier",
+        cuda: bool = False,
+    ) -> "TomoStack":
+        """
+        Apply this stack's composed alignment to another stack in one resampling.
+
+        Every alignment operation (registration, cropping, tilt-axis alignment and
+        manual shifts) is recorded in :py:attr:`~etspy.base.TomoStack.transforms`.
+        Applying the composed transform at once avoids the blurring of repeated
+        interpolation, e.g. when aligning a binned or filtered copy and then
+        applying the result to the raw data.
+
+        Parameters
+        ----------
+        source
+            The unaligned tilt series to transform. Its images must be the same
+            size as those this stack was aligned from.
+        shift_type
+            If the alignment is a pure translation, ``'fourier'`` applies it with a
+            Fourier shift; otherwise, or with ``'interp'``, cubic spline
+            interpolation is used.
+        cuda
+            Whether or not to use CUDA-accelerated resampling.
+
+        Returns
+        -------
+        out : TomoStack
+            Aligned copy of ``source``
+        """
+        return align.apply_transforms(self, source, shift_type, cuda)
 
     def filter(
         self,
@@ -1310,6 +1430,10 @@ class TomoStack(CommonStack):
             x_axis, y_axis = cast("tuple[Uda, Uda]", filtered.axes_manager.signal_axes)
             x_axis.offset -= taper_size[1] * x_axis.scale
             y_axis.offset -= taper_size[0] * y_axis.scale
+            align.compose_transforms(
+                filtered,
+                align.translation_matrices([taper_size])[0],
+            )
         return filtered
 
     def subtract_background(
@@ -1366,6 +1490,60 @@ class TomoStack(CommonStack):
         )
         return subtracted
 
+    def to_absorbance(
+        self,
+        i0: float | None = None,
+        region: tuple[slice, slice] | None = None,
+    ) -> "TomoStack":
+        """
+        Create a copy of a bright-field stack converted to absorbance, -ln(I/I0).
+
+        Bright-field intensity decays exponentially with projected mass
+        (Beer-Lambert), so the logarithm is needed for the data to approximate the
+        line integrals assumed by reconstruction.
+
+        Parameters
+        ----------
+        i0
+            Incident (vacuum) intensity. If ``None``, it is measured for each
+            projection from ``region``, or as the 99th percentile of the projection
+            if ``region`` is also ``None``.
+        region
+            Vacuum region as ``(y_slice, x_slice)`` in pixels, used to measure
+            ``i0`` as the median of each projection over that region.
+
+        Returns
+        -------
+        absorbance : TomoStack
+            Converted copy of the stack. The incident intensity used is stored in
+            ``metadata.Tomography.i0``.
+
+        Raises
+        ------
+        ValueError
+            If the incident intensity is not positive.
+        """
+        absorbance = self.deepcopy()
+        data = absorbance.data.astype(np.result_type(absorbance.data, np.float32))
+        if i0 is not None:
+            incident = np.asarray(i0, dtype=data.dtype)
+        elif region is not None:
+            incident = np.median(
+                data[..., region[0], region[1]],
+                axis=(-2, -1),
+                keepdims=True,
+            )
+        else:
+            incident = np.percentile(data, 99, axis=(-2, -1), keepdims=True)
+        if np.any(incident <= 0):
+            msg = "Incident intensity i0 must be positive"
+            raise ValueError(msg)
+        # zero or negative counts would give infinite absorbance
+        floor = 1e-6 * incident
+        absorbance.data = -np.log(np.maximum(data, floor) / incident)
+        absorbance.metadata.set_item("Tomography.i0", np.squeeze(incident))
+        return absorbance
+
     def stack_register(
         self,
         method: AlignmentMethodType = AlignmentMethod.PC,
@@ -1382,6 +1560,13 @@ class TomoStack(CommonStack):
         Options are phase correlation (PC) maximization, StackReg, center of
         mass ('COM'), or combined center of mass and common line methods.
         See docstring for :py:func:`etspy.align.align_stack` for details.
+
+        Registration cannot determine shifts perpendicular to the tilt axis of the
+        form ``a + b*cos(theta) + c*sin(theta)``. Neighbor-based methods (PC and
+        StackReg) therefore tend to cancel the sinusoidal motion of an off-axis
+        object, which only translates the reconstructed volume. The constant part
+        is the tilt-axis offset, which should be corrected afterward with
+        :py:meth:`~etspy.base.TomoStack.tilt_align`.
 
         Parameters
         ----------
@@ -1522,7 +1707,10 @@ class TomoStack(CommonStack):
         TomoStack by analyzing features in the projected maximum image.  A combination
         of edge detection and Hough transform analysis is used to determine the global
         rotation of the stack.  Optionally, the global shift of the tilt axis can also
-        be calculated by minimization of the sum of the reconstruction.
+        be calculated by minimization of the sum of the reconstruction. The rotation
+        estimate depends strongly on the specimen (see
+        :py:class:`~etspy.align.TiltMaxImageAligner`); ``'CoM'`` is generally more
+        reliable.
 
         Parameters
         ----------
@@ -1630,7 +1818,10 @@ class TomoStack(CommonStack):
             ``"SIRT"``, ``"SART"``, or ``"DART"``
         iterations
             Number of iterations for the SIRT reconstruction (used with ``SIRT``,
-            ``SART``, and ``DART`` methods) (default: 5)
+            ``SART``, and ``DART`` methods) (default: 5). A SART iteration (also used
+            within DART) updates from a single projection, following the ASTRA
+            convention, so use a multiple of the number of projections for full
+            passes through the data.
         constrain
             If ``True``, output reconstruction is constrained above value given
             by ``thresh``
@@ -1659,7 +1850,10 @@ class TomoStack(CommonStack):
         dart_iterations
             Number of iterations to employ for DART reconstruction
         gray_levels
-            List of gray levels to use for DART reconstruction
+            List of gray levels to use for DART reconstruction. These are best
+            chosen from the histogram of a SIRT reconstruction of the same data,
+            since the missing wedge lowers reconstructed values relative to the
+            true densities.
         rng
             Random number generator or seed used by DART to select free pixels. If
             ``None``, a generator is seeded from NumPy's global random state.
@@ -1795,7 +1989,8 @@ class TomoStack(CommonStack):
         Parameters
         ----------
         tilt_shift
-            Number of pixels by which to shift the stack prior to reconstruction
+            Number of pixels by which to shift the stack along y prior to
+            reconstruction (positive values move content toward larger y)
         tilt_rotation
             Angle by which to rotate stack prior to reconstruction
         slices
@@ -1810,7 +2005,8 @@ class TomoStack(CommonStack):
             ``"SIRT"``, or ``"SART"`` (inapplicable for the ``"DART"`` algorithm)
         iterations
             Number of iterations for the SIRT reconstruction (used with ``SIRT``,
-            and ``SART`` methods) (default: 50)
+            and ``SART`` methods) (default: 50). A SART iteration updates from a single
+            projection, following the ASTRA convention.
         cuda
             Whether or not to use CUDA-accelerated reconstruction algorithms. If
             ``None`` (the default), the decision to use CUDA will be left to
@@ -1838,6 +2034,7 @@ class TomoStack(CommonStack):
             shifted = self.deepcopy()
         shifted = cast("TomoStack", shifted)
         shifted.data = shifted.data[:, :, slices]
+        shifted.get_dimensions_from_data()
 
         cast("Uda", shifted.axes_manager[0]).axis = cast(
             "Uda",
@@ -1915,7 +2112,7 @@ class TomoStack(CommonStack):
 
         self.tilts = tilts
 
-    def manual_align(  # noqa: PLR0915
+    def manual_align(
         self,
         nslice: int,
         xshift: int = 0,
@@ -1939,41 +2136,21 @@ class TomoStack(CommonStack):
             If True, display the result.
         """
         output = self.deepcopy()
-        if yshift == 0:
-            if xshift > 0:  # x+ , y0
-                output.data = output.data[:, :, :-xshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :, xshift:]
-                output.data[nslice:, :, :] = self.data[nslice:, :, :-xshift]
-            elif xshift < 0:  # x- , y0
-                output.data = output.data[:, :, :xshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :, :xshift]
-                output.data[nslice:, :, :] = self.data[nslice:, :, -xshift:]
-
-        elif xshift == 0:
-            if yshift > 0:  # x0 , y+
-                output.data = output.data[:, :-yshift, :]
-                output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :]
-                output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :]
-            elif yshift < 0:  # x0 , y-
-                output.data = output.data[:, :yshift, :]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :]
-                output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :]
-        elif (xshift > 0) and (yshift > 0):  # x+ , y+
-            output.data = output.data[:, :-yshift, :-xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, xshift:]
-            output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :-xshift]
-        elif (xshift > 0) and (yshift < 0):  # x+ , y-
-            output.data = output.data[:, :yshift, :-xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, xshift:]
-            output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :-xshift]
-        elif (xshift < 0) and (yshift > 0):  # x- , y +
-            output.data = output.data[:, :-yshift, :xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :xshift]
-            output.data[nslice:, :, :] = self.data[nslice:, :-yshift, -xshift:]
-        elif (xshift < 0) and (yshift < 0):  # x- , x-
-            output.data = output.data[:, :yshift, :xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :xshift]
-            output.data[nslice:, :, :] = self.data[nslice:, -yshift:, -xshift:]
+        _, ny, nx = self.data.shape
+        out_ny, out_nx = ny - abs(yshift), nx - abs(xshift)
+        # each part is cropped to the common area, starting at these offsets
+        first_start = (max(yshift, 0), max(xshift, 0))
+        second_start = (max(-yshift, 0), max(-xshift, 0))
+        output.data = np.empty((self.data.shape[0], out_ny, out_nx), self.data.dtype)
+        crops = np.zeros((self.data.shape[0], 2))
+        for part, (y0, x0) in (
+            (slice(0, nslice), first_start),
+            (slice(nslice, None), second_start),
+        ):
+            output.data[part] = self.data[part, y0 : y0 + out_ny, x0 : x0 + out_nx]
+            crops[part] = (-y0, -x0)
+        output.get_dimensions_from_data()
+        align.compose_transforms(output, align.translation_matrices(crops))
 
         if display:
             old_im1 = self.data[nslice - 1, :, :]

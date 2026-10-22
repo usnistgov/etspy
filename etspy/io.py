@@ -16,6 +16,7 @@ from hyperspy.misc.utils import (
     stack as hs_stack,  # import stack function directly for better type-checking
 )
 
+from etspy import align
 from etspy.base import TomoStack
 
 if TYPE_CHECKING:
@@ -65,6 +66,8 @@ def get_mrc_tilts(
             logger.info("Tilts found in MRC file header")
     elif stack.original_metadata.has_item("std_header"):
         header = parse_mrc_header(filename)
+        # SerialEM extended headers hold nint bytes per section; bit 0 of nreal
+        # flags that each section starts with the tilt angle (x100, int16)
         if header["ext_type"] == "SERI" and header["nint"] and header["nreal"] & 1:
             logger.info("SerialEM generated MRC file detected")
             stride = int(header["nint"]) // 2
@@ -225,7 +228,6 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
     stack.axes_manager[2].units = "nm"
 
     _set_serialem_metadata(stack, meta)
-
     logger.info("SerialEM stack successfully loaded. ")
     mrc_logger.setLevel(log_level)
     return TomoStack(stack)
@@ -310,8 +312,8 @@ def load_serialem_series(
     # tile tilts array to match frames
     # shape will be (ntilts, nframes)
     tilts = np.tile(tilts, (stack.axes_manager["Frames"].size, 1)).T
-    _set_serialem_metadata(stack, meta[0], stack.axes_manager["Frames"].size)
 
+    _set_serialem_metadata(stack, meta[0], stack.axes_manager["Frames"].size)
     logger.info(
         "SerialEM Multiframe stack successfully loaded. "
         "Use etspy.utils.register_serialem_stack to align frames.",
@@ -409,7 +411,8 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
 def _load_single_file(filename: Path) -> TomoStack:
     """Load a HyperSpy signal and any tilts from a single file."""
     ext = filename.suffix
-    tilts, shifts = None, None
+    tilts, shifts, transforms = None, None, None
+    legacy_alignment = False
     if ext.lower() in hspy_file_types:
         stack = hs_load(filename, file_format="HSPY")
         stack = cast("Signal2D", stack)
@@ -419,6 +422,11 @@ def _load_single_file(filename: Path) -> TomoStack:
         if stack.metadata.has_item("Tomography.shifts"):
             shifts = stack.metadata.Tomography.shifts
             del stack.metadata.Tomography.shifts
+        if stack.metadata.has_item("Tomography.transforms"):
+            transforms = stack.metadata.Tomography.transforms
+            del stack.metadata.Tomography.transforms
+        else:
+            legacy_alignment = stack.metadata.has_item("Tomography")
     elif ext.lower() in dm_file_types:
         stack = hs_load(filename)
         stack = cast("Signal2D", stack)
@@ -440,7 +448,9 @@ def _load_single_file(filename: Path) -> TomoStack:
         msg = f'Unknown file type "{ext}". Must be one of {known_file_types}'
         raise TypeError(msg)
 
-    tomo_stack = TomoStack(stack, tilts=tilts, shifts=shifts)
+    tomo_stack = TomoStack(stack, tilts=tilts, shifts=shifts, transforms=transforms)
+    if legacy_alignment:
+        align.convert_legacy_alignment(tomo_stack)
     return tomo_stack
 
 
@@ -451,6 +461,11 @@ def load(
 ) -> TomoStack:
     """
     Create a TomoStack object using data from a file.
+
+    The data are converted to float32 and, if any values are negative, offset so
+    that the minimum is zero (some formats store signed data with an offset). This
+    is not background subtraction; use
+    :py:meth:`~etspy.base.TomoStack.subtract_background` to set vacuum to zero.
 
     Parameters
     ----------

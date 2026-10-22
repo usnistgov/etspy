@@ -6,15 +6,9 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from etspy import simulation
+from etspy import align, simulation
 from etspy.base import TomoStack
-from etspy.tests.phantoms import (
-    TILTS,
-    make_phantom,
-    ncc,
-    project,
-    shift_images,
-)
+from etspy.tests.phantoms import TILTS, make_phantom, ncc, project, shift_images
 
 MIN_REC_NCC = 0.9
 MIN_HANDEDNESS_MARGIN = 0.5
@@ -137,7 +131,7 @@ class TestTiltAxisAlignment:
     @pytest.mark.parametrize(("nx", "ny"), [(96, 96), (48, 96), (128, 64)])
     def test_com_offset(self, nx, ny):
         ali = _misaligned_axis(nx, ny, AXIS_SHIFT, 0).tilt_align("CoM")
-        assert abs(ali.metadata.Tomography.yshift - AXIS_SHIFT) < SUBPIXEL_TOL
+        assert abs(ali.metadata.Tomography.yshift + AXIS_SHIFT) < SUBPIXEL_TOL
 
     @pytest.mark.parametrize(("nx", "ny"), [(96, 96), (48, 96), (128, 64)])
     def test_com_rotation(self, nx, ny):
@@ -148,7 +142,7 @@ class TestTiltAxisAlignment:
         stack = _misaligned_axis(48, 96, MAXIMAGE_SHIFT, 0)
         ali = stack.tilt_align("MaxImage", also_shift=True, shift_limit=6)
         yshift = ali.metadata.Tomography.yshift
-        assert abs(yshift - MAXIMAGE_SHIFT) <= MAXIMAGE_SHIFT_TOL
+        assert abs(yshift + MAXIMAGE_SHIFT) <= MAXIMAGE_SHIFT_TOL
 
 
 class TestSimulationPhysics:
@@ -248,3 +242,14 @@ class TestPreprocessing:
         with caplog.at_level(logging.WARNING):
             full_range_series.stack_register("COM-CL")
         assert "center of mass alignment assumes" not in caplog.text
+
+
+class TestSignConvention:
+    """Test that all shift APIs move image content in the same direction."""
+
+    def test_y_shift_direction(self):
+        s = TomoStack(np.zeros((1, 32, 32), np.float32))
+        s.data[0, 16, 16] = 1
+        a = align.apply_shifts(s, np.array([[2.0, 0.0]]), method="interp", order=1)
+        t = s.trans_stack(yshift=2.0)
+        assert a.data[0].argmax() == t.data[0].argmax()

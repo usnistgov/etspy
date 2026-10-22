@@ -340,13 +340,23 @@ class TestAlignOther:
     def test_align_to_other_with_crop(self, short_stack):
         reg = short_stack.stack_register("PC", crop=True)
         reg2 = reg.align_other(short_stack)
-        diff = reg.data - reg2.data
-        assert diff.sum() == 0.0
+        data_range = np.ptp(short_stack.data)
+        np.testing.assert_allclose(reg2.data, reg.data, atol=1e-3 * data_range)
 
     def test_align_to_other_with_xshift(self, short_stack):
         original_stack = short_stack.deepcopy()
         reg = original_stack.stack_register("PC")
         reg = cast("etspy.TomoStack", reg.trans_stack(xshift=10, yshift=5, angle=2))
         reg2 = reg.align_other(original_stack)
-        diff = reg.data - reg2.data
-        assert diff.sum() == 0.0
+        # a single resampling differs slightly from sequential interpolation
+        correlation = np.corrcoef(reg.data.ravel(), reg2.data.ravel())[0, 1]
+        assert correlation > 0.9999  # noqa: PLR2004
+
+    def test_align_to_other_single_resampling_is_sharper(self, short_stack):
+        reg = short_stack.stack_register("PC").trans_stack(xshift=10, yshift=5, angle=2)
+        reg2 = reg.align_other(short_stack)
+
+        def gradient(data):
+            return np.abs(np.diff(data[:, 16:-16, 16:-16], axis=2)).mean()
+
+        assert gradient(reg2.data) > gradient(reg.data)

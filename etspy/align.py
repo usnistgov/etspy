@@ -18,7 +18,7 @@ from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 
-from etspy._gpu import cp, has_cupy, shift_gpu
+from etspy._gpu import affine_transform_gpu, cp, has_cupy, shift_gpu
 
 if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
@@ -114,6 +114,241 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     return coms
 
 
+def _to_matrices(vectors: np.ndarray) -> np.ndarray:
+    """Convert ``(..., 6)`` transform vectors to ``(..., 3, 3)`` matrices."""
+    vectors = np.asarray(vectors, dtype=float)
+    matrices = np.zeros((*vectors.shape[:-1], 3, 3))
+    matrices[..., :2, :] = vectors.reshape(*vectors.shape[:-1], 2, 3)
+    matrices[..., 2, 2] = 1.0
+    return matrices
+
+
+def _to_vectors(matrices: np.ndarray) -> np.ndarray:
+    """Convert ``(..., 3, 3)`` matrices to ``(..., 6)`` transform vectors."""
+    return matrices[..., :2, :].reshape(*matrices.shape[:-2], 6)
+
+
+def translation_matrices(shifts: np.ndarray) -> np.ndarray:
+    """
+    Build forward transform matrices for per-projection translations.
+
+    Parameters
+    ----------
+    shifts
+        Array of shape ``(n, 2)`` of ``(dy, dx)`` content displacements in pixels.
+
+    Returns
+    -------
+    matrices : :py:class:`~numpy.ndarray`
+        Array of shape ``(n, 3, 3)``.
+
+    Group
+    -----
+    align
+    """
+    shifts = np.asarray(shifts, dtype=float).reshape(-1, 2)
+    matrices = np.tile(np.eye(3), (len(shifts), 1, 1))
+    matrices[:, :2, 2] = shifts
+    return matrices
+
+
+def rigid_matrix(
+    shape: tuple[int, int],
+    angle: float = 0.0,
+    yshift: float = 0.0,
+    xshift: float = 0.0,
+) -> np.ndarray:
+    """
+    Build the forward transform for a rotation about the image center and a shift.
+
+    Parameters
+    ----------
+    shape
+        ``(ny, nx)`` shape of the images.
+    angle
+        Rotation angle in degrees, applied about the pixel center of the image.
+    yshift, xshift
+        Content displacement in pixels, applied after the rotation. Positive values
+        move content toward larger indices.
+
+    Returns
+    -------
+    matrix : :py:class:`~numpy.ndarray`
+        Array of shape ``(3, 3)`` acting on ``(y, x, 1)`` pixel coordinates.
+
+    Group
+    -----
+    align
+    """
+    cy, cx = (shape[0] - 1) / 2, (shape[1] - 1) / 2
+    theta = np.deg2rad(angle)
+    rotation = np.array(
+        [
+            [np.cos(theta), np.sin(theta), 0],
+            [-np.sin(theta), np.cos(theta), 0],
+            [0, 0, 1],
+        ],
+    )
+    to_center = np.array([[1, 0, cy], [0, 1, cx], [0, 0, 1]])
+    from_center = np.array([[1, 0, -cy], [0, 1, -cx], [0, 0, 1]])
+    shift = np.array([[1, 0, yshift], [0, 1, xshift], [0, 0, 1]])
+    return shift @ to_center @ rotation @ from_center
+
+
+def compose_transforms(stack: "TomoStack", matrices: np.ndarray):
+    """
+    Compose ``matrices`` after the existing transforms of ``stack``, in place.
+
+    Parameters
+    ----------
+    stack
+        Stack whose :py:attr:`~etspy.base.TomoStack.transforms` are updated.
+    matrices
+        A ``(3, 3)`` matrix applied to every projection, or ``(n, 3, 3)`` matrices
+        for each projection.
+
+    Group
+    -----
+    align
+    """
+    current = _to_matrices(stack.transforms.data)
+    stack.transforms.data = _to_vectors(matrices @ current)
+
+
+def _resample(data, matrices: np.ndarray, output_shape, order: int, cuda: bool):
+    """Resample each image of ``data`` with its forward transform."""
+    xp = cp if cuda else np
+    affine = affine_transform_gpu if cuda else ndimage.affine_transform
+    out = np.empty((data.shape[0], *output_shape), dtype=data.dtype)
+    for i in range(data.shape[0]):
+        inverse = np.linalg.inv(matrices[i])
+        image = affine(
+            xp.asarray(data[i]),
+            xp.asarray(inverse[:2, :2]),
+            offset=xp.asarray(inverse[:2, 2]),
+            output_shape=tuple(output_shape),
+            order=order,
+            mode="nearest",
+        )
+        out[i] = cp.asnumpy(image) if cuda else image
+    return out
+
+
+def apply_transforms(
+    reference: "TomoStack",
+    source: "TomoStack",
+    shift_type: Literal["fourier", "interp"] = "fourier",
+    cuda: bool = False,
+) -> "TomoStack":
+    """
+    Apply the composed alignment of one stack to another in a single resampling.
+
+    Parameters
+    ----------
+    reference
+        Aligned stack whose :py:attr:`~etspy.base.TomoStack.transforms` are
+        applied.
+    source
+        Stack to align. It must have the same number of projections as
+        ``reference``, and the same image size as the data ``reference`` was
+        aligned from.
+    shift_type
+        If every transform is a pure translation, ``"fourier"`` applies it with a
+        Fourier shift. Otherwise, or with ``"interp"``, cubic spline
+        interpolation is used.
+    cuda
+        Whether to use CuPy for the resampling.
+
+    Returns
+    -------
+    out : TomoStack
+        Aligned copy of ``source``, with the same image size as ``reference``.
+
+    Group
+    -----
+    align
+    """
+    if cuda and not has_cupy:
+        logger.warning("CUDA requested but CuPy is unavailable; using CPU")
+        cuda = False
+    if source.data.shape[0] != reference.data.shape[0]:
+        msg = (
+            f"Number of projections in the stack to align ({source.data.shape[0]}) "
+            f"does not match the reference ({reference.data.shape[0]})"
+        )
+        raise ValueError(msg)
+
+    matrices = _to_matrices(reference.transforms.data).reshape(-1, 3, 3)
+    output_shape = reference.data.shape[-2:]
+    data = source.data
+    if np.issubdtype(data.dtype, np.integer):
+        data = data.astype(np.float32)
+
+    translation_only = np.allclose(matrices[:, :2, :2], np.eye(2))
+    fits = all(o <= n for o, n in zip(output_shape, data.shape[-2:], strict=True))
+    if shift_type == "fourier" and translation_only and fits:
+        xp = cp if cuda else np
+        shifted = _fourier_shift(xp.asarray(data), xp.asarray(matrices[:, :2, 2]), xp)
+        shifted = shifted[:, : output_shape[0], : output_shape[1]]
+        data = cp.asnumpy(shifted) if cuda else shifted
+    else:
+        data = _resample(data, matrices, output_shape, order=3, cuda=cuda)
+
+    out = source.deepcopy()
+    out.data = data
+    out.get_dimensions_from_data()
+    compose_transforms(out, matrices)
+    out.shifts.data = out.shifts.data + reference.shifts.data
+
+    ref_meta = cast("Dtb", reference.metadata.Tomography)
+    out_meta = cast("Dtb", out.metadata.Tomography)
+    for key in ("xshift", "yshift", "tiltaxis"):
+        out_meta.set_item(key, out_meta.get_item(key, 0) + ref_meta.get_item(key, 0))
+    cropped = out_meta.get_item("cropped", default=False)
+    out_meta.set_item("cropped", bool(cropped or ref_meta.get_item("cropped")))
+    for out_axis, ref_axis in zip(
+        out.axes_manager.signal_axes,
+        reference.axes_manager.signal_axes,
+        strict=True,
+    ):
+        if out_axis.scale == ref_axis.scale:
+            out_axis.offset = ref_axis.offset
+    return out
+
+
+def convert_legacy_alignment(stack: "TomoStack"):
+    """
+    Rebuild transforms for a stack saved before transforms were recorded, in place.
+
+    Older versions applied registration shifts, then an optional crop, then a
+    rotation and shift, and stored a ``yshift`` with the opposite sign convention.
+
+    Group
+    -----
+    align
+    """
+    meta = cast("Dtb", stack.metadata.Tomography)
+    shifts = stack.shifts.data.reshape(-1, 2)
+    matrices = translation_matrices(shifts)
+    if meta.get_item("cropped", default=False):
+        # older versions cropped x using the y-shift column and vice versa
+        crop = [-np.ceil(shifts[:, 1].max()), -np.ceil(shifts[:, 0].max())]
+        matrices = translation_matrices(np.tile(crop, (len(shifts), 1))) @ matrices
+    yshift = -float(meta.get_item("yshift", 0))
+    matrices = (
+        rigid_matrix(
+            stack.data.shape[-2:],
+            float(meta.get_item("tiltaxis", 0)),
+            yshift,
+            float(meta.get_item("xshift", 0)),
+        )
+        @ matrices
+    )
+    stack.transforms = _to_vectors(matrices).reshape(stack.transforms.data.shape)
+    meta.set_item("yshift", yshift)
+    logger.info("Rebuilt alignment transforms from metadata of an older file")
+
+
 def apply_shifts(
     stack: "TomoStack",
     shifts: Union["TomoShifts", np.ndarray],
@@ -127,8 +362,9 @@ def apply_shifts(
     Shifts are applied to the data using either interpolation or Fourier shift methods.
     These operations are carried out using either CPU or GPU resources depending on the
     value of `cuda`. If `cuda` is True, the shifts will be applied using
-    GPU-acceleration via CuPy. The shifts are stored in
-    ``shifted.metadata.Tomography.shifts``.
+    GPU-acceleration via CuPy (or on the CPU, with a warning, if CuPy is unavailable).
+    Regions uncovered by a shift are filled by repeating the nearest edge pixels. The
+    shifts are stored in ``shifted.metadata.Tomography.shifts``.
 
     Parameters
     ----------
@@ -162,7 +398,6 @@ def apply_shifts(
         logger.warning("CUDA requested but CuPy is unavailable; applying shifts on CPU")
         cuda = False
     shifted = stack.deepcopy()
-    xp = cp if cuda else np
 
     if isinstance(shifts, BaseSignal):
         shifts = shifts.data
@@ -175,95 +410,108 @@ def apply_shifts(
         )
         raise ValueError(msg)
 
-    shifts, data = xp.array(shifts), xp.array(shifted.data)
+    shifts = np.asarray(shifts, dtype=float)
+    xp = cp if cuda else np
+    data = xp.asarray(shifted.data)
 
     if method.lower() == "interp":
-        order = kwargs.pop("order", 3)
-        shift_func = shift_gpu if cuda else ndimage.shift
-        for i in range(data.shape[0]):
-            data[i, :, :] = shift_func(
-                data[i, :, :],
-                shift=[shifts[i, 0], shifts[i, 1]],
-                order=order,
-                mode="nearest",
-            )
+        data = _interp_shift(data, shifts, kwargs.pop("order", 3), cuda)
     elif method.lower() == "fourier":
-        minvals = xp.min(data, axis=(1, 2), keepdims=True)
-        ntilts, ny, nx = data.shape
-        dtype = data.dtype
-        float_dtype = np.float64 if dtype == np.float64 else np.float32
-        complex_dtype = np.complex128 if dtype == np.float64 else np.complex64
-        data = data.astype(float_dtype)
-
-        # Ensure padding covers shift distance on each side (2 * max_shift)
-        max_y_shift, max_x_shift = (
-            float(xp.abs(shifts[:, 0]).max()),
-            float(xp.abs(shifts[:, 1]).max()),
-        )
-        y_pad_min, x_pad_min = (
-            int(np.ceil(ny + 2 * max_y_shift)),
-            int(np.ceil(nx + 2 * max_x_shift)),
-        )
-
-        ny_pad, nx_pad = (
-            next_fast_len(y_pad_min, real=True),
-            next_fast_len(x_pad_min, real=True),
-        )
-
-        y_pad_before, x_pad_before = (ny_pad - ny) // 2, (nx_pad - nx) // 2
-        y_pad_after, x_pad_after = (
-            ny_pad - ny - y_pad_before,
-            nx_pad - nx - x_pad_before,
-        )
-
-        # Pad original data
-        padded_data = xp.pad(
-            data,
-            ((0, 0), (y_pad_before, y_pad_after), (x_pad_before, x_pad_after)),
-            mode="edge",
-        )
-
-        # 2. Use Real FFT (rfft2) for 2x speedup and 50% memory savings
-        data_fft = xp.fft.rfft2(padded_data, axes=(1, 2))
-
-        # 3. Construct frequency grids with explicit data types
-        v = xp.fft.fftfreq(ny_pad, d=1.0).astype(float_dtype).reshape(1, ny_pad, 1)
-        u = (
-            xp.fft.rfftfreq(nx_pad, d=1.0)
-            .astype(float_dtype)
-            .reshape(1, 1, nx_pad // 2 + 1)
-        )
-
-        sy, sx = (
-            shifts[:, 0].astype(float_dtype).reshape(ntilts, 1, 1),
-            shifts[:, 1].astype(float_dtype).reshape(ntilts, 1, 1),
-        )
-
-        # Phase ramp kernel calculation
-        pi = float_dtype(np.pi)
-        phi = -2j * pi * (v * sy + u * sx)
-        kernel = xp.exp(phi).astype(complex_dtype)
-
-        # 4. In-place frequency multiplication to conserve memory
-        data_fft *= kernel
-
-        # 5. Inverse Real FFT and unpad
-        data = xp.fft.irfft2(data_fft, s=(ny_pad, nx_pad), axes=(1, 2))
-
-        # Immutable slice definitions (prevents mutation bugs)
-        slice_y, slice_x = (
-            slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
-            slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
-        )
-        data = xp.clip(data[:, slice_y, slice_x], minvals, None)
+        data = _fourier_shift(data, xp.asarray(shifts), xp)
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
 
     shifted.data = cp.asnumpy(data) if cuda else data
-    shifts = cp.asnumpy(shifts) if cuda else shifts
     shifted.shifts.data = shifted.shifts.data + shifts
+    compose_transforms(shifted, translation_matrices(shifts))
     return shifted
+
+
+def _interp_shift(data, shifts: np.ndarray, order: int, cuda: bool):
+    """Shift each image in ``data`` by ``(dy, dx)`` using spline interpolation."""
+    shift_func = shift_gpu if cuda else ndimage.shift
+    for i in range(data.shape[0]):
+        data[i, :, :] = shift_func(
+            data[i, :, :],
+            shift=[float(shifts[i, 0]), float(shifts[i, 1])],
+            order=order,
+            mode="nearest",
+        )
+    return data
+
+
+def _fourier_shift(data, shifts, xp):
+    """Shift each image in ``data`` by ``(dy, dx)`` with a Fourier phase ramp."""
+    minvals = xp.min(data, axis=(1, 2), keepdims=True)
+    ntilts, ny, nx = data.shape
+    dtype = data.dtype
+    float_dtype = np.float64 if dtype == np.float64 else np.float32
+    complex_dtype = np.complex128 if dtype == np.float64 else np.complex64
+    data = data.astype(float_dtype)
+
+    # Ensure padding covers shift distance on each side (2 * max_shift)
+    max_y_shift, max_x_shift = (
+        float(xp.abs(shifts[:, 0]).max()),
+        float(xp.abs(shifts[:, 1]).max()),
+    )
+    y_pad_min, x_pad_min = (
+        int(np.ceil(ny + 2 * max_y_shift)),
+        int(np.ceil(nx + 2 * max_x_shift)),
+    )
+
+    ny_pad, nx_pad = (
+        next_fast_len(y_pad_min, real=True),
+        next_fast_len(x_pad_min, real=True),
+    )
+
+    y_pad_before, x_pad_before = (ny_pad - ny) // 2, (nx_pad - nx) // 2
+    y_pad_after, x_pad_after = (
+        ny_pad - ny - y_pad_before,
+        nx_pad - nx - x_pad_before,
+    )
+
+    # Pad original data
+    padded_data = xp.pad(
+        data,
+        ((0, 0), (y_pad_before, y_pad_after), (x_pad_before, x_pad_after)),
+        mode="edge",
+    )
+
+    # 2. Use Real FFT (rfft2) for 2x speedup and 50% memory savings
+    data_fft = xp.fft.rfft2(padded_data, axes=(1, 2))
+
+    # 3. Construct frequency grids with explicit data types
+    v = xp.fft.fftfreq(ny_pad, d=1.0).astype(float_dtype).reshape(1, ny_pad, 1)
+    u = (
+        xp.fft.rfftfreq(nx_pad, d=1.0)
+        .astype(float_dtype)
+        .reshape(1, 1, nx_pad // 2 + 1)
+    )
+
+    sy, sx = (
+        shifts[:, 0].astype(float_dtype).reshape(ntilts, 1, 1),
+        shifts[:, 1].astype(float_dtype).reshape(ntilts, 1, 1),
+    )
+
+    # Phase ramp kernel calculation
+    pi = float_dtype(np.pi)
+    phi = -2j * pi * (v * sy + u * sx)
+    kernel = xp.exp(phi).astype(complex_dtype)
+
+    # 4. In-place frequency multiplication to conserve memory
+    data_fft *= kernel
+
+    # 5. Inverse Real FFT and unpad
+    data = xp.fft.irfft2(data_fft, s=(ny_pad, nx_pad), axes=(1, 2))
+
+    # Immutable slice definitions (prevents mutation bugs)
+    slice_y, slice_x = (
+        slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
+        slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
+    )
+    data = xp.clip(data[:, slice_y, slice_x], minvals, None)
+    return data
 
 
 class StackAligner(ABC):
@@ -799,7 +1047,6 @@ class CoMAligner(StackAligner):
         stack
             The image series to analyze. If ``None``, ``self.stack`` is used.
 
-
         Returns
         -------
         yshifts : :py:class:`~numpy.ndarray`
@@ -819,6 +1066,7 @@ class CoMAligner(StackAligner):
         coms = get_coms(stack, slices)
         gam = np.array([np.cos(thetas), np.sin(thetas)]).T
         residuals = coms - gam @ np.linalg.lstsq(gam, coms, rcond=None)[0]
+
         yshifts = -residuals.mean(axis=1)
         return yshifts
 
@@ -925,6 +1173,7 @@ class CommonLineAligner(StackAligner):
         """Calculate shifts moving each center of mass to the image center."""
         ntilts, ny, _ = self.stack.data.shape
         coms = np.zeros(ntilts)
+
         for i in tqdm.tqdm(range(ntilts), disable=not self.show_progressbar):
             coms[i], _ = ndimage.center_of_mass(self.stack.data[i, :, :])
         return (ny - 1) / 2 - coms
@@ -1095,7 +1344,7 @@ class TiltCOMAligner(TiltAligner):
     -------
     out : TomoStack
         Copy of the input stack after rotation and translation to center and
-        make the tilt axis vertical
+        make the tilt axis parallel to x
 
     Group
     -----
@@ -1116,7 +1365,7 @@ class TiltCOMAligner(TiltAligner):
         def fit_line(x, m, b):
             return m * x + b
 
-        _, ny, nx = self.stack.data.shape
+        nx = self.stack.data.shape[2]
         nx_threshold = 3
         _check_mass_assumptions(self.stack)
 
@@ -1182,7 +1431,8 @@ class TiltCOMAligner(TiltAligner):
             ydata=self.slices,
             p0=[0, 0],
         )[0]
-        tilt_shift = (ny / 2 - intercept) / slope
+        # content shift that moves the tilt axis to the image center
+        tilt_shift = (intercept - (nx - 1) / 2) / slope
         tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
 
         final = cast(
@@ -1206,6 +1456,14 @@ class TiltMaxImageAligner(TiltAligner):
 
     The projected maximum image used to determine the tilt axis by a
     combination of Sobel filtering and Hough transform analysis.
+
+    The rotation estimate relies on features tracing straight streaks perpendicular
+    to the tilt axis in the maximum image, so its accuracy depends on the specimen.
+    In tests it was within 0.1 degrees for an extended catalyst model but off by up
+    to several degrees for sparse objects or objects elongated along the tilt axis.
+    The ``"CoM"`` method of :py:meth:`~etspy.base.TomoStack.tilt_align` is
+    generally more reliable; :py:meth:`~etspy.base.TomoStack.test_align` can be
+    used to check the result.
 
     Parameters
     ----------
@@ -1301,9 +1559,10 @@ class TiltMaxImageAligner(TiltAligner):
                 curvature = left - 2 * center + right
                 if curvature > 0:
                     tilt_shift += 0.5 * (left - right) / curvature
-            ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
+            ali = cast("TomoStack", ali.trans_stack(yshift=tilt_shift))
 
-            logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
+            logger.info("Calculated tilt-axis shift %.2f", tilt_shift)
+
         return ali
 
 
@@ -1314,18 +1573,25 @@ def align_to_other(
     cuda: bool = False,
 ) -> "TomoStack":
     """
-    Spatially register a TomoStack using previously calculated shifts.
+    Spatially register a TomoStack using the alignment of another.
+
+    The composed transforms of ``stack`` (registration, cropping and tilt-axis
+    alignment, in the order they were applied) are applied to ``other`` in a single
+    resampling step. See :py:func:`~etspy.align.apply_transforms`.
 
     Parameters
     ----------
     stack
         TomoStack which was previously aligned
     other
-        TomoStack to be aligned. Must be the same size as the primary stack
+        TomoStack to be aligned. Must be the same size as the data ``stack`` was
+        aligned from
     shift_type
-        Image shifts can be applied using either interpolation via scipy.ndimage.shift
-        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
-        either 'interp' or 'fourier'.
+        If the alignment is a pure translation, ``'fourier'`` applies it with a
+        Fourier shift; otherwise, or with ``'interp'``, cubic spline interpolation
+        is used.
+    cuda
+        Whether to use CuPy for the resampling.
 
     Returns
     -------
@@ -1336,26 +1602,12 @@ def align_to_other(
     -----
     align
     """
-    out = other.deepcopy()
-    stack_tomo_meta = cast("Dtb", stack.metadata.Tomography)
-
-    out.shifts = np.zeros([out.data.shape[0], 2])
-
-    tiltaxis = cast("float", stack_tomo_meta.tiltaxis)
-    xshift = cast("float", stack_tomo_meta.xshift)
-    yshift = cast("float", stack_tomo_meta.yshift)
-
-    out = apply_shifts(out, stack.shifts, shift_type, cuda=cuda)
-
-    if stack_tomo_meta.cropped:
-        out = shift_crop(out)
-
-    out = cast("TomoStack", out.trans_stack(xshift, yshift, tiltaxis))
-
+    out = apply_transforms(stack, other, shift_type, cuda)
+    tomo_meta = cast("Dtb", stack.metadata.Tomography)
     logger.info("TomoStack alignment applied")
-    logger.info("X-shift: %.1f", xshift)
-    logger.info("Y-shift: %.1f", yshift)
-    logger.info("Rotation: %.1f", tiltaxis)
+    logger.info("X-shift: %.1f", tomo_meta.get_item("xshift", 0))
+    logger.info("Y-shift: %.1f", tomo_meta.get_item("yshift", 0))
+    logger.info("Rotation: %.1f", tomo_meta.get_item("tiltaxis", 0))
     return out
 
 
@@ -1390,5 +1642,6 @@ def shift_crop(stack: "TomoStack") -> "TomoStack":
     y_min, y_max = valid_range(shifts[:, 0], ny)
     x_min, x_max = valid_range(shifts[:, 1], nx)
     cropped = cropped.isig[x_min:x_max, y_min:y_max]
+    compose_transforms(cropped, translation_matrices([[-y_min, -x_min]])[0])
     cropped.metadata.set_item("Tomography.cropped", value=True)
     return cropped

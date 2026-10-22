@@ -29,3 +29,9 @@ signals:
         dtype: real
         lazy: False
         module: etspy.base
+    TomoTransforms:
+        signal_type: "TomoTransforms"
+        signal_dimension: 1
+        dtype: real
+        lazy: False
+        module: etspy.base
