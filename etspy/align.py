@@ -12,6 +12,7 @@ import tqdm
 from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
 from scipy import ndimage, optimize
+from scipy.fft import next_fast_len
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
@@ -132,6 +133,9 @@ def apply_shifts(
     -----
     align
     """
+    if cuda and not has_cupy:
+        logger.warning("CUDA requested but CuPy is unavailable; applying shifts on CPU")
+        cuda = False
     shifted = stack.deepcopy()
     xp = cp if cuda else np
 
@@ -156,6 +160,7 @@ def apply_shifts(
                 data[i, :, :],
                 shift=[shifts[i, 0], shifts[i, 1]],
                 order=order,
+                mode="nearest",
             )
     elif method.lower() == "fourier":
         minvals = xp.min(data, axis=(1, 2), keepdims=True)
@@ -175,10 +180,9 @@ def apply_shifts(
             int(np.ceil(nx + 2 * max_x_shift)),
         )
 
-        # Power-of-2 dimensions for optimal FFT performance
         ny_pad, nx_pad = (
-            int(2 ** np.ceil(np.log2(y_pad_min))),
-            int(2 ** np.ceil(np.log2(x_pad_min))),
+            next_fast_len(y_pad_min, real=True),
+            next_fast_len(x_pad_min, real=True),
         )
 
         y_pad_before, x_pad_before = (ny_pad - ny) // 2, (nx_pad - nx) // 2
@@ -191,7 +195,7 @@ def apply_shifts(
         padded_data = xp.pad(
             data,
             ((0, 0), (y_pad_before, y_pad_after), (x_pad_before, x_pad_after)),
-            mode="constant",
+            mode="edge",
         )
 
         # 2. Use Real FFT (rfft2) for 2x speedup and 50% memory savings
