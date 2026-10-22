@@ -2292,6 +2292,12 @@ class RecStack(CommonStack):
             if not np.any(self.rotator.slider_values):
                 logger.warning("Rotation angles have not been defined")
                 return None
+        else:
+            msg = (
+                "No rotation angles provided. Pass rotation_angles or run "
+                "interactive_rotation() first."
+            )
+            raise ValueError(msg)
 
         rotation_matrix, offset = calculate_rotation(rotation_angles, self.data.shape)
         rotated = self.deepcopy()
