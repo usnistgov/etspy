@@ -1310,7 +1310,7 @@ class TomoStack(CommonStack):
             x_axis, y_axis = cast("tuple[Uda, Uda]", filtered.axes_manager.signal_axes)
             x_axis.offset -= taper_size[1] * x_axis.scale
             y_axis.offset -= taper_size[0] * y_axis.scale
-        return
+        return filtered
 
     def subtract_background(
         self,

@@ -137,7 +137,7 @@ class TestTiltAxisAlignment:
     @pytest.mark.parametrize(("nx", "ny"), [(96, 96), (48, 96), (128, 64)])
     def test_com_offset(self, nx, ny):
         ali = _misaligned_axis(nx, ny, AXIS_SHIFT, 0).tilt_align("CoM")
-        assert abs(ali.metadata.Tomography.yshift + AXIS_SHIFT) < SUBPIXEL_TOL
+        assert abs(ali.metadata.Tomography.yshift - AXIS_SHIFT) < SUBPIXEL_TOL
 
     @pytest.mark.parametrize(("nx", "ny"), [(96, 96), (48, 96), (128, 64)])
     def test_com_rotation(self, nx, ny):
