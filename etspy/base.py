@@ -542,7 +542,7 @@ class CommonStack(Signal2D, ABC):
             data[i, :, :] = ndimage.affine_transform(
                 self.data[i, :, :].astype(dtype, copy=False),
                 inverse[:2, :2],
-                offset=inverse[:2, 2],
+                offset=inverse[:2, 2],  # type: ignore[reportArgumentType]
                 order=interpolation_order,
                 mode="nearest",
             )
@@ -1198,7 +1198,7 @@ class TomoStack(CommonStack):
         ax2.set_axis_off()
         ax2.set_title("Offset image")
 
-        ax3.imshow(cc_image.real, cmap="inferno")
+        ax3.imshow(np.real(cc_image), cmap="inferno")
         ax3.set_axis_off()
         ax3.set_title("Cross-correlation")
         return fig
@@ -1377,7 +1377,7 @@ class TomoStack(CommonStack):
             y_axis.offset -= taper_size[0] * y_axis.scale
             align.compose_transforms(
                 filtered,
-                align.translation_matrices([taper_size])[0],
+                align.translation_matrices(np.array([taper_size]))[0],
             )
         return filtered
 

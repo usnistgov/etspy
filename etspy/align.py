@@ -225,7 +225,7 @@ def _resample(data, matrices: np.ndarray, output_shape, order: int, cuda: bool):
         image = affine(
             xp.asarray(data[i]),
             xp.asarray(inverse[:2, :2]),
-            offset=xp.asarray(inverse[:2, 2]),
+            offset=xp.asarray(inverse[:2, 2]),  # type: ignore[reportArgumentType]
             output_shape=tuple(output_shape),
             order=order,
             mode="nearest",
@@ -459,8 +459,8 @@ def _fourier_shift(data, shifts, xp):
     )
 
     ny_pad, nx_pad = (
-        next_fast_len(y_pad_min, real=True),
-        next_fast_len(x_pad_min, real=True),
+        cast("int", next_fast_len(y_pad_min, real=True)),
+        cast("int", next_fast_len(x_pad_min, real=True)),
     )
 
     y_pad_before, x_pad_before = (ny_pad - ny) // 2, (nx_pad - nx) // 2
@@ -1642,6 +1642,6 @@ def shift_crop(stack: "TomoStack") -> "TomoStack":
     y_min, y_max = valid_range(shifts[:, 0], ny)
     x_min, x_max = valid_range(shifts[:, 1], nx)
     cropped = stack.isig[x_min:x_max, y_min:y_max].deepcopy()
-    compose_transforms(cropped, translation_matrices([[-y_min, -x_min]])[0])
+    compose_transforms(cropped, translation_matrices(np.array([[-y_min, -x_min]]))[0])
     cropped.metadata.set_item("Tomography.cropped", value=True)
     return cropped
