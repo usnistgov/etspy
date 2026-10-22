@@ -409,20 +409,10 @@ class CommonStack(Signal2D, ABC):
             >>> s_normalized = stack.normalize()
         """
         normalized = self.deepcopy()
-        minvals = np.reshape(
-            (normalized.data.min(2).min(1)),
-            [self.data.shape[0], 1, 1],
-        )
-        normalized.data = normalized.data - minvals
-        meanvals = np.reshape(
-            (normalized.data.mean(2).mean(1)),
-            [self.data.shape[0], 1, 1],
-        )
-        stdvals = np.reshape(
-            (normalized.data.std(2).std(1)),
-            [self.data.shape[0], 1, 1],
-        )
-        normalized.data = normalized.data / (meanvals + width * stdvals)
+        data = normalized.data - normalized.data.min((-2, -1), keepdims=True)
+        meanvals = data.mean((-2, -1), keepdims=True)
+        stdvals = data.std((-2, -1), keepdims=True)
+        normalized.data = data / (meanvals + width * stdvals)
         return normalized
 
     def save_raw(self, filename: str | Path | None = None) -> Path:
