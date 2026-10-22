@@ -283,6 +283,7 @@ def misalign_stack(
     tilt_rotate: int = 0,
     y_only: bool = False,
     interp_order: int = 3,
+    rng: RngType = None,
 ) -> TomoStack:
     """
     Apply misalignment to a model tilt series.
@@ -305,6 +306,9 @@ def misalign_stack(
     interp_order
         The order of spline interpolation used by the :py:func:`scipy.ndimage.shift`
         or :py:func:`scipy.ndimage.rotate` function. The order must be in the range 0-5.
+    rng
+        Random number generator or seed. If ``None``, a generator is seeded from
+        NumPy's global random state.
 
     Returns
     -------
@@ -319,12 +323,13 @@ def misalign_stack(
     -----
     5
     """
+    rng = _get_rng(rng)
     misaligned = stack.deepcopy()
 
     if tilt_shift != 0:
         misaligned.data = ndimage.shift(
             misaligned.data,
-            shift=[0, 0, tilt_shift],
+            shift=[0, tilt_shift, 0],
             order=interp_order,
         )
     if tilt_rotate != 0:
@@ -337,7 +342,7 @@ def misalign_stack(
         )
 
     if (min_shift != 0) or (max_shift != 0):
-        jitter = np.random.uniform(min_shift, max_shift, size=(stack.data.shape[0], 2))
+        jitter = rng.uniform(min_shift, max_shift, size=(stack.data.shape[0], 2))
         for i in range(stack.data.shape[0]):
             if y_only:
                 jitter[i, 1] = 0  # set the x jitter to 0
