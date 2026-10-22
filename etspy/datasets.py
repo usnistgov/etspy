@@ -2,7 +2,7 @@
 
 import etspy.api as etspy
 from etspy.api import etspy_path
-from etspy.simulation import add_noise, misalign_stack
+from etspy.simulation import RngType, _get_rng, add_noise, misalign_stack
 
 
 def get_needle_data(aligned: bool = False):
@@ -38,6 +38,7 @@ def get_catalyst_data(
     y_only: bool = False,
     noise: bool = False,
     noise_factor: float = 0.2,
+    rng: RngType = None,
 ) -> etspy.TomoStack:
     """
     Load a model-simulated catalyst tilt series.
@@ -64,6 +65,9 @@ def get_catalyst_data(
         If ``True``, add Gaussian noise to the stack
     noise_factor
         Percentage noise to be added. Must be between 0 and 1.
+    rng
+        Random number generator or seed used for misalignment and noise. If
+        ``None``, a generator is seeded from NumPy's global random state.
 
     Returns
     -------
@@ -76,6 +80,7 @@ def get_catalyst_data(
     """
     filename = etspy_path / "tests" / "test_data" / "Catalyst3DModel_TiltSeries180.hspy"
     catalyst = etspy.load(filename)
+    rng = _get_rng(rng)
     if misalign:
         catalyst = misalign_stack(
             catalyst,
@@ -84,7 +89,8 @@ def get_catalyst_data(
             tilt_shift=tiltshift,
             tilt_rotate=tiltrotate,
             y_only=y_only,
+            rng=rng,
         )
     if noise:
-        catalyst = add_noise(catalyst, "gaussian", noise_factor)
+        catalyst = add_noise(catalyst, "gaussian", noise_factor, rng=rng)
     return catalyst
