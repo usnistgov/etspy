@@ -1,8 +1,9 @@
 """Module to provide example tomographic datasets."""
 
 import etspy.api as etspy
+from etspy import RngType, _as_rng
 from etspy.api import etspy_path
-from etspy.simulation import RngType, _get_rng, add_noise, misalign_stack
+from etspy.simulation import add_noise, misalign_stack
 
 
 def get_needle_data(aligned: bool = False):
@@ -80,7 +81,7 @@ def get_catalyst_data(
     """
     filename = etspy_path / "tests" / "test_data" / "Catalyst3DModel_TiltSeries180.hspy"
     catalyst = etspy.load(filename)
-    rng = _get_rng(rng)
+    rng = _as_rng(rng)
     if misalign:
         catalyst = misalign_stack(
             catalyst,

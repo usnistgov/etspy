@@ -11,6 +11,8 @@ from scipy.fft import fft, fft2, fftfreq, ifft, ifft2
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
+from etspy.recon import _AstraObjects
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -63,7 +65,7 @@ class ProjMatch:
 
         """
         self.stack = stack
-        if len(self.stack.data.squeeze()) == DIM_2D:
+        if self.stack.data.squeeze().ndim == DIM_2D:
             self.sino = stack.data.squeeze()
         elif type(nslice) is int:
             self.sino = stack.data[:, :, nslice]
@@ -82,6 +84,7 @@ class ProjMatch:
             raise NotImplementedError(msg)
 
         self.cuda = cuda
+        self._astra = _AstraObjects()
 
         if params is None:
             self.params = {}
@@ -136,6 +139,7 @@ class ProjMatch:
             self.update_geometries(sino_rebin.shape[1])
 
             mass = 0
+            sino_history, rec_history = [], []
 
             for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
                 current_sino = shift_sinogram(sino_rebin, current_shifts)
@@ -160,23 +164,8 @@ class ProjMatch:
 
                 if i == 0:
                     mass = np.median(np.mean(np.abs(current_sino), axis=1))
-                    self.sino_update[idx] = current_sino[np.newaxis, :, :]
-                    self.rec_update[idx] = rec[np.newaxis, :, :]
-                else:
-                    self.sino_update[idx] = np.concatenate(
-                        [
-                            cast("NDArray", self.sino_update[idx]),
-                            current_sino[np.newaxis, :, :],
-                        ],
-                        axis=0,
-                    )
-                    self.rec_update[idx] = np.concatenate(
-                        [
-                            cast("NDArray", self.rec_update[idx]),
-                            rec[np.newaxis, :, :],
-                        ],
-                        axis=0,
-                    )
+                sino_history.append(current_sino)
+                rec_history.append(rec)
                 self.error[idx] = np.append(
                     self.error[idx],
                     np.linalg.norm(resid) / mass,
@@ -186,6 +175,8 @@ class ProjMatch:
                     logger.info("Converged after %i iterations", i)
                     break
 
+            self.sino_update[idx] = np.stack(sino_history)
+            self.rec_update[idx] = np.stack(rec_history)
             current_shifts = current_shifts - np.median(current_shifts)
             self.total_shifts = self.total_shifts + current_shifts * j
             if idx == 0:
@@ -241,32 +232,31 @@ class ProjMatch:
             Number of pixels in the Y-dimension in the current downsampled sinogram.
 
         """
-        astra.clear()
+        self._astra.close()
         proj_geom = astra.create_proj_geom("parallel", 1.0, current_ny, self.thetas)
         vol_geom = astra.create_vol_geom((current_ny, current_ny))
-        self.rec_id = astra.data2d.create("-vol", vol_geom)
-        self.sino_id = astra.data2d.create(
+        self.rec_id = self._astra.data2d("-vol", vol_geom)
+        self.sino_id = self._astra.data2d(
             "-sino",
             proj_geom,
             np.zeros([self.nangles, current_ny]),
         )
-        if self.cuda:
-            self.proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-        else:
-            self.proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-        self.recon_config["ReconstructionDataId"] = self.rec_id
+        self.proj_id = self._astra.projector(
+            "cuda" if self.cuda else "linear",
+            proj_geom,
+            vol_geom,
+        )
         self.recon_config["ProjectorId"] = self.proj_id
         self.recon_config["ProjectionDataId"] = self.sino_id
         self.recon_config["ReconstructionDataId"] = self.rec_id
-        self.algorithm = astra.algorithm.create(self.recon_config)
+        self.algorithm = self._astra.algorithm(self.recon_config)
 
     def forward_project(
         self,
         current_rec: np.ndarray,
     ) -> np.ndarray:
         """Forward project the current reconstruction."""
-        _, proj = astra.create_sino(current_rec, self.proj_id)
-        return proj
+        return self._astra.forward_project(current_rec, self.proj_id)
 
     def reconstruct(
         self,
