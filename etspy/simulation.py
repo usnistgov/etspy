@@ -164,7 +164,7 @@ def create_cylinder_model(
     """
     vol_shape = np.array([400, 400, 400]) if add_others else np.array([200, 200, 200])
 
-    cylinder = np.zeros(vol_shape, np.uint16)
+    cylinder = np.zeros(vol_shape, np.float32)
     xx, yy = np.ogrid[: vol_shape[1], : vol_shape[2]]
     center_x, center_y, _ = vol_shape // 2
 
