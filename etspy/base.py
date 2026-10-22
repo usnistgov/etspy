@@ -1310,7 +1310,61 @@ class TomoStack(CommonStack):
             x_axis, y_axis = cast("tuple[Uda, Uda]", filtered.axes_manager.signal_axes)
             x_axis.offset -= taper_size[1] * x_axis.scale
             y_axis.offset -= taper_size[0] * y_axis.scale
-        return filtered
+        return
+
+    def subtract_background(
+        self,
+        region: tuple[slice, slice] | None = None,
+        percentile: float = 1.0,
+    ) -> "TomoStack":
+        """
+        Create a copy of the stack with the background of each projection removed.
+
+        Reconstruction assumes that vacuum has zero intensity; a residual offset
+        produces artifacts, particularly with iterative algorithms such as SIRT.
+
+        Parameters
+        ----------
+        region
+            Vacuum region as ``(y_slice, x_slice)`` in pixels. The median of this
+            region is subtracted from each projection. If ``None``, the
+            ``percentile``-th intensity of each projection is subtracted instead,
+            which requires some vacuum in every projection.
+        percentile
+            Percentile of each projection's intensities used as the background when
+            ``region`` is ``None``.
+
+        Returns
+        -------
+        subtracted : TomoStack
+            Copy of the stack with the background removed. The values subtracted
+            are stored in ``metadata.Tomography.background``.
+
+        Examples
+        --------
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> vacuum = (slice(0, 20), slice(None))
+            >>> subtracted = stack.subtract_background(region=vacuum)
+        """
+        subtracted = self.deepcopy()
+        data = subtracted.data
+        if np.issubdtype(data.dtype, np.integer):
+            data = data.astype(np.float32)
+        if region is None:
+            background = np.percentile(data, percentile, axis=(-2, -1), keepdims=True)
+        else:
+            background = np.median(
+                data[..., region[0], region[1]],
+                axis=(-2, -1),
+                keepdims=True,
+            )
+        subtracted.data = data - background.astype(data.dtype)
+        subtracted.metadata.set_item(
+            "Tomography.background",
+            background.squeeze(axis=(-2, -1)),
+        )
+        return subtracted
 
     def stack_register(
         self,
@@ -1564,7 +1618,7 @@ class TomoStack(CommonStack):
         sino_filter: FbpMethodType = "shepp-logan",
         dart_iterations: int | None = 5,
         gray_levels: list | np.ndarray | None = None,
-        rng: RngType=None,
+        rng: RngType = None,
     ) -> "RecStack":
         """
         Reconstruct a TomoStack series using one of the available methods.
@@ -2171,8 +2225,8 @@ class RecStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-                if isinstance(tilts, BaseSignal):
-        tilts = tilts.data
+        if isinstance(tilts, BaseSignal):
+            tilts = tilts.data
         tilts = np.asarray(tilts, dtype=float).ravel()
         thetas = np.deg2rad(tilts)
         nz, ny = self.data.shape[-2:]
