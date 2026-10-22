@@ -64,13 +64,12 @@ def get_mrc_tilts(
             tilts = fei_header["a_tilt"][0 : stack.data.shape[0]]
             logger.info("Tilts found in MRC file header")
     elif stack.original_metadata.has_item("std_header"):
-        logger.info("SerialEM generated MRC file detected")
-        ext_header = parse_mrc_header(filename)["ext_header"]
-        tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][
-            0 : stack.data.shape[0]
-        ]
-        tilts = tilts / 100
-    elif tiltfile.is_file():
+        header = parse_mrc_header(filename)
+        if header["ext_type"] == "SERI" and header["nint"] and header["nreal"] & 1:
+            logger.info("SerialEM generated MRC file detected")
+            stride = int(header["nint"]) // 2
+            tilts = header["ext_header"][::stride][0 : stack.data.shape[0]] / 100
+    if tilts is None and tiltfile.is_file():
         tilts = np.loadtxt(tiltfile)
         logger.info(".rawtlt file detected.")
         if len(tilts) == stack.data.shape[0]:
@@ -111,7 +110,14 @@ def get_dm_tilts(s: Signal2D | TomoStack) -> np.ndarray:
         "Tomography_setup"
     ]["Tilt_angles"]["Tilt_angle_step_deg"]
 
-    return np.arange(mintilt, maxtilt + tiltstep, tiltstep)
+    tilts = mintilt + tiltstep * np.arange(s.data.shape[0])
+    if abs(tilts[-1] - maxtilt) > abs(tiltstep) / 2:
+        logger.warning(
+            "Tilts from DM tags end at %.2f, not the recorded maximum of %.2f",
+            tilts[-1],
+            maxtilt,
+        )
+    return tilts
 
 
 def parse_mdoc(
@@ -152,29 +158,36 @@ def parse_mdoc(
         "Defocus",
     ]
     metadata = {}
-    tilt = np.array([])
+    tilts = []
     if isinstance(mdoc_file, str):
         mdoc_file = Path(mdoc_file)
-    with mdoc_file.open("r") as f:
-        lines = f.readlines()
-        for i in range(35):
-            for k in keys:
-                if k in lines[i]:
-                    if k == "ImageFile":
-                        metadata[k] = lines[i].split("=")[1].strip()
-                    else:
-                        metadata[k] = float(lines[i].split("=")[1].strip())
+    sections = 0
+    for line in mdoc_file.read_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[ZValue"):
+            sections += 1
+            continue
+        key, sep, value = stripped.partition("=")
+        key, value = key.strip(), value.strip()
+        if not sep:
+            continue
+        if key == "TiltAngle":
+            tilts.append(float(value))
+        # acquisition parameters come from the header and the first image section
+        elif key in keys and key not in metadata and sections <= 1:
+            metadata[key] = value if key == "ImageFile" else _parse_mdoc_value(value)
     if series:
-        for i in range(35):
-            if "TiltAngle" in lines[i]:
-                tilt = float(lines[i].split("=")[1].strip())
-    else:
-        tilt = []
-        for i in lines:
-            if "TiltAngle" in i:
-                tilt.append(float(i.split("=")[1].strip()))
-        tilt = np.array(tilt)
-    return metadata, tilt
+        return metadata, tilts[0] if tilts else np.array([])
+    return metadata, np.array(tilts)
+
+
+def _parse_mdoc_value(value: str) -> float | tuple[float, ...] | str:
+    """Convert an MDOC value to a float, a tuple of floats, or leave it a string."""
+    try:
+        numbers = tuple(float(v) for v in value.split())
+    except ValueError:
+        return value
+    return numbers[0] if len(numbers) == 1 else numbers
 
 
 def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
@@ -211,16 +224,8 @@ def load_serialem(mrcfile: PathLike, mdocfile: PathLike) -> TomoStack:
     stack.axes_manager[1].units = "nm"
     stack.axes_manager[2].units = "nm"
 
-    if not stack.metadata.has_item("Acquisition_instrument.TEM"):
-        stack.metadata.add_node("Acquisition_instrument.TEM")
-    stack.metadata.Acquisition_instrument.TEM.magnification = meta["Magnification"]
-    stack.metadata.Acquisition_instrument.TEM.beam_energy = meta["Voltage"]
-    stack.metadata.Acquisition_instrument.TEM.dwell_time = meta["ExposureTime"] / (
-        stack.data.shape[1] * stack.data.shape[2]
-    )
-    stack.metadata.Acquisition_instrument.TEM.spot_size = meta["SpotSize"]
-    stack.metadata.Acquisition_instrument.TEM.defocus = meta["Defocus"]
-    stack.metadata.General.original_filename = meta["ImageFile"]
+    _set_serialem_metadata(stack, meta)
+
     logger.info("SerialEM stack successfully loaded. ")
     mrc_logger.setLevel(log_level)
     return TomoStack(stack)
@@ -305,26 +310,34 @@ def load_serialem_series(
     # tile tilts array to match frames
     # shape will be (ntilts, nframes)
     tilts = np.tile(tilts, (stack.axes_manager["Frames"].size, 1)).T
+    _set_serialem_metadata(stack, meta[0], stack.axes_manager["Frames"].size)
 
-    images_per_tilt = stack.axes_manager["Frames"].size
-    if not stack.metadata.has_item("Acquisition_instrument.TEM"):
-        stack.metadata.add_node("Acquisition_instrument.TEM")
-    stack.metadata.Acquisition_instrument.TEM.magnification = meta[0]["Magnification"]
-    stack.metadata.Acquisition_instrument.TEM.beam_energy = meta[0]["Voltage"]
-    stack.metadata.Acquisition_instrument.TEM.dwell_time = (
-        meta[0]["ExposureTime"]
-        * images_per_tilt
-        / (stack.data.shape[2] * stack.data.shape[3])
-    )
-    stack.metadata.Acquisition_instrument.TEM.spot_size = meta[0]["SpotSize"]
-    stack.metadata.Acquisition_instrument.TEM.defocus = meta[0]["Defocus"]
-    stack.metadata.General.original_filename = meta[0]["ImageFile"]
     logger.info(
         "SerialEM Multiframe stack successfully loaded. "
         "Use etspy.utils.register_serialem_stack to align frames.",
     )
     mrc_logger.setLevel(log_level)
     return stack, tilts
+
+
+def _set_serialem_metadata(stack: Signal2D, meta: dict, images_per_tilt: int = 1):
+    """Copy SerialEM MDOC parameters present in ``meta`` into the stack metadata."""
+    if not stack.metadata.has_item("Acquisition_instrument.TEM"):
+        stack.metadata.add_node("Acquisition_instrument.TEM")
+    tem = cast("Dtb", stack.metadata.Acquisition_instrument.TEM)
+    for attribute, key in (
+        ("magnification", "Magnification"),
+        ("beam_energy", "Voltage"),
+        ("spot_size", "SpotSize"),
+        ("defocus", "Defocus"),
+    ):
+        if key in meta:
+            tem.set_item(attribute, meta[key])
+    if "ExposureTime" in meta:
+        npixels = stack.data.shape[-2] * stack.data.shape[-1]
+        tem.set_item("dwell_time", meta["ExposureTime"] * images_per_tilt / npixels)
+    if "ImageFile" in meta:
+        stack.metadata.set_item("General.original_filename", meta["ImageFile"])
 
 
 def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
@@ -348,7 +361,7 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
     header = {}
     if isinstance(filename, str):
         filename = Path(filename)
-    with filename.open("r") as h:
+    with filename.open("rb") as h:
         header["nx"], header["ny"], header["nz"] = np.fromfile(h, np.uint32, 3)
         header["mode"] = np.fromfile(h, np.uint32, 1)[0]
         header["nxstart"], header["nystart"], header["nzstart"] = np.fromfile(
@@ -357,9 +370,9 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
             3,
         )
         header["mx"], header["my"], header["mz"] = np.fromfile(h, np.uint32, 3)
-        header["xlen"], header["ylen"], header["zlen"] = np.fromfile(h, np.uint32, 3)
+        header["xlen"], header["ylen"], header["zlen"] = np.fromfile(h, np.float32, 3)
         _ = np.fromfile(h, np.uint32, 6)
-        header["amin"], header["amax"], header["amean"] = np.fromfile(h, np.uint32, 3)
+        header["amin"], header["amax"], header["amean"] = np.fromfile(h, np.float32, 3)
         _ = np.fromfile(h, np.uint32, 1)
         header["nextra"] = np.fromfile(h, np.uint32, 1)[0]
         _ = np.fromfile(h, np.uint16, 1)[0]
@@ -446,7 +459,8 @@ def load(
         Accepted formats (.MRC, .DM3, .DM4)
 
     tilts
-        List of floats indicating the specimen tilt at each projection (optional)
+        List of floats indicating the specimen tilt at each projection (optional).
+        If provided, these replace any tilts read from the file(s).
 
     mdocs
         List of mdoc files for SerialEM data (optional)
@@ -469,6 +483,8 @@ def load(
             # coerce filename to Path
             filename = Path(filename)
         stack = _load_single_file(filename)
+        if tilts is not None:
+            stack.tilts = np.asarray(tilts)
 
     elif isinstance(filename, list):
         first_filename = filename[0]
@@ -476,18 +492,21 @@ def load(
             first_filename = Path(first_filename)
         ext = first_filename.suffix
         if ext.lower() in dm_file_types:
-            s = hs_load(filename)
-            s = cast("Signal2D", s)
-            tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
-            sorted_order = np.argsort(tilts)
-            tilts = np.sort(tilts)
-            files_sorted = list(np.array(filename)[sorted_order])
-            del s
-            stack = hs_load(files_sorted, stack=True, new_axis_name="Projections")
-            stack = cast("Signal2D", stack)
+            signals = cast("list[Signal2D]", hs_load(filename))
+            file_tilts = [
+                i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in signals
+            ]
+            sorted_order = np.argsort(file_tilts)
+            file_tilts = np.sort(file_tilts)
+            stack = hs_stack(
+                [signals[i] for i in sorted_order],
+                new_axis_name="Projections",
+                show_progressbar=False,
+            )
+            stack.metadata.General.title = Path(filename[sorted_order[0]]).parent.stem
             stack.axes_manager.navigation_axes[0].units = "degrees"
-            stack.axes_manager.navigation_axes[0].scale = np.diff(tilts).mean()
-            stack.axes_manager.navigation_axes[0].offset = tilts[0]
+            stack.axes_manager.navigation_axes[0].scale = np.diff(file_tilts).mean()
+            stack.axes_manager.navigation_axes[0].offset = file_tilts[0]
         elif ext.lower() == ".mrc":
             logger.info("Data appears to be a SerialEM multiframe series.")
             if mdocs is not None:
@@ -496,11 +515,11 @@ def load(
                 # generate mdoc filenames from mrc filenames
                 mrc_files = [Path(p) for p in filename]  # coerce to Path objects
                 mdoc_files = [i.with_suffix(".mdoc") for i in mrc_files]
-            stack, tilts = load_serialem_series(filename, mdoc_files)
+            stack, file_tilts = load_serialem_series(filename, mdoc_files)
         else:
             msg = f'Unknown file type "{ext}". Must be one of {known_file_types}'
             raise TypeError(msg)
-        stack = TomoStack(stack, tilts)
+        stack = TomoStack(stack, file_tilts if tilts is None else np.asarray(tilts))
     else:
         msg = (
             f"Unknown filename type {type(filename)}. "
