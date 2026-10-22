@@ -12,6 +12,16 @@ from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
 
+RngType = np.random.Generator | int | None
+
+
+def _get_rng(rng: RngType) -> np.random.Generator:
+    """Return a Generator, seeded from NumPy's global state if ``rng`` is None."""
+    if rng is None:
+        # keeps results reproducible when using np.random.seed()
+        return np.random.default_rng(np.random.randint(0, 2**31 - 1))
+    return np.random.default_rng(rng)
+
 
 def create_catalyst_model(
     nparticles: int = 15,
@@ -20,6 +30,7 @@ def create_catalyst_model(
     volsize: tuple[int, int, int] = (600, 600, 600),
     support_radius: int = 200,
     size_interval: tuple[int, int] = (5, 12),
+    rng: RngType = None,
 ) -> hs.signals.Signal2D:
     """
     Create a model data array that mimics a hetergeneous catalyst.
@@ -37,7 +48,10 @@ def create_catalyst_model(
     support_radius
         Radius (in pixels) of the support material
     size_interval
-        Lower and upper bounds (in that order) of the particle size
+        Lower and upper bounds (in that order) of the particle radius.
+    rng
+        Random number generator or seed. If ``None``, a generator is seeded from
+        NumPy's global random state.
 
     Returns
     -------
@@ -52,6 +66,7 @@ def create_catalyst_model(
     -----
     1
     """
+    rng = _get_rng(rng)
     volsize_np = np.array(volsize)
     center = np.array(volsize_np / 2, dtype=np.int32)
 
@@ -59,17 +74,17 @@ def create_catalyst_model(
 
     coords = np.zeros([nparticles, 4])
     for i in range(nparticles):
-        size = 2 * np.random.randint(size_interval[0], size_interval[1])
+        size = 2 * rng.integers(size_interval[0], size_interval[1])
         r = support_radius * 2
         overlap = False
-        x = np.random.randint(0, volsize_np[0])  # initalize x and y before while loop
-        y = np.random.randint(0, volsize_np[1])
+        x = rng.integers(0, volsize_np[0])
+        y = rng.integers(0, volsize_np[1])
         while r > support_radius or overlap:
-            x = np.random.randint(0, volsize_np[0])
-            y = np.random.randint(0, volsize_np[1])
+            x = rng.integers(0, volsize_np[0])
+            y = rng.integers(0, volsize_np[1])
             r = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
-            distance = np.abs(coords[:, 0:2] - np.array([x, y]))
-            overlap = np.min(distance) < size_interval[1]
+            distance = np.hypot(coords[:i, 0] - x, coords[:i, 1] - y)
+            overlap = np.any(distance < (coords[:i, 3] + size) / 2)
 
         z_exact = np.int32(
             np.sqrt(support_radius**2 - (x - center[0]) ** 2 - (y - center[1]) ** 2)
@@ -77,21 +92,33 @@ def create_catalyst_model(
         )
         zmin = z_exact - np.int32(size / 2)
         zmax = z_exact + np.int32(size / 2)
-        z_rand = np.random.randint(zmin, zmax)
-        test = np.random.randint(-1, 1)
-        z = center[2] - (z_rand - center[2]) if test < 0 else z_rand
+        z_rand = rng.integers(zmin, zmax)
+
+        z = center[2] - (z_rand - center[2]) if rng.integers(2) else z_rand
         coords[i, :] = [x, y, z, size]
 
-    xx, yy, zz = np.mgrid[: volsize_np[0], : volsize_np[1], : volsize_np[2]]
+    xx, yy, zz = (
+        a.astype(np.int32)
+        for a in np.ogrid[: volsize_np[0], : volsize_np[1], : volsize_np[2]]
+    )
 
     support = (xx - center[0]) ** 2 + (yy - center[1]) ** 2 + (zz - center[2]) ** 2
 
     catalyst[support < support_radius**2] = support_density
 
-    for i in range(nparticles):
-        x, y, z, particle_radius = coords[i, :]
-        particle = (xx - x) ** 2 + (yy - y) ** 2 + (zz - z) ** 2
-        catalyst[particle < particle_radius**2] = particle_density
+    del support
+
+    for x, y, z, size in coords:
+        radius = size / 2
+        lower = np.maximum(np.floor(np.array([x, y, z]) - radius).astype(int), 0)
+        upper = np.minimum(
+            np.ceil(np.array([x, y, z]) + radius).astype(int) + 1,
+            volsize_np,
+        )
+        box = tuple(slice(lo, hi) for lo, hi in zip(lower, upper, strict=True))
+        px, py, pz = np.ogrid[box]
+        particle = (px - x) ** 2 + (py - y) ** 2 + (pz - z) ** 2 < radius**2
+        catalyst[box][particle] = particle_density
 
     catalyst = hs.signals.Signal2D(catalyst)
     catalyst.axes_manager[0].name = "Z"
