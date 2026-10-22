@@ -1,5 +1,7 @@
 """Physics regression tests on synthetic phantoms with known ground truth."""
 
+import logging
+
 import numpy as np
 import pytest
 from scipy import ndimage
@@ -28,6 +30,9 @@ MAXIMAGE_SHIFT = 4.0
 MAXIMAGE_SHIFT_TOL = 0.5
 PARTICLE_DENSITY = 255
 TILTS_FULL = np.arange(-90, 90, 2.0)
+OFFSET_FRACTION = 0.1
+VACUUM = (slice(0, 10), slice(None))
+I0 = 1000.0
 
 
 @pytest.fixture(scope="module")
@@ -190,3 +195,56 @@ class TestSimulationPhysics:
         a = simulation.misalign_stack(tilt_series, rng=np.random.default_rng(0))
         b = simulation.misalign_stack(tilt_series, rng=np.random.default_rng(0))
         np.testing.assert_array_equal(a.data, b.data)
+
+
+@pytest.fixture(scope="module")
+def offset_series(full_range_series):
+    """Full-range series with a different constant offset in each projection."""
+    rng = np.random.default_rng(0)
+    scale = OFFSET_FRACTION * full_range_series.data.max()
+    offsets = scale * rng.uniform(0.5, 1.5, (len(TILTS_FULL), 1, 1))
+    stack = full_range_series.deepcopy()
+    stack.data = stack.data + offsets.astype(np.float32)
+    return stack
+
+
+def _sirt_ncc(stack, phantom):
+    rec = stack.reconstruct(
+        "SIRT",
+        iterations=30,
+        constrain=True,
+        cuda=False,
+        thickness=phantom.shape[1],
+        show_progressbar=False,
+    ).data
+    return ncc(rec, phantom)
+
+
+class TestPreprocessing:
+    """Test corrections that make data satisfy the projection requirement."""
+
+    def test_offset_degrades_sirt(self, narrow_phantom, offset_series):
+        assert _sirt_ncc(offset_series, narrow_phantom) < MIN_REC_NCC
+
+    @pytest.mark.parametrize("region", [None, VACUUM])
+    def test_subtract_background(self, narrow_phantom, offset_series, region):
+        subtracted = offset_series.subtract_background(region=region)
+        assert _sirt_ncc(subtracted, narrow_phantom) > MIN_REC_NCC
+
+    def test_background_warning(self, caplog, offset_series):
+        with caplog.at_level(logging.WARNING):
+            offset_series.stack_register("COM-CL")
+        assert "subtract_background" in caplog.text
+
+    def test_mass_warning(self, caplog, full_range_series):
+        rng = np.random.default_rng(0)
+        scaled = full_range_series.deepcopy()
+        scaled.data = scaled.data * rng.uniform(0.5, 1.5, (len(TILTS_FULL), 1, 1))
+        with caplog.at_level(logging.WARNING):
+            scaled.stack_register("COM-CL")
+        assert "Total intensity varies" in caplog.text
+
+    def test_no_warning_on_clean_data(self, caplog, full_range_series):
+        with caplog.at_level(logging.WARNING):
+            full_range_series.stack_register("COM-CL")
+        assert "center of mass alignment assumes" not in caplog.text
