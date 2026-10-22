@@ -1441,7 +1441,7 @@ class TomoStack(CommonStack):
                 f'Invalid registration method "{method}". '
                 f"Must be one of {_fmt(AlignmentMethod.values())}."
             )
-            raise TypeError(msg)
+            raise ValueError(msg)
 
         if crop:
             out = align.shift_crop(out)
@@ -1847,7 +1847,7 @@ class TomoStack(CommonStack):
         ax.units = "degrees"
         ax.scale = increment
         ax.offset = start
-        tilts = np.arange(start, nimages * increment + start, increment)
+        tilts = start + increment * np.arange(nimages)
 
         if not self.metadata.has_item("Tomography"):
             self.metadata.add_node("Tomography")
