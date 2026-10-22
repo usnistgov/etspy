@@ -138,6 +138,19 @@ class TestModifications:
         # ensure signal to noise is higher for non-noisy signal
         assert stack_snr > noisy_snr
 
+    def test_global_seed_reproducible(self, catalyst_proj):
+        np.random.seed(0)
+        a = sim.add_noise(sim.misalign_stack(catalyst_proj), "gaussian")
+        np.random.seed(0)
+        b = sim.add_noise(sim.misalign_stack(catalyst_proj), "gaussian")
+        np.testing.assert_array_equal(a.data, b.data)
+
+    def test_add_noise_poissonian_negative(self, catalyst_proj):
+        negative = catalyst_proj.deepcopy()
+        negative.data = negative.data - negative.data.max()
+        with pytest.raises(ValueError, match="non-negative"):
+            sim.add_noise(negative, "poissonian")
+
     def test_add_noise_invalid_type(self, catalyst_proj):
         with pytest.raises(
             ValueError,
