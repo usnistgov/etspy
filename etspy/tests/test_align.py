@@ -183,8 +183,10 @@ class TestCUDAAlignFunctions:
     def test_no_cupy(self):
         assert etspy.align.has_cupy
         with patch.dict(sys.modules, {"cupy": None}):
+            reload(sys.modules["etspy._gpu"])
             reload(sys.modules["etspy.align"])
             assert not etspy.align.has_cupy
+        reload(sys.modules["etspy._gpu"])
         reload(sys.modules["etspy.align"])
         assert etspy.align.has_cupy
 
