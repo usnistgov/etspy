@@ -8,6 +8,18 @@ from collections.abc import Callable
 from enum import Enum
 from typing import Literal, get_args, get_type_hints
 
+import numpy as np
+
+RngType = np.random.Generator | int | None
+
+
+def _as_rng(rng: RngType) -> np.random.Generator:
+    """Return a Generator, seeded from NumPy's global state if ``rng`` is None."""
+    if rng is None:
+        # keeps results reproducible for callers using np.random.seed()
+        return np.random.default_rng(np.random.randint(0, 2**31 - 1))
+    return np.random.default_rng(rng)
+
 
 class AlignmentMethod(str, Enum):
     """

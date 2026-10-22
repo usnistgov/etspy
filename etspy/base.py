@@ -30,11 +30,18 @@ from scipy import ndimage
 from skimage import transform
 from traits.api import Undefined  # type: ignore
 
-from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMethodType
+from etspy import (
+    AlignmentMethod,
+    AlignmentMethodType,
+    FbpMethodType,
+    ReconMethodType,
+    RngType,
+)
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
 from etspy._gpu import affine_transform_gpu, cp, has_cupy
+from etspy.recon import _AstraObjects
 from etspy.transform import VolumeRotator, calculate_rotation
 from etspy.visualize import VolumeSlicer
 
@@ -1557,6 +1564,7 @@ class TomoStack(CommonStack):
         sino_filter: FbpMethodType = "shepp-logan",
         dart_iterations: int | None = 5,
         gray_levels: list | np.ndarray | None = None,
+        rng: RngType=None,
     ) -> "RecStack":
         """
         Reconstruct a TomoStack series using one of the available methods.
@@ -1598,6 +1606,9 @@ class TomoStack(CommonStack):
             Number of iterations to employ for DART reconstruction
         gray_levels
             List of gray levels to use for DART reconstruction
+        rng
+            Random number generator or seed used by DART to select free pixels. If
+            ``None``, a generator is seeded from NumPy's global random state.
 
         Returns
         -------
@@ -1692,6 +1703,7 @@ class TomoStack(CommonStack):
             dart_iterations=cast("int", dart_iterations),
             p=p,
             show_progressbar=show_progressbar,
+            rng=rng,
         )
 
         axes_dict = self.axes_manager.as_dictionary()
@@ -2159,34 +2171,31 @@ class RecStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        if len(self.data.shape) == 2:  # noqa: PLR2004
-            nz, ny = self.data.shape
-            ntilts = len(tilts)
-            thetas = np.deg2rad(tilts)
-            vol_geom = astra.create_vol_geom(nz, ny)
-            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
+                if isinstance(tilts, BaseSignal):
+        tilts = tilts.data
+        tilts = np.asarray(tilts, dtype=float).ravel()
+        thetas = np.deg2rad(tilts)
+        nz, ny = self.data.shape[-2:]
+        vol_geom = astra.create_vol_geom(nz, ny)
+        proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
 
-            if cuda:
-                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+        with _AstraObjects() as astra_objects:
+            proj_id = astra_objects.projector(
+                "cuda" if cuda else "linear",
+                proj_geom,
+                vol_geom,
+            )
+            if len(self.data.shape) == 2:  # noqa: PLR2004
+                proj = astra_objects.forward_project(self.data, proj_id)
+                proj = proj[:, :, np.newaxis]
             else:
-                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-            proj_id, proj = astra.create_sino(self.data, proj_id)
-            proj = proj[:, :, np.newaxis]
-        else:
-            nx, nz, ny = self.data.shape
-            ntilts = len(tilts)
-            proj = np.zeros([ntilts, ny, nx])
-            thetas = np.deg2rad(tilts)
-            vol_geom = astra.create_vol_geom(ny, ny)
-            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
-
-            if cuda:
-                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-            else:
-                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-            for i in range(nx):
-                _, proj[:, :, i] = astra.create_sino(self.data[i, :, :], proj_id)
-        astra.clear()
+                nx = self.data.shape[0]
+                proj = np.zeros([len(tilts), ny, nx])
+                for i in range(nx):
+                    proj[:, :, i] = astra_objects.forward_project(
+                        self.data[i, :, :],
+                        proj_id,
+                    )
         return TomoStack(proj, tilts)
 
     def plot_slices(
