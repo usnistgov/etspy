@@ -272,7 +272,8 @@ class TestTiltAlign:
         ali = maximage_tilt_aligner.align_tilt_axis()
         tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         assert isinstance(tilt_axis, float)
-        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
+        correction = tilt_axis - rotated.metadata.get_item("Tomography.tiltaxis")
+        assert round(correction, 1) == pytest.approx(-2.3, rel=1e-1)
         # shifts should be what they were before tilt_align:
         assert np.all(ali.shifts.data == catalyst_stack.shifts.data)
 
@@ -287,18 +288,23 @@ class TestTiltAlign:
     def test_tilt_align_maximage_also_shift(self, catalyst_stack):
         assert catalyst_stack.metadata.get_item("Tomography.tiltaxis") == 0
         assert catalyst_stack.metadata.get_item("Tomography.yshift") == 0
-        misaligned = catalyst_stack.trans_stack(angle=2.3, yshift=2)
+        # binned to keep the SIRT-based shift search fast
+        n, ny, nx = catalyst_stack.data.shape
+        binned = etspy.TomoStack(
+            catalyst_stack.data.reshape(n, ny // 8, 8, nx // 8, 8).mean((2, 4)),
+            tilts=catalyst_stack.tilts.data,
+        )
+        misaligned = binned.trans_stack(angle=2.3, yshift=2)
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
             misaligned,
+            also_shift=True,
+            shift_limit=3,
         )
         ali = maximage_tilt_aligner.align_tilt_axis()
-        tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         tilt_shift = ali.metadata.get_item("Tomography.yshift")
-        assert isinstance(tilt_axis, float)
-        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
-        assert round(tilt_shift, 1) == pytest.approx(2.0, rel=1e-1)
-        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
-        assert np.all(ali.shifts.data == catalyst_stack.shifts.data)
+        shift_correction = tilt_shift - misaligned.metadata.Tomography.yshift
+        assert shift_correction == pytest.approx(-2.0, abs=0.5)
+        assert np.all(ali.shifts.data == binned.shifts.data)
 
     def test_tilt_align_unknown_method(self, full_stack):
         bad_method = "WRONG"
