@@ -360,6 +360,7 @@ def add_noise(
     stack: TomoStack,
     noise_type: Literal["gaussian", "poissonian", "shot"] = "gaussian",
     scale_factor: float = 0.2,
+    rng: RngType = None,
 ):
     """
     Apply noise to a model tilt series and return as a copy.
@@ -371,12 +372,24 @@ def add_noise(
     noise_type
         Type of noise. Must be ``"gaussian"`` or ``"poissonian"``/``"shot"``
     scale_factor
-        Amount of noise to add
+        For ``"gaussian"``, the standard deviation of the noise as a fraction of the
+        mean intensity of the stack. For ``"poissonian"``/``"shot"``, the number of
+        counts per unit intensity (larger values give less noise).
+    rng
+        Random number generator or seed. If ``None``, a generator is seeded from
+        NumPy's global random state.
+
 
     Returns
     -------
     noisy : TomoStack
         Noisy copy of the input TomoStack
+
+    Raises
+    ------
+    ValueError
+        If ``noise_type`` is invalid, or if Poissonian noise is requested for a
+        stack containing negative values.
 
     Group
     -----
@@ -386,24 +399,18 @@ def add_noise(
     -----
     4
     """
+    rng = _get_rng(rng)
     noisy = stack.deepcopy()
 
     if noise_type == "gaussian":
-        noise = np.random.normal(
-            stack.data.mean(),
-            scale_factor * stack.data.mean(),
-            stack.data.shape,
-        )
-        noisy.data = noisy.data + noise
-        if noisy.data.min() < 0:
-            noisy.data -= noisy.data.min()
-        scale_factor = noisy.data.max() / stack.data.max()
-        noisy.data = noisy.data / scale_factor
+        sigma = scale_factor * stack.data.mean()
+        noisy.data = noisy.data + rng.normal(0, sigma, stack.data.shape)
 
     elif noise_type in ["poissonian", "shot"]:
-        noise = np.random.poisson(stack.data * scale_factor) / scale_factor
-        noisy.data = noisy.data + noise
-
+        if stack.data.min() < 0:
+            msg = "Poissonian noise requires non-negative intensities"
+            raise ValueError(msg)
+        noisy.data = rng.poisson(stack.data * scale_factor) / scale_factor
     else:
         msg = (
             f'Invalid noise type "{noise_type}". Must be one of '
