@@ -107,6 +107,10 @@ class TestTranslationalRegistration:
         assert rms[1] < SUBPIXEL_TOL
         assert rms[0] < COM_TOL
 
+    def test_com_narrow_image(self, jittered, jitter):
+        rms = _registration_rms(jittered.stack_register("COM"), jitter)
+        assert np.all(rms < REGISTRATION_TOL)
+
 
 def _misaligned_axis(nx, ny, shift, rotation):
     stack = project(make_phantom(nx=nx, ny=ny))
