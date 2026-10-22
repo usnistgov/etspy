@@ -1358,12 +1358,14 @@ class TomoStack(CommonStack):
                 (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM`)
                 Number of slices to return. See
                 :py:func:`~etspy.align.calculate_shifts_com` for more details.
+            upsample_factor
+                (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.PC`)
+                Subpixel precision of the phase correlation, as 1/``upsample_factor``
+                pixels. Default is 10.
             com_ref_index
                 (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
-                Reference slice for center of mass alignment.  All other slices
-                will be aligned to this reference.  If not provided, the midpoint
-                of the stack will be chosen.
-                See :py:func:`~etspy.align.calc_shifts_com_cl` for more details.
+                Not used; each projection's center of mass is aligned to the image
+                center. Retained for compatibility.
             cl_ref_index
                 (Only used when ``method ==``:py:attr:`~etspy.AlignmentMethod.COM_CL`)
                 Reference slice for common line alignment.  All other slices
