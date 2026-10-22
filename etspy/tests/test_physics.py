@@ -25,7 +25,7 @@ AXIS_SHIFT = 5.0
 AXIS_ROTATION = 3.0
 ROTATION_TOL = 0.5
 MAXIMAGE_SHIFT = 4.0
-MAXIMAGE_SHIFT_TOL = 1.0
+MAXIMAGE_SHIFT_TOL = 0.5
 PARTICLE_DENSITY = 255
 TILTS_FULL = np.arange(-90, 90, 2.0)
 
@@ -132,7 +132,12 @@ class TestTiltAxisAlignment:
     @pytest.mark.parametrize(("nx", "ny"), [(96, 96), (48, 96), (128, 64)])
     def test_com_offset(self, nx, ny):
         ali = _misaligned_axis(nx, ny, AXIS_SHIFT, 0).tilt_align("CoM")
-        assert abs(ali.metadata.Tomography.yshift - AXIS_SHIFT) < SUBPIXEL_TOL
+        assert abs(ali.metadata.Tomography.yshift + AXIS_SHIFT) < SUBPIXEL_TOL
+
+    @pytest.mark.parametrize(("nx", "ny"), [(96, 96), (48, 96), (128, 64)])
+    def test_com_rotation(self, nx, ny):
+        ali = _misaligned_axis(nx, ny, 0, AXIS_ROTATION).tilt_align("CoM")
+        assert abs(ali.metadata.Tomography.tiltaxis - AXIS_ROTATION) < ROTATION_TOL
 
     def test_maximage_shift(self):
         stack = _misaligned_axis(48, 96, MAXIMAGE_SHIFT, 0)
