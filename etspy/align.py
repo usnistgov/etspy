@@ -343,7 +343,7 @@ class PhaseCorrelationAligner(StackAligner):
             show_progressbar=show_progressbar,
             **kwargs,
         )
-        self.upsample_factor = kwargs.get("upsample_factor", 3)
+        self.upsample_factor = kwargs.get("upsample_factor", 10)
 
     def calculate_shifts(self) -> np.ndarray:
         """
@@ -687,7 +687,9 @@ class CoMAligner(StackAligner):
         # _calculate_shifts_conservation_of_mass: x-shifts (parallel to tilt axis)
         # _calculate_shifts_com: y-shifts (perpendicular to tilt axis)
         shifts[:, 1] = self._calculate_shifts_conservation_of_mass()
-        shifts[:, 0] = self._calculate_shifts_com()
+        # x misalignment moves mass between the slices tracked for y, so remove it
+        x_aligned = apply_shifts(self.stack, shifts, cuda=self.use_cuda)
+        shifts[:, 0] = self._calculate_shifts_com(x_aligned)
         return shifts
 
     def _calculate_shifts_conservation_of_mass(
@@ -720,76 +722,78 @@ class CoMAligner(StackAligner):
         logger.info("Refinining X-shifts using conservation of mass method")
         ntilts, _, nx = self.stack.data.shape
 
+        p = self.p
         if self.xrange is None:
             xrange = (round(nx / 5), round(4 / 5 * nx))
+            # the padded window must fit inside the image
+            p = min(p, xrange[0] - 1, nx - xrange[1])
+            if p < 1:
+                msg = f"Image is too narrow ({nx} pixels) for center of mass alignment"
+                raise ValueError(msg)
+            if p < self.p:
+                logger.warning("Padding reduced from %i to %i to fit image", self.p, p)
         else:
-            xrange = (round(self.xrange[0]) + self.p, round(self.xrange[1]) - self.p)
+            xrange = (round(self.xrange[0]) + p, round(self.xrange[1]) - p)
 
         xshifts = np.zeros([ntilts, 1])
-        total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * self.p + 1])
+        total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * p + 1])
 
         for i in range(ntilts):
             total_mass[i, :] = np.sum(
-                self.stack.data[i, :, xrange[0] - self.p - 1 : xrange[1] + self.p],
+                self.stack.data[i, :, xrange[0] - p - 1 : xrange[1] + p],
                 0,
             )
 
-        mean_mass = np.mean(total_mass[:, self.p : -self.p], 0)
+        mean_mass = np.mean(total_mass[:, p:-p], 0)
 
         for i in range(ntilts):
             s = 0
-            for j in range(-self.p, self.p):
+            for j in range(-p, p):
                 resid = np.linalg.norm(
-                    mean_mass - total_mass[i, self.p + j : -self.p + j],
+                    mean_mass - total_mass[i, p + j : -p + j],
                 )
-                if resid < s or j == -self.p:
+                if resid < s or j == -p:
                     s = resid
                     xshifts[i] = -j
         return xshifts[:, 0]
 
     def _calculate_shifts_com(
         self,
+        stack: "TomoStack | None" = None,
     ) -> np.ndarray:
         """
         Align stack using a center of mass method.
 
-        Data is first registered using PyStackReg. Then, the shifts
-        perpendicular to the tilt axis are refined by a center of
-        mass analysis.
+        The center of mass of the best slices is fit to the sinusoidal path expected
+        for rigid rotation. Shifts perpendicular to the tilt axis are the fit
+        residuals, averaged over all slices.
 
         Parameters
         ----------
         stack
-            The image series to be aligned
+            The image series to analyze. If ``None``, ``self.stack`` is used.
 
-        nslices
-            Number of slices to return
 
         Returns
         -------
-        shifts : :py:class:`~numpy.ndarray`
-            The X- and Y-shifts to be applied to each image
+        yshifts : :py:class:`~numpy.ndarray`
+            The Y-shifts to be applied to each image
 
         Group
         -----
         align
         """
         logger.info("Refinining Y-shifts using center of mass method")
-        slices = get_best_slices(self.stack, self.nslices)
+        stack = self.stack if stack is None else stack
+        slices = get_best_slices(stack, self.nslices)
 
-        angles = self.stack.tilts.data.squeeze()
-        ntilts, _, _ = self.stack.data.shape
+        angles = stack.tilts.data.squeeze()
         thetas = np.pi * cast("np.ndarray", angles) / 180
 
-        coms = get_coms(self.stack, slices)
-        i_tilts = np.eye(ntilts)
+        coms = get_coms(stack, slices)
         gam = np.array([np.cos(thetas), np.sin(thetas)]).T
-        gam = np.dot(gam, np.linalg.pinv(gam)) - i_tilts
-        b = np.dot(gam, coms)
-
-        cx = np.linalg.lstsq(gam, b, rcond=-1)[0]
-
-        yshifts = -cx[:, 0]
+        residuals = coms - gam @ np.linalg.lstsq(gam, coms, rcond=None)[0]
+        yshifts = -residuals.mean(axis=1)
         return yshifts
 
 
@@ -810,8 +814,9 @@ class CommonLineAligner(StackAligner):
         Position in tilt series to use as starting point for the alignment. If ``None``,
         the slice closest to the midpoint will be used.
     com_ref_index : py:class:`~int`
-        Reference slice for center of mass alignment.  All other slices
-        will be aligned to this reference.
+        Not used. Each projection is shifted so that its center of mass lies at
+        the image center, which also centers the tilt axis. Retained for
+        compatibility.
     cl_ref_index : py:class:`~int`
         Reference slice for common line alignment.  All other slices
         will be aligned to this reference. If not provided the projection
@@ -879,11 +884,8 @@ class CommonLineAligner(StackAligner):
             msg = f"Resolution should be less than {CL_RES_THRESHOLD}"
             raise ValueError(msg)
 
-        logger.info("Center of mass reference slice: %s", self.com_ref_index)
         logger.info("Common line reference slice: %s", self.cl_ref_index)
-        xshifts = np.zeros(self.stack.data.shape[0])
-        yshifts = np.zeros(self.stack.data.shape[0])
-        yshifts = self._calc_yshifts(self.com_ref_index)
+        yshifts = self._calc_yshifts()
         xshifts = self.calc_shifts_cl(
             self.cl_ref_index,
             self.cl_resolution,
@@ -892,17 +894,13 @@ class CommonLineAligner(StackAligner):
         shifts = np.stack([yshifts, xshifts], axis=1)
         return shifts
 
-    def _calc_yshifts(self, com_ref):
-        """Calculate using center of mass tracking."""
-        ntilts = self.stack.data.shape[0]
+    def _calc_yshifts(self):
+        """Calculate shifts moving each center of mass to the image center."""
+        ntilts, ny, _ = self.stack.data.shape
         coms = np.zeros(ntilts)
-        yshifts = np.zeros_like(coms)
-
-        for i in tqdm.tqdm(range(ntilts)):
-            im = self.stack.data[i, :, :]
-            coms[i], _ = ndimage.center_of_mass(im)
-            yshifts[i] = com_ref - coms[i]
-        return yshifts
+        for i in tqdm.tqdm(range(ntilts), disable=not self.show_progressbar):
+            coms[i], _ = ndimage.center_of_mass(self.stack.data[i, :, :])
+        return (ny - 1) / 2 - coms
 
     def calc_shifts_cl(
         self,
@@ -994,7 +992,10 @@ class CommonLineAligner(StackAligner):
         yshifts = np.zeros(self.stack.data.shape[0])
         ref_cm_line = self.stack.data[cl_ref_index].sum(0)
 
-        for i in tqdm.tqdm(range(self.stack.data.shape[0])):
+        for i in tqdm.tqdm(
+            range(self.stack.data.shape[0]),
+            disable=not self.show_progressbar,
+        ):
             if i == cl_ref_index:
                 continue
             curr_cm_line = self.stack.data[i].sum(0)
