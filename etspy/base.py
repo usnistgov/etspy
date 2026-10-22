@@ -1224,7 +1224,7 @@ class TomoStack(CommonStack):
         self,
         method: Literal["median", "bpf", "both", "sobel"] = "median",
         size: int = 5,
-        taper: float = 0.1,
+        taper: float = 0,
     ) -> "TomoStack":
         """
         Apply one of several image filters to an entire TomoStack.
@@ -1237,7 +1237,9 @@ class TomoStack(CommonStack):
         size
             Size of filtering neighborhood.
         taper
-            Fraction of image size to pad to the mean.
+            Fraction of the image size by which to zero-pad each side of the
+            filtered images. Default is 0 (no padding). Axis offsets are adjusted so
+            that physical coordinates are preserved.
 
         Returns
         -------
@@ -1251,6 +1253,11 @@ class TomoStack(CommonStack):
             >>> filtered = stack.filter(method='median')
         """
         filtered = self.deepcopy()
+        if method in ("sobel", "both") and np.issubdtype(
+            filtered.data.dtype,
+            np.integer,
+        ):
+            filtered.data = filtered.data.astype(np.float32)
         if method == "median":
             filtered.data = ndimage.median_filter(filtered.data, size=(1, size, size))
         elif method == "sobel":
@@ -1285,8 +1292,7 @@ class TomoStack(CommonStack):
 
             filtered.data = np.fft.ifft2(np.fft.ifftshift(fft_filtered)).real
 
-            h = np.hamming(rows)
-            ham2d = np.sqrt(np.outer(h, h))
+            ham2d = np.sqrt(np.outer(np.hamming(rows), np.hamming(cols)))
             filtered.data = filtered.data * ham2d
         else:
             msg = (
@@ -1305,6 +1311,10 @@ class TomoStack(CommonStack):
                 ],
                 mode="constant",
             )
+            filtered.get_dimensions_from_data()
+            x_axis, y_axis = cast("tuple[Uda, Uda]", filtered.axes_manager.signal_axes)
+            x_axis.offset -= taper_size[1] * x_axis.scale
+            y_axis.offset -= taper_size[0] * y_axis.scale
         return filtered
 
     def stack_register(
