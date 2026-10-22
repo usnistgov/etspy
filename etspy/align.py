@@ -1348,12 +1348,17 @@ def shift_crop(stack: "TomoStack") -> "TomoStack":
     align
     """
     cropped = stack.deepcopy()
-    x_shifts = stack.shifts.data[:, 0]
-    y_shifts = stack.shifts.data[:, 1]
-    x_max = np.int32(np.floor(x_shifts.min()))
-    x_min = np.int32(np.ceil(x_shifts.max()))
-    y_max = np.int32(np.floor(y_shifts.min()))
-    y_min = np.int32(np.ceil(y_shifts.max()))
+    ny, nx = stack.data.shape[-2:]
+    shifts = stack.shifts.data.reshape(-1, 2)
+
+    # a positive shift uncovers the start of an axis, a negative one its end
+    def valid_range(axis_shifts, size):
+        start = int(np.ceil(max(axis_shifts.max(), 0)))
+        stop = size + int(np.floor(min(axis_shifts.min(), 0)))
+        return start, stop
+
+    y_min, y_max = valid_range(shifts[:, 0], ny)
+    x_min, x_max = valid_range(shifts[:, 1], nx)
     cropped = cropped.isig[x_min:x_max, y_min:y_max]
     cropped.metadata.set_item("Tomography.cropped", value=True)
     return cropped
