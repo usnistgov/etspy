@@ -34,6 +34,7 @@ from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMeth
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
+from etspy._gpu import affine_transform_gpu, cp, has_cupy
 from etspy.transform import VolumeRotator, calculate_rotation
 from etspy.visualize import VolumeSlicer
 
@@ -42,19 +43,6 @@ if TYPE_CHECKING:
 
     from hyperspy.axes import UniformDataAxis as Uda
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
-
-has_cupy = True
-try:
-    import cupy as cp  # type: ignore
-    from cupyx.scipy.ndimage import affine_transform as affine_transform_gpu
-
-    has_gpu = cp.cuda.runtime.getDeviceCount() > 0
-
-except Exception:
-    has_cupy = False
-    cp = None
-    affine_transform_gpu = None
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
