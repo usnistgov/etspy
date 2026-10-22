@@ -5,7 +5,7 @@ import logging
 from pathlib import Path as _Path
 
 from etspy import align, io, utils
-from etspy.base import RecStack, TomoStack
+from etspy.base import RecStack, TomoStack, TomoTransforms
 from etspy.io import load
 
 from . import __version__
@@ -16,7 +16,9 @@ logger.setLevel(logging.INFO)
 etspy_path = _Path(__file__).parent
 
 __all__ = [
+    "RecStack",
     "TomoStack",
+    "TomoTransforms",
     "align",
     "io",
     "load",

@@ -6,7 +6,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Literal, Union, cast
 
-import matplotlib.pylab as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import tqdm
 from hyperspy.signal import BaseSignal
@@ -397,7 +397,6 @@ def apply_shifts(
     if cuda and not has_cupy:
         logger.warning("CUDA requested but CuPy is unavailable; applying shifts on CPU")
         cuda = False
-    shifted = stack.deepcopy()
 
     if isinstance(shifts, BaseSignal):
         shifts = shifts.data
@@ -412,17 +411,16 @@ def apply_shifts(
 
     shifts = np.asarray(shifts, dtype=float)
     xp = cp if cuda else np
-    data = xp.asarray(shifted.data)
 
     if method.lower() == "interp":
-        data = _interp_shift(data, shifts, kwargs.pop("order", 3), cuda)
+        data = _interp_shift(xp.array(stack.data), shifts, kwargs.pop("order", 3), cuda)
     elif method.lower() == "fourier":
-        data = _fourier_shift(data, xp.asarray(shifts), xp)
+        data = _fourier_shift(xp.asarray(stack.data), xp.asarray(shifts), xp)
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
 
-    shifted.data = cp.asnumpy(data) if cuda else data
+    shifted = stack.copy_with_data(cp.asnumpy(data) if cuda else data)
     shifted.shifts.data = shifted.shifts.data + shifts
     compose_transforms(shifted, translation_matrices(shifts))
     return shifted
@@ -640,38 +638,40 @@ class PhaseCorrelationAligner(StackAligner):
             shifts = self._cupy_calculate_shifts()
 
         else:
-            shifts = np.zeros((self.stack.data.shape[0], 2))
+            ntilts = self.stack.data.shape[0]
+            shifts = np.zeros((ntilts, 2))
+
+            def image_fft(i):
+                return fft2(self.stack.data[i], workers=-1)
+
             with tqdm.tqdm(
-                total=self.stack.data.shape[0] - 1,
+                total=ntilts - 1,
                 desc="Calculating shifts",
                 disable=not self.show_progressbar,
             ) as pbar:
-                for i in range(self.start, 0, -1):
-                    shift = pcc(
-                        self.stack.data[i],
-                        self.stack.data[i - 1],
-                        upsample_factor=self.upsample_factor,
-                    )[0]
-                    shifts[i - 1] = shifts[i] + shift
-                    pbar.update(1)
-
-                for i in range(self.start, self.stack.data.shape[0] - 1):
-                    shift = pcc(
-                        self.stack.data[i],
-                        self.stack.data[i + 1],
-                        upsample_factor=self.upsample_factor,
-                    )[0]
-                    shifts[i + 1] = shifts[i] + shift
-                    pbar.update(1)
+                # walk outward from the start image, reusing each image's FFT as
+                # the reference for the next pair
+                for step in (-1, 1):
+                    ref_fft = image_fft(self.start)
+                    stop = -1 if step < 0 else ntilts
+                    for i in range(self.start + step, stop, step):
+                        mov_fft = image_fft(i)
+                        shift = pcc(
+                            ref_fft,
+                            mov_fft,
+                            upsample_factor=self.upsample_factor,
+                            space="fourier",
+                        )[0]
+                        shifts[i] = shifts[i - step] + shift
+                        ref_fft = mov_fft
+                        pbar.update(1)
         return shifts
 
     def _cupy_calculate_shifts(self):
         """Calculate shifts of stack using CUDA-implementation of phase correlation."""
         stack_cp = cp.array(self.stack.data)
         shifts = cp.zeros([stack_cp.shape[0], 2])
-        ref_cp = stack_cp[0]
-        ref_fft = cp.fft.fftn(ref_cp)
-        shape = ref_fft.shape
+        shape = stack_cp.shape[1:]
         with tqdm.tqdm(
             total=self.stack.data.shape[0] - 1,
             desc="Calculating shifts",
@@ -1641,7 +1641,7 @@ def shift_crop(stack: "TomoStack") -> "TomoStack":
 
     y_min, y_max = valid_range(shifts[:, 0], ny)
     x_min, x_max = valid_range(shifts[:, 1], nx)
-    cropped = cropped.isig[x_min:x_max, y_min:y_max]
+    cropped = stack.isig[x_min:x_max, y_min:y_max].deepcopy()
     compose_transforms(cropped, translation_matrices([[-y_min, -x_min]])[0])
     cropped.metadata.set_item("Tomography.cropped", value=True)
     return cropped
