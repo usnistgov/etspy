@@ -12,7 +12,7 @@ from etspy import RngType, _as_rng
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
-from etspy.recon import _AstraObjects
+from etspy.recon import _AstraObjects, _resolve_cuda
 
 
 def create_catalyst_model(
@@ -233,8 +233,7 @@ def create_model_tilt_series(
     -----
     3
     """
-    if cuda is None:
-        cuda = astra.use_cuda()
+    cuda = _resolve_cuda(cuda)
 
     if angles is None:
         angles = np.arange(0, 180, 2)

@@ -1501,3 +1501,24 @@ class TestRecStackForwardProject:
         sino = rec.forward_project(tilts, cuda=True)
         assert isinstance(sino, TomoStack)
         assert isinstance(sino.tilts, TomoTilts)
+
+
+class TestCopyWithData:
+    """Test copying a stack with replacement data."""
+
+    def test_tomostack(self, short_stack):
+        aligned = short_stack.trans_stack(angle=1)
+        data = np.zeros((5, 100, 90), np.float32)
+        new = aligned.copy_with_data(data)
+        assert isinstance(new, TomoStack)
+        assert new.data is data
+        assert new.axes_manager.signal_shape == (90, 100)
+        assert new.metadata.Tomography.tiltaxis == aligned.metadata.Tomography.tiltaxis
+        np.testing.assert_array_equal(new.tilts.data, aligned.tilts.data)
+        np.testing.assert_array_equal(new.transforms.data, aligned.transforms.data)
+        new.metadata.Tomography.tiltaxis = 0
+        assert aligned.metadata.Tomography.tiltaxis == 1
+
+    def test_recstack(self):
+        rec = RecStack(np.ones((3, 4, 5)))
+        assert isinstance(rec.copy_with_data(np.zeros((3, 4, 5))), RecStack)

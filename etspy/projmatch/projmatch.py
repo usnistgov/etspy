@@ -7,10 +7,11 @@ import astra
 import numpy as np
 import tqdm
 from hyperspy.signals import Signal1D, Signal2D
-from scipy.fft import fft, fft2, fftfreq, ifft, ifft2
+from scipy.fft import fft, fftfreq, ifft
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
+from etspy import align
 from etspy.recon import _AstraObjects
 
 if TYPE_CHECKING:
@@ -286,8 +287,6 @@ class ProjMatch:
         shifted : TomoStack
             Copy of input stack after shifts are applied
         """
-        shifted = self.stack.deepcopy()
-
         if len(self.total_shifts) != self.stack.data.shape[0]:
             msg = (
                 f"Number of shifts ({len(self.total_shifts)}) is not consistent "
@@ -295,39 +294,7 @@ class ProjMatch:
             )
             raise ValueError(msg)
         shifts = np.stack([self.total_shifts, np.zeros(self.nangles)], axis=1)
-
-        _, ny, nx = shifted.data.shape
-        y_pad_min = np.abs(shifts[:, 0]).max() + ny
-        ny_pad = int(2 ** np.ceil(np.log2(y_pad_min)))
-        y_pad_width = [(ny_pad - ny) // 2, (ny_pad - ny + 1) // 2]
-
-        x_pad_min = np.abs(shifts[:, 1]).max() + nx
-        nx_pad = int(2 ** np.ceil(np.log2(x_pad_min)))
-        x_pad_width = [(nx_pad - nx) // 2, (nx_pad - nx + 1) // 2]
-
-        shifted_padded = np.pad(
-            shifted.data,
-            ((0, 0), y_pad_width, x_pad_width),
-            mode="constant",
-        )
-        shifted.data = shifted_padded
-        _, ny, nx = shifted.data.shape
-        shifted_fft = fft2(shifted.data, axes=(1, 2))
-        for i in range(shifted.data.shape[0]):
-            shifted_fft_slice = ifft2(
-                fourier_shift(shifted_fft[i], shift=[shifts[i, 0], shifts[i, 1]]),
-            )
-            shifted.data[i, :, :] = np.real(cast("np.ndarray", shifted_fft_slice))
-        slices = [
-            slice(0, None),
-        ]
-        for i in [y_pad_width, x_pad_width]:
-            i[1] = None if i[1] == 0 else -i[1]
-            slices.append(slice(i[0], i[1]))
-        shifted.data = shifted.data[tuple(slices)]
-
-        shifted.shifts.data = shifted.shifts.data + shifts
-        return shifted
+        return align.apply_shifts(self.stack, shifts, method="fourier", cuda=self.cuda)
 
 
 def shift_sinogram(

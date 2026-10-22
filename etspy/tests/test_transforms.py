@@ -56,7 +56,9 @@ class TestTransforms:
 
     def test_registration_rotation_and_crop(self, short_stack):
         aligned = short_stack.stack_register("PC", crop=True).trans_stack(
-            xshift=3, yshift=-2, angle=2
+            xshift=3,
+            yshift=-2,
+            angle=2,
         )
         _assert_reapplied(aligned, short_stack)
 

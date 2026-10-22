@@ -71,6 +71,17 @@ class _AstraObjects:
         return sino
 
 
+def _resolve_cuda(cuda: bool | None) -> bool:
+    """Return ``cuda``, or whether ASTRA can use CUDA if ``cuda`` is ``None``."""
+    if cuda is not None:
+        return cuda
+    if astra.use_cuda():  # coverage: nocuda
+        logger.info("CUDA detected with Astra")
+        return True
+    logger.info("CUDA not detected with Astra")
+    return False
+
+
 def _copy_cfg(cfg: dict) -> dict:
     """Copy an algorithm configuration so per-slice IDs don't leak between tasks."""
     return {**cfg, "option": dict(cfg.get("option", {}))}

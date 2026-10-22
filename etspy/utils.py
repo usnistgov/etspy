@@ -85,25 +85,17 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
     ntilts, nframes, ny, nx = stack.data.shape
 
     if ncpus == 1:
-        reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
-        sr = StackReg(StackReg.TRANSLATION)
-        for i in tqdm.tqdm(range(ntilts)):
-            shifts = sr.register_stack(stack.data[i], reference="previous")
-            shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
-            shifted = np.zeros([nframes, ny, nx])
-            for k in range(nframes):
-                shifted[k, :, :] = ndimage.shift(
-                    stack.data[i, k, :, :],
-                    shift=[shifts[k, 0], shifts[k, 1]],
-                )
-            reg[i, :, :] = shifted.mean(0)
+        reg = [
+            multiaverage(stack.data[i], nframes, ny, nx)
+            for i in tqdm.tqdm(range(ntilts))
+        ]
     else:
         with Pool(ncpus) as pool:
             reg = pool.starmap(
                 multiaverage,
-                [(stack.inav[:, i].data, nframes, ny, nx) for i in range(ntilts)],
+                [(stack.data[i], nframes, ny, nx) for i in range(ntilts)],
             )
-        reg = np.array(reg)
+    reg = np.array(reg)
 
     reg = TomoStack(reg)
     reg_ax_0, reg_ax_1, reg_ax_2 = (cast("Uda", reg.axes_manager[i]) for i in range(3))
@@ -180,22 +172,16 @@ def weight_stack(
         )
         raise ValueError(msg)
 
-    weighted_stack = stack.deepcopy()
+    ntilts, ny, _ = stack.data.shape
 
-    # Get stack dimensions
-    ntilts, ny, nx = weighted_stack.data.shape
+    # the window only varies along y, so windowed masses only need each
+    # projection's profile summed over x
+    profiles = stack.data.sum(axis=2)
 
     # Compute the minimum total projected mass and the corresponding
     # slice index (min_slice)
-    min_mass, min_slice = (
-        np.min(
-            np.sum(np.sum(weighted_stack.data, axis=2), axis=1),
-        ),
-        np.argmin(np.sum(np.sum(weighted_stack.data, axis=2), axis=1)),
-    )
-
-    # Initialize the window array
-    window = np.zeros([ny, nx])
+    total_mass = profiles.sum(axis=1)
+    min_mass, min_slice = total_mass.min(), np.argmin(total_mass)
 
     # Initialize the status vector (1 means unmarked, 0 means marked) and mark
     # the reference slice (min_slice)
@@ -218,15 +204,8 @@ def weight_stack(
 
     power = 10  # initialize power
     for power in np.linspace(10, niterations, niterations // 10):
-        # Compute the power-weighted profile for the current iteration
-        r_power = r ** (power * delta)
-        window = r_power[:, np.newaxis]  # Broadcasting across all columns
-
-        # Compute the weighted sum for all slices at once using vectorization
-        weighted_mass = np.sum(
-            weighted_stack.data * window[np.newaxis, :, :],
-            axis=(1, 2),
-        )
+        # Compute the windowed mass of all slices for the current iteration
+        weighted_mass = profiles @ (r ** (power * delta))
 
         # Update the status and adjustments for slices with weighted sums below min_mass
         update_mask = (status != 0) & (weighted_mass < min_mass)
@@ -251,12 +230,10 @@ def weight_stack(
     for j in range(ntilts):
         if j != min_slice:
             for power in np.linspace(1, 10, 10):
-                # Apply fine adjustments to the weight profile and
-                # update the weight grid
+                # Apply fine adjustments to the weight profile
                 r_power = r ** ((power + adjustments[j]) * delta)
-                window[:] = r_power[:, np.newaxis]
 
-                if np.sum(weighted_stack.data[j, :, :] * window) < min_mass:
+                if profiles[j] @ r_power < min_mass:
                     adjustments[j] = (power - 1) + adjustments[j]
                     status[j] = 0
                     break
@@ -265,11 +242,8 @@ def weight_stack(
     adjustments[status != 0] += 10
 
     # Apply the final window to the entire stack
-    for i in range(ntilts):
-        window[:] = (r ** (adjustments[i] * delta))[:, np.newaxis]
-        weighted_stack.data[i, :, :] *= window
-
-    return weighted_stack
+    windows = r[np.newaxis, :] ** (adjustments[:, np.newaxis] * delta)
+    return stack.copy_with_data(stack.data * windows[:, :, np.newaxis])
 
 
 def calc_est_angles(num_points: int) -> np.ndarray:
@@ -476,6 +450,4 @@ def filter_stack(
     else:
         msg = "Method can only be applied to 2 or 3-dimensional stacks"
         raise ValueError(msg)
-    result = stack.deepcopy()
-    result.data = filtered
-    return result
+    return stack.copy_with_data(filtered)

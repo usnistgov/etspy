@@ -12,7 +12,7 @@ import tqdm
 from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
 from scipy import ndimage, optimize
-from scipy.fft import next_fast_len
+from scipy.fft import fft2, next_fast_len
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc

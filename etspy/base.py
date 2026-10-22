@@ -19,8 +19,8 @@ except ImportError:  # pragma: no cover
 
 import astra  # noqa: I001
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
-import pylab as plt
 from hyperspy._signals.signal1d import Signal1D
 from hyperspy._signals.signal2d import Signal2D
 from hyperspy.drawing.utils import plot_images as hs_plot_images
@@ -40,7 +40,7 @@ from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy import align, recon
 from etspy._gpu import affine_transform_gpu, cp, has_cupy
-from etspy.recon import _AstraObjects
+from etspy.recon import _AstraObjects, _resolve_cuda
 from etspy.transform import VolumeRotator, calculate_rotation
 from etspy.visualize import VolumeSlicer
 
@@ -128,12 +128,74 @@ class _RecStackSlicer(SpecialSlicersSignal):
         return super().__getitem__(slices, out=out)
 
 
-class TomoShifts(Signal1D):
+class _ProjectionSignal(Signal1D):
+    """Base class for per-projection values with a fixed signal size."""
+
+    _signal_size: int
+    _values_name: str
+    _slicer_class: type[SpecialSlicersSignal]
+
+    def __init__(self, data, *args, **kwargs):
+        """
+        Create a per-projection signal instance.
+
+        Parameters
+        ----------
+        data
+            The signal data. Can be provided as either a HyperSpy
+            :py:class:`hyperspy.api.signals.Signal1D` or a Numpy array whose last
+            dimension is the signal size of the class.
+        args
+            Additional non-keyword arguments passed to the
+            :py:class:`~hyperspy.api.signals.Signal1D` constructor.
+        kwargs
+            Additional keyword arguments passed to the
+            :py:class:`hyperspy.api.signals.Signal1D` constructor.
+
+        Raises
+        ------
+        ValueError
+            If the data provided does not result in a Signal with the signal shape
+            required by the class.
+        """
+        super().__init__(data, *args, **kwargs)
+        if self.axes_manager.signal_shape != (self._signal_size,):
+            msg = (
+                f"{self._values_name} values must have a signal shape of "
+                f"({self._signal_size},), but was {self.axes_manager.signal_shape}"
+            )
+            raise ValueError(msg)
+        self.inav = self._slicer_class(self, isNavigation=True)
+        self.isig = self._slicer_class(self, isNavigation=False)
+
+    def _slicer(self, slices, isNavigation=None, out=None):  # noqa: N803
+        if not isNavigation:
+            f = cast("FrameType", inspect.currentframe())
+            co_names = cast("FrameType", f.f_back).f_code.co_names
+            if "_additional_slicing_targets" not in co_names:
+                # '_additional_slicing_targets' will only be present if call originated
+                # from the HyperSpy slicing module, meaning we reached this code by
+                # calling `s.isig[]` rather than `s.tilts.isig[]` We don't want to warn
+                # in this case, since it happens so frequently
+                logger.warning(
+                    "%s does not support 'isig' slicing, as signal shape must be "
+                    "(%i,). Signal was returned with its original shape: %s",
+                    type(self).__name__,
+                    self._signal_size,
+                    self,
+                )
+            return self
+
+        return super()._slicer(slices, isNavigation, out)
+
+
+class TomoShifts(_ProjectionSignal):
     """
     Create a ``TomoShifts`` instance to store image shift values of a tomography stack.
 
     This class is used to enforce dimension sizes and provide customized slicing
-    compared to a standard HyperSpy signal.
+    compared to a standard HyperSpy signal. The data should be of shape
+    ``(ntilts, 2)``.
 
     Group
     -----
@@ -146,69 +208,18 @@ class TomoShifts(Signal1D):
 
     _signal_type = "TomoShifts"
     _signal_dimension = 1
-
-    def __init__(self, data, *args, **kwargs):
-        """
-        Create a TomoShifts signal instance.
-
-        ``TomoShifts`` is a specialized sub-class of
-        :py:class:`~hyperspy.api.signals.Signal1D` used to hold information
-        about the `x` and `y` image shifts in a :py:class:`~etspy.base.TomoStack`.
-
-        Parameters
-        ----------
-        data
-            The signal data. Can be provided as either a HyperSpy
-            :py:class:`hyperspy.api.signals.Signal1D` or a Numpy array
-            of the shape `(ntilts, 2)`.
-        args
-            Additional non-keyword arguments passed to the
-            :py:class:`~hyperspy.api.signals.Signal1D` constructor.
-        kwargs
-            Additional keyword arguments passed to the
-            :py:class:`hyperspy.api.signals.Signal1D` constructor.
-
-        Raises
-        ------
-        ValueError
-            If the data provided does not result in a Signal with signal shape (2,).
-        """
-        super().__init__(data, *args, **kwargs)
-        if self.axes_manager.signal_shape != (2,):
-            msg = (
-                f"Shift values must have a signal shape of (2,), "
-                f"but was {self.axes_manager.signal_shape}"
-            )
-            raise ValueError(msg)
-        self.inav = _TomoShiftSlicer(self, isNavigation=True)
-        self.isig = _TomoShiftSlicer(self, isNavigation=False)
-
-    def _slicer(self, slices, isNavigation=None, out=None):  # noqa: N803
-        if not isNavigation:
-            f = cast("FrameType", inspect.currentframe())
-            co_names = cast("FrameType", f.f_back).f_code.co_names
-            if "_additional_slicing_targets" not in co_names:
-                # '_additional_slicing_targets' will only be present if call originated
-                # from the HyperSpy slicing module, meaning we reached this code by
-                # calling `s.isig[]` rather than `s.tilts.isig[]` We don't want to warn
-                # in this case, since it happens so frequently
-                logger.warning(
-                    "TomoShifts does not support 'isig' slicing, as signal shape must "
-                    "be (2,). Signal was returned with its original "
-                    "shape: %s",
-                    self,
-                )
-            return self
-
-        return super()._slicer(slices, isNavigation, out)
+    _signal_size = 2
+    _values_name = "Shift"
+    _slicer_class = _TomoShiftSlicer
 
 
-class TomoTilts(Signal1D):
+class TomoTilts(_ProjectionSignal):
     """
     Create a ``TomoTilts`` instance, used to hold the tilt values of a tomography stack.
 
     This class is used to enforce dimension sizes and provide customized slicing
-    compared to a standard HyperSpy signal.
+    compared to a standard HyperSpy signal. The data should be of shape
+    ``(ntilts, 1)``.
 
     Group
     -----
@@ -221,73 +232,23 @@ class TomoTilts(Signal1D):
 
     _signal_type = "TomoTilts"
     _signal_dimension = 1
-
-    def __init__(self, data, *args, **kwargs):
-        """
-        Create a TomoTilts signal instance.
-
-        ``TomoTilts`` is a specialized sub-class of
-        :py:class:`~hyperspy.api.signals.Signal1D` used to hold information
-        about the tilt values of each projection in a :py:class:`~etspy.base.TomoStack`.
-
-        Parameters
-        ----------
-        data
-            The signal data. Can be provided as either a HyperSpy
-            :py:class:`hyperspy.api.signals.Signal1D` or a Numpy array
-            of the shape `(ntilts, 1)`.
-        args
-            Additional non-keyword arguments passed to the
-            :py:class:`~hyperspy.api.signals.Signal1D` constructor.
-        kwargs
-            Additional keyword arguments passed to the
-            :py:class:`hyperspy.api.signals.Signal1D` constructor.
-
-        Raises
-        ------
-        ValueError
-            If the data provided does not result in a Signal with signal shape (1,).
-        """
-        super().__init__(data, *args, **kwargs)
-        if self.axes_manager.signal_shape != (1,):
-            msg = (
-                f"Tilt values must have a signal shape of (1,), "
-                f"but was {self.axes_manager.signal_shape}"
-            )
-            raise ValueError(msg)
-        self.inav = _TomoTiltSlicer(self, isNavigation=True)
-        self.isig = _TomoTiltSlicer(self, isNavigation=False)
-
-    def _slicer(self, slices, isNavigation=None, out=None):  # noqa: N803
-        if not isNavigation:
-            f = cast("FrameType", inspect.currentframe())
-            co_names = cast("FrameType", f.f_back).f_code.co_names
-            if "_additional_slicing_targets" not in co_names:
-                # '_additional_slicing_targets' will only be present if call originated
-                # from the HyperSpy slicing module, meaning we reached this code by
-                # calling `s.isig[]` rather than `s.tilts.isig[]` We don't want to warn
-                # in this case, since it happens so frequently
-                logger.warning(
-                    "TomoTilts does not support 'isig' slicing, as signal shape must "
-                    "be (1,). Signal was returned with its original shape: %s",
-                    self,
-                )
-            return self
-
-        return super()._slicer(slices, isNavigation, out)
+    _signal_size = 1
+    _values_name = "Tilt"
+    _slicer_class = _TomoTiltSlicer
 
 
 IDENTITY_TRANSFORM = np.array([1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
 
 
-class TomoTransforms(Signal1D):
+class TomoTransforms(_ProjectionSignal):
     """
     Create a ``TomoTransforms`` instance to store the alignment of each projection.
 
     Each projection's transform is a 2D affine transform in pixel coordinates,
     stored as the six values ``(a, b, ty, c, d, tx)`` of the matrix
     ``[[a, b, ty], [c, d, tx]]``. It maps a pixel position ``(y, x)`` in the
-    unaligned image to its position in the aligned image.
+    unaligned image to its position in the aligned image. The data should be of
+    shape ``(ntilts, 6)``.
 
     Group
     -----
@@ -300,52 +261,9 @@ class TomoTransforms(Signal1D):
 
     _signal_type = "TomoTransforms"
     _signal_dimension = 1
-
-    def __init__(self, data, *args, **kwargs):
-        """
-        Create a TomoTransforms signal instance.
-
-        Parameters
-        ----------
-        data
-            The signal data. Can be provided as either a HyperSpy
-            :py:class:`hyperspy.api.signals.Signal1D` or a Numpy array
-            of the shape `(ntilts, 6)`.
-        args
-            Additional non-keyword arguments passed to the
-            :py:class:`~hyperspy.api.signals.Signal1D` constructor.
-        kwargs
-            Additional keyword arguments passed to the
-            :py:class:`hyperspy.api.signals.Signal1D` constructor.
-
-        Raises
-        ------
-        ValueError
-            If the data provided does not result in a Signal with signal shape (6,).
-        """
-        super().__init__(data, *args, **kwargs)
-        if self.axes_manager.signal_shape != (6,):
-            msg = (
-                f"Transform values must have a signal shape of (6,), "
-                f"but was {self.axes_manager.signal_shape}"
-            )
-            raise ValueError(msg)
-        self.inav = _TomoTransformSlicer(self, isNavigation=True)
-        self.isig = _TomoTransformSlicer(self, isNavigation=False)
-
-    def _slicer(self, slices, isNavigation=None, out=None):  # noqa: N803
-        if not isNavigation:
-            f = cast("FrameType", inspect.currentframe())
-            co_names = cast("FrameType", f.f_back).f_code.co_names
-            if "_additional_slicing_targets" not in co_names:
-                logger.warning(
-                    "TomoTransforms does not support 'isig' slicing, as signal shape "
-                    "must be (6,). Signal was returned with its original shape: %s",
-                    self,
-                )
-            return self
-
-        return super()._slicer(slices, isNavigation, out)
+    _signal_size = 6
+    _values_name = "Transform"
+    _slicer_class = _TomoTransformSlicer
 
 
 # signal class, signal size, and signal axis name and units of each per-projection
@@ -431,6 +349,29 @@ class CommonStack(Signal2D, ABC):
         """
         super().plot(navigator=navigator, *args, **kwargs)  # noqa: B026
 
+    def copy_with_data(self, data: np.ndarray) -> Self:
+        """
+        Return a deep copy of the stack with new data, without copying the old data.
+
+        Parameters
+        ----------
+        data
+            The data of the copy. Axis sizes are set from its shape; all other axis,
+            metadata and (for a :py:class:`~etspy.base.TomoStack`) tilt, shift and
+            transform information is copied from this stack.
+
+        Returns
+        -------
+        new : Self
+            Copy of the stack holding ``data``
+        """
+        dictionary = self._to_dictionary(add_learning_results=False)
+        del dictionary["data"]
+        dictionary = copy.deepcopy(dictionary)
+        for axis, size in zip(dictionary["axes"], data.shape, strict=True):
+            axis["size"] = size
+        return type(self)(data=data, **dictionary)
+
     def change_data_type(self, dtype: str | np.dtype):
         """
         Change the data type of a stack.
@@ -460,12 +401,10 @@ class CommonStack(Signal2D, ABC):
             >>> stack = ds.get_needle_data()
             >>> s_inverted = stack.invert()
         """
-        inverted = self.deepcopy()
-        maxvals = inverted.data.max((-2, -1), keepdims=True)
-        minvals = inverted.data.min((-2, -1), keepdims=True)
+        maxvals = self.data.max((-2, -1), keepdims=True)
+        minvals = self.data.min((-2, -1), keepdims=True)
         # ordered to avoid overflow with unsigned integer data
-        inverted.data = (maxvals - inverted.data) + minvals
-        return inverted
+        return self.copy_with_data((maxvals - self.data) + minvals)
 
     def normalize(self, width: int = 3) -> Self:
         """
@@ -488,12 +427,10 @@ class CommonStack(Signal2D, ABC):
             >>> stack = ds.get_needle_data()
             >>> s_normalized = stack.normalize()
         """
-        normalized = self.deepcopy()
-        data = normalized.data - normalized.data.min((-2, -1), keepdims=True)
+        data = self.data - self.data.min((-2, -1), keepdims=True)
         meanvals = data.mean((-2, -1), keepdims=True)
         stdvals = data.std((-2, -1), keepdims=True)
-        normalized.data = data / (meanvals + width * stdvals)
-        return normalized
+        return self.copy_with_data(data / (meanvals + width * stdvals))
 
     def save_raw(self, filename: str | Path | None = None) -> Path:
         """
@@ -577,12 +514,12 @@ class CommonStack(Signal2D, ABC):
             >>> transformed
             <TomoStack, title: , dimensions: (77|256, 256)>
         """
-        transformed = self.deepcopy()
+        dtype = self.data.dtype
         if interpolation.lower() in ["linear", "cubic"] and np.issubdtype(
-            transformed.data.dtype,
+            dtype,
             np.integer,
         ):
-            transformed.data = transformed.data.astype("float32")
+            dtype = np.dtype("float32")
             logger.debug("Data converted to float prior to transformation")
         matrix = align.rigid_matrix(self.data.shape[-2:], angle, yshift, xshift)
         inverse = np.linalg.inv(matrix)
@@ -600,14 +537,16 @@ class CommonStack(Signal2D, ABC):
             )
             raise ValueError(msg)
 
+        data = np.empty(self.data.shape, dtype)
         for i in range(self.data.shape[0]):
-            transformed.data[i, :, :] = ndimage.affine_transform(
-                transformed.data[i, :, :],
+            data[i, :, :] = ndimage.affine_transform(
+                self.data[i, :, :].astype(dtype, copy=False),
                 inverse[:2, :2],
                 offset=inverse[:2, 2],
                 order=interpolation_order,
                 mode="nearest",
             )
+        transformed = self.copy_with_data(data)
 
         trans_tomo_meta = cast("Dtb", transformed.metadata.Tomography)
         self_tomo_meta = cast("Dtb", self.metadata.Tomography)
@@ -1076,6 +1015,15 @@ class TomoStack(CommonStack):
     def transforms(self):
         self.transforms = None
 
+    def copy_with_data(self, data: np.ndarray) -> "TomoStack":  # noqa: D102
+        new = super().copy_with_data(data)
+        new.tilts = copy.deepcopy(self.tilts)
+        new.shifts = copy.deepcopy(self.shifts)
+        new.transforms = copy.deepcopy(self.transforms)
+        return new
+
+    copy_with_data.__doc__ = CommonStack.copy_with_data.__doc__
+
     def deepcopy(self):
         """
         Return a "deep copy" of this Stack.
@@ -1367,25 +1315,21 @@ class TomoStack(CommonStack):
             >>> stack = ds.get_needle_data()
             >>> filtered = stack.filter(method='median')
         """
-        filtered = self.deepcopy()
-        if method in ("sobel", "both") and np.issubdtype(
-            filtered.data.dtype,
-            np.integer,
-        ):
-            filtered.data = filtered.data.astype(np.float32)
+        data = self.data
+        if method in ("sobel", "both") and np.issubdtype(data.dtype, np.integer):
+            data = data.astype(np.float32)
+
+        def sobel_magnitude(images):
+            return np.stack(
+                [np.hypot(ndimage.sobel(im, 0), ndimage.sobel(im, 1)) for im in images],
+            )
+
         if method == "median":
-            filtered.data = ndimage.median_filter(filtered.data, size=(1, size, size))
+            data = ndimage.median_filter(data, size=(1, size, size))
         elif method == "sobel":
-            for i in range(filtered.data.shape[0]):
-                dx = ndimage.sobel(filtered.data[i, :, :], 0)
-                dy = ndimage.sobel(filtered.data[i, :, :], 1)
-                filtered.data[i, :, :] = np.hypot(dx, dy)
+            data = sobel_magnitude(data)
         elif method == "both":
-            filtered.data = ndimage.median_filter(filtered.data, size=(1, size, size))
-            for i in range(filtered.data.shape[0]):
-                dx = ndimage.sobel(filtered.data[i, :, :], 0)
-                dy = ndimage.sobel(filtered.data[i, :, :], 1)
-                filtered.data[i, :, :] = np.hypot(dx, dy)
+            data = sobel_magnitude(ndimage.median_filter(data, size=(1, size, size)))
         elif method == "bpf":
             lp_freq = 0.1
             hp_freq = 0.05
@@ -1405,16 +1349,17 @@ class TomoStack(CommonStack):
             bpf = lpf * hpf
             fft_filtered = fft * bpf
 
-            filtered.data = np.fft.ifft2(np.fft.ifftshift(fft_filtered)).real
+            data = np.fft.ifft2(np.fft.ifftshift(fft_filtered)).real
 
             ham2d = np.sqrt(np.outer(np.hamming(rows), np.hamming(cols)))
-            filtered.data = filtered.data * ham2d
+            data = data * ham2d
         else:
             msg = (
                 f'Invalid filter method "{method}". Must be one of '
                 f"{_fmt(_get_lit(self.filter, 'method'))}."
             )
             raise ValueError(msg)
+        filtered = self.copy_with_data(data)
         if taper:
             taper_size = np.array(np.array(taper) * self.data.shape[1:], dtype=np.int32)
             filtered.data = np.pad(
@@ -1471,8 +1416,7 @@ class TomoStack(CommonStack):
             >>> vacuum = (slice(0, 20), slice(None))
             >>> subtracted = stack.subtract_background(region=vacuum)
         """
-        subtracted = self.deepcopy()
-        data = subtracted.data
+        data = self.data
         if np.issubdtype(data.dtype, np.integer):
             data = data.astype(np.float32)
         if region is None:
@@ -1483,66 +1427,12 @@ class TomoStack(CommonStack):
                 axis=(-2, -1),
                 keepdims=True,
             )
-        subtracted.data = data - background.astype(data.dtype)
+        subtracted = self.copy_with_data(data - background.astype(data.dtype))
         subtracted.metadata.set_item(
             "Tomography.background",
             background.squeeze(axis=(-2, -1)),
         )
         return subtracted
-
-    def to_absorbance(
-        self,
-        i0: float | None = None,
-        region: tuple[slice, slice] | None = None,
-    ) -> "TomoStack":
-        """
-        Create a copy of a bright-field stack converted to absorbance, -ln(I/I0).
-
-        Bright-field intensity decays exponentially with projected mass
-        (Beer-Lambert), so the logarithm is needed for the data to approximate the
-        line integrals assumed by reconstruction.
-
-        Parameters
-        ----------
-        i0
-            Incident (vacuum) intensity. If ``None``, it is measured for each
-            projection from ``region``, or as the 99th percentile of the projection
-            if ``region`` is also ``None``.
-        region
-            Vacuum region as ``(y_slice, x_slice)`` in pixels, used to measure
-            ``i0`` as the median of each projection over that region.
-
-        Returns
-        -------
-        absorbance : TomoStack
-            Converted copy of the stack. The incident intensity used is stored in
-            ``metadata.Tomography.i0``.
-
-        Raises
-        ------
-        ValueError
-            If the incident intensity is not positive.
-        """
-        absorbance = self.deepcopy()
-        data = absorbance.data.astype(np.result_type(absorbance.data, np.float32))
-        if i0 is not None:
-            incident = np.asarray(i0, dtype=data.dtype)
-        elif region is not None:
-            incident = np.median(
-                data[..., region[0], region[1]],
-                axis=(-2, -1),
-                keepdims=True,
-            )
-        else:
-            incident = np.percentile(data, 99, axis=(-2, -1), keepdims=True)
-        if np.any(incident <= 0):
-            msg = "Incident intensity i0 must be positive"
-            raise ValueError(msg)
-        # zero or negative counts would give infinite absorbance
-        floor = 1e-6 * incident
-        absorbance.data = -np.log(np.maximum(data, floor) / incident)
-        absorbance.metadata.set_item("Tomography.i0", np.squeeze(incident))
-        return absorbance
 
     def stack_register(
         self,
@@ -1914,13 +1804,7 @@ class TomoStack(CommonStack):
                 "Please set tilt values before alignment."
             )
             raise ValueError(msg)
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                logger.info("CUDA not detected with Astra")
-                cuda = False
+        cuda = _resolve_cuda(cuda)
 
         if method.lower() == "dart":
             if gray_levels is None:
@@ -2040,13 +1924,7 @@ class TomoStack(CommonStack):
             "Uda",
             self.axes_manager[0],
         ).axis
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+        cuda = _resolve_cuda(cuda)
         rec = shifted.reconstruct(
             method=method,
             iterations=iterations,
@@ -2135,13 +2013,14 @@ class TomoStack(CommonStack):
         display
             If True, display the result.
         """
-        output = self.deepcopy()
         _, ny, nx = self.data.shape
         out_ny, out_nx = ny - abs(yshift), nx - abs(xshift)
         # each part is cropped to the common area, starting at these offsets
         first_start = (max(yshift, 0), max(xshift, 0))
         second_start = (max(-yshift, 0), max(-xshift, 0))
-        output.data = np.empty((self.data.shape[0], out_ny, out_nx), self.data.dtype)
+        output = self.copy_with_data(
+            np.empty((self.data.shape[0], out_ny, out_nx), self.data.dtype),
+        )
         crops = np.zeros((self.data.shape[0], 2))
         for part, (y0, x0) in (
             (slice(0, nslice), first_start),
@@ -2149,7 +2028,6 @@ class TomoStack(CommonStack):
         ):
             output.data[part] = self.data[part, y0 : y0 + out_ny, x0 : x0 + out_nx]
             crops[part] = (-y0, -x0)
-        output.get_dimensions_from_data()
         align.compose_transforms(output, align.translation_matrices(crops))
 
         if display:
@@ -2232,13 +2110,7 @@ class TomoStack(CommonStack):
         if not nslice:
             nslice = int(self.data.shape[2] / 2)
 
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+        cuda = _resolve_cuda(cuda)
         sinogram = self.isig[nslice : nslice + 1, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
@@ -2395,13 +2267,7 @@ class RecStack(CommonStack):
             ``None`` (the default), the decision to use CUDA will be left to
             :py:func:`astra.astra.use_cuda`.
         """
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+        cuda = _resolve_cuda(cuda)
         if isinstance(tilts, BaseSignal):
             tilts = tilts.data
         tilts = np.asarray(tilts, dtype=float).ravel()
@@ -2530,10 +2396,9 @@ class RecStack(CommonStack):
             raise ValueError(msg)
 
         rotation_matrix, offset = calculate_rotation(rotation_angles, self.data.shape)
-        rotated = self.deepcopy()
 
         if not cuda:
-            rotated.data = ndimage.affine_transform(
+            data = ndimage.affine_transform(
                 self.data,
                 rotation_matrix,
                 offset,
@@ -2553,11 +2418,12 @@ class RecStack(CommonStack):
                 cval=0.0,
             )
 
-            rotated.data = cp.asnumpy(rotated_gpu)
+            data = cp.asnumpy(rotated_gpu)
         else:
             msg = "CUDA selected but CuPy is unavailable."
             raise ValueError(msg)
 
+        rotated = self.copy_with_data(data)
         rotated.rotation_angles = rotation_angles
         rotated.rotation_matrix = rotation_matrix
         rotated.rotation_offset = offset
