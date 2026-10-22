@@ -17,20 +17,12 @@ from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 
+from etspy._gpu import cp, has_cupy, shift_gpu
+
 if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
     from etspy.base import TomoShifts, TomoStack  # pragma: no cover
-
-has_cupy = True
-try:
-    import cupy as cp  # type: ignore
-    from cupyx.scipy.ndimage import shift as shift_gpu
-
-    has_gpu = cp.cuda.runtime.getDeviceCount() > 0
-
-except Exception:
-    has_cupy = False
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
