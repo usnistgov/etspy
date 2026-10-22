@@ -1102,13 +1102,18 @@ class TomoStack(CommonStack):
         """
         self.metadata.set_item("Tomography.tilts", self.tilts)
         self.metadata.set_item("Tomography.shifts", self.shifts)
-        super().save(
-            filename=filename,
-            overwrite=overwrite,
-            extension=extension,
-            file_format=file_format,
-            **kwargs,
-        )
+        try:
+            super().save(
+                filename=filename,
+                overwrite=overwrite,
+                extension=extension,
+                file_format=file_format,
+                **kwargs,
+            )
+        finally:
+            tomo_meta = cast("Dtb", self.metadata.Tomography)
+            del tomo_meta.tilts
+            del tomo_meta.shifts
 
     def test_correlation(
         self,
