@@ -2325,10 +2325,10 @@ class RecStack(CommonStack):
 
             rotated.data = cp.asnumpy(rotated_gpu)
         else:
-            msg = "CUDA selected buy CuPy is unavailable."
+            msg = "CUDA selected but CuPy is unavailable."
             raise ValueError(msg)
 
         rotated.rotation_angles = rotation_angles
         rotated.rotation_matrix = rotation_matrix
-        rotated.rotation_offet = offset
+        rotated.rotation_offset = offset
         return rotated
