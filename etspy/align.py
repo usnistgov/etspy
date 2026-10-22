@@ -29,6 +29,31 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
+BACKGROUND_WARN_FRACTION = 0.05
+MASS_WARN_VARIATION = 0.1
+
+
+def _check_mass_assumptions(stack: "TomoStack"):
+    """Warn when data violate the assumptions of center of mass methods."""
+    data = stack.data
+    border = np.concatenate(
+        [data[:, 0, :], data[:, -1, :], data[:, :, 0], data[:, :, -1]],
+        axis=1,
+    )
+    if np.median(border) > BACKGROUND_WARN_FRACTION * data.max():
+        logger.warning(
+            "Image borders are not near zero; center of mass alignment assumes zero "
+            "background. Consider TomoStack.subtract_background().",
+        )
+    mass = data.sum(axis=(1, 2))
+    if mass.std() > MASS_WARN_VARIATION * abs(mass.mean()):
+        logger.warning(
+            "Total intensity varies by %.0f%% across projections; center of mass "
+            "alignment assumes the object stays in the field of view and that "
+            "intensity is proportional to mass (use TomoStack.to_absorbance() for "
+            "bright-field data).",
+            100 * mass.std() / abs(mass.mean()),
+        )
 
 
 def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
@@ -683,6 +708,7 @@ class CoMAligner(StackAligner):
     def calculate_shifts(self) -> np.ndarray:
         """Calculate shifts using center of mass tracking method."""
         logger.info("Performing stack registration using center of mass method")
+        _check_mass_assumptions(self.stack)
         shifts = np.zeros([self.stack.data.shape[0], 2])
         # _calculate_shifts_conservation_of_mass: x-shifts (parallel to tilt axis)
         # _calculate_shifts_com: y-shifts (perpendicular to tilt axis)
@@ -855,6 +881,7 @@ class CommonLineAligner(StackAligner):
             "Performing stack registration using combined "
             "center of mass and common line methods",
         )
+        _check_mass_assumptions(self.stack)
         if self.com_ref_index is None:
             self.com_ref_index = self.start
         if self.cl_ref_index is None:
@@ -1091,6 +1118,7 @@ class TiltCOMAligner(TiltAligner):
 
         _, ny, nx = self.stack.data.shape
         nx_threshold = 3
+        _check_mass_assumptions(self.stack)
 
         if np.all(self.stack.tilts.data == 0):
             msg = (
