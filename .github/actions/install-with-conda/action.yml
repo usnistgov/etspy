@@ -34,6 +34,6 @@ runs:
         if [ "${{ inputs.macos }}" == "true" ]; then
           pip install --no-deps -e .
         else
-          pip install --no-deps -e ".[gpu]"
+          pip install --no-deps -e ".[cuda13]"
         fi
       shell: bash -el {0}
