@@ -20,10 +20,10 @@ inputs:
     description: 'The path where the doc will be written'
     default: '.'
     type: string
-secrets:
   access_token:
-    description: 'The access token required to push a repository: "GITHUB_TOKEN" if same repository of personal access token for separate repository'
-    # See https://github.com/ad-m/github-push-action/tree/master?tab=readme-ov-file#inputs
+    description: 'The access token required to push to the repository (defaults to github.token)'
+    default: '${{ github.token }}'
+    type: string
 
 runs:
   using: "composite"
