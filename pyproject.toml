@@ -17,7 +17,7 @@ dependencies = [
     "typing-extensions>=4.12.2,<5.0.0",
     "h5py>=3.12.1,<4.0.0",
     "numpy>1.26",
-    "scikit-image>=0.26,<1.0.0;",
+    "scikit-image>=0.26,<1.0.0",
 ]
 
 [dependency-groups]
