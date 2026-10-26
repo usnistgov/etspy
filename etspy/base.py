@@ -9,15 +9,9 @@ import inspect
 import logging
 from abc import ABC
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, Self, cast
 
-try:
-    from typing import Self  # type: ignore
-except ImportError:  # pragma: no cover
-    # required to support Pyton 3.10 since Self was added in 3.11
-    from typing_extensions import Self
-
-import astra  # noqa: I001
+import astra
 import matplotlib as mpl
 import numpy as np
 import pylab as plt
@@ -30,10 +24,16 @@ from scipy import ndimage
 from skimage import transform
 from traits.api import Undefined  # type: ignore
 
-from etspy import AlignmentMethod, AlignmentMethodType, FbpMethodType, ReconMethodType
+from etspy import (
+    AlignmentMethod,
+    AlignmentMethodType,
+    FbpMethodType,
+    ReconMethodType,
+    align,
+    recon,
+)
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
-from etspy import align, recon
 from etspy.transform import VolumeRotator, calculate_rotation
 from etspy.visualize import VolumeSlicer
 

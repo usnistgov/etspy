@@ -12,7 +12,6 @@ dependencies:
   - numpy
   - pystackreg
   - pip
-  - isort
   - myst-nb
   - myst-parser
   - numpydoc

@@ -9,6 +9,6 @@ A few sentences and/or a bulleted list to describe and motivate the change:
 - [ ] Feature/Fix description 2
 
 ### Testing
-- [] **Linting:** Verified `ruff check` and `isort . --check` pass
+- [] **Linting:** Verified `ruff check` passes
 - [] **Unit Tests:** Ensured no failures when `in pytest`
 - [] **CI:** Ensured that all CI tests are passing
