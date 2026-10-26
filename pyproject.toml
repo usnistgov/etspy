@@ -1,9 +1,9 @@
 [project]
 name = "etspy"
-version = "1.2.0"
+version = "1.3.0"
 description = "Suite of tools for processing and reconstruction of electron tomography data"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "NIST Public License" }
 authors = [
     { name = "Andrew A. Herzing", email = "andrew.herzing@nist.gov" },
@@ -17,8 +17,7 @@ dependencies = [
     "typing-extensions>=4.12.2,<5.0.0",
     "h5py>=3.12.1,<4.0.0",
     "numpy>1.26",
-    "scikit-image>=0.24,<0.26; python_version == '3.10'",
-    "scikit-image>=0.26,<1.0.0; python_version >= '3.11'",
+    "scikit-image>=0.26,<1.0.0",
 ]
 
 [dependency-groups]
@@ -26,7 +25,6 @@ dev = [
     "pydocstyle>=6.3.0, <7.0.0",
     "pytest>=8.3.3,<10.0.0",
     "ruff>=0.9.0, <0.15.0",
-    "isort>=5.13.2, <6.0.0",
     "sphinx==8.0.2",
     "numpydoc>=1.8.0, <2.0.0",
     "myst-parser>=4.0.0, <5.0.0",
@@ -55,10 +53,6 @@ etspy = "etspy"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.isort]
-profile = "black"
-src_paths = ["etspy"]
-
 [tool.ruff]
 extend-exclude = ["pyproject.toml"]
 
@@ -69,8 +63,11 @@ select = [
     "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PL",
     "TRY", "RUF"
 ]
-ignore = ["FBT001", "FBT002", "TRY003", "RET504"]
+ignore = ["FBT001", "FBT002", "TRY003", "RET504", "COM812"]
 exclude = ["*.ipynb","docs/**"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["etspy"]
 
 [tool.ruff.lint.per-file-ignores]
 "etspy/tests/*" = ["S101", "D102"]

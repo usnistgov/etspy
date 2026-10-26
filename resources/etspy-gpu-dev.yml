@@ -4,6 +4,7 @@ channels:
   - conda-forge
 dependencies:
 # ensure that cuda version of astra gets installed
+  - python>-3.11
   - astra-toolbox>=2.1=*cuda*
   - cupy
   - hyperspy-base
@@ -12,7 +13,6 @@ dependencies:
   - numpy
   - pystackreg
   - pip
-  - isort
   - myst-nb
   - myst-parser
   - numpydoc
