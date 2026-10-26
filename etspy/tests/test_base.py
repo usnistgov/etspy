@@ -1141,6 +1141,15 @@ class TestAlignOther:
             stack3.metadata.Tomography.xshift == 2 * stack2.metadata.Tomography.xshift  # type: ignore
         )
 
+    def test_align_other_with_yshift_only(self, short_stack):
+        shifted = short_stack.trans_stack(xshift=0, yshift=5, angle=0)
+        stack2 = shifted.deepcopy()
+        stack3 = shifted.align_other(stack2)
+        assert isinstance(stack3, TomoStack)
+        assert (
+            stack3.metadata.Tomography.yshift == 2 * stack2.metadata.Tomography.yshift  # type: ignore
+        )
+
 
 class TestStackRegister:
     """Test StackReg alignment of a TomoStack."""

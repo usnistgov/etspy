@@ -1219,8 +1219,8 @@ class TomoStack(CommonStack):
         )
         no_yshift = any(
             [
-                tomo_meta.xshift is None,
-                tomo_meta.xshift == 0.0,
+                tomo_meta.yshift is None,
+                tomo_meta.yshift == 0.0,
             ],
         )
         no_rotation = any(
