@@ -3,7 +3,7 @@ name = "etspy"
 version = "1.2.0"
 description = "Suite of tools for processing and reconstruction of electron tomography data"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "NIST Public License" }
 authors = [
     { name = "Andrew A. Herzing", email = "andrew.herzing@nist.gov" },
@@ -17,8 +17,7 @@ dependencies = [
     "typing-extensions>=4.12.2,<5.0.0",
     "h5py>=3.12.1,<4.0.0",
     "numpy>1.26",
-    "scikit-image>=0.24,<0.26; python_version == '3.10'",
-    "scikit-image>=0.26,<1.0.0; python_version >= '3.11'",
+    "scikit-image>=0.26,<1.0.0;",
 ]
 
 [dependency-groups]
