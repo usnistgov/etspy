@@ -8,11 +8,8 @@ jobs:
   pypi-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/etspy
     permissions:
-      id-token: write  # MANDATORY for PyPI OIDC authentication
+      id-token: write  # Mandatory for PyPI OIDC authentication
 
     steps:
       - name: Checkout source
