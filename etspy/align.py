@@ -173,7 +173,7 @@ def apply_shifts(
         dtype = data.dtype
         float_dtype = np.float64 if dtype == np.float64 else np.float32
         complex_dtype = np.complex128 if dtype == np.float64 else np.complex64
-        data = data.astype(float_dtype)
+        data = data.astype(float_dtype) - minvals
 
         # Ensure padding covers shift distance on each side (2 * max_shift)
         max_y_shift, max_x_shift = (
@@ -236,7 +236,7 @@ def apply_shifts(
             slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
             slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
         )
-        data = xp.clip(data[:, slice_y, slice_x], minvals, None)
+        data = xp.clip(data[:, slice_y, slice_x], 0, None) + minvals
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
@@ -905,7 +905,7 @@ class CommonLineAligner(StackAligner):
         yshifts = np.zeros_like(coms)
 
         for i in tqdm.tqdm(range(ntilts)):
-            im = self.stack.data[i, :, :]
+            im = self.stack.data[i, :, :] - min(self.stack.data.min(), 0)
             coms[i], _ = ndimage.center_of_mass(im)
             yshifts[i] = com_ref - coms[i]
         return yshifts
