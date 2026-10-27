@@ -61,8 +61,9 @@ def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
     -----
     align
     """
-    total_mass = stack.data.sum((0, 1))
-    mass_std = stack.data.sum(1).std(0)
+    data = stack.data - min(stack.data.min(), 0)
+    total_mass = data.sum((0, 1))
+    mass_std = data.sum(1).std(0)
     mass_std[mass_std == 0] = 1e-5
     mass_ratio = total_mass / mass_std
     best_slice_locations = mass_ratio.argsort()[::-1][0:nslices]
@@ -89,7 +90,7 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     -----
     align
     """
-    sinos = stack.data[:, :, slices]
+    sinos = stack.data[:, :, slices] - min(stack.data.min(), 0)
     com_range = int(sinos.shape[1] / 2)
     y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1])
     total_mass = sinos.sum(1)
