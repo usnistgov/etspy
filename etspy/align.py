@@ -903,9 +903,10 @@ class CommonLineAligner(StackAligner):
         ntilts = self.stack.data.shape[0]
         coms = np.zeros(ntilts)
         yshifts = np.zeros_like(coms)
+        offset = min(self.stack.data.min(), 0)
 
         for i in tqdm.tqdm(range(ntilts)):
-            im = self.stack.data[i, :, :] - min(self.stack.data.min(), 0)
+            im = self.stack.data[i, :, :] - offset
             coms[i], _ = ndimage.center_of_mass(im)
             yshifts[i] = com_ref - coms[i]
         return yshifts
