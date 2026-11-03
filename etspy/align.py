@@ -61,8 +61,9 @@ def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
     -----
     align
     """
-    total_mass = stack.data.sum((0, 1))
-    mass_std = stack.data.sum(1).std(0)
+    data = stack.data - min(stack.data.min(), 0)
+    total_mass = data.sum((0, 1))
+    mass_std = data.sum(1).std(0)
     mass_std[mass_std == 0] = 1e-5
     mass_ratio = total_mass / mass_std
     best_slice_locations = mass_ratio.argsort()[::-1][0:nslices]
@@ -89,7 +90,7 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     -----
     align
     """
-    sinos = stack.data[:, :, slices]
+    sinos = stack.data[:, :, slices] - min(stack.data.min(), 0)
     com_range = int(sinos.shape[1] / 2)
     y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1])
     total_mass = sinos.sum(1)
@@ -172,7 +173,7 @@ def apply_shifts(
         dtype = data.dtype
         float_dtype = np.float64 if dtype == np.float64 else np.float32
         complex_dtype = np.complex128 if dtype == np.float64 else np.complex64
-        data = data.astype(float_dtype)
+        data = data.astype(float_dtype) - minvals
 
         # Ensure padding covers shift distance on each side (2 * max_shift)
         max_y_shift, max_x_shift = (
@@ -235,7 +236,7 @@ def apply_shifts(
             slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
             slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
         )
-        data = xp.clip(data[:, slice_y, slice_x], minvals, None)
+        data = xp.clip(data[:, slice_y, slice_x], 0, None) + minvals
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
@@ -902,9 +903,10 @@ class CommonLineAligner(StackAligner):
         ntilts = self.stack.data.shape[0]
         coms = np.zeros(ntilts)
         yshifts = np.zeros_like(coms)
+        offset = min(self.stack.data.min(), 0)
 
         for i in tqdm.tqdm(range(ntilts)):
-            im = self.stack.data[i, :, :]
+            im = self.stack.data[i, :, :] - offset
             coms[i], _ = ndimage.center_of_mass(im)
             yshifts[i] = com_ref - coms[i]
         return yshifts

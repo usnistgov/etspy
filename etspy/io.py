@@ -509,6 +509,4 @@ def load(
         raise TypeError(msg)
 
     stack.change_data_type("float32")
-    if stack.data.min() < 0:
-        stack.data -= stack.data.min()
     return stack
