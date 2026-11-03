@@ -73,7 +73,7 @@ jobs:
           uses: ./.github/actions/install-with-uv
           with:
             python-version: ${{ matrix.python-version }}
-            with-cuda: ${{ matrix.os == 'ubuntu-latest' }}
+            with-cuda: ${{ matrix.os == 'ubuntu-24.04' }}
             cuda-version: ${{ matrix.cuda-version }}
             uv-options: "--dev"
 
