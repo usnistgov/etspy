@@ -348,7 +348,7 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
     header = {}
     if isinstance(filename, str):
         filename = Path(filename)
-    with filename.open("r") as h:
+    with filename.open("rb") as h:
         header["nx"], header["ny"], header["nz"] = np.fromfile(h, np.uint32, 3)
         header["mode"] = np.fromfile(h, np.uint32, 1)[0]
         header["nxstart"], header["nystart"], header["nzstart"] = np.fromfile(
@@ -364,8 +364,10 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
         header["nextra"] = np.fromfile(h, np.uint32, 1)[0]
         _ = np.fromfile(h, np.uint16, 1)[0]
         _ = np.fromfile(h, np.uint8, 6)
-        strbits = np.fromfile(h, np.int8, 4)
-        header["ext_type"] = "".join([chr(item) for item in strbits])
+        strbits = np.fromfile(h, np.uint8, 4)
+        header["ext_type"] = (
+            bytes(strbits).decode("ascii", errors="ignore").strip("\x00")
+        )
         header["nversion"] = np.fromfile(h, np.uint32, 1)[0]
         _ = np.fromfile(h, np.uint8, 16)
         header["nint"] = np.fromfile(h, np.uint16, 1)[0]
@@ -382,13 +384,13 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
         )
         _ = np.fromfile(h, np.float32, 6)
         header["xorg"], header["yorg"], header["zorg"] = np.fromfile(h, np.float32, 3)
-        strbits = np.fromfile(h, np.int8, 4)
-        header["cmap"] = "".join([chr(item) for item in strbits])
+        strbits = np.fromfile(h, np.uint8, 4)
+        header["cmap"] = bytes(strbits).decode("ascii", errors="ignore").strip("\x00")
         header["stamp"] = np.fromfile(h, np.int8, 4)
         header["rms"] = np.fromfile(h, np.float32, 1)[0]
         header["nlabl"] = np.fromfile(h, np.uint32, 1)[0]
-        strbits = np.fromfile(h, np.int8, 800)
-        header["text"] = "".join([chr(item) for item in strbits])
+        strbits = np.fromfile(h, np.uint8, 800)
+        header["text"] = bytes(strbits).decode("ascii", errors="ignore").strip("\x00")
         header["ext_header"] = np.fromfile(h, np.int16, int(header["nextra"] / 2))
     return header
 
