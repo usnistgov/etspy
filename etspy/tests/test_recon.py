@@ -255,6 +255,92 @@ class TestReconRun:
         assert isinstance(rec, np.ndarray)
 
 
+@pytest.fixture(scope="module")
+def phantom_sinogram():
+    """Create a three-level phantom and its limited-angle sinogram."""
+    ny = 48
+    phantom = np.zeros((ny, ny), np.float32)
+    phantom[12:36, 12:36] = 0.5
+    phantom[20:28, 20:28] = 1.0
+    tilts = np.arange(-70, 71, 2.0)
+    vol_geom = astra.create_vol_geom(ny, ny)
+    proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
+    proj_id = astra.create_projector("strip", proj_geom, vol_geom)
+    _, sino = astra.create_sino(phantom, proj_id)
+    astra.projector.delete(proj_id)
+    return phantom, sino[:, :, np.newaxis].astype(np.float32), tilts
+
+
+class TestDart:
+    """Test the accuracy of the DART algorithm."""
+
+    def test_dart_beats_sart(self, phantom_sinogram):
+        phantom, sino, tilts = phantom_sinogram
+        niterations = 10 * len(tilts)  # SART updates one projection per iteration
+        np.random.seed(0)
+        dart = recon.run(
+            sino,
+            tilts,
+            "DART",
+            niterations=niterations,
+            gray_levels=[0.0, 0.5, 1.0],
+            dart_iterations=5,
+            p=0.85,
+            show_progressbar=False,
+        )
+        sart = recon.run(
+            sino,
+            tilts,
+            "SART",
+            niterations=niterations,
+            show_progressbar=False,
+        )
+        dart_err = np.sqrt(np.mean((dart[0] - phantom) ** 2))
+        sart_err = np.sqrt(np.mean((sart[0] - phantom) ** 2))
+        assert dart_err < 0.5 * sart_err
+
+    def test_dart_non_integer_gray_levels(self):
+        cfg = {"option": {}}
+        gray_levels, thresholds = recon._dart_setup([1.0, 0.0, 0.5], cfg)  # noqa: SLF001
+        np.testing.assert_allclose(gray_levels, [0.0, 0.5, 1.0])
+        np.testing.assert_allclose(thresholds, [0.25, 0.75])
+        assert cfg["option"]["MinConstraint"] == 0.0
+        assert cfg["option"]["MaxConstraint"] == 1.0
+
+    def test_dart_not_clamped_to_255(self, phantom_sinogram):
+        _, sino, tilts = phantom_sinogram
+        scale = 1000.0
+        rec = recon.run(
+            sino * scale,
+            tilts,
+            "DART",
+            niterations=len(tilts),
+            gray_levels=[0.0, 0.5 * scale, scale],
+            dart_iterations=2,
+            show_progressbar=False,
+        )
+        assert rec.max() > 255  # noqa: PLR2004
+
+    def test_run_dart_does_not_mutate_cfg(self, phantom_sinogram):
+        _, sino, tilts = phantom_sinogram
+        ny = sino.shape[1]
+        vol_geom = astra.create_vol_geom(ny, ny)
+        proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
+        cfg = {"type": "SART", "option": {"MinConstraint": 0.0}}
+        recon.run_dart(
+            sino[:, :, 0],
+            10,
+            1,
+            0.9,
+            np.array([0.25, 0.75]),
+            np.array([0.0, 0.5, 1.0]),
+            cfg,
+            vol_geom,
+            proj_geom,
+        )
+        assert cfg == {"type": "SART", "option": {"MinConstraint": 0.0}}
+
+
 class TestAstraError:
     """Test Astra toolbox errors."""
 
