@@ -486,7 +486,7 @@ def load(
         Accepted formats (.MRC, .DM3, .DM4)
 
     tilts
-        List of floats indicating the specimen tilt at each projection (optional).If provided, these
+        Tilt angle (in degrees) of each projection (optional). If provided, these
         values override any tilts read from the file(s). Must contain one value per
         projection.
 
@@ -554,5 +554,6 @@ def load(
 
     if tilts is not None:
         _apply_user_tilts(stack, tilts)
+
     stack.change_data_type("float32")
     return stack
