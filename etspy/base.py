@@ -2301,6 +2301,12 @@ class RecStack(CommonStack):
             if not np.any(self.rotator.slider_values):
                 logger.warning("Rotation angles have not been defined")
                 return None
+        else:
+            msg = (
+                "No rotation angles were provided and no rotator is defined. Provide "
+                "rotation_angles or use RecStack.interactive_rotation() first."
+            )
+            raise ValueError(msg)
 
         rotation_matrix, offset = calculate_rotation(rotation_angles, self.data.shape)
         rotated = self.deepcopy()
@@ -2328,10 +2334,10 @@ class RecStack(CommonStack):
 
             rotated.data = cp.asnumpy(rotated_gpu)
         else:
-            msg = "CUDA selected buy CuPy is unavailable."
+            msg = "CUDA selected but CuPy is unavailable."
             raise ValueError(msg)
 
         rotated.rotation_angles = rotation_angles
         rotated.rotation_matrix = rotation_matrix
-        rotated.rotation_offet = offset
+        rotated.rotation_offset = offset
         return rotated
