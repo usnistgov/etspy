@@ -172,6 +172,22 @@ class TestAlignFunctions:
         with pytest.raises(ValueError, match=(r"Resolution should be less than 0.5")):
             claligner.calculate_shifts()
 
+    @pytest.mark.parametrize("com_ref_index", [0, 2, 4])
+    def test_calc_yshifts_relative_to_reference(self, com_ref_index):
+        # Gaussian blob displaced perpendicular to the tilt axis by known amounts
+        offsets = np.array([-3.0, -1.5, 0.0, 2.0, 4.5])
+        yy, xx = np.mgrid[0:64, 0:64]
+        data = np.stack(
+            [np.exp(-((yy - 32 - d) ** 2 + (xx - 32) ** 2) / 50) for d in offsets],
+        ).astype(np.float32)
+        stack = etspy.TomoStack(data, tilts=np.linspace(-60, 60, 5))
+        claligner = etspy.align.CommonLineAligner(stack, com_ref_index=com_ref_index)
+        yshifts = claligner._calc_yshifts(com_ref_index)  # noqa: SLF001
+        np.testing.assert_allclose(
+            yshifts,
+            offsets[com_ref_index] - offsets,
+            atol=0.01,
+        )
 
 @pytest.mark.skipif(not cupy_in_test_env, reason="cupy not available")
 class TestCUDAAlignFunctions:

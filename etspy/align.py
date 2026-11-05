@@ -845,10 +845,16 @@ class CommonLineAligner(StackAligner):
             show_progressbar=show_progressbar,
             **kwargs,
         )
+        if start is None:
+            start = stack.data.shape[0] // 2
         self.com_ref_index = kwargs.get("com_ref_index")
         self.cl_ref_index = kwargs.get("cl_ref_index")
         self.cl_resolution = kwargs.get("cl_resolution", 0.05)
         self.cl_div_factor = kwargs.get("cl_div_factor", 8)
+        if self.com_ref_index is None:
+            self.com_ref_index = self.start
+        if self.cl_ref_index is None:
+            self.cl_ref_index = self.start
 
     def calculate_shifts(self) -> np.ndarray:
         """Calculate shifts using combined center of mass and common line methods."""
@@ -856,11 +862,6 @@ class CommonLineAligner(StackAligner):
             "Performing stack registration using combined "
             "center of mass and common line methods",
         )
-        if self.com_ref_index is None:
-            self.com_ref_index = self.start
-        if self.cl_ref_index is None:
-            self.cl_ref_index = self.start
-
         # explicit type casts for type checking
         self.com_ref_index = cast("int", self.com_ref_index)
         self.cl_ref_index = cast("int", self.cl_ref_index)
@@ -889,7 +890,8 @@ class CommonLineAligner(StackAligner):
         logger.info("Common line reference slice: %s", self.cl_ref_index)
         xshifts = np.zeros(self.stack.data.shape[0])
         yshifts = np.zeros(self.stack.data.shape[0])
-        yshifts = self._calc_yshifts(self.com_ref_index)
+        com_ref_index = cast("int", self.com_ref_index)
+        yshifts = self._calc_yshifts(com_ref_index)
         xshifts = self.calc_shifts_cl(
             self.cl_ref_index,
             self.cl_resolution,
@@ -898,17 +900,31 @@ class CommonLineAligner(StackAligner):
         shifts = np.stack([yshifts, xshifts], axis=1)
         return shifts
 
-    def _calc_yshifts(self, com_ref):
-        """Calculate using center of mass tracking."""
+    def _calc_yshifts(self, com_ref_index: int) -> np.ndarray:
+        """
+        Calculate Y-shifts using center of mass tracking.
+
+        Shifts are calculated so that the center of mass of each projection
+        matches that of the reference projection.
+
+        Parameters
+        ----------
+        com_ref_index
+            Tilt index of the reference projection.
+
+        Returns
+        -------
+        yshifts : :py:class:`~numpy.ndarray`
+            Shifts perpendicular to the tilt axis for each projection
+        """
         ntilts = self.stack.data.shape[0]
         coms = np.zeros(ntilts)
-        yshifts = np.zeros_like(coms)
         offset = min(self.stack.data.min(), 0)
 
         for i in tqdm.tqdm(range(ntilts)):
             im = self.stack.data[i, :, :] - offset
             coms[i], _ = ndimage.center_of_mass(im)
-            yshifts[i] = com_ref - coms[i]
+        yshifts = coms[com_ref_index] - coms
         return yshifts
 
     def calc_shifts_cl(
