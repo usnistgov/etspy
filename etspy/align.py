@@ -142,6 +142,12 @@ def apply_shifts(
     -----
     align
     """
+    if cuda and not has_cupy:
+        msg = (
+            "CUDA was requested (cuda=True), but CuPy is not "
+            "available. Use cuda=False to apply the shifts on the CPU."
+        )
+        raise ValueError(msg)
     shifted = stack.deepcopy()
     xp = cp if cuda else np
 
