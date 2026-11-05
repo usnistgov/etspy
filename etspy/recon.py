@@ -59,6 +59,10 @@ def run_alg(
     proj_id = astra.create_projector("strip", proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, sino)
+
+    # cfg is shared between dask threads.  Copy it so that it can never be mutated
+    cfg = copy.deepcopy(cfg)
+
     cfg["ReconstructionDataId"] = rec_id
     cfg["ProjectorId"] = proj_id
     cfg["ProjectionDataId"] = sino_id
@@ -165,7 +169,7 @@ def run_dart(
     return curr_rec
 
 
-def run(  # noqa: PLR0912, PLR0913, PLR0915
+def run(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917
     stack: np.ndarray,
     tilts: np.ndarray,
     method: Literal["FBP", "SIRT", "SART", "DART"],

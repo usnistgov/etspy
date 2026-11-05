@@ -327,3 +327,39 @@ class TestAstraError:
                 thresh=0,
                 cuda=False,
             )
+
+
+class TestRunAlgThreadSafety:
+    """Test that CPU reconstructions do not share mutable ASTRA state."""
+
+    def test_run_alg_does_not_mutate_cfg(self):
+        ny = 32
+        tilts = np.linspace(-70, 70, 15)
+        vol_geom = astra.create_vol_geom(ny, ny)
+        proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
+        cfg = {"type": "SIRT", "option": {"MinConstraint": 0.0}}
+        sino = np.random.default_rng(0).random((len(tilts), ny), np.float32)
+        recon.run_alg(sino, 2, cfg, vol_geom, proj_geom)
+        assert cfg == {"type": "SIRT", "option": {"MinConstraint": 0.0}}
+
+    def test_multithreaded_matches_serial(self):
+        # every slice is different, so any mix-up between threads would show
+        stack = np.random.default_rng(0).random((15, 32, 16), np.float32)
+        tilts = np.linspace(-70, 70, 15)
+        serial = recon.run(
+            stack,
+            tilts,
+            "SIRT",
+            niterations=5,
+            ncores=1,
+            show_progressbar=False,
+        )
+        threaded = recon.run(
+            stack,
+            tilts,
+            "SIRT",
+            niterations=5,
+            ncores=4,
+            show_progressbar=False,
+        )
+        np.testing.assert_array_equal(threaded, serial)
