@@ -23,7 +23,7 @@ from etspy import datasets as ds
 from etspy.align import TiltCOMAligner, TiltMaxImageAligner
 from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
 
-from . import load_serialem_multiframe_data
+from . import count_astra_objects, load_serialem_multiframe_data
 
 if TYPE_CHECKING:
     from hyperspy.axes import UniformDataAxis as Uda
@@ -1562,3 +1562,25 @@ class TestRecStackForwardProjectCuda:
         sino = rec.forward_project(tilts, cuda=True)
         assert isinstance(sino, TomoStack)
         assert isinstance(sino.tilts, TomoTilts)
+
+
+class TestAstraObjectCleanup:
+    """Test that TomoStack/RecStack methods free the ASTRA objects they create."""
+
+    pytestmark = pytest.mark.usefixtures("astra_sentinel")
+
+    @pytest.mark.parametrize("shape", [(32, 32), (3, 32, 32)])
+    def test_forward_project_frees_astra_objects(self, shape):
+        rec = RecStack(np.random.default_rng(0).random(shape, np.float32))
+        before = count_astra_objects()
+        rec.forward_project(np.linspace(-70, 70, 15), cuda=False)
+        assert count_astra_objects() == before
+
+    def test_recon_error_frees_astra_objects(self):
+        stack = TomoStack(
+            np.random.default_rng(0).random((15, 32, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        before = count_astra_objects()
+        stack.recon_error(iterations=3, cuda=False)
+        assert count_astra_objects() == before

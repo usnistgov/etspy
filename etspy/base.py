@@ -2189,34 +2189,23 @@ class RecStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
-        if len(self.data.shape) == 2:  # noqa: PLR2004
-            nz, ny = self.data.shape
-            ntilts = len(tilts)
-            thetas = np.deg2rad(tilts)
-            vol_geom = astra.create_vol_geom(nz, ny)
-            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
 
-            if cuda:
-                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-            else:
-                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-            proj_id, proj = astra.create_sino(self.data, proj_id)
-            proj = proj[:, :, np.newaxis]
-        else:
-            nx, nz, ny = self.data.shape
-            ntilts = len(tilts)
-            proj = np.zeros([ntilts, ny, nx])
-            thetas = np.deg2rad(tilts)
-            vol_geom = astra.create_vol_geom(nz, ny)
-            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
-
-            if cuda:
-                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-            else:
-                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+        data = self.data[np.newaxis] if self.data.ndim == 2 else self.data  # noqa: PLR2004
+        nx, nz, ny = data.shape
+        proj = np.zeros([len(tilts), ny, nx])
+        vol_geom = astra.create_vol_geom(nz, ny)
+        proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
+        proj_id = astra.create_projector(
+            "cuda" if cuda else "linear",
+            proj_geom,
+            vol_geom,
+        )
+        try:
             for i in range(nx):
-                _, proj[:, :, i] = astra.create_sino(self.data[i, :, :], proj_id)
-        astra.clear()
+                sino_id, proj[:, :, i] = astra.create_sino(data[i], proj_id)
+                astra.data2d.delete(sino_id)
+        finally:
+            astra.projector.delete(proj_id)
         return TomoStack(proj, tilts)
 
     def plot_slices(

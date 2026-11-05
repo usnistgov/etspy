@@ -1,5 +1,9 @@
 """Tests for the ETSpy package."""
 
+import contextlib
+import io
+
+import astra
 from hyperspy.io import load as hs_load
 
 from etspy.api import etspy_path, load
@@ -25,3 +29,17 @@ def load_serialem_multiframe_data():
     files = list(dirname.glob("*.mrc"))
     stack = load(files)
     return stack
+
+
+def count_astra_objects() -> int:
+    """Count the ASTRA data, projector, and algorithm objects currently allocated."""
+    total = 0
+    for module in (astra.data2d, astra.projector, astra.algorithm):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            module.info()
+        # object rows are listed between two dashed separator lines
+        sections = buf.getvalue().split("-" * 41)
+        if len(sections) > 1:
+            total += len([row for row in sections[1].splitlines() if row.strip()])
+    return total

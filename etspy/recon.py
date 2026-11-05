@@ -68,8 +68,20 @@ def run_alg(
     cfg["ProjectorId"] = proj_id
     cfg["ProjectionDataId"] = sino_id
     alg_id = astra.algorithm.create(cfg)
-    astra.algorithm.run(alg_id, iters)
-    return astra.data2d.get(rec_id)
+    try:
+        astra.algorithm.run(alg_id, iters)
+        return astra.data2d.get(rec_id)
+    finally:
+        astra.algorithm.delete(alg_id)
+        astra.data2d.delete([rec_id, sino_id])
+        astra.projector.delete(proj_id)
+
+
+def _forward_project(rec: np.ndarray, proj_id: int) -> np.ndarray:
+    """Forward project a slice, deleting the temporary ASTRA sinogram object."""
+    sino_id, sino = astra.create_sino(rec, proj_id)
+    astra.data2d.delete(sino_id)
+    return sino
 
 
 def run_dart(
@@ -163,7 +175,7 @@ def run_dart(
             # zero so the forward projection of the volume only contains the
             # fixed pixels
             fixed_rec = np.where(free, 0, segmented).astype(np.float32)
-            _, fixed_sino = astra.create_sino(fixed_rec, proj_id)
+            fixed_sino = _forward_project(fixed_rec, proj_id)
 
             # Reconstruct only the free pixels from the residual sinogram
             astra.data2d.store(rec_id, np.where(free, dart_rec, 0))
@@ -185,7 +197,7 @@ def run_dart(
     return dart_rec
 
 
-def run(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917
+def run(  # noqa: PLR0912, PLR0913, PLR0915
     stack: np.ndarray,
     tilts: np.ndarray,
     method: Literal["FBP", "SIRT", "SART", "DART"],
@@ -331,32 +343,35 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917
         proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
         rec_id = astra.data2d.create("-vol", vol_geom)
         sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
         cfg["ReconstructionDataId"] = rec_id
         cfg["ProjectorId"] = proj_id
         cfg["ProjectionDataId"] = sino_id
-        cfg["ReconstructionDataId"] = rec_id
         alg = astra.algorithm.create(cfg)
 
-        for i in tqdm.tqdm(range(nx), disable=not (show_progressbar)):
-            astra.data2d.store(sino_id, stack[:, :, i])
-            astra.data2d.store(rec_id, np.zeros([thickness, ny]))
-            if method.lower() == "dart":
-                rec[i, :, :] = run_dart(
-                    stack[:, :, i],
-                    niterations,
-                    dart_iterations,
-                    p,
-                    thresholds,
-                    gray_levels,  # type: ignore
-                    cfg,
-                    vol_geom,
-                    proj_geom,
-                    cuda=True,
-                )
-            else:
-                astra.algorithm.run(alg, niterations)
-                rec[i, :, :] = astra.data2d.get(rec_id)
+        try:
+            for i in tqdm.tqdm(range(nx), disable=not (show_progressbar)):
+                astra.data2d.store(sino_id, stack[:, :, i])
+                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
+                if method.lower() == "dart":
+                    rec[i, :, :] = run_dart(
+                        stack[:, :, i],
+                        niterations,
+                        dart_iterations,
+                        p,
+                        thresholds,
+                        gray_levels,
+                        cfg,
+                        vol_geom,
+                        proj_geom,
+                        cuda=True,
+                    )
+                else:
+                    astra.algorithm.run(alg, niterations)
+                    rec[i, :, :] = astra.data2d.get(rec_id)
+        finally:
+            astra.algorithm.delete(alg)
+            astra.data2d.delete([rec_id, sino_id])
+            astra.projector.delete(proj_id)
     else:
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
@@ -424,7 +439,6 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917
             for i, result in enumerate(results):
                 rec[i] = result
 
-    astra.clear()
     return rec
 
 
@@ -593,14 +607,18 @@ def astra_error(
     rec = np.zeros([iterations, ny, ny], np.float32)
     residual_error = np.zeros(iterations)
 
-    for i in tqdm.tqdm(range(iterations)):
-        astra.algorithm.run(alg, 1)
-        rec[i] = astra.data2d.get(rec_id)
-        if cuda:  # coverage: nocuda
-            residual_error[i] = astra.algorithm.get_res_norm(alg)
-        else:
-            _, curr = astra.create_sino(rec[i], proj_id)
-            residual_error[i] = np.linalg.norm(sinogram - curr)
-    astra.clear()
+    try:
+        for i in tqdm.tqdm(range(iterations)):
+            astra.algorithm.run(alg, 1)
+            rec[i] = astra.data2d.get(rec_id)
+            if cuda:  # coverage: nocuda
+                residual_error[i] = astra.algorithm.get_res_norm(alg)
+            else:
+                curr = _forward_project(rec[i], proj_id)
+                residual_error[i] = np.linalg.norm(sinogram - curr)
+    finally:
+        astra.algorithm.delete(alg)
+        astra.data2d.delete([rec_id, sino_id])
+        astra.projector.delete(proj_id)
 
     return rec, residual_error

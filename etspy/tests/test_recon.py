@@ -11,6 +11,8 @@ from etspy import datasets as ds
 from etspy import recon
 from etspy.base import RecStack, TomoStack
 
+from . import count_astra_objects
+
 
 @pytest.fixture(scope="module")
 def aligned_full_stack():
@@ -449,3 +451,62 @@ class TestRunAlgThreadSafety:
             show_progressbar=False,
         )
         np.testing.assert_array_equal(threaded, serial)
+
+
+class TestAstraObjectCleanup:
+    """Test that reconstructions free the ASTRA objects they create."""
+
+    pytestmark = pytest.mark.usefixtures("astra_sentinel")
+
+    @pytest.fixture
+    def small_stack(self):
+        return (
+            np.random.default_rng(0).random((15, 32, 3), np.float32),
+            np.linspace(-70, 70, 15),
+        )
+
+    def test_run_alg_frees_astra_objects(self, small_stack):
+        stack, tilts = small_stack
+        ny = stack.shape[1]
+        vol_geom = astra.create_vol_geom(ny, ny)
+        proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
+        before = count_astra_objects()
+        recon.run_alg(stack[:, :, 0], 2, {"type": "SIRT"}, vol_geom, proj_geom)
+        assert count_astra_objects() == before
+
+    @pytest.mark.parametrize("method", ["FBP", "SIRT", "SART"])
+    def test_run_frees_astra_objects(self, small_stack, method):
+        stack, tilts = small_stack
+        before = count_astra_objects()
+        recon.run(stack, tilts, method, niterations=2, show_progressbar=False)
+        assert count_astra_objects() == before
+
+    def test_run_dart_frees_astra_objects(self, small_stack):
+        stack, tilts = small_stack
+        before = count_astra_objects()
+        recon.run(
+            stack,
+            tilts,
+            "DART",
+            niterations=2,
+            gray_levels=[0.0, 0.5, 1.0],
+            dart_iterations=2,
+            show_progressbar=False,
+        )
+        assert count_astra_objects() == before
+
+    def test_astra_error_frees_astra_objects(self, small_stack):
+        stack, tilts = small_stack
+        before = count_astra_objects()
+        recon.astra_error(stack[:, :, 0], tilts, iterations=3)
+        assert count_astra_objects() == before
+
+    def test_run_keeps_other_astra_objects(self, small_stack):
+        stack, tilts = small_stack
+        user_vol = np.ones((8, 8), np.float32)
+        user_id = astra.data2d.create("-vol", astra.create_vol_geom(8, 8), user_vol)
+        try:
+            recon.run(stack, tilts, "SIRT", niterations=2, show_progressbar=False)
+            np.testing.assert_array_equal(astra.data2d.get(user_id), user_vol)
+        finally:
+            astra.data2d.delete(user_id)

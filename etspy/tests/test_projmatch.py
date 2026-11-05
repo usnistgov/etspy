@@ -12,6 +12,8 @@ import etspy.api as etspy
 from etspy import projmatch
 from etspy import simulation as sim
 
+from . import count_astra_objects
+
 RMSE_THRESH = 0.1
 CORR_COEFF = 0.95
 NOISE_THRESH = 0.1
@@ -105,3 +107,23 @@ class TestProjmatchAlignment:
             atol=1e-2,
             err_msg="Shifts in aligned stack do not match expected values",
         )
+
+
+class TestAstraObjectCleanup:
+    """Test that projection matching frees the ASTRA objects it creates."""
+
+    pytestmark = pytest.mark.usefixtures("astra_sentinel")
+
+    def test_calculate_shifts_frees_astra_objects(self):
+        stack = etspy.TomoStack(
+            np.random.default_rng(0).random((15, 32, 1), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        before = count_astra_objects()
+        pm = projmatch.ProjMatch(
+            stack,
+            cuda=False,
+            params={"levels": [2, 1], "iterations": 3},
+        )
+        pm.calculate_shifts()
+        assert count_astra_objects() == before

@@ -9,6 +9,8 @@ from hyperspy.signals import Signal2D
 from etspy import simulation as sim
 from etspy.base import TomoStack
 
+from . import count_astra_objects
+
 
 @pytest.fixture(scope="module")
 def catalyst_proj():
@@ -147,3 +149,15 @@ class TestModifications:
             ),
         ):
             sim.add_noise(catalyst_proj, "bad value")  # type: ignore
+
+
+class TestAstraObjectCleanup:
+    """Test that simulations free the ASTRA objects they create."""
+
+    pytestmark = pytest.mark.usefixtures("astra_sentinel")
+
+    def test_create_model_tilt_series_frees_astra_objects(self):
+        model = np.random.default_rng(0).random((3, 32, 32), np.float32)
+        before = count_astra_objects()
+        sim.create_model_tilt_series(model, np.linspace(-70, 70, 15), cuda=False)
+        assert count_astra_objects() == before

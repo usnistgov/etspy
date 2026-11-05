@@ -99,6 +99,11 @@ class ProjMatch:
             self.recon_iterations = 1
         else:
             self.recon_iterations = self.params.get("recon_iterations", 20)
+        # ASTRA objects, created per downsampling level by update_geometries
+        self.rec_id: int | None = None
+        self.sino_id: int | None = None
+        self.proj_id: int | None = None
+        self.algorithm: int | None = None
         self.create_recon_algorithm(self.recon_algorithm, self.cuda)
         self.relax = self.params.get("relax", 0.1)
         self.minstep = self.params.get("minstep", 0.01)
@@ -130,9 +135,6 @@ class ProjMatch:
                 sino_rebin = sino_shifted.copy()
 
             current_shifts = np.zeros(self.nangles)
-            self.rec_id = None
-            self.proj_id = None
-            self.sino_id = None
             self.update_geometries(sino_rebin.shape[1])
 
             mass = 0
@@ -195,6 +197,7 @@ class ProjMatch:
                     [self.shift_update, self.total_shifts[np.newaxis, :]],
                     axis=0,
                 )
+        self.delete_astra_objects()
 
         for i in range(len(self.levels)):
             self.sino_update[i] = Signal2D(self.sino_update[i])
@@ -241,7 +244,7 @@ class ProjMatch:
             Number of pixels in the Y-dimension in the current downsampled sinogram.
 
         """
-        astra.clear()
+        self.delete_astra_objects()
         proj_geom = astra.create_proj_geom("parallel", 1.0, current_ny, self.thetas)
         vol_geom = astra.create_vol_geom((current_ny, current_ny))
         self.rec_id = astra.data2d.create("-vol", vol_geom)
@@ -260,12 +263,28 @@ class ProjMatch:
         self.recon_config["ReconstructionDataId"] = self.rec_id
         self.algorithm = astra.algorithm.create(self.recon_config)
 
+    def delete_astra_objects(self):
+        """Delete the ASTRA objects created for the current downsampling level."""
+        if self.algorithm is not None:
+            astra.algorithm.delete(self.algorithm)
+            self.algorithm = None
+        if self.rec_id is not None:
+            astra.data2d.delete(self.rec_id)
+            self.rec_id = None
+        if self.sino_id is not None:
+            astra.data2d.delete(self.sino_id)
+            self.sino_id = None
+        if self.proj_id is not None:
+            astra.projector.delete(self.proj_id)
+            self.proj_id = None
+
     def forward_project(
         self,
         current_rec: np.ndarray,
     ) -> np.ndarray:
         """Forward project the current reconstruction."""
-        _, proj = astra.create_sino(current_rec, self.proj_id)
+        sino_id, proj = astra.create_sino(current_rec, self.proj_id)
+        astra.data2d.delete(sino_id)
         return proj
 
     def reconstruct(
