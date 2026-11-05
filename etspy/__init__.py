@@ -4,9 +4,53 @@ import importlib.metadata
 
 __version__ = importlib.metadata.version("etspy")
 
+import logging
+import sys
 from collections.abc import Callable
 from enum import Enum
 from typing import Literal, get_args, get_type_hints
+
+
+def set_log_level(level: int | str = "INFO"):
+    """
+    Set the log level of all ETSpy modules and display their messages.
+
+    By default, Python only displays warnings and errors, so ETSpy's
+    informational messages (*e.g.* where tilt angles were loaded from, whether
+    CUDA was detected, and the shifts and rotations calculated during alignment)
+    are hidden. Calling this function sets the level of the ``etspy`` logger and
+    adds a handler that prints its messages to standard output. Calling it again
+    changes the level without adding another handler. The log levels of other
+    packages are not changed.
+
+    Parameters
+    ----------
+    level
+        The log level to set, as accepted by :py:meth:`logging.Logger.setLevel`
+        (*e.g.* ``"DEBUG"``, ``"INFO"``, ``"WARNING"``, or ``"ERROR"``). Default
+        is ``"INFO"``.
+
+    Examples
+    --------
+    >>> import etspy.api as etspy
+    >>> etspy.set_log_level("INFO")
+
+    Group
+    -----
+    utilities
+    """
+    etspy_logger = logging.getLogger("etspy")
+    etspy_logger.setLevel(level)
+    for handler in etspy_logger.handlers:
+        if getattr(handler, "_etspy_handler", False):
+            break
+    else:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(
+            logging.Formatter("%(levelname)s | ETSpy | %(message)s (%(name)s)"),
+        )
+        handler._etspy_handler = True  # type: ignore[attr-defined]  # noqa: SLF001
+        etspy_logger.addHandler(handler)
 
 
 class AlignmentMethod(str, Enum):

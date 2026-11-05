@@ -18,7 +18,6 @@ from scipy.ndimage import convolve, gaussian_filter
 
 ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def run_alg(

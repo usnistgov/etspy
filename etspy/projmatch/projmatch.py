@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 DIM_2D = 2
 
