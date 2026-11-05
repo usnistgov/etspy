@@ -63,7 +63,7 @@ class ProjMatch:
 
         """
         self.stack = stack
-        if len(self.stack.data.squeeze()) == DIM_2D:
+        if self.stack.data.squeeze().ndim == DIM_2D:
             self.sino = stack.data.squeeze()
         elif type(nslice) is int:
             self.sino = stack.data[:, :, nslice]

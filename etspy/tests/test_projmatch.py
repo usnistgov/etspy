@@ -127,3 +127,23 @@ class TestAstraObjectCleanup:
         )
         pm.calculate_shifts()
         assert count_astra_objects() == before
+
+
+class TestProjMatchInit:
+    """Test selection of the sinogram used for projection matching."""
+
+    @pytest.mark.parametrize(
+        ("ntilts", "nslice", "expected"),
+        [(2, None, 1), (5, 0, 0)],
+    )
+    def test_sinogram_selection(self, ntilts, nslice, expected):
+        data = np.random.default_rng(0).random((ntilts, 16, 3), np.float32)
+        stack = etspy.TomoStack(data, tilts=np.linspace(-60, 60, ntilts))
+        pm = projmatch.ProjMatch(stack, nslice=nslice, cuda=False)
+        np.testing.assert_array_equal(pm.sino, data[:, :, expected])
+
+    def test_single_sinogram_stack(self):
+        data = np.random.default_rng(0).random((5, 16, 1), np.float32)
+        stack = etspy.TomoStack(data, tilts=np.linspace(-60, 60, 5))
+        pm = projmatch.ProjMatch(stack, cuda=False)
+        np.testing.assert_array_equal(pm.sino, data[:, :, 0])
