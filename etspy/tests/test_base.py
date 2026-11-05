@@ -1584,3 +1584,33 @@ class TestAstraObjectCleanup:
         before = count_astra_objects()
         stack.recon_error(iterations=3, cuda=False)
         assert count_astra_objects() == before
+
+
+class TestRecStackRotateVolume:
+    """Test applying a 3D rotation to a RecStack."""
+
+    @pytest.fixture
+    def volume(self):
+        vol = np.zeros((9, 9, 9), np.float32)
+        vol[2:4, 1:3, 5:8] = 1
+        return vol
+
+    def test_rotate_volume_zero(self, volume):
+        rotated = RecStack(volume).rotate_volume([0, 0, 0])
+        np.testing.assert_allclose(rotated.data, volume, atol=1e-6)
+        np.testing.assert_array_equal(rotated.rotation_angles, [0, 0, 0])
+        np.testing.assert_allclose(rotated.rotation_matrix, np.eye(3))
+        np.testing.assert_allclose(rotated.rotation_offset, 0, atol=1e-12)
+
+    @pytest.mark.parametrize(
+        ("angles", "k", "axes"),
+        [([90, 0, 0], 3, (1, 2)), ([0, 90, 0], 1, (0, 2)), ([0, 0, 90], 3, (0, 1))],
+    )
+    def test_rotate_volume_90(self, volume, angles, k, axes):
+        rotated = RecStack(volume).rotate_volume(angles)
+        np.testing.assert_allclose(rotated.data, np.rot90(volume, k, axes), atol=1e-4)
+        assert rotated.rotation_offset is not None
+
+    def test_rotate_volume_no_angles(self, volume):
+        with pytest.raises(ValueError, match="No rotation angles were provided"):
+            RecStack(volume).rotate_volume()
