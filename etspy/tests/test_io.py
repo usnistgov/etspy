@@ -1,5 +1,6 @@
 """Tests for the IO functionality of ETSpy."""
 
+import logging
 from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
@@ -153,6 +154,30 @@ class TestLoadUserTilts:
         assert stack.tilts.data.shape == (3, 2, 1)
         np.testing.assert_allclose(stack.tilts.data[:, 0, 0], tilts)
         np.testing.assert_allclose(stack.tilts.data[:, 1, 0], tilts)
+
+    def test_load_user_tilts_differ_from_file_warns(self, caplog):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        with caplog.at_level(logging.WARNING, logger="etspy.io"):
+            etspy.load(filename, tilts=np.linspace(-60, 60, 77))
+        assert (
+            "Overriding tilts found in file (-76.0 to 76.0 degrees, 77 values) with "
+            "user-provided tilts (-60.0 to 60.0 degrees)"
+        ) in caplog.text
+
+    def test_load_user_tilts_match_file_no_warning(self, caplog):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        file_tilts = etspy.load(filename).tilts.data.squeeze()
+        with caplog.at_level(logging.WARNING, logger="etspy.io"):
+            etspy.load(filename, tilts=file_tilts)
+        assert "Overriding tilts" not in caplog.text
+
+    def test_load_user_tilts_no_file_tilts_no_warning(self, caplog, tmp_path):
+        filename = tmp_path / "no_tilts.hspy"
+        TomoStack(np.zeros((5, 8, 8), np.float32)).save(filename)
+        with caplog.at_level(logging.WARNING, logger="etspy.io"):
+            stack = etspy.load(filename, tilts=np.arange(5.0))
+        assert "Overriding tilts" not in caplog.text
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), np.arange(5.0))
 
     def test_load_user_tilts_wrong_length(self):
         filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"

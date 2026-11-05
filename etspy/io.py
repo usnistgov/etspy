@@ -446,7 +446,28 @@ def _apply_user_tilts(stack: TomoStack, tilts: list[float] | np.ndarray):
         # multiframe stack: repeat each tilt for every frame at that tilt
         nframes = stack.data.shape[1]
         tilts = np.tile(tilts[:, np.newaxis], (1, nframes))
-    logger.info("Using user-provided tilts")
+
+    # Warn if the file contained tilts that differ from those provided (tilts
+    # that were not found in the file are stored as all zeros)
+    file_tilts = stack.tilts.data
+    if (
+        np.any(file_tilts != 0)
+        and file_tilts.size == tilts.size
+        and not np.allclose(file_tilts.reshape(tilts.shape), tilts)
+    ):
+        logger.warning(
+            "Overriding tilts found in file (%.1f to %.1f degrees, %d values) with "
+            "user-provided tilts (%.1f to %.1f degrees); maximum difference is "
+            "%.2f degrees",
+            file_tilts.min(),
+            file_tilts.max(),
+            file_tilts.shape[0],
+            tilts.min(),
+            tilts.max(),
+            np.abs(file_tilts.reshape(tilts.shape) - tilts).max(),
+        )
+    else:
+        logger.info("Using user-provided tilts")
     stack.tilts = tilts
 
 
