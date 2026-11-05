@@ -116,6 +116,54 @@ class TestLoadMRC:
             etspy.io.get_mrc_tilts(stack, filename)
 
 
+class TestLoadUserTilts:
+    """Test that tilts passed to load() override any tilts from the file."""
+
+    def test_load_mrc_user_tilts(self):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        tilts = np.linspace(-60, 60, 77)
+        stack = etspy.load(filename, tilts=tilts)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
+
+    def test_load_mrc_user_tilts_list(self):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        tilts = list(range(77))
+        stack = etspy.load(filename, tilts=tilts)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
+
+    def test_load_hspy_user_tilts(self):
+        filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hspy"
+        tilts = np.linspace(-60, 60, 77)
+        stack = etspy.load(filename, tilts=tilts)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
+
+    def test_load_dm_series_user_tilts(self):
+        dirname = etspy_path / "tests" / "test_data" / "DM_Series_Test"
+        files = list(dirname.glob("*.dm3"))
+        tilts = np.array([-10.0, 0.0, 10.0])
+        stack = etspy.load(files, tilts=tilts)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
+
+    @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
+    def test_load_serialem_multiframe_user_tilts(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
+        files = list(dirname.glob("*.mrc"))
+        tilts = np.array([-5.0, 0.0, 5.0])
+        stack = etspy.load(files, tilts=tilts)
+        assert stack.tilts.data.shape == (3, 2, 1)
+        np.testing.assert_allclose(stack.tilts.data[:, 0, 0], tilts)
+        np.testing.assert_allclose(stack.tilts.data[:, 1, 0], tilts)
+
+    def test_load_user_tilts_wrong_length(self):
+        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
+        with pytest.raises(
+            ValueError,
+            match=r"Number of tilts provided \(10\) does not match the number of "
+            r"projections in the data \(77\)",
+        ):
+            etspy.load(filename, tilts=np.arange(10))
+
+
 class TestHspy:
     """Test loading a HyperSpy signal."""
 
