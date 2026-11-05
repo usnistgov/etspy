@@ -1527,6 +1527,23 @@ class TestRecStackForwardProject:
         proj = rec.forward_project(stack.tilts.data.squeeze(), cuda=False)
         assert proj.data.shape == stack.data.shape
 
+    @pytest.mark.parametrize("ndim", [2, 3])
+    def test_rec_stack_forward_project_tilt_types(self, ndim):
+        shape = (32, 32) if ndim == 2 else (2, 32, 32)
+        rec = RecStack(np.random.default_rng(0).random(shape, np.float32))
+        tilts = np.linspace(-60, 60, 7)
+        stack = TomoStack(np.zeros((7, 32, 2), np.float32), tilts=tilts)
+        expected = rec.forward_project(tilts, cuda=False).data
+        for tilt_input in (stack.tilts, stack.tilts.data, list(tilts)):
+            proj = rec.forward_project(tilt_input, cuda=False)
+            np.testing.assert_allclose(proj.data, expected)
+            np.testing.assert_allclose(proj.tilts.data.squeeze(), tilts)
+
+    def test_rec_stack_forward_project_no_tilts(self):
+        rec = RecStack(np.zeros((2, 32, 32), np.float32))
+        with pytest.raises(ValueError, match="Tilt angles must be provided"):
+            rec.forward_project(None, cuda=False)
+
 
 @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestRecStackForwardProjectCuda:

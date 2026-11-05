@@ -2163,13 +2163,25 @@ class RecStack(CommonStack):
         Parameters
         ----------
         tilts
-            Tilt angles in degrees to use for the projection
-            :py:class:`~numpy.ndarray`
+            Tilt angles in degrees to use for the projection, as either a
+            :py:class:`~etspy.base.TomoTilts` signal (*e.g.* ``stack.tilts``) or
+            a 1D array or list of values.
         cuda
             Whether or not to use CUDA-accelerated reconstruction algorithms. If
             ``None`` (the default), the decision to use CUDA will be left to
             :py:func:`astra.astra.use_cuda`.
+
+        Raises
+        ------
+        ValueError
+            If ``tilts`` is ``None``
         """
+        if tilts is None:
+            msg = "Tilt angles must be provided for forward projection"
+            raise ValueError(msg)
+        if isinstance(tilts, BaseSignal):
+            tilts = tilts.data
+        tilts = np.atleast_1d(np.asarray(tilts, dtype=float).squeeze())
         if cuda is None:
             if astra.use_cuda():  # coverage: nocuda
                 logger.info("CUDA detected with Astra")
