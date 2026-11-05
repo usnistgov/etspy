@@ -58,19 +58,18 @@ def get_mrc_tilts(
         filename = Path(filename)
     tiltfile = filename.with_suffix(".rawtlt")
     tilts = None
-    if stack.original_metadata.has_item("fei_header"):
-        fei_header = cast("Dtb", stack.original_metadata.fei_header)
-        if fei_header.has_item("a_tilt"):
-            tilts = fei_header["a_tilt"][0 : stack.data.shape[0]]
-            logger.info("Tilts found in MRC file header")
-    elif stack.original_metadata.has_item("std_header"):
-        logger.info("SerialEM generated MRC file detected")
-        ext_header = parse_mrc_header(filename)["ext_header"]
-        tilts = ext_header[np.arange(0, int(ext_header.shape[0]), 7)][
-            0 : stack.data.shape[0]
-        ]
-        tilts = tilts / 100
-    elif tiltfile.is_file():
+    fei_header = cast("Dtb | None", stack.original_metadata.get_item("fei_header"))
+    if fei_header is not None and fei_header.has_item("a_tilt"):
+        tilts = fei_header["a_tilt"][0 : stack.data.shape[0]]
+        logger.info("Tilts found in MRC file header")
+    else:
+        header = parse_mrc_header(filename)
+        if header["ext_type"] == "SERI":
+            logger.info("SerialEM generated MRC file detected")
+            tilts = _get_serialem_tilts(header, stack.data.shape[0])
+
+    # fall back to a .rawtlt file if the header did not contain tilts
+    if tilts is None and tiltfile.is_file():
         tilts = np.loadtxt(tiltfile)
         logger.info(".rawtlt file detected.")
         if len(tilts) == stack.data.shape[0]:
@@ -79,6 +78,32 @@ def get_mrc_tilts(
             msg = "Number of tilts in .rawtlt file inconsistent with data shape"
             raise ValueError(msg)
     return tilts
+
+
+def _get_serialem_tilts(header: dict[str, Any], nimages: int) -> np.ndarray | None:
+    """
+    Extract tilts from a SerialEM ('SERI') MRC extended header.
+
+    Each section's entry in the extended header is ``nint`` bytes long, and
+    ``nreal`` holds bit flags for which values are present. When bit 1 is set,
+    the first value of each entry is the tilt angle in degrees * 100, stored as
+    a signed 16-bit integer. See https://bio3d.colorado.edu/imod/doc/mrc_format.txt
+
+    Returns
+    -------
+    tilts : :py:class:`~numpy.ndarray` or None
+        Tilt angles for (at most) the first ``nimages`` sections, or ``None`` if
+        the extended header does not contain tilt angles
+    """
+    nint, nreal = int(header["nint"]), int(header["nreal"])
+    min_entry_bytes = 2
+    if not nreal & 1 or nint < min_entry_bytes:
+        logger.info("SerialEM extended header does not contain tilt angles")
+        return None
+    ext_header = header["ext_header"]  # int16 values
+    stride = nint // 2
+    nsections = min(nimages, ext_header.shape[0] // stride)
+    return ext_header[0 : nsections * stride : stride] / 100
 
 
 def get_dm_tilts(s: Signal2D | TomoStack) -> np.ndarray:
@@ -144,36 +169,45 @@ def parse_mdoc(
         "PixelSpacing",
         "Voltage",
         "ImageFile",
-        "Image Size",
+        "ImageSize",
         "DataMode",
         "Magnification",
         "ExposureTime",
         "SpotSize",
         "Defocus",
     ]
-    metadata = {}
-    tilt = np.array([])
     if isinstance(mdoc_file, str):
         mdoc_file = Path(mdoc_file)
+
+    # Values are stored as "key = value" lines, first in a global header and then
+    # in one "[ZValue = n]" section per image. Other bracketed lines are titles.
+    global_values: dict[str, str] = {}
+    sections: list[dict[str, str]] = []
     with mdoc_file.open("r") as f:
-        lines = f.readlines()
-        for i in range(35):
-            for k in keys:
-                if k in lines[i]:
-                    if k == "ImageFile":
-                        metadata[k] = lines[i].split("=")[1].strip()
-                    else:
-                        metadata[k] = float(lines[i].split("=")[1].strip())
-    if series:
-        for i in range(35):
-            if "TiltAngle" in lines[i]:
-                tilt = float(lines[i].split("=")[1].strip())
-    else:
-        tilt = []
-        for i in lines:
-            if "TiltAngle" in i:
-                tilt.append(float(i.split("=")[1].strip()))
-        tilt = np.array(tilt)
+        for raw_line in f:
+            line = raw_line.strip()
+            if line.startswith("[ZValue"):
+                sections.append({})
+            elif line and not line.startswith("[") and "=" in line:
+                key, value = (part.strip() for part in line.split("=", 1))
+                (sections[-1] if sections else global_values)[key] = value
+
+    metadata = {}
+    first_section = sections[0] if sections else {}
+    for k in keys:
+        value = global_values.get(k, first_section.get(k))
+        if value is None:
+            continue
+        if k == "ImageFile":
+            metadata[k] = value
+        elif k == "ImageSize":
+            metadata[k] = [int(v) for v in value.split()]
+        else:
+            metadata[k] = float(value)
+
+    tilts = [float(sec["TiltAngle"]) for sec in sections if "TiltAngle" in sec]
+    # a single-tilt (series) mdoc returns its one tilt value as a float
+    tilt = tilts[0] if (series and tilts) else np.array(tilts)
     return metadata, tilt
 
 
@@ -349,37 +383,37 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
     if isinstance(filename, str):
         filename = Path(filename)
     with filename.open("rb") as h:
-        header["nx"], header["ny"], header["nz"] = np.fromfile(h, np.uint32, 3)
-        header["mode"] = np.fromfile(h, np.uint32, 1)[0]
+        header["nx"], header["ny"], header["nz"] = np.fromfile(h, np.int32, 3)
+        header["mode"] = np.fromfile(h, np.int32, 1)[0]
         header["nxstart"], header["nystart"], header["nzstart"] = np.fromfile(
             h,
-            np.uint32,
+            np.int32,
             3,
         )
-        header["mx"], header["my"], header["mz"] = np.fromfile(h, np.uint32, 3)
-        header["xlen"], header["ylen"], header["zlen"] = np.fromfile(h, np.uint32, 3)
+        header["mx"], header["my"], header["mz"] = np.fromfile(h, np.int32, 3)
+        header["xlen"], header["ylen"], header["zlen"] = np.fromfile(h, np.float32, 3)
         _ = np.fromfile(h, np.uint32, 6)
-        header["amin"], header["amax"], header["amean"] = np.fromfile(h, np.uint32, 3)
+        header["amin"], header["amax"], header["amean"] = np.fromfile(h, np.float32, 3)
         _ = np.fromfile(h, np.uint32, 1)
-        header["nextra"] = np.fromfile(h, np.uint32, 1)[0]
+        header["nextra"] = np.fromfile(h, np.int32, 1)[0]
         _ = np.fromfile(h, np.uint16, 1)[0]
         _ = np.fromfile(h, np.uint8, 6)
         strbits = np.fromfile(h, np.uint8, 4)
         header["ext_type"] = (
             bytes(strbits).decode("ascii", errors="ignore").strip("\x00")
         )
-        header["nversion"] = np.fromfile(h, np.uint32, 1)[0]
+        header["nversion"] = np.fromfile(h, np.int32, 1)[0]
         _ = np.fromfile(h, np.uint8, 16)
-        header["nint"] = np.fromfile(h, np.uint16, 1)[0]
-        header["nreal"] = np.fromfile(h, np.uint16, 1)[0]
+        header["nint"] = np.fromfile(h, np.int16, 1)[0]
+        header["nreal"] = np.fromfile(h, np.int16, 1)[0]
         _ = np.fromfile(h, np.int8, 20)
-        header["imodStamp"] = np.fromfile(h, np.uint32, 1)[0]
-        header["imodFlags"] = np.fromfile(h, np.uint32, 1)[0]
-        header["idtype"] = np.fromfile(h, np.uint16, 1)[0]
-        header["lens"] = np.fromfile(h, np.uint16, 1)[0]
+        header["imodStamp"] = np.fromfile(h, np.int32, 1)[0]
+        header["imodFlags"] = np.fromfile(h, np.int32, 1)[0]
+        header["idtype"] = np.fromfile(h, np.int16, 1)[0]
+        header["lens"] = np.fromfile(h, np.int16, 1)[0]
         header["nd1"], header["nd2"], header["vd1"], header["vd2"] = np.fromfile(
             h,
-            np.uint16,
+            np.int16,
             4,
         )
         _ = np.fromfile(h, np.float32, 6)
@@ -388,7 +422,7 @@ def parse_mrc_header(filename: PathLike) -> dict[str, Any]:
         header["cmap"] = bytes(strbits).decode("ascii", errors="ignore").strip("\x00")
         header["stamp"] = np.fromfile(h, np.int8, 4)
         header["rms"] = np.fromfile(h, np.float32, 1)[0]
-        header["nlabl"] = np.fromfile(h, np.uint32, 1)[0]
+        header["nlabl"] = np.fromfile(h, np.int32, 1)[0]
         strbits = np.fromfile(h, np.uint8, 800)
         header["text"] = bytes(strbits).decode("ascii", errors="ignore").strip("\x00")
         header["ext_header"] = np.fromfile(h, np.int16, int(header["nextra"] / 2))
@@ -433,44 +467,6 @@ def _load_single_file(filename: Path) -> TomoStack:
     return tomo_stack
 
 
-def _apply_user_tilts(stack: TomoStack, tilts: list[float] | np.ndarray):
-    """Set user-provided tilts on a loaded stack, overriding any from the file."""
-    tilts = np.asarray(tilts, dtype=float)
-    if tilts.shape[0] != stack.data.shape[0]:
-        msg = (
-            f"Number of tilts provided ({tilts.shape[0]}) does not match the "
-            f"number of projections in the data ({stack.data.shape[0]})"
-        )
-        raise ValueError(msg)
-    if tilts.ndim == 1 and stack.axes_manager.navigation_dimension == 2:  # noqa: PLR2004
-        # multiframe stack: repeat each tilt for every frame at that tilt
-        nframes = stack.data.shape[1]
-        tilts = np.tile(tilts[:, np.newaxis], (1, nframes))
-
-    # Warn if the file contained tilts that differ from those provided (tilts
-    # that were not found in the file are stored as all zeros)
-    file_tilts = stack.tilts.data
-    if (
-        np.any(file_tilts != 0)
-        and file_tilts.size == tilts.size
-        and not np.allclose(file_tilts.reshape(tilts.shape), tilts)
-    ):
-        logger.warning(
-            "Overriding tilts found in file (%.1f to %.1f degrees, %d values) with "
-            "user-provided tilts (%.1f to %.1f degrees); maximum difference is "
-            "%.2f degrees",
-            file_tilts.min(),
-            file_tilts.max(),
-            file_tilts.shape[0],
-            tilts.min(),
-            tilts.max(),
-            np.abs(file_tilts.reshape(tilts.shape) - tilts).max(),
-        )
-    else:
-        logger.info("Using user-provided tilts")
-    stack.tilts = tilts
-
-
 def load(
     filename: PathLike | list[str] | list[Path],
     tilts: list[float] | np.ndarray | None = None,
@@ -486,9 +482,7 @@ def load(
         Accepted formats (.MRC, .DM3, .DM4)
 
     tilts
-        Tilt angle (in degrees) of each projection (optional). If provided, these
-        values override any tilts read from the file(s). Must contain one value per
-        projection.
+        List of floats indicating the specimen tilt at each projection (optional)
 
     mdocs
         List of mdoc files for SerialEM data (optional)
@@ -520,18 +514,16 @@ def load(
         if ext.lower() in dm_file_types:
             s = hs_load(filename)
             s = cast("Signal2D", s)
-            file_tilts = [
-                i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s
-            ]
-            sorted_order = np.argsort(file_tilts)
-            file_tilts = np.sort(file_tilts)
+            tilts = [i.metadata.Acquisition_instrument.TEM.Stage.tilt_alpha for i in s]
+            sorted_order = np.argsort(tilts)
+            tilts = np.sort(tilts)
             files_sorted = list(np.array(filename)[sorted_order])
             del s
             stack = hs_load(files_sorted, stack=True, new_axis_name="Projections")
             stack = cast("Signal2D", stack)
             stack.axes_manager.navigation_axes[0].units = "degrees"
-            stack.axes_manager.navigation_axes[0].scale = np.diff(file_tilts).mean()
-            stack.axes_manager.navigation_axes[0].offset = file_tilts[0]
+            stack.axes_manager.navigation_axes[0].scale = np.diff(tilts).mean()
+            stack.axes_manager.navigation_axes[0].offset = tilts[0]
         elif ext.lower() == ".mrc":
             logger.info("Data appears to be a SerialEM multiframe series.")
             if mdocs is not None:
@@ -540,20 +532,17 @@ def load(
                 # generate mdoc filenames from mrc filenames
                 mrc_files = [Path(p) for p in filename]  # coerce to Path objects
                 mdoc_files = [i.with_suffix(".mdoc") for i in mrc_files]
-            stack, file_tilts = load_serialem_series(filename, mdoc_files)
+            stack, tilts = load_serialem_series(filename, mdoc_files)
         else:
             msg = f'Unknown file type "{ext}". Must be one of {known_file_types}'
             raise TypeError(msg)
-        stack = TomoStack(stack, file_tilts)
+        stack = TomoStack(stack, tilts)
     else:
         msg = (
             f"Unknown filename type {type(filename)}. "
             "Must be either a string, Path, or list of either."
         )
         raise TypeError(msg)
-
-    if tilts is not None:
-        _apply_user_tilts(stack, tilts)
 
     stack.change_data_type("float32")
     return stack

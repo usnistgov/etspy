@@ -1,6 +1,5 @@
 """Tests for the IO functionality of ETSpy."""
 
-import logging
 from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
@@ -115,78 +114,6 @@ class TestLoadMRC:
             match=r"Number of tilts in .rawtlt file inconsistent with data shape",
         ):
             etspy.io.get_mrc_tilts(stack, filename)
-
-
-class TestLoadUserTilts:
-    """Test that tilts passed to load() override any tilts from the file."""
-
-    def test_load_mrc_user_tilts(self):
-        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
-        tilts = np.linspace(-60, 60, 77)
-        stack = etspy.load(filename, tilts=tilts)
-        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
-
-    def test_load_mrc_user_tilts_list(self):
-        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
-        tilts = list(range(77))
-        stack = etspy.load(filename, tilts=tilts)
-        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
-
-    def test_load_hspy_user_tilts(self):
-        filename = etspy_path / "tests" / "test_data" / "HAADF_Aligned.hspy"
-        tilts = np.linspace(-60, 60, 77)
-        stack = etspy.load(filename, tilts=tilts)
-        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
-
-    def test_load_dm_series_user_tilts(self):
-        dirname = etspy_path / "tests" / "test_data" / "DM_Series_Test"
-        files = list(dirname.glob("*.dm3"))
-        tilts = np.array([-10.0, 0.0, 10.0])
-        stack = etspy.load(files, tilts=tilts)
-        np.testing.assert_allclose(stack.tilts.data.squeeze(), tilts)
-
-    @pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
-    def test_load_serialem_multiframe_user_tilts(self):
-        dirname = etspy_path / "tests" / "test_data" / "SerialEM_Multiframe_Test"
-        files = list(dirname.glob("*.mrc"))
-        tilts = np.array([-5.0, 0.0, 5.0])
-        stack = etspy.load(files, tilts=tilts)
-        assert stack.tilts.data.shape == (3, 2, 1)
-        np.testing.assert_allclose(stack.tilts.data[:, 0, 0], tilts)
-        np.testing.assert_allclose(stack.tilts.data[:, 1, 0], tilts)
-
-    def test_load_user_tilts_differ_from_file_warns(self, caplog):
-        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
-        with caplog.at_level(logging.WARNING, logger="etspy.io"):
-            etspy.load(filename, tilts=np.linspace(-60, 60, 77))
-        assert (
-            "Overriding tilts found in file (-76.0 to 76.0 degrees, 77 values) with "
-            "user-provided tilts (-60.0 to 60.0 degrees)"
-        ) in caplog.text
-
-    def test_load_user_tilts_match_file_no_warning(self, caplog):
-        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
-        file_tilts = etspy.load(filename).tilts.data.squeeze()
-        with caplog.at_level(logging.WARNING, logger="etspy.io"):
-            etspy.load(filename, tilts=file_tilts)
-        assert "Overriding tilts" not in caplog.text
-
-    def test_load_user_tilts_no_file_tilts_no_warning(self, caplog, tmp_path):
-        filename = tmp_path / "no_tilts.hspy"
-        TomoStack(np.zeros((5, 8, 8), np.float32)).save(filename)
-        with caplog.at_level(logging.WARNING, logger="etspy.io"):
-            stack = etspy.load(filename, tilts=np.arange(5.0))
-        assert "Overriding tilts" not in caplog.text
-        np.testing.assert_allclose(stack.tilts.data.squeeze(), np.arange(5.0))
-
-    def test_load_user_tilts_wrong_length(self):
-        filename = etspy_path / "tests" / "test_data" / "HAADF.mrc"
-        with pytest.raises(
-            ValueError,
-            match=r"Number of tilts provided \(10\) does not match the number of "
-            r"projections in the data \(77\)",
-        ):
-            etspy.load(filename, tilts=np.arange(10))
 
 
 class TestHspy:
@@ -492,3 +419,163 @@ class TestMRCHeader:
         assert isinstance(header, dict)
         assert header["nx"] == expected["nx"]
         assert header["nextra"] == expected["nextra"]
+
+
+def write_test_mrc(
+    path,
+    data,
+    ext_type="",
+    nint=0,
+    nreal=0,
+    ext_header=b"",
+):
+    """Write a minimal MRC file (mode 2, float32) for testing header parsing."""
+    nz, ny, nx = data.shape
+    words = np.zeros(256, np.int32)  # the 1024-byte header as 4-byte words
+    floats = words.view(np.float32)
+    words[0:3] = nx, ny, nz
+    words[3] = 2  # mode 2 = float32
+    words[7:10] = nx, ny, nz  # mx, my, mz
+    floats[10:13] = 2.0 * nx, 2.0 * ny, 2.0 * nz  # cell size (2 A/pixel)
+    floats[13:16] = 90.0  # cell angles
+    words[16:19] = 1, 2, 3  # mapc, mapr, maps
+    floats[19:22] = data.min(), data.max(), data.mean()
+    words[23] = len(ext_header)
+    header = bytearray(words.tobytes())
+    header[104:108] = ext_type.encode().ljust(4, b"\0")
+    header[108:112] = np.int32(20140 if ext_type == "SERI" else 0).tobytes()
+    header[128:130] = np.int16(nint).tobytes()
+    header[130:132] = np.int16(nreal).tobytes()
+    header[208:212] = b"MAP "
+    header[212:216] = bytes([0x44, 0x44, 0, 0])  # little-endian machine stamp
+    path.write_bytes(bytes(header) + ext_header + data.astype(np.float32).tobytes())
+
+
+@pytest.mark.skipif(hspy_mrc_broken is True, reason="Hyperspy MRC reader broken")
+class TestMRCTilts:
+    """Test reading tilts from MRC headers and .rawtlt files."""
+
+    tilts = np.array([-40.0, -20.5, 0.0, 20.25, 40.0])
+    data = np.random.default_rng(0).random((5, 16, 16), np.float32)
+
+    def test_serialem_tilts_non_default_layout(self, tmp_path):
+        # tilt angle + magnification only (nreal = 1 | 8), so 4 bytes per section
+        sections = np.zeros((5, 2), np.int16)
+        sections[:, 0] = np.round(self.tilts * 100)
+        sections[:, 1] = 1150
+        filename = tmp_path / "seri.mrc"
+        write_test_mrc(filename, self.data, "SERI", 4, 9, sections.tobytes())
+        stack = etspy.load(filename)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), self.tilts)
+
+    def test_serialem_tilts_extra_sections(self, tmp_path):
+        # SerialEM may allocate extended header entries for more sections than
+        # are in the file; only the first nz tilts should be used
+        sections = np.zeros((8, 7), np.int16)
+        sections[:5, 0] = np.round(self.tilts * 100)
+        sections[5:, 0] = 9999
+        filename = tmp_path / "seri.mrc"
+        write_test_mrc(filename, self.data, "SERI", 14, 61, sections.tobytes())
+        stack = etspy.load(filename)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), self.tilts)
+
+    def test_serialem_without_tilts_uses_rawtlt(self, tmp_path):
+        # magnification only (nreal = 8): no tilt angles in the extended header
+        sections = np.full((5, 1), 1150, np.int16)
+        filename = tmp_path / "seri.mrc"
+        write_test_mrc(filename, self.data, "SERI", 2, 8, sections.tobytes())
+        np.savetxt(filename.with_suffix(".rawtlt"), self.tilts)
+        stack = etspy.load(filename)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), self.tilts)
+
+    def test_imod_mrc_uses_rawtlt(self, tmp_path):
+        # an MRC file without FEI or SerialEM extended headers (e.g. from IMOD)
+        filename = tmp_path / "imod.mrc"
+        write_test_mrc(filename, self.data)
+        np.savetxt(filename.with_suffix(".rawtlt"), self.tilts)
+        stack = etspy.load(filename)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), self.tilts)
+
+    def test_mrc_header_types(self, tmp_path):
+        filename = tmp_path / "imod.mrc"
+        write_test_mrc(filename, self.data)
+        header = etspy.io.parse_mrc_header(filename)
+        assert (header["nx"], header["ny"], header["nz"]) == (16, 16, 5)
+        assert (header["xlen"], header["ylen"], header["zlen"]) == (32.0, 32.0, 10.0)
+        assert header["amin"] == pytest.approx(self.data.min())
+        assert header["amax"] == pytest.approx(self.data.max())
+        assert header["amean"] == pytest.approx(self.data.mean())
+
+    def test_serialem_test_data_header(self):
+        dirname = etspy_path / "tests" / "test_data" / "SerialEM_MultiTilt_Test"
+        filename = dirname / "test_000.mrc"
+        header = etspy.io.parse_mrc_header(filename)
+        assert header["ext_type"] == "SERI"
+        assert (header["nint"], header["nreal"]) == (14, 61)
+
+
+class TestParseMdoc:
+    """Test parsing of SerialEM .mdoc files."""
+
+    @staticmethod
+    def _write_mdoc(path, n_titles=0):
+        lines = [
+            "PixelSpacing = 7.88",
+            "Voltage = 300",
+            "ImageFile = test.mrc",
+            "ImageSize = 1024 512",
+            "DataMode = 1",
+            "",
+            *[f"[T = title line {i} Defocus = 99]" for i in range(n_titles)],
+        ]
+        for i, tilt in enumerate([-30.0, 0.0, 30.0]):
+            lines += [
+                "",
+                f"[ZValue = {i}]",
+                f"TiltAngle = {tilt}",
+                "Magnification = 115000",
+                "SpotSize = 7",
+                f"Defocus = {-1.5 - i}",
+                "TargetDefocus = -9",
+                "ExposureTime = 0.5",
+            ]
+        path.write_text("\n".join(lines) + "\n")
+
+    def test_parse_mdoc_values(self, tmp_path):
+        filename = tmp_path / "test.mdoc"
+        self._write_mdoc(filename)
+        meta, tilts = etspy.io.parse_mdoc(filename)
+        assert meta == {
+            "PixelSpacing": 7.88,
+            "Voltage": 300.0,
+            "ImageFile": "test.mrc",
+            "ImageSize": [1024, 512],
+            "DataMode": 1.0,
+            "Magnification": 115000.0,
+            "ExposureTime": 0.5,
+            "SpotSize": 7.0,
+            "Defocus": -1.5,  # from the first section, not TargetDefocus
+        }
+        np.testing.assert_allclose(tilts, [-30.0, 0.0, 30.0])
+
+    def test_parse_mdoc_series(self, tmp_path):
+        filename = tmp_path / "test.mdoc"
+        self._write_mdoc(filename)
+        _, tilt = etspy.io.parse_mdoc(filename, series=True)
+        assert tilt == -30.0  # noqa: PLR2004
+
+    def test_parse_mdoc_long_header(self, tmp_path):
+        # values after the first 35 lines are still found
+        filename = tmp_path / "test.mdoc"
+        self._write_mdoc(filename, n_titles=40)
+        meta, tilts = etspy.io.parse_mdoc(filename)
+        assert meta["Magnification"] == 115000.0  # noqa: PLR2004
+        assert meta["Defocus"] == -1.5  # noqa: PLR2004
+        np.testing.assert_allclose(tilts, [-30.0, 0.0, 30.0])
+
+    def test_parse_mdoc_short_file(self, tmp_path):
+        filename = tmp_path / "short.mdoc"
+        filename.write_text("PixelSpacing = 2\n\n[ZValue = 0]\nTiltAngle = 5\n")
+        meta, tilts = etspy.io.parse_mdoc(filename)
+        assert meta == {"PixelSpacing": 2.0}
+        np.testing.assert_allclose(tilts, [5.0])
