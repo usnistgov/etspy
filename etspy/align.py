@@ -33,7 +33,6 @@ except Exception:
     has_cupy = False
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 CL_RES_THRESHOLD = 0.5  # threshold for common line registration method
 

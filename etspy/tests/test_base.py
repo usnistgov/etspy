@@ -1382,11 +1382,12 @@ class TestReconstruct:
             sino.data.max() / 2,
             sino.data.max(),
         ]
-        sino.reconstruct(
-            "DART",
-            dart_iterations=None,
-            gray_levels=gray_levels,
-        )
+        with caplog.at_level(logging.INFO, logger="etspy.base"):
+            sino.reconstruct(
+                "DART",
+                dart_iterations=None,
+                gray_levels=gray_levels,
+            )
         assert "Using default number of DART iterations (5)" in caplog.text
 
 

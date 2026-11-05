@@ -57,7 +57,6 @@ except Exception:
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class MismatchedTiltError(ValueError):
