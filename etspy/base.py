@@ -1561,7 +1561,7 @@ class TomoStack(CommonStack):
             raise ValueError(msg)
         return out
 
-    def reconstruct(  # noqa: PLR0913 , PLR0917
+    def reconstruct(  # noqa: PLR0913
         self,
         method: ReconMethodType = "FBP",
         iterations: int = 5,
@@ -1724,7 +1724,7 @@ class TomoStack(CommonStack):
 
         return rec
 
-    def test_align(  # noqa: PLR0913 , PLR0917
+    def test_align(  # noqa: PLR0913
         self,
         tilt_shift: float = 0.0,
         tilt_rotation: float = 0.0,
