@@ -1609,6 +1609,7 @@ class TestRecStackRotateVolume:
 class TestVolumeRotator:
     """Test the interactive volume rotation widget."""
 
+    @pytest.mark.filterwarnings("ignore:FigureCanvasAgg is non-interactive")
     def test_button_click_records_angles_and_disables_widgets(self):
         rec = RecStack(np.random.default_rng(0).random((8, 8, 8), np.float32))
         rec.interactive_rotation()
