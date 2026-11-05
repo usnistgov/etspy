@@ -1479,7 +1479,6 @@ class TestRecStackPlotSlices:
         assert isinstance(fig, Figure)
 
 
-@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestRecStackForwardProject:
     """Test forward projection of RecStacks."""
 
@@ -1496,6 +1495,42 @@ class TestRecStackForwardProject:
         sino = rec.forward_project(tilts, cuda=False)
         assert isinstance(sino, TomoStack)
         assert isinstance(sino.tilts, TomoTilts)
+
+    def test_rec_stack_forward_project_thickness(self):
+        # An object contained within the central 32 rows (z) should give the same
+        # projections whether the volume is 64 or 32 pixels thick
+        nx, nz, ny = 3, 64, 64
+        full = np.zeros((nx, nz, ny), np.float32)
+        full[:, 24:40, 20:44] = 1.0
+        thin = full[:, 16:48, :]
+        tilts = np.linspace(-70, 70, 15)
+        proj_full = RecStack(full).forward_project(tilts, cuda=False)
+        proj_thin = RecStack(thin).forward_project(tilts, cuda=False)
+        assert proj_thin.data.shape == (len(tilts), ny, nx)
+        # tolerance allows for float32 accumulation differences inside ASTRA
+        atol = 1e-5 * proj_full.data.max()
+        np.testing.assert_allclose(proj_thin.data, proj_full.data, atol=atol)
+
+    def test_rec_stack_forward_project_reconstruction_thickness(self):
+        stack = TomoStack(
+            np.random.default_rng(0).random((15, 64, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        rec = stack.reconstruct(
+            "SIRT",
+            iterations=2,
+            thickness=32,
+            cuda=False,
+            show_progressbar=False,
+        )
+        assert rec.data.shape == (4, 32, 64)
+        proj = rec.forward_project(stack.tilts.data.squeeze(), cuda=False)
+        assert proj.data.shape == stack.data.shape
+
+
+@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+class TestRecStackForwardProjectCuda:
+    """Test forward projection of RecStacks with CUDA."""
 
     def test_rec_stack_forward_project_3d_cuda(self):
         rec = RecStack(np.random.rand(10, 100, 100))

@@ -1172,7 +1172,7 @@ class TomoStack(CommonStack):
         ax2.set_axis_off()
         ax2.set_title("Offset image")
 
-        ax3.imshow(cc_image.real, cmap="inferno")
+        ax3.imshow(cc_image.real, cmap="inferno")  # type: ignore
         ax3.set_axis_off()
         ax3.set_title("Cross-correlation")
         return fig
@@ -1561,7 +1561,7 @@ class TomoStack(CommonStack):
             raise ValueError(msg)
         return out
 
-    def reconstruct(  # noqa: PLR0913
+    def reconstruct(  # noqa: PLR0913 , PLR0917
         self,
         method: ReconMethodType = "FBP",
         iterations: int = 5,
@@ -1724,7 +1724,7 @@ class TomoStack(CommonStack):
 
         return rec
 
-    def test_align(  # noqa: PLR0913
+    def test_align(  # noqa: PLR0913 , PLR0917
         self,
         tilt_shift: float = 0.0,
         tilt_rotation: float = 0.0,
@@ -2195,7 +2195,7 @@ class RecStack(CommonStack):
             ntilts = len(tilts)
             proj = np.zeros([ntilts, ny, nx])
             thetas = np.deg2rad(tilts)
-            vol_geom = astra.create_vol_geom(ny, ny)
+            vol_geom = astra.create_vol_geom(nz, ny)
             proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
 
             if cuda:
