@@ -136,7 +136,10 @@ def get_dm_tilts(s: Signal2D | TomoStack) -> np.ndarray:
         "Tomography_setup"
     ]["Tilt_angles"]["Tilt_angle_step_deg"]
 
-    return np.arange(mintilt, maxtilt + tiltstep, tiltstep)
+    # integer-indexed so that floating point error cannot add or drop a tilt
+    # (as np.arange with a float step can)
+    ntilts = round((maxtilt - mintilt) / tiltstep) + 1
+    return mintilt + tiltstep * np.arange(ntilts)
 
 
 def parse_mdoc(

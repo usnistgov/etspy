@@ -1855,7 +1855,8 @@ class TomoStack(CommonStack):
         ax.units = "degrees"
         ax.scale = increment
         ax.offset = start
-        tilts = np.arange(start, nimages * increment + start, increment)
+        # integer-indexed so the length always matches the number of images
+        tilts = start + increment * np.arange(nimages)
 
         if not self.metadata.has_item("Tomography"):
             self.metadata.add_node("Tomography")

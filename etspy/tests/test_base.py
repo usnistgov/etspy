@@ -1046,6 +1046,18 @@ class TestOperations:
         np.testing.assert_allclose(ax.axis, expected)
         np.testing.assert_allclose(full_stack.tilts.data.squeeze(), expected)
 
+    @pytest.mark.parametrize(
+        ("start", "increment", "nimages"),
+        [(-60, 0.1, 61), (-60, 2, 61), (-70.3, 0.3, 469), (70, -2, 71)],
+    )
+    def test_set_tilts_float_increment(self, start, increment, nimages):
+        stack = TomoStack(np.zeros((nimages, 4, 4), np.float32))
+        stack.set_tilts(start, increment)
+        tilts = stack.tilts.data.squeeze()
+        assert tilts.shape == (nimages,)
+        np.testing.assert_allclose(tilts, start + increment * np.arange(nimages))
+        np.testing.assert_allclose(tilts[-1], start + increment * (nimages - 1))
+
     def test_set_tilts_no_metadata(self, full_stack):
         stack = full_stack.deepcopy()
         del stack.metadata.Tomography  # pyright: ignore[reportAttributeAccessIssue]

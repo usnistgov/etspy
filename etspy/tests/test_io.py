@@ -215,6 +215,37 @@ class TestSignal:
 class TestDM:
     """Test loading DigitalMicrograph data."""
 
+    @pytest.mark.parametrize(
+        ("mintilt", "maxtilt", "step"),
+        [(-30, 30, 1.2), (-35, 35, 0.7), (-75, 75, 0.3), (-72, -66, 3), (-60, 60, 2)],
+    )
+    def test_get_dm_tilts_float_step(self, mintilt, maxtilt, step):
+        signal = hs.signals.Signal2D(np.zeros((2, 4, 4)))
+        signal.original_metadata.add_dictionary(
+            {
+                "ImageList": {
+                    "TagGroup0": {
+                        "ImageTags": {
+                            "Tomography": {
+                                "Tomography_setup": {
+                                    "Tilt_angles": {
+                                        "Maximum_tilt_angle_deg": maxtilt,
+                                        "Minimum_tilt_angle_deg": mintilt,
+                                        "Tilt_angle_step_deg": step,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        )
+        tilts = etspy.io.get_dm_tilts(signal)
+        ntilts = round((maxtilt - mintilt) / step) + 1
+        assert tilts.shape == (ntilts,)
+        np.testing.assert_allclose(tilts[0], mintilt)
+        np.testing.assert_allclose(tilts[-1], maxtilt)
+
     def test_load_single_dm(self):
         filename = etspy_path / "tests" / "test_data" / "HAADF.dm3"
         signal = hs_load(filename)
