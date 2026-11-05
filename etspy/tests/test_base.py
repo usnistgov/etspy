@@ -1042,14 +1042,9 @@ class TestOperations:
         assert ax.scale == increment
         assert ax.units == "degrees"
         assert ax.offset == start
-        assert (
-            ax.axis.all()
-            == np.arange(
-                start,
-                full_stack.data.shape[0] * increment + start,
-                increment,
-            ).all()
-        )
+        expected = start + increment * np.arange(full_stack.data.shape[0])
+        np.testing.assert_allclose(ax.axis, expected)
+        np.testing.assert_allclose(full_stack.tilts.data.squeeze(), expected)
 
     def test_set_tilts_no_metadata(self, full_stack):
         stack = full_stack.deepcopy()
@@ -1061,14 +1056,9 @@ class TestOperations:
         assert ax.scale == increment
         assert ax.units == "degrees"
         assert ax.offset == start
-        assert (
-            ax.axis.all()
-            == np.arange(
-                start,
-                stack.data.shape[0] * increment + start,
-                increment,
-            ).all()
-        )
+        expected = start + increment * np.arange(stack.data.shape[0])
+        np.testing.assert_allclose(ax.axis, expected)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), expected)
 
 
 class TestTestAlign:
