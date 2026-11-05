@@ -241,9 +241,6 @@ def create_model_tilt_series(
             vol_geom,
         )  # coverage: nocuda
 
-    for i in range(model.shape[0]):
-        _, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
-
     try:
         for i in range(model.shape[0]):
             sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
@@ -276,7 +273,8 @@ def misalign_stack(
     max_shift
         Maximum amount of jitter to apply to the stack
     tilt_shift
-        Number of pixels by which to offset the tilt axis from the center
+        Number of pixels by which to offset the tilt axis from the center, i.e. to
+        shift the stack along the y-axis (perpendicular to the tilt axis)
     tilt_rotate
         Amount of rotation to apply to the stack
     y_only
@@ -304,7 +302,7 @@ def misalign_stack(
     if tilt_shift != 0:
         misaligned.data = ndimage.shift(
             misaligned.data,
-            shift=[0, 0, tilt_shift],
+            shift=[0, tilt_shift, 0],
             order=interp_order,
         )
     if tilt_rotate != 0:
