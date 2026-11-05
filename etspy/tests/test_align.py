@@ -61,6 +61,20 @@ def catalyst_stack():
     return s
 
 
+class TestProgressBars:
+    """Test that progress bars respect show_progressbar."""
+
+    def test_common_line_no_progressbar(self, short_stack, capsys):
+        aligner = etspy.align.CommonLineAligner(short_stack, show_progressbar=False)
+        aligner.calculate_shifts()
+        assert "it/s" not in capsys.readouterr().err
+
+    def test_common_line_progressbar(self, short_stack, capsys):
+        aligner = etspy.align.CommonLineAligner(short_stack, show_progressbar=True)
+        aligner.calculate_shifts()
+        assert "it/s" in capsys.readouterr().err
+
+
 class TestAlignFunctions:
     """Test alignment functions."""
 
@@ -188,6 +202,7 @@ class TestAlignFunctions:
             offsets[com_ref_index] - offsets,
             atol=0.01,
         )
+
 
 @pytest.mark.skipif(not cupy_in_test_env, reason="cupy not available")
 class TestCUDAAlignFunctions:

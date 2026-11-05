@@ -61,7 +61,9 @@ def multiaverage(stack: np.ndarray, nframes: int, ny: int, nx: int) -> np.ndarra
 
 
 # TODO: Create Multistack class to handle edge case of multi-frame stacks
-def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
+def register_serialem_stack(
+    stack: Signal2D, ncpus: int = 1, show_progressbar: bool = True
+) -> TomoStack:
     """
     Register a multi-frame series collected by SerialEM.
 
@@ -74,6 +76,10 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
     -------
     reg : TomoStack
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
+    ncpus
+        Number of processes to use. If 1 (default), frames are registered serially.
+    show_progressbar
+        If True (default), show a progress bar when registering serially.
 
     Group
     -----
@@ -87,7 +93,7 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
     if ncpus == 1:
         reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
         sr = StackReg(StackReg.TRANSLATION)
-        for i in tqdm.tqdm(range(ntilts)):
+        for i in tqdm.tqdm(range(ntilts), disable=not show_progressbar):
             shifts = sr.register_stack(stack.data[i], reference="previous")
             shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
             shifted = np.zeros([nframes, ny, nx])

@@ -525,6 +525,7 @@ def astra_error(
     constrain: bool = True,
     thresh: float = 0,
     cuda=False,
+    show_progressbar: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Perform SIRT reconstruction using the Astra toolbox algorithms.
@@ -549,6 +550,8 @@ def astra_error(
     cuda
         If True, use the CUDA-accelerated Astra algorithms. Otherwise,
         use the CPU-based algorithms
+    show_progressbar
+        If True (default), show a progress bar over the iterations.
 
     Returns
     -------
@@ -608,7 +611,7 @@ def astra_error(
     residual_error = np.zeros(iterations)
 
     try:
-        for i in tqdm.tqdm(range(iterations)):
+        for i in tqdm.tqdm(range(iterations), disable=not show_progressbar):
             astra.algorithm.run(alg, 1)
             rec[i] = astra.data2d.get(rec_id)
             if cuda:  # coverage: nocuda

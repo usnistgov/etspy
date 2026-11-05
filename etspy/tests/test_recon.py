@@ -510,3 +510,18 @@ class TestAstraObjectCleanup:
             np.testing.assert_array_equal(astra.data2d.get(user_id), user_vol)
         finally:
             astra.data2d.delete(user_id)
+
+
+class TestAstraErrorProgressBar:
+    """Test that astra_error respects show_progressbar."""
+
+    @pytest.mark.parametrize("show_progressbar", [True, False])
+    def test_astra_error_progressbar(self, capsys, show_progressbar):
+        sino = np.random.default_rng(0).random((15, 32), np.float32)
+        recon.astra_error(
+            sino,
+            np.linspace(-70, 70, 15),
+            iterations=3,
+            show_progressbar=show_progressbar,
+        )
+        assert ("it/s" in capsys.readouterr().err) == show_progressbar

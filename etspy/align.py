@@ -927,7 +927,7 @@ class CommonLineAligner(StackAligner):
         coms = np.zeros(ntilts)
         offset = min(self.stack.data.min(), 0)
 
-        for i in tqdm.tqdm(range(ntilts)):
+        for i in tqdm.tqdm(range(ntilts), disable=not self.show_progressbar):
             im = self.stack.data[i, :, :] - offset
             coms[i], _ = ndimage.center_of_mass(im)
         yshifts = coms[com_ref_index] - coms
@@ -1023,7 +1023,10 @@ class CommonLineAligner(StackAligner):
         yshifts = np.zeros(self.stack.data.shape[0])
         ref_cm_line = self.stack.data[cl_ref_index].sum(0)
 
-        for i in tqdm.tqdm(range(self.stack.data.shape[0])):
+        for i in tqdm.tqdm(
+            range(self.stack.data.shape[0]),
+            disable=not self.show_progressbar,
+        ):
             if i == cl_ref_index:
                 continue
             curr_cm_line = self.stack.data[i].sum(0)
