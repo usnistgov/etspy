@@ -1614,3 +1614,19 @@ class TestRecStackRotateVolume:
     def test_rotate_volume_no_angles(self, volume):
         with pytest.raises(ValueError, match="No rotation angles were provided"):
             RecStack(volume).rotate_volume()
+
+
+class TestVolumeRotator:
+    """Test the interactive volume rotation widget."""
+
+    def test_button_click_records_angles_and_disables_widgets(self):
+        rec = RecStack(np.random.default_rng(0).random((8, 8, 8), np.float32))
+        rec.interactive_rotation()
+        rotator = rec.rotator
+        rotator.slider1.value, rotator.slider2.value, rotator.slider3.value = 1, 2, 3
+        rotator.on_button_click(None)
+        np.testing.assert_array_equal(rotator.slider_values, [1, 2, 3])
+        assert rotator.slider1.disabled
+        assert rotator.slider2.disabled
+        assert rotator.slider3.disabled
+        assert rotator.button.disabled
