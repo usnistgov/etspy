@@ -52,6 +52,67 @@ def create_projector(proj_geom: dict, vol_geom: dict, cuda: bool = False) -> int
     return astra.create_projector("cuda" if cuda else "linear", proj_geom, vol_geom)
 
 
+# Default number of iterations for each iterative algorithm. Iterations are full
+# passes through all of the projections; for SART (and the SART steps of DART), ETSpy
+# converts them to ASTRA iterations, each of which uses a single projection.
+DEFAULT_ITERATIONS = {"SIRT": 50, "SART": 5, "DART": 5}
+
+
+def astra_iterations(
+    method: str,
+    iterations: int | None,
+    nangles: int,
+) -> tuple[int, int]:
+    """
+    Convert a number of passes through the projections to ASTRA iterations.
+
+    In ASTRA, an iteration of SIRT uses all of the projections, but an iteration of
+    SART uses a single projection. ETSpy always counts iterations as full passes
+    through the projections, so for SART (and the SART steps of DART) the number
+    of passes is multiplied by the number of projections.
+
+    Parameters
+    ----------
+    method
+        Reconstruction algorithm (``"FBP"``, ``"SIRT"``, ``"SART"``, or
+        ``"DART"``)
+    iterations
+        Number of passes through the projections. If ``None``, the default for
+        the algorithm (:py:data:`DEFAULT_ITERATIONS`) is used.
+    nangles
+        Number of projections
+
+    Returns
+    -------
+    passes : int
+        Number of passes through the projections
+    n_astra : int
+        Number of ASTRA iterations to run
+
+    Group
+    -----
+    recon
+    """
+    method = method.upper()
+    if method == "FBP":
+        return 1, 1
+    passes = DEFAULT_ITERATIONS[method] if iterations is None else int(iterations)
+    if method in ("SART", "DART"):
+        if iterations is not None and passes >= nangles:
+            logger.warning(
+                "%s iterations are counted as full passes through all %d "
+                "projections, so %d iterations will run %d single-projection ASTRA "
+                "SART iterations. (Earlier versions of ETSpy counted single "
+                "projections; SART typically needs only a few passes.)",
+                method,
+                nangles,
+                passes,
+                passes * nangles,
+            )
+        return passes, passes * nangles
+    return passes, passes
+
+
 def run_alg(
     sino: np.ndarray,
     iters: int,
@@ -145,7 +206,8 @@ def run_dart(
     sino
        Sinogram of shape (nangles, ny)
     iters
-        Number of iterations for the SART reconstruction
+        Number of ASTRA SART iterations for each SART reconstruction (each uses a
+        single projection; see :py:func:`astra_iterations`)
     dart_iters
         Number of iterations for the DART reconstruction
     p
@@ -232,7 +294,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     stack: np.ndarray,
     tilts: np.ndarray,
     method: Literal["FBP", "SIRT", "SART", "DART"],
-    niterations: int = 20,
+    niterations: int | None = None,
     constrain: bool = False,
     thresh: float = 0,
     cuda: bool | None = None,
@@ -285,7 +347,11 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         'SART', or 'DART
     niterations
         Number of iterations for reconstruction (used with ``SIRT``, ``SART``, and
-        ``DART`` methods)
+        ``DART`` methods). Each iteration is a full pass through all of the
+        projections, for SART as well as SIRT (see :py:func:`astra_iterations`).
+        For DART, this is the number of SART passes in each DART step. If
+        ``None``, the default for the algorithm is used (SIRT: 50, SART: 5, DART:
+        5).
     constrain
         If True, output reconstruction is constrained above value given by
         'thresh'
@@ -328,6 +394,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
 
     thetas = np.pi * tilts / 180.0
     thresholds = np.array([])
+    passes, niterations = astra_iterations(method, niterations, nangles)
 
     if thickness is None:
         thickness = ny
@@ -349,7 +416,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         elif method.lower() == "sirt":
             logger.info(
                 "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)",
-                niterations,
+                passes,
             )
             cfg["type"] = "SIRT_CUDA"
             if constrain:
@@ -357,7 +424,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         elif method.lower() == "sart":
             logger.info(
                 "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)",
-                niterations,
+                passes,
             )
             cfg["type"] = "SART_CUDA"
             if constrain:
@@ -366,7 +433,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         elif method.lower() == "dart":
             logger.info(
                 "Reconstructing with CUDA-accelerated DART algorithm (%s iterations)",
-                niterations,
+                passes,
             )
             cfg["type"] = "SART_CUDA"
             gray_levels, thresholds = _dart_setup(gray_levels, cfg)
@@ -413,17 +480,26 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
             cfg["option"]["FilterType"] = bp_filter.lower()
             niterations = 1
         elif method.lower() == "sirt":
-            logger.info("Reconstructing with CPU-based SIRT algorithm")
+            logger.info(
+                "Reconstructing with CPU-based SIRT algorithm (%s iterations)",
+                passes,
+            )
             cfg["type"] = "SIRT"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
         elif method.lower() == "sart":
-            logger.info("Reconstructing with CPU-based SART algorithm")
+            logger.info(
+                "Reconstructing with CPU-based SART algorithm (%s iterations)",
+                passes,
+            )
             cfg["type"] = "SART"
             if constrain:
                 cfg["option"]["MinConstraint"] = thresh
         elif method.lower() == "dart":
-            logger.info("Reconstructing with CPU-based DART algorithm")
+            logger.info(
+                "Reconstructing with CPU-based DART algorithm (%s iterations)",
+                passes,
+            )
             cfg["type"] = "SART"
             gray_levels, thresholds = _dart_setup(gray_levels, cfg)
 
@@ -552,14 +628,14 @@ def astra_error(
     sinogram: np.ndarray,
     angles: np.ndarray,
     method: Literal["SIRT", "SART"] = "SIRT",
-    iterations: int = 50,
+    iterations: int | None = None,
     constrain: bool = True,
     thresh: float = 0,
     cuda=False,
     show_progressbar: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Perform SIRT reconstruction using the Astra toolbox algorithms.
+    Perform a SIRT or SART reconstruction, recording the result after each iteration.
 
     Parameters
     ----------
@@ -571,7 +647,9 @@ def astra_error(
     method
         Reconstruction algorithm use.  Must be 'SIRT' or 'SART'.
     iterations
-        Number of iterations for the SIRT reconstruction.
+        Number of iterations, each a full pass through all of the projections
+        (see :py:func:`astra_iterations`). If ``None``, the default for the
+        algorithm is used (SIRT: 50, SART: 5).
     constrain
         If True, output reconstruction is constrained above value given by
         'thresh'. Default is True.
@@ -634,12 +712,14 @@ def astra_error(
 
     alg = astra.algorithm.create(cfg)
 
-    rec = np.zeros([iterations, ny, ny], np.float32)
-    residual_error = np.zeros(iterations)
+    passes, n_astra = astra_iterations(method, iterations, nangles)
+    per_pass = n_astra // passes
+    rec = np.zeros([passes, ny, ny], np.float32)
+    residual_error = np.zeros(passes)
 
     try:
-        for i in tqdm.tqdm(range(iterations), disable=not show_progressbar):
-            astra.algorithm.run(alg, 1)
+        for i in tqdm.tqdm(range(passes), disable=not show_progressbar):
+            astra.algorithm.run(alg, per_pass)
             rec[i] = astra.data2d.get(rec_id)
             if cuda:  # coverage: nocuda
                 residual_error[i] = astra.algorithm.get_res_norm(alg)

@@ -11,7 +11,7 @@ from scipy.fft import fft, fft2, fftfreq, ifft, ifft2
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
-from etspy.recon import create_projector
+from etspy.recon import astra_iterations, create_projector
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -60,7 +60,8 @@ class ProjMatch:
         params : Optional[Dict], optional
             Dictionary of parameters for alignment. Acceptable keys are:
             "levels", "iterations", "recon_algorithm", "recon_iterations", "relax", and
-            "minstep"
+            "minstep". "recon_iterations" is the number of iterations for the reconstruction algorithm
+            (default: 20 for SIRT and 5 for SART).
 
         """
         self.stack = stack
@@ -96,11 +97,13 @@ class ProjMatch:
         self.rec_update: list[NDArray | None] = [None] * len(self.levels)
 
         self.recon_algorithm = self.params.get("recon_algorithm", "FBP")
-        if self.recon_algorithm.lower() == "fbp":
-            self.recon_iterations = 1
-        else:
-            self.recon_iterations = self.params.get("recon_iterations", 20)
-        # ASTRA objects, created per downsampling level by update_geometries
+
+        default_passes = {"sirt": 20, "sart": 5}.get(self.recon_algorithm.lower())
+        _, self.recon_iterations = astra_iterations(
+            self.recon_algorithm,
+            self.params.get("recon_iterations", default_passes),
+            self.nangles,
+        )  # ASTRA objects, created per downsampling level by update_geometries
         self.rec_id: int | None = None
         self.sino_id: int | None = None
         self.proj_id: int | None = None
