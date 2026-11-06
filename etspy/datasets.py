@@ -9,12 +9,23 @@ def get_needle_data(aligned: bool = False):
     """
     Load an experimental tilt series of needle-shaped specimen.
 
-    Data size is 77 tilt projections and 256 x 256 pixel images.
+    Data size is 77 tilt projections and 256 x 256 pixel images. The unaligned
+    data are HAADF-STEM images saved by FEI software as signed integers with an
+    offset of -32768, which is removed on loading (see :py:func:`etspy.io.load`);
+    they have a vacuum (background) level of about 880 counts, which should be
+    removed (see :py:meth:`~etspy.base.TomoStack.remove_background`) before
+    reconstruction.
+
+    Parameters
+    ----------
+    aligned
+        If True, load a version of the data that has already been spatially
+        registered and tilt-axis aligned
 
     Returns
     -------
     needle : TomoStack
-        TomoStack containing the simulated catalyst tilt series
+        TomoStack containing the needle tilt series
 
     Group
     -----
