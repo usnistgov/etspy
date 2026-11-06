@@ -1634,3 +1634,85 @@ class TestVolumeRotator:
         assert rotator.slider2.disabled
         assert rotator.slider3.disabled
         assert rotator.button.disabled
+
+
+class TestRemoveBackground:
+    """Test removal of the background (vacuum) level of a TomoStack."""
+
+    backgrounds = np.array([100.0, -50.0, 2500.0, -31900.0, 0.0])
+
+    @pytest.fixture
+    def stack_with_background(self):
+        """Projections of a disc (30% of the area) on known backgrounds, with noise."""
+        rng = np.random.default_rng(0)
+        yy, xx = np.mgrid[:64, :96]
+        disc = 1000.0 * (((yy - 32) ** 2 + (xx - 48) ** 2) < 24**2)
+        data = (
+            disc[np.newaxis]
+            + self.backgrounds[:, np.newaxis, np.newaxis]
+            + rng.normal(0, 5, (5, 64, 96))
+        )
+        return TomoStack(data.astype(np.float32), tilts=np.linspace(-60, 60, 5))
+
+    @pytest.mark.parametrize("method", ["mode", "border"])
+    def test_remove_background_estimates(self, stack_with_background, method):
+        corrected = stack_with_background.remove_background(method)
+        found = corrected.metadata.get_item("Tomography.background")
+        np.testing.assert_allclose(found, self.backgrounds, atol=1.0)
+        vacuum = corrected.data[:, :4, :]
+        assert abs(np.median(vacuum)) < 1.0
+        assert corrected.data.dtype == np.float32
+
+    def test_remove_background_values(self, stack_with_background):
+        scalar = stack_with_background.remove_background(100.0)
+        np.testing.assert_allclose(
+            scalar.data,
+            stack_with_background.data - 100.0,
+            rtol=1e-6,
+        )
+        per_projection = stack_with_background.remove_background(self.backgrounds)
+        np.testing.assert_allclose(
+            per_projection.metadata.get_item("Tomography.background"),
+            self.backgrounds,
+        )
+
+    def test_remove_background_accumulates(self, stack_with_background):
+        corrected = stack_with_background.remove_background(10.0).remove_background(5.0)
+        np.testing.assert_allclose(corrected.metadata.Tomography.background, 15.0)
+
+    def test_remove_background_integer_data(self):
+        data = np.full((3, 16, 16), 1000, np.uint16)
+        data[:, 4:8, 4:8] = 3000
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        corrected = stack.remove_background()
+        assert np.issubdtype(corrected.data.dtype, np.floating)
+        np.testing.assert_allclose(corrected.data[:, 0, 0], 0)
+        np.testing.assert_allclose(corrected.data[:, 5, 5], 2000)
+
+    def test_remove_background_wrong_length(self, stack_with_background):
+        with pytest.raises(ValueError, match="background has 3 values, but the stack"):
+            stack_with_background.remove_background(np.zeros(3))
+
+    def test_remove_background_bad_method(self, stack_with_background):
+        with pytest.raises(ValueError, match='Invalid background method "median"'):
+            stack_with_background.remove_background("median")  # type: ignore[arg-type]
+
+    def test_remove_background_removes_ring(self):
+        # a constant background in the projections reconstructs as a ring of
+        # incorrect intensity in the empty region around the specimen
+        raw = ds.get_needle_data()
+        ny = raw.data.shape[1]
+        yy, zz = np.mgrid[:ny, :ny] - (ny - 1) / 2
+        radius = np.hypot(yy, zz) / (ny / 2)
+        annulus = (radius > 0.85) & (radius < 1.0)
+
+        def ring(stack):
+            rec = stack.isig[120:121, :].reconstruct(
+                "FBP",
+                cuda=False,
+                show_progressbar=False,
+            )
+            return rec.data[:, annulus].mean() / np.abs(rec.data).max()
+
+        assert abs(ring(raw)) > 0.1
+        assert abs(ring(raw.remove_background())) < 0.005

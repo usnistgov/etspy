@@ -59,6 +59,24 @@ except Exception:
 logger = logging.getLogger(__name__)
 
 
+def _background_mode(image: np.ndarray, nbins: int = 256) -> float:
+    """
+    Estimate the background (vacuum) level of an image from its intensity histogram.
+
+    The background is taken as the most common intensity: the peak of a lightly
+    smoothed histogram (ignoring the extreme 0.5% of values at each end), refined
+    as the median of the pixels close to that peak.
+    """
+    low, high = np.percentile(image, [0.5, 99.5])
+    if high <= low:
+        return float(np.median(image))
+    counts, edges = np.histogram(image, bins=nbins, range=(low, high))
+    peak = int(np.argmax(ndimage.gaussian_filter1d(counts.astype(float), 2)))
+    center = 0.5 * (edges[peak] + edges[peak + 1])
+    bin_width = edges[1] - edges[0]
+    return float(np.median(image[np.abs(image - center) <= 2 * bin_width]))
+
+
 class MismatchedTiltError(ValueError):
     """
     Error for when number of tilts in signal does not match tilt dimension.
@@ -1236,6 +1254,123 @@ class TomoStack(CommonStack):
         out = align.align_to_other(self, other, shift_type, cuda)
 
         return out
+
+    def remove_background(
+        self,
+        background: Literal["mode", "border"] | float | np.ndarray = "mode",
+        border_width: int = 8,
+    ) -> "TomoStack":
+        """
+        Create a copy of the stack with the background (vacuum) level removed.
+
+        Projections should have an intensity of zero where there is no specimen.
+        A constant background left in the data is inconsistent with the
+        projections of a compact object, and reconstructs as a ring of incorrect
+        intensity around the edge of the reconstruction (brighter for a positive
+        background, darker for a negative one). It also biases center of mass
+        alignment, and makes the zero-valued pixels introduced by shifting or
+        rotating the stack stand out. The background can be offset from zero by
+        the detector or by the file format (*e.g.* unsigned 16-bit data stored
+        as signed integers with an offset of -32768).
+
+        ``load`` does not change the stored intensities, so this method should be
+        applied to (dark-field) data before alignment and reconstruction. For
+        bright-field data, where vacuum is bright, it should not be used.
+
+        Parameters
+        ----------
+        background
+            How to determine the background of each projection:
+
+            - ``"mode"`` (default): the most common intensity in each projection,
+              which is the vacuum level when vacuum makes up a large part of the
+              image. This is robust to specimens that touch the image edges, but
+              is unsuitable if the specimen fills most of the field of view.
+            - ``"border"``: the median of the pixels within ``border_width``
+              pixels of the edges of each projection.
+            - A number, subtracted from every projection.
+            - An array with one value per projection.
+        border_width
+            Width (in pixels) of the edge region used when
+            ``background="border"``.
+
+        Returns
+        -------
+        corrected : TomoStack
+            Copy of the stack with the background subtracted. The subtracted value
+            for each projection is added to
+            ``metadata.Tomography.background`` (an array with one value per
+            projection), so repeated corrections accumulate.
+
+        Raises
+        ------
+        ValueError
+            If ``background`` is not a valid method name or has the wrong number
+            of values
+
+        Examples
+        --------
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> corrected = stack.remove_background()
+        """
+        nav_shape = self.data.shape[:-2]
+        images = self.data.reshape(-1, *self.data.shape[-2:])
+        if isinstance(background, str):
+            if background == "mode":
+                values = np.array([_background_mode(im) for im in images])
+            elif background == "border":
+                w = border_width
+                values = np.array(
+                    [
+                        np.median(
+                            np.concatenate(
+                                [
+                                    im[:w].ravel(),
+                                    im[-w:].ravel(),
+                                    im[w:-w, :w].ravel(),
+                                    im[w:-w, -w:].ravel(),
+                                ],
+                            ),
+                        )
+                        for im in images
+                    ],
+                )
+            else:
+                msg = (
+                    f'Invalid background method "{background}". Must be "mode", '
+                    '"border", a number, or an array with one value per projection.'
+                )
+                raise ValueError(msg)
+        else:
+            values = np.asarray(background, dtype=float).ravel()
+            if values.shape[0] == 1:
+                values = np.repeat(values, images.shape[0])
+            if values.shape[0] != images.shape[0]:
+                msg = (
+                    f"background has {values.shape[0]} values, but the stack has "
+                    f"{images.shape[0]} projections"
+                )
+                raise ValueError(msg)
+
+        corrected = self.deepcopy()
+        float_dtype = np.result_type(self.data.dtype, np.float32)
+        corrected.data = (
+            images.astype(float_dtype)
+            - values.astype(float_dtype)[:, np.newaxis, np.newaxis]
+        ).reshape(self.data.shape)
+
+        values = values.reshape(nav_shape)
+        previous = corrected.metadata.get_item("Tomography.background")
+        if previous is not None:
+            values = values + np.asarray(previous)
+        corrected.metadata.set_item("Tomography.background", values)
+        logger.info(
+            "Removed background of %.4g to %.4g from the projections",
+            values.min(),
+            values.max(),
+        )
+        return corrected
 
     def filter(
         self,
