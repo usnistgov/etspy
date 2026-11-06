@@ -816,79 +816,80 @@ class CoMAligner(StackAligner):
         """
         Calculate shifts parallel to the tilt axis using conservation of mass.
 
-        Slices which have the highest ratio of total mass to mass variance
-        and their location are returned.
-
-        Parameters
-        ----------
-        stack
-            Tilt series to be aligned.
-        xrange
-            The range for performing alignment
-        p
-            Padding element
+        The mass of each projection summed perpendicular to the tilt axis (its
+        profile along the tilt axis) is shifted by up to ``p`` pixels in each
+        direction to best match the mean profile within a window of the x-axis.
+        The window is the central 60% of the x-axis, or ``xrange`` reduced by
+        ``p`` at each end if ``xrange`` is given. ``p`` is reduced if needed so
+        that the shifted window stays within the image.
 
         Returns
         -------
         xshifts : :py:class:`~numpy.ndarray`
             Calculated shifts parallel to tilt axis.
 
+        Raises
+        ------
+        ValueError
+            If the window is empty, or there is no room to shift it
+
         Group
         -----
         align
         """
         logger.info("Refinining X-shifts using conservation of mass method")
-        ntilts, _, nx = self.stack.data.shape
+        nx = self.stack.data.shape[2]
 
         if self.xrange is None:
-            xrange = (round(nx / 5), round(4 / 5 * nx))
+            x_start, x_stop = round(nx / 5), round(4 / 5 * nx)
+            search = min(self.p, x_start, nx - x_stop)
         else:
-            xrange = (round(self.xrange[0]) + self.p, round(self.xrange[1]) - self.p)
-
-        xshifts = np.zeros([ntilts, 1])
-        total_mass = np.zeros([ntilts, xrange[1] - xrange[0] + 2 * self.p + 1])
-
-        for i in range(ntilts):
-            total_mass[i, :] = np.sum(
-                self._mass[i, :, xrange[0] - self.p - 1 : xrange[1] + self.p],
-                0,
+            data_start = max(round(self.xrange[0]), 0)
+            data_stop = min(round(self.xrange[1]), nx)
+            search = min(self.p, (data_stop - data_start - 1) // 2)
+            x_start, x_stop = data_start + search, data_stop - search
+        if search < 1 or x_stop <= x_start:
+            msg = (
+                "Not enough pixels along the x-axis to calculate shifts parallel "
+                f"to the tilt axis (x-axis size {nx}, xrange {self.xrange})"
             )
+            raise ValueError(msg)
+        if search < self.p:
+            logger.info("Limiting the x-shift search range to %d pixels", search)
 
-        mean_mass = np.mean(total_mass[:, self.p : -self.p], 0)
-
-        for i in range(ntilts):
-            s = 0
-            for j in range(-self.p, self.p):
-                resid = np.linalg.norm(
-                    mean_mass - total_mass[i, self.p + j : -self.p + j],
+        profiles = self._mass.sum(1)
+        mean_profile = profiles[:, x_start:x_stop].mean(0)
+        offsets = np.arange(-search, search + 1)
+        residuals = np.stack(
+            [
+                np.linalg.norm(
+                    profiles[:, x_start + j : x_stop + j] - mean_profile,
+                    axis=1,
                 )
-                if resid < s or j == -self.p:
-                    s = resid
-                    xshifts[i] = -j
-        return xshifts[:, 0]
+                for j in offsets
+            ],
+            axis=1,
+        )
+        return -offsets[residuals.argmin(1)].astype(float)
 
     def _calculate_shifts_com(
         self,
     ) -> np.ndarray:
         """
-        Align stack using a center of mass method.
+        Calculate shifts perpendicular to the tilt axis by center of mass analysis.
 
-        Data is first registered using PyStackReg. Then, the shifts
-        perpendicular to the tilt axis are refined by a center of
-        mass analysis.
-
-        Parameters
-        ----------
-        stack
-            The image series to be aligned
-
-        nslices
-            Number of slices to return
+        In an aligned tilt series, the center of mass (CoM) of each slice
+        perpendicular to the tilt axis follows ``x cos(theta) + z sin(theta)``,
+        where ``(x, z)`` is the CoM of that slice of the object. The misalignment
+        of each projection is the part of the measured CoM that does not follow
+        this path, i.e. the residual of a least squares fit of the CoM to
+        ``cos(theta)`` and ``sin(theta)``. The residuals of the ``nslices`` slices
+        with the most consistent mass are averaged.
 
         Returns
         -------
-        shifts : :py:class:`~numpy.ndarray`
-            The X- and Y-shifts to be applied to each image
+        yshifts : :py:class:`~numpy.ndarray`
+            Shifts perpendicular to the tilt axis for each projection
 
         Group
         -----
@@ -897,20 +898,11 @@ class CoMAligner(StackAligner):
         logger.info("Refinining Y-shifts using center of mass method")
         slices = _best_slices_from_mass(self._mass, self.nslices)
 
-        angles = self.stack.tilts.data.squeeze()
-        ntilts, _, _ = self.stack.data.shape
-        thetas = np.pi * cast("np.ndarray", angles) / 180
-
+        thetas = np.deg2rad(np.asarray(self.stack.tilts.data, dtype=float).squeeze())
         coms = _coms_from_mass(self._mass[:, :, slices])
-        i_tilts = np.eye(ntilts)
-        gam = np.array([np.cos(thetas), np.sin(thetas)]).T
-        gam = np.dot(gam, np.linalg.pinv(gam)) - i_tilts
-        b = np.dot(gam, coms)
-
-        cx = np.linalg.lstsq(gam, b, rcond=-1)[0]
-
-        yshifts = -cx[:, 0]
-        return yshifts
+        design = np.array([np.cos(thetas), np.sin(thetas)]).T
+        fit = design @ np.linalg.lstsq(design, coms, rcond=None)[0]
+        return -(coms - fit).mean(1)
 
 
 class CommonLineAligner(StackAligner):
