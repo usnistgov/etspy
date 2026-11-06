@@ -71,6 +71,7 @@ known-first-party = ["etspy"]
 
 [tool.ruff.lint.per-file-ignores]
 "etspy/tests/*" = ["S101", "D102"]
+"benchmarks/*" = ["T201", "INP001", "PLR2004"]
 
 [tool.ruff.lint.pylint]
 max-args = 10
