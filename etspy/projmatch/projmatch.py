@@ -17,8 +17,6 @@ from etspy.align import fourier_shift as _fourier_shift
 from etspy.recon import astra_iterations, create_projector
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
-
     from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
@@ -62,10 +60,13 @@ class ProjMatch:
             If True, use CUDA-acceleration. Default is False.
         params : Optional[Dict], optional
             Dictionary of parameters for alignment. Acceptable keys are:
-            "levels", "iterations", "recon_algorithm", "recon_iterations", "relax", and
-            "minstep". "recon_iterations" is the number of iterations for
-            the reconstruction algorithm (default: 20 for SIRT and 5 for SART).
-
+            "levels", "iterations", "recon_algorithm", "recon_iterations", "relax",
+            "minstep", and "history". "recon_iterations" is the number of passes
+            through all of the projections for each SIRT or SART reconstruction
+            (default: 20 for SIRT and 5 for SART). If "history" is True, the
+            sinogram and reconstruction of every iteration are kept (in
+            ``sino_update`` and ``rec_update``; default False, since they can use a
+            lot of memory).
         """
         self.stack = stack
         if self.stack.data.squeeze().ndim == DIM_2D:
@@ -99,11 +100,12 @@ class ProjMatch:
             self.params = params
         self.levels = self.params.get("levels", [8, 4, 2, 1])
         self.iterations = self.params.get("iterations", 100)
-        self.error: list[NDArray[Any]] = [np.empty(0) for _ in range(len(self.levels))]
-
-        self.sino_update: list[NDArray | None] = [None] * len(self.levels)
-        self.rec_update: list[NDArray | None] = [None] * len(self.levels)
-
+        self.history = bool(self.params.get("history", False))
+        # per-level history, filled in by calculate_shifts
+        self.error: list[Any] = []
+        self.sino_update: list[Any] | None = None
+        self.rec_update: list[Any] | None = None
+        self.shift_update: Any = None
         self.recon_algorithm = self.params.get("recon_algorithm", "FBP")
 
         default_passes = {"sirt": 20, "sart": 5}.get(self.recon_algorithm.lower())
@@ -124,104 +126,123 @@ class ProjMatch:
         self,
         show_progressbar=False,
     ):
-        """Calculate shifts.
+        """Calculate the shifts by projection matching.
+
+        The alignment is refined at each downsampling level in ``levels``,
+        starting from the current ``total_shifts`` (so calling this method again
+        continues the refinement). The history of the most recent call is stored
+        in:
+
+        - ``error``: for each level, a :py:class:`~hyperspy.signals.Signal1D` of
+          the normalized residual at each iteration
+        - ``shift_update``: a :py:class:`~hyperspy.signals.Signal1D` of the total
+          shifts after each level
+        - ``sino_update`` and ``rec_update`` (only if the "history" parameter is
+          True; otherwise ``None``): for each level, a
+          :py:class:`~hyperspy.signals.Signal2D` of the shifted sinogram and of
+          the reconstruction at each iteration
 
         Parameters
         ----------
-        downsample_method : str, optional
-            Method to use for downsampling.  If "interp", downsampling is performed
-            using Hyperspy which employs an interpolation method.  The resulting data
-            will be smaller than the input by a factor of the current level.  If "blur",
-            the data is blurred by convolution and the result will have the same size
-            as the input, by default "interp"
-
+        show_progressbar : bool, optional
+            If True, show a progress bar for the iterations at each level.
+            Default is False.
         """
-        for idx, j in enumerate(self.levels):
-            logger.info("Binning %i", j)
-            sino_shifted = shift_sinogram(
-                self.sino,
-                self.total_shifts,
+        errors: list[list[float]] = []
+        sinos: list[list[np.ndarray]] = []
+        recs: list[list[np.ndarray]] = []
+        total_shifts_history = []
+        try:
+            for j in self.levels:
+                level_errors, level_sinos, level_recs = self._refine_level(
+                    j,
+                    show_progressbar,
+                )
+                errors.append(level_errors)
+                sinos.append(level_sinos)
+                recs.append(level_recs)
+                total_shifts_history.append(self.total_shifts.copy())
+        finally:
+            self.delete_astra_objects()
+
+        self.error = [Signal1D(np.array(e)) for e in errors]
+        self.shift_update = Signal1D(np.array(total_shifts_history))
+        if self.history:
+            self.sino_update = [Signal2D(np.stack(s)) for s in sinos]
+            self.rec_update = [Signal2D(np.stack(r)) for r in recs]
+        else:
+            self.sino_update = None
+            self.rec_update = None
+
+    def _refine_level(
+        self,
+        j: int,
+        show_progressbar: bool,
+    ) -> tuple[list[float], list[np.ndarray], list[np.ndarray]]:
+        """
+        Refine the shifts at downsampling level ``j``.
+
+        Returns the normalized residual at each iteration and, if the history is
+        kept, the shifted sinogram and reconstruction at each iteration.
+        """
+        logger.info("Binning %i", j)
+        sino_shifted = shift_sinogram(
+            self.sino,
+            self.total_shifts,
+            self.background,
+        )
+
+        if j != 1:
+            sino_rebin = blur_convolve(sino_shifted, j)
+            sino_rebin = interpolate_ft(sino_rebin, j)
+        else:
+            sino_rebin = sino_shifted.copy()
+
+        current_shifts = np.zeros(self.nangles)
+        self.update_geometries(sino_rebin.shape[1])
+
+        mass = 0
+        errors: list[float] = []
+        sinos: list[np.ndarray] = []
+        recs: list[np.ndarray] = []
+
+        for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
+            current_sino = shift_sinogram(
+                sino_rebin,
+                current_shifts,
                 self.background,
             )
-            if j != 1:
-                sino_rebin = blur_convolve(sino_shifted, j)
-                sino_rebin = interpolate_ft(sino_rebin, j)
-            else:
-                sino_rebin = sino_shifted.copy()
 
-            current_shifts = np.zeros(self.nangles)
-            self.update_geometries(sino_rebin.shape[1])
+            rec = self.reconstruct(current_sino)
 
-            mass = 0
+            reproj = self.forward_project(rec)
 
-            for i in tqdm.tqdm(range(self.iterations), disable=not (show_progressbar)):
-                current_sino = shift_sinogram(
-                    sino_rebin,
-                    current_shifts,
-                    self.background,
-                )
-                rec = self.reconstruct(current_sino)
+            resid = reproj - current_sino
+            resid = high_pass_filter(resid, 5)
 
-                reproj = self.forward_project(rec)
+            grad_y = sino_gradient(reproj)
+            grad_y = high_pass_filter(grad_y, 5)
+            yshifts = -np.sum(grad_y * resid, axis=1) / np.sum(grad_y**2, axis=1)
+            yshifts = np.minimum(0.5, np.abs(yshifts)) * np.sign(yshifts) * self.relax
+            yshifts = yshifts - np.median(yshifts)
+            max_step = np.minimum(np.quantile(np.abs(yshifts), 0.99), 0.5)
+            yshifts = np.minimum(max_step, np.abs(yshifts)) * np.sign(yshifts)
+            current_shifts += yshifts
 
-                resid = reproj - current_sino
-                resid = high_pass_filter(resid, 5)
+            if i == 0:
+                mass = np.median(np.mean(np.abs(current_sino), axis=1))
+            if self.history:
+                sinos.append(current_sino)
+                recs.append(rec)
+            errors.append(float(np.linalg.norm(resid) / mass))
+            max_update = np.max(np.quantile(np.abs(yshifts), 0.995))
+            if max_update * j < self.minstep:
+                logger.info("Converged after %i iterations", i)
+                break
 
-                grad_y = sino_gradient(reproj)
-                grad_y = high_pass_filter(grad_y, 5)
-                yshifts = -np.sum(grad_y * resid, axis=1) / np.sum(grad_y**2, axis=1)
-                yshifts = (
-                    np.minimum(0.5, np.abs(yshifts)) * np.sign(yshifts) * self.relax
-                )
-                yshifts = yshifts - np.median(yshifts)
-                max_step = np.minimum(np.quantile(np.abs(yshifts), 0.99), 0.5)
-                yshifts = np.minimum(max_step, np.abs(yshifts)) * np.sign(yshifts)
-                current_shifts += yshifts
-
-                if i == 0:
-                    mass = np.median(np.mean(np.abs(current_sino), axis=1))
-                    self.sino_update[idx] = current_sino[np.newaxis, :, :]
-                    self.rec_update[idx] = rec[np.newaxis, :, :]
-                else:
-                    self.sino_update[idx] = np.concatenate(
-                        [
-                            cast("NDArray", self.sino_update[idx]),
-                            current_sino[np.newaxis, :, :],
-                        ],
-                        axis=0,
-                    )
-                    self.rec_update[idx] = np.concatenate(
-                        [
-                            cast("NDArray", self.rec_update[idx]),
-                            rec[np.newaxis, :, :],
-                        ],
-                        axis=0,
-                    )
-                self.error[idx] = np.append(
-                    self.error[idx],
-                    np.linalg.norm(resid) / mass,
-                )
-                max_update = np.max(np.quantile(np.abs(yshifts), 0.995))
-                if max_update * j < self.minstep:
-                    logger.info("Converged after %i iterations", i)
-                    break
-
-            current_shifts = current_shifts - np.median(current_shifts)
-            self.total_shifts = self.total_shifts + current_shifts * j
-            if idx == 0:
-                self.shift_update = self.total_shifts[np.newaxis, :]
-            else:
-                self.shift_update = np.concatenate(
-                    [self.shift_update, self.total_shifts[np.newaxis, :]],
-                    axis=0,
-                )
-        self.delete_astra_objects()
-
-        for i in range(len(self.levels)):
-            self.sino_update[i] = Signal2D(self.sino_update[i])
-            self.rec_update[i] = Signal2D(self.rec_update[i])
-            self.error[i] = Signal1D(self.error[i])
-        self.shift_update = Signal1D(self.shift_update)
+        current_shifts = current_shifts - np.median(current_shifts)
+        self.total_shifts = self.total_shifts + current_shifts * j
+        return errors, sinos, recs
 
     def create_recon_algorithm(
         self,

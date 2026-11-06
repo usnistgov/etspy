@@ -1,10 +1,12 @@
 """Tests for the projection matching alignment sub-module of ETSpy."""
 
-from typing import cast
+from typing import ClassVar, cast
+from unittest.mock import patch
 
 import astra
 import numpy as np
 import pytest
+from hyperspy.signals import Signal1D, Signal2D
 from scipy import ndimage
 from scipy.stats import pearsonr
 
@@ -200,3 +202,69 @@ class TestBackgroundFill:
         basis = np.array([np.ones_like(thetas), np.cos(thetas), np.sin(thetas)]).T
         error = error - basis @ np.linalg.lstsq(basis, error)[0]
         assert np.sqrt((error**2).mean()) < 1.0
+
+
+@pytest.fixture(scope="module")
+def small_misaligned_stack():
+    """Small misaligned catalyst tilt series (45 tilts, 150 x 150 pixels)."""
+    small = ds.get_catalyst_data().inav[::2].rebin(scale=(1, 4, 4))
+    np.random.seed(3)
+    return sim.misalign_stack(small, min_shift=-2, max_shift=2, y_only=True)
+
+
+class TestHistory:
+    """Test the record of the projection matching iterations."""
+
+    params: ClassVar[dict] = {"levels": [2, 1], "iterations": 5, "minstep": 1e-6}
+
+    def test_history_off_by_default(self, small_misaligned_stack):
+        pm = projmatch.ProjMatch(small_misaligned_stack, nslice=75, params=self.params)
+        pm.calculate_shifts()
+        assert pm.sino_update is None
+        assert pm.rec_update is None
+        assert len(pm.error) == 2  # noqa: PLR2004
+        assert all(isinstance(e, Signal1D) for e in pm.error)
+        assert all(e.data.shape == (5,) for e in pm.error)
+        assert pm.shift_update.data.shape == (2, 45)
+        np.testing.assert_array_equal(pm.shift_update.data[-1], pm.total_shifts)
+
+    def test_history_on(self, small_misaligned_stack):
+        params = {**self.params, "history": True}
+        pm = projmatch.ProjMatch(small_misaligned_stack, nslice=75, params=params)
+        pm.calculate_shifts()
+        off = projmatch.ProjMatch(
+            small_misaligned_stack,
+            nslice=75,
+            params=self.params,
+        )
+        off.calculate_shifts()
+        np.testing.assert_array_equal(pm.total_shifts, off.total_shifts)
+        assert pm.sino_update is not None
+        assert pm.rec_update is not None
+        for level in range(2):
+            assert isinstance(pm.sino_update[level], Signal2D)
+            assert isinstance(pm.rec_update[level], Signal2D)
+            niter, nangles, ny = pm.sino_update[level].data.shape
+            assert (niter, nangles) == (5, 45)
+            assert pm.rec_update[level].data.shape == (5, ny, ny)
+        assert pm.sino_update[1].data.shape[2] == 150  # noqa: PLR2004
+
+    def test_history_reset_by_second_call(self, small_misaligned_stack):
+        pm = projmatch.ProjMatch(small_misaligned_stack, nslice=75, params=self.params)
+        pm.calculate_shifts()
+        first = pm.total_shifts.copy()
+        pm.calculate_shifts()
+        # the history is of the second call, which continues from the first
+        assert all(e.data.shape == (5,) for e in pm.error)
+        assert pm.shift_update.data.shape == (2, 45)
+        assert not np.array_equal(pm.total_shifts, first)
+
+    def test_astra_objects_freed_on_error(self, small_misaligned_stack):
+        pm = projmatch.ProjMatch(small_misaligned_stack, nslice=75, params=self.params)
+        before = count_astra_objects()
+        with (
+            patch.object(pm, "reconstruct", side_effect=RuntimeError("failed")),
+            pytest.raises(RuntimeError, match="failed"),
+        ):
+            pm.calculate_shifts()
+        assert count_astra_objects() == before
