@@ -31,6 +31,15 @@ mrc_file_types = [".mrc", ".ali", ".rec"]
 dm_file_types = [".dm3", ".dm4"]
 known_file_types = hspy_file_types + mrc_file_types + dm_file_types
 
+# int16 data with more than this fraction of values below this threshold are
+# likely unsigned values stored with an offset of -32768
+INT16_OFFSET_THRESHOLD = -16384
+INT16_OFFSET_FRACTION = 0.5
+
+# maximum difference (in counts) between the offsets implied by the FEI header's
+# mean intensity of each image for them to be considered a constant offset
+FEI_MEAN_TOLERANCE = 0.1
+
 
 def get_mrc_tilts(
     stack: Signal2D | TomoStack,
@@ -502,6 +511,7 @@ def load(
     filename: PathLike | list[str] | list[Path],
     tilts: list[float] | np.ndarray | None = None,
     mdocs: list[str] | list[Path] | None = None,
+    fei_offset_correction: bool = True,
 ) -> TomoStack:
     """
     Create a TomoStack object using data from a file.
@@ -519,6 +529,15 @@ def load(
 
     mdocs
         List of mdoc files for SerialEM data (optional)
+
+    fei_offset_correction
+        Some FEI software stores unsigned 16-bit detector counts as signed
+        integers by subtracting 32768. If True (default), and the FEI extended
+        header of an MRC file shows that the stored values are offset from the
+        acquired values (the mean intensity it records for every image differs
+        from the stored mean by the same constant), that constant is added back.
+        The correction is logged, and recorded in
+        ``metadata.Tomography.intensity_offset``.
 
     Returns
     -------
@@ -578,7 +597,16 @@ def load(
             "Must be either a string, Path, or list of either."
         )
         raise TypeError(msg)
+    _finalize_loaded_stack(stack, tilts, fei_offset_correction)
+    return stack
 
+
+def _finalize_loaded_stack(
+    stack: TomoStack,
+    tilts: list[float] | np.ndarray | None,
+    fei_offset_correction: bool,
+):
+    """Apply tilts and intensity corrections, and check a newly loaded stack."""
     if tilts is not None:
         _apply_user_tilts(stack, tilts)
     elif np.all(stack.tilts.data == 0):
@@ -588,5 +616,66 @@ def load(
             "to load() before alignment or reconstruction.",
         )
 
+    if fei_offset_correction:
+        _correct_fei_int16_offset(stack)
+    _warn_if_offset_int16(stack)
     stack.change_data_type("float32")
-    return stack
+
+
+def _correct_fei_int16_offset(stack: TomoStack):
+    """
+    Restore intensities that FEI software stored as signed integers with an offset.
+
+    The FEI extended header records the mean intensity of each image as acquired
+    (``mean_int``). If, for every image, this differs from the mean of the stored
+    values by the same nonzero constant (e.g. 32768, when unsigned 16-bit counts
+    were stored as signed integers), the constant is added to the data.
+    """
+    if stack.data.dtype != np.int16:
+        return
+    fei_header = stack.original_metadata.get_item("fei_header")
+    if fei_header is None or not fei_header.has_item("mean_int"):
+        return
+    images = stack.data.reshape(-1, *stack.data.shape[-2:])
+    header_means = np.asarray(fei_header["mean_int"], dtype=float).ravel()
+    if header_means.shape[0] < images.shape[0]:
+        return
+    stored_means = images.reshape(images.shape[0], -1).mean(axis=1)
+    differences = header_means[: images.shape[0]] - stored_means
+    offset = round(float(np.median(differences)))
+    if offset == 0 or np.abs(differences - offset).max() > FEI_MEAN_TOLERANCE:
+        return
+    stack.data = stack.data.astype(np.float32) + np.float32(offset)
+    stack.metadata.set_item("Tomography.intensity_offset", offset)
+    logger.warning(
+        "The FEI extended header shows that the stored intensities are offset by "
+        "%d from the acquired values (as when unsigned 16-bit counts are stored "
+        "as signed integers), so %d was added to restore them. Use "
+        "load(..., fei_offset_correction=False) to keep the stored values.",
+        -offset,
+        offset,
+    )
+
+
+def _warn_if_offset_int16(stack: TomoStack):
+    """
+    Warn if signed 16-bit data appear to be unsigned values stored with an offset.
+
+    Some software stores unsigned 16-bit detector counts as signed integers by
+    subtracting 32768, so that most of the stored values (including the
+    background) are large and negative. The values are not changed, since the
+    offset is removed along with the rest of the background by
+    :py:meth:`~etspy.base.TomoStack.remove_background`.
+    """
+    if stack.data.dtype != np.int16:
+        return
+    fraction_low = float(np.mean(stack.data < INT16_OFFSET_THRESHOLD))
+    if fraction_low > INT16_OFFSET_FRACTION:
+        logger.warning(
+            "The data are stored as signed 16-bit integers, but %.0f%% of the values "
+            "are below -16384, so they may be unsigned values stored with an "
+            "offset of -32768. The values have not been changed. For dark-field "
+            "data, use stack.remove_background() to remove the offset along with "
+            "the background; otherwise add 32768 to recover the original values.",
+            100 * fraction_low,
+        )
