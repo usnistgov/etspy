@@ -346,12 +346,21 @@ class TestTiltAlign:
 class TestAlignOther:
     """Test alignment of a dataset calculated for another."""
 
+    @staticmethod
+    def _assert_close_interior(actual, expected, max_rel, margin=15):
+        """Compare away from the edges, relative to the maximum of the data."""
+        interior = (slice(None), slice(margin, -margin), slice(margin, -margin))
+        diff = np.abs(actual.data[interior] - expected.data[interior])
+        assert diff.max() <= max_rel * expected.data.max()
+
     def test_align_to_other(self, short_stack):
         original_stack = short_stack.deepcopy()
         reg = short_stack.stack_register("PC")
         reg2 = reg.align_other(original_stack)
-        diff = reg.data - reg2.data
-        assert diff.sum() == 0.0
+        assert reg2.data.shape == reg.data.shape
+        np.testing.assert_array_equal(reg2.shifts.data, reg.shifts.data)
+        # both apply the shifts by Fourier shift (with different padding)
+        self._assert_close_interior(reg2, reg, 2e-3)
 
     def test_align_to_other_no_alignment(self, short_stack):
         original_stack = short_stack.deepcopy()
@@ -403,16 +412,56 @@ class TestAlignOther:
     def test_align_to_other_with_crop(self, short_stack):
         reg = short_stack.stack_register("PC", crop=True)
         reg2 = reg.align_other(short_stack)
-        diff = reg.data - reg2.data
-        assert diff.sum() == 0.0
+        assert reg2.data.shape == reg.data.shape
+        assert reg2.metadata.Tomography.cropped
+        self._assert_close_interior(reg2, reg, 2e-3)
 
     def test_align_to_other_with_xshift(self, short_stack):
         original_stack = short_stack.deepcopy()
         reg = original_stack.stack_register("PC")
-        reg = cast("etspy.TomoStack", reg.trans_stack(xshift=10, yshift=5, angle=2))
+        reg = cast(
+            "etspy.TomoStack",
+            reg.trans_stack(xshift=10, yshift=5, angle=2, interpolation="fourier"),
+        )
         reg2 = reg.align_other(original_stack)
-        diff = reg.data - reg2.data
-        assert diff.sum() == 0.0
+        tomo_meta = reg2.metadata.Tomography
+        assert (tomo_meta.xshift, tomo_meta.yshift, tomo_meta.tiltaxis) == (10, 5, 2)
+        # a single resampling of the original data matches shifting and then
+        # rotating (except where the intermediate step lost content at the edges)
+        interior = (slice(None), slice(15, -15), slice(15, -15))
+        diff = np.abs(reg2.data[interior] - reg.data[interior])
+        assert diff.mean() < 0.005 * reg.data[interior].mean()
+
+    @pytest.mark.parametrize("cropped", [False, True])
+    def test_align_to_other_single_resampling_is_exact(self, cropped):
+        # on smooth data, the single Fourier resampling equals shifting the
+        # images, cropping, and rotating/shifting about the (cropped) center
+        yy, xx = np.mgrid[:96, :128]
+        rng = np.random.default_rng(0)
+        images = [
+            sum(
+                np.exp(
+                    -(
+                        ((xx - rng.uniform(30, 98)) / 7) ** 2
+                        + ((yy - rng.uniform(25, 70)) / 6) ** 2
+                    ),
+                )
+                for _ in range(5)
+            )
+            for _ in range(6)
+        ]
+        raw = etspy.TomoStack(
+            np.array(images, np.float32),
+            tilts=np.linspace(-50, 50, 6),
+        )
+        shifts = np.column_stack([rng.uniform(-4, 4, 6), rng.uniform(-3, 3, 6)])
+        ref = etspy.align.apply_shifts(raw, shifts, "fourier")
+        if cropped:
+            ref = etspy.align.shift_crop(ref)
+        ref = ref.trans_stack(1.5, -3.2, 6.0, interpolation="fourier")
+        out = ref.align_other(raw)
+        assert out.data.shape == ref.data.shape
+        self._assert_close_interior(out, ref, 2e-3, margin=8)
 
 
 @pytest.fixture(scope="module")

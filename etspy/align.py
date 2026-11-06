@@ -109,6 +109,94 @@ def _coms_from_mass(sinos: np.ndarray) -> np.ndarray:
     return coms
 
 
+# Fourier rotations are applied as three shears; limit them to where this is accurate
+MAX_FOURIER_ROTATION = 90.0
+
+
+def _fourier_shift_lines(
+    image: np.ndarray, shifts: np.ndarray, axis: int
+) -> np.ndarray:
+    """
+    Shift each line of an image along ``axis`` by its own amount (Fourier shift).
+
+    ``shifts`` has one value per line (i.e. per index along the other axis); the
+    content of line ``k`` moves by ``shifts[k]`` pixels. The image is zero-padded
+    so that content does not wrap around.
+    """
+    work = np.moveaxis(image, axis, 1)
+    n = work.shape[1]
+    pad = int(np.ceil(np.abs(shifts).max())) + 2
+    padded = np.pad(work, ((0, 0), (pad, pad)))
+    freqs = np.fft.fftfreq(padded.shape[1])
+    phase = np.exp(-2j * np.pi * shifts[:, np.newaxis] * freqs[np.newaxis, :])
+    shifted = np.fft.ifft(np.fft.fft(padded, axis=1) * phase, axis=1).real
+    return np.moveaxis(shifted[:, pad : pad + n], 1, axis)
+
+
+def fourier_rigid_transform(
+    data: np.ndarray,
+    angle: float,
+    translations: np.ndarray,
+) -> np.ndarray:
+    """
+    Rotate and translate each image of a stack using Fourier methods.
+
+    Each image is rotated by ``angle`` (degrees) about its center (``nx / 2``,
+    ``ny / 2``, as in :py:meth:`~etspy.base.TomoStack.trans_stack`) and then
+    translated, so that content at ``(x, y)`` moves to ``R (x - c) + c + t``.
+    The rotation is decomposed into three shears, each applied as one-dimensional
+    Fourier shifts (with the translation included in the last two), which
+    avoids the loss of resolution caused by interpolation. Pixels uncovered by the
+    transformation are filled with the background level of each image.
+
+    Parameters
+    ----------
+    data
+        Stack of images of shape ``(nimages, ny, nx)``
+    angle
+        Rotation angle in degrees (at most 90 in magnitude)
+    translations
+        Translation ``(tx, ty)`` of each image in pixels (``x`` along columns and
+        ``y`` along rows), shape ``(nimages, 2)``, or a single ``(tx, ty)``
+
+    Returns
+    -------
+    transformed : :py:class:`~numpy.ndarray`
+        Transformed stack (floating point)
+
+    Group
+    -----
+    align
+    """
+    if abs(angle) > MAX_FOURIER_ROTATION:
+        msg = (
+            f"Fourier rotation is limited to angles of at most {MAX_FOURIER_ROTATION} "
+            f"degrees (was {angle})"
+        )
+        raise ValueError(msg)
+    nimages, ny, nx = data.shape
+    translations = np.broadcast_to(
+        np.asarray(translations, dtype=float),
+        (nimages, 2),
+    )
+    theta = np.deg2rad(angle)
+    a, b = -np.tan(theta / 2), np.sin(theta)
+    x_rel = np.arange(nx) - nx / 2
+    y_rel = np.arange(ny) - ny / 2
+    float_dtype = np.float64 if data.dtype == np.float64 else np.float32
+    out = np.empty(data.shape, dtype=float_dtype)
+    for i in range(nimages):
+        background = background_mode(data[i])
+        image = data[i].astype(np.float64) - background
+        tx, ty = translations[i]
+        # rows (fixed y) shift along x, then columns along y, then rows along x
+        image = _fourier_shift_lines(image, a * y_rel, axis=1)
+        image = _fourier_shift_lines(image, b * x_rel + ty, axis=0)
+        image = _fourier_shift_lines(image, a * y_rel + tx - a * ty, axis=1)
+        out[i] = image + background
+    return out
+
+
 def apply_shifts(
     stack: "TomoStack",
     shifts: Union["TomoShifts", np.ndarray],
@@ -1091,6 +1179,7 @@ class TiltAligner(ABC):
     def __init__(self, stack, **kwargs):
         self.stack = stack
         self.kwargs = kwargs
+        self.interpolation = kwargs.get("interpolation", "fourier")
 
     @abstractmethod
     def align_tilt_axis(self) -> "TomoStack":
@@ -1261,7 +1350,11 @@ class TiltCOMAligner(TiltAligner):
 
         return cast(
             "TomoStack",
-            self.stack.trans_stack(yshift=tilt_shift, angle=tilt_rotation),
+            self.stack.trans_stack(
+                yshift=tilt_shift,
+                angle=tilt_rotation,
+                interpolation=self.interpolation,
+            ),
         )
 
 
@@ -1357,11 +1450,25 @@ class TiltMaxImageAligner(TiltAligner):
             image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2)))
             tilt_shift = shifts[image_sum.data.argmin()]
             tilt_shift = cast("float", tilt_shift)
-            ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
-            tomo_meta.yshift = -tilt_shift
 
             logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
+        else:
+            tilt_shift = 0.0
 
+        # produce the aligned stack from the input in a single transformation
+        # (rotation followed by the shift)
+        ali = cast(
+            "TomoStack",
+            self.stack.trans_stack(
+                yshift=-tilt_shift,
+                angle=-rotation_angle,
+                interpolation=self.interpolation,
+            ),
+        )
+        tomo_meta = cast("Dtb", ali.metadata.Tomography)
+        tomo_meta.tiltaxis = -rotation_angle
+        if self.also_shift:
+            tomo_meta.yshift = -tilt_shift
         return ali
 
 
@@ -1374,16 +1481,29 @@ def align_to_other(
     """
     Spatially register a TomoStack using previously calculated shifts.
 
+    The alignment recorded in ``stack`` (its image shifts, any cropping, and the
+    tilt axis shift and rotation) is applied to ``other``. With
+    ``shift_type="fourier"`` (default), all of it is applied in a single Fourier
+    resampling of ``other`` (see :py:func:`fourier_rigid_transform`), which avoids
+    the loss of resolution caused by resampling the data at each alignment step.
+    This can also be used to apply the alignment determined from a stack to the
+    original, unaligned version of the same data, for example
+    ``aligned = ali.align_other(raw)``.
+
     Parameters
     ----------
     stack
         TomoStack which was previously aligned
     other
-        TomoStack to be aligned. Must be the same size as the primary stack
+        TomoStack to be aligned. Must be the same size as the original
+        (unaligned and uncropped) data from which ``stack`` was aligned
     shift_type
-        Image shifts can be applied using either interpolation via scipy.ndimage.shift
-        or via Fourier shift as implemented in scipy.ndimage.fourier_shift.  Must be
-        either 'interp' or 'fourier'.
+        ``"fourier"`` (default) to apply the whole alignment in a single Fourier
+        resampling (on the CPU), or ``"interp"`` to apply the image shifts by
+        spline interpolation and then the tilt axis shift and rotation by linear
+        interpolation, as separate steps
+    cuda
+        Whether to use CUDA when applying the image shifts (``"interp"`` only)
 
     Returns
     -------
@@ -1394,33 +1514,88 @@ def align_to_other(
     -----
     align
     """
-    out = other.deepcopy()
     stack_tomo_meta = cast("Dtb", stack.metadata.Tomography)
+
+    tiltaxis = float(cast("float", stack_tomo_meta.tiltaxis))
+    xshift = float(cast("float", stack_tomo_meta.xshift))
+    yshift = float(cast("float", stack_tomo_meta.yshift))
+    cropped = bool(stack_tomo_meta.get_item("cropped", default=False))
+    shifts = np.asarray(stack.shifts.data, dtype=float)
+
+    if shift_type == "fourier":
+        # Apply all of the alignment (the image shifts, then the rotation and shift
+        # of the tilt axis) in a single Fourier resampling of the original data
+        out = other.deepcopy()
+        _, ny, nx = out.data.shape
+        theta = np.deg2rad(tiltaxis)
+        rotation = np.array(
+            [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]],
+        )
+        # content moved by the image shift s (x, y) and then rotated about the
+        # center c and translated by t ends up at R (p + s - c) + c + t
+        image_shifts = shifts[:, ::-1]  # (x, y) order
+        translations = image_shifts @ rotation.T + np.array([xshift, -yshift])
+        if cropped:
+            # trans_stack rotated the cropped stack about its own center c'; that
+            # is a rotation about c followed by a translation of (I - R)(c' - c)
+            y_start, y_stop, x_start, x_stop = _crop_bounds(shifts, ny, nx)
+            crop_center = np.array(
+                [(x_start + x_stop) / 2 - nx / 2, (y_start + y_stop) / 2 - ny / 2],
+            )
+            translations = translations + (np.eye(2) - rotation) @ crop_center
+        out.data = fourier_rigid_transform(out.data, tiltaxis, translations)
+        out.shifts = shifts
+        if cropped:
+            out = out.isig[x_start:x_stop, y_start:y_stop].deepcopy()
+    else:
+        out = other.deepcopy()
+        out.shifts = np.zeros([out.data.shape[0], 2])
+        out = apply_shifts(out, shifts, shift_type, cuda=cuda)
+        if cropped:
+            out = shift_crop(out)
+        out = cast("TomoStack", out.trans_stack(xshift, yshift, tiltaxis))
+
+    # record the alignment that was applied (trans_stack above adds to the existing
+    # values, so set them explicitly)
     out_tomo_meta = cast("Dtb", out.metadata.Tomography)
-
-    out.shifts = np.zeros([out.data.shape[0], 2])
-
-    tiltaxis = cast("float", stack_tomo_meta.tiltaxis)
     out_tomo_meta.tiltaxis = tiltaxis
-
-    xshift = cast("float", stack_tomo_meta.xshift)
-    out_tomo_meta.xshift = stack_tomo_meta.xshift
-
-    yshift = cast("float", stack_tomo_meta.yshift)
-    out_tomo_meta.yshift = stack_tomo_meta.yshift
-
-    out = apply_shifts(out, stack.shifts, shift_type, cuda=cuda)
-
-    if stack_tomo_meta.cropped:
-        out = shift_crop(out)
-
-    out = cast("TomoStack", out.trans_stack(xshift, yshift, tiltaxis))
+    out_tomo_meta.xshift = xshift
+    out_tomo_meta.yshift = yshift
+    out_tomo_meta.cropped = cropped
 
     logger.info("TomoStack alignment applied")
     logger.info("X-shift: %.1f", xshift)
     logger.info("Y-shift: %.1f", yshift)
     logger.info("Rotation: %.1f", tiltaxis)
     return out
+
+
+def _crop_bounds(shifts: np.ndarray, ny: int, nx: int) -> tuple[int, int, int, int]:
+    """
+    Pixel bounds of the area containing data in every image after shifting.
+
+    A positive shift moves the image content towards higher indices, leaving
+    empty pixels at the start of that axis, and a negative shift leaves empty
+    pixels at the end. ``shifts[:, 0]`` are Y-shifts (rows) and ``shifts[:, 1]``
+    are X-shifts (columns).
+
+    Returns
+    -------
+    y_start, y_stop, x_start, x_stop
+    """
+    y_shifts, x_shifts = shifts[:, 0], shifts[:, 1]
+    y_start = int(np.ceil(max(y_shifts.max(), 0)))
+    y_stop = ny - int(np.ceil(max(-y_shifts.min(), 0)))
+    x_start = int(np.ceil(max(x_shifts.max(), 0)))
+    x_stop = nx - int(np.ceil(max(-x_shifts.min(), 0)))
+    if y_stop <= y_start or x_stop <= x_start:
+        msg = (
+            "Shifts are too large to crop the stack to a common area "
+            f"(Y-shift range: [{y_shifts.min():.1f}, {y_shifts.max():.1f}], "
+            f"X-shift range: [{x_shifts.min():.1f}, {x_shifts.max():.1f}])"
+        )
+        raise ValueError(msg)
+    return y_start, y_stop, x_start, x_stop
 
 
 def shift_crop(stack: "TomoStack") -> "TomoStack":
@@ -1446,24 +1621,10 @@ def shift_crop(stack: "TomoStack") -> "TomoStack":
     -----
     align
     """
-    _, ny, nx = stack.data.shape
-    # shifts[:, 0] are Y-shifts (rows)
-    # shifts[:, 1] are X-shifts (columns)
-    y_shifts = stack.shifts.data[:, 0]
-    x_shifts = stack.shifts.data[:, 1]
-
-    y_start = int(np.ceil(max(y_shifts.max(), 0)))
-    y_stop = ny - int(np.ceil(max(-y_shifts.min(), 0)))
-    x_start = int(np.ceil(max(x_shifts.max(), 0)))
-    x_stop = nx - int(np.ceil(max(-x_shifts.min(), 0)))
-
-    if y_stop <= y_start or x_stop <= x_start:
-        msg = (
-            "Shifts are too large to crop the stack to a common area "
-            f"(Y-shift range: [{y_shifts.min():.1f}, {y_shifts.max():.1f}], "
-            f"X-shift range: [{x_shifts.min():.1f}, {x_shifts.max():.1f}])"
-        )
-        raise ValueError(msg)
+    y_start, y_stop, x_start, x_stop = _crop_bounds(
+        stack.shifts.data,
+        *stack.data.shape[1:],
+    )
 
     cropped = stack.isig[x_start:x_stop, y_start:y_stop].deepcopy()
     cropped.metadata.set_item("Tomography.cropped", value=True)
