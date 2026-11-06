@@ -2310,7 +2310,8 @@ class TomoStack(CommonStack):
         Parameters
         ----------
         nslice
-            Slice location at which to perform the evaluation.
+            Index of the slice (along the tilt axis) at which to perform the
+            evaluation. If ``None`` (default), the central slice is used.
         algorithm
             Reconstruction algorithm use.  Must be either ``'SIRT'`` (default)
             or ``'SART'`` (this method is inapplicable for ``'FBP'`` and ``'DART'``).
@@ -2346,8 +2347,12 @@ class TomoStack(CommonStack):
             msg = "Tilt angles not defined"
             raise ValueError(msg)
 
-        if not nslice:
-            nslice = int(self.data.shape[2] / 2)
+        nx = self.data.shape[2]
+        if nslice is None:
+            nslice = nx // 2
+        elif not 0 <= nslice < nx:
+            msg = f"nslice must be in the range [0, {nx - 1}] (was {nslice})"
+            raise ValueError(msg)
 
         if cuda is None:
             if astra.use_cuda():  # coverage: nocuda
