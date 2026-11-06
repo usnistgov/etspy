@@ -558,3 +558,53 @@ class TestCoMBackgroundIndependence:
         tomo_meta = misaligned.tilt_align("CoM", nslices=20).metadata.Tomography
         assert tomo_meta.yshift == pytest.approx(5.0, abs=1.0)
         assert tomo_meta.tiltaxis == pytest.approx(3.0, abs=0.3)
+
+
+@pytest.fixture(scope="module")
+def misaligned_catalyst():
+    """Catalyst tilt series with known random shifts (stored in ``.shifts``)."""
+    np.random.seed(1)
+    return ds.get_catalyst_data(misalign=True)
+
+
+def _rms_error(measured, expected):
+    """RMS difference, ignoring a constant offset."""
+    diff = measured - expected
+    return np.sqrt(((diff - diff.mean()) ** 2).mean())
+
+
+class TestCoMAligner:
+    """Test the center of mass stack alignment."""
+
+    def test_yshifts_recover_applied_shifts(self, misaligned_catalyst):
+        # the correction is the negative of the applied jitter; a constant offset
+        # cannot be determined (it is a shift of the tilt axis)
+        shifts = etspy.align.CoMAligner(misaligned_catalyst).calculate_shifts()
+        applied = misaligned_catalyst.shifts.data
+        assert _rms_error(shifts[:, 0], -applied[:, 0]) < 0.4  # noqa: PLR2004
+        assert _rms_error(shifts[:, 1], -applied[:, 1]) < 0.5  # noqa: PLR2004
+
+    def test_xshifts_small_image(self, misaligned_catalyst):
+        # an 80 pixel wide image previously gave a negative slice index
+        small = misaligned_catalyst.isig[260:340, :].deepcopy()
+        shifts = etspy.align.CoMAligner(small).calculate_shifts()
+        applied = misaligned_catalyst.shifts.data
+        assert _rms_error(shifts[:, 1], -applied[:, 1]) < 0.6  # noqa: PLR2004
+
+    def test_xshifts_too_small_image(self):
+        stack = etspy.TomoStack(np.ones([3, 16, 2]), tilts=np.array([-5.0, 0, 5]))
+        with pytest.raises(ValueError, match="Not enough pixels along the x-axis"):
+            etspy.align.CoMAligner(stack).calculate_shifts()
+
+    @pytest.mark.parametrize("shift", [-5, 5])
+    def test_xshifts_full_search_range(self, shift):
+        # shifts of both +p and -p pixels can be found
+        x = np.arange(100)
+        profile = np.exp(-(((x - 40) / 3.0) ** 2)) + np.exp(-(((x - 60) / 5.0) ** 2))
+        data = np.tile(profile, (21, 8, 1))
+        data[2] = np.roll(data[2], shift, axis=1)
+        stack = etspy.TomoStack(data, tilts=np.linspace(-50, 50, 21))
+        shifts = etspy.align.CoMAligner(stack, p=5).calculate_shifts()
+        expected = np.zeros(21)
+        expected[2] = -shift
+        np.testing.assert_array_equal(shifts[:, 1], expected)
