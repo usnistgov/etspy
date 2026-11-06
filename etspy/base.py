@@ -63,6 +63,28 @@ logger = logging.getLogger(__name__)
 BACKGROUND_WARNING_FRACTION = 0.01
 
 
+def _taper_edges(data: np.ndarray, taper: float) -> np.ndarray:
+    """
+    Smoothly taper the edges of each image in a stack to that image's mean.
+
+    A raised-cosine ramp of width ``taper`` times the image size is applied
+    along each image axis; pixels in the interior are unchanged.
+    """
+    window = np.ones(data.shape[1:])
+    for axis, n in enumerate(data.shape[1:]):
+        n_taper = int(taper * n)
+        if n_taper == 0:
+            continue
+        ramp = np.sin(0.5 * np.pi * (np.arange(n_taper) + 0.5) / n_taper) ** 2
+        profile = np.ones(n)
+        profile[:n_taper] = ramp
+        profile[-n_taper:] = ramp[::-1]
+        window *= profile[:, np.newaxis] if axis == 0 else profile[np.newaxis, :]
+    dtype = np.result_type(data.dtype, np.float32)
+    means = data.mean(axis=(1, 2), keepdims=True)
+    return (means + (data - means) * window).astype(dtype)
+
+
 def _border_median(image: np.ndarray, width: int) -> float:
     """Median of the pixels within ``width`` pixels of the edges of an image."""
     return float(
@@ -436,6 +458,10 @@ class CommonStack(Signal2D, ABC):
         """
         Create a copy of a Stack with inverted contrast levels.
 
+        Each image is inverted independently about the midpoint of its intensity
+        range (``max + min - data``), so the minimum and maximum of each image are
+        swapped and the intensity range is preserved.
+
         Returns
         -------
         inverted : Self
@@ -447,29 +473,22 @@ class CommonStack(Signal2D, ABC):
             >>> stack = ds.get_needle_data()
             >>> s_inverted = stack.invert()
         """
-        maxvals = self.data.max(2).max(1)
-        maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
-        minvals = self.data.min(2).min(1)
-        minvals = minvals.reshape([self.data.shape[0], 1, 1])
-        ranges = maxvals - minvals
+        maxvals = self.data.max(axis=(1, 2), keepdims=True)
+        minvals = self.data.min(axis=(1, 2), keepdims=True)
 
         inverted = self.deepcopy()
-        inverted.data = inverted.data - np.reshape(
-            inverted.data.mean(2).mean(1),
-            [self.data.shape[0], 1, 1],
-        )
-        inverted.data = (inverted.data - minvals) / ranges
-
-        inverted.data = inverted.data - 1
-        inverted.data = np.sqrt(inverted.data**2)
-
-        inverted.data = (inverted.data * ranges) + minvals
-
+        # (max - data) is non-negative and <= (max - min), so adding min stays
+        # within [min, max] and cannot overflow integer data types
+        inverted.data = (maxvals - inverted.data) + minvals
         return inverted
 
     def normalize(self, width: int = 3) -> Self:
         """
         Create a copy of a stack with normalized contrast levels.
+
+        Each projection is normalized independently: its minimum is subtracted,
+        and the result is divided by ``mean + width * std`` (both calculated over
+        the whole projection after the minimum is subtracted).
 
         Parameters
         ----------
@@ -489,19 +508,10 @@ class CommonStack(Signal2D, ABC):
             >>> s_normalized = stack.normalize()
         """
         normalized = self.deepcopy()
-        minvals = np.reshape(
-            (normalized.data.min(2).min(1)),
-            [self.data.shape[0], 1, 1],
-        )
+        minvals = normalized.data.min(axis=(1, 2), keepdims=True)
         normalized.data = normalized.data - minvals
-        meanvals = np.reshape(
-            (normalized.data.mean(2).mean(1)),
-            [self.data.shape[0], 1, 1],
-        )
-        stdvals = np.reshape(
-            (normalized.data.std(2).std(1)),
-            [self.data.shape[0], 1, 1],
-        )
+        meanvals = normalized.data.mean(axis=(1, 2), keepdims=True)
+        stdvals = normalized.data.std(axis=(1, 2), keepdims=True)
         normalized.data = normalized.data / (meanvals + width * stdvals)
         return normalized
 
@@ -1554,7 +1564,11 @@ class TomoStack(CommonStack):
         size
             Size of filtering neighborhood.
         taper
-            Fraction of image size to pad to the mean.
+            Fraction of the image size (along each axis) over which the edges of
+            each filtered image are smoothly tapered to that image's mean using a
+            raised-cosine window. This reduces edge artifacts in subsequent
+            Fourier-based processing (*e.g.* alignment) without changing the image
+            size. Must be in the range [0, 0.5). If ``0``, no tapering is applied.
 
         Returns
         -------
@@ -1567,6 +1581,9 @@ class TomoStack(CommonStack):
             >>> stack = ds.get_needle_data()
             >>> filtered = stack.filter(method='median')
         """
+        if not 0 <= taper < 0.5:  # noqa: PLR2004
+            msg = f"taper must be in the range [0, 0.5) (was {taper})"
+            raise ValueError(msg)
         filtered = self.deepcopy()
         if method == "median":
             filtered.data = ndimage.median_filter(filtered.data, size=(1, size, size))
@@ -1602,8 +1619,7 @@ class TomoStack(CommonStack):
 
             filtered.data = np.fft.ifft2(np.fft.ifftshift(fft_filtered)).real
 
-            h = np.hamming(rows)
-            ham2d = np.sqrt(np.outer(h, h))
+            ham2d = np.sqrt(np.outer(np.hamming(rows), np.hamming(cols)))
             filtered.data = filtered.data * ham2d
         else:
             msg = (
@@ -1612,16 +1628,7 @@ class TomoStack(CommonStack):
             )
             raise ValueError(msg)
         if taper:
-            taper_size = np.array(np.array(taper) * self.data.shape[1:], dtype=np.int32)
-            filtered.data = np.pad(
-                filtered.data,
-                [
-                    (0, 0),
-                    (taper_size[0], taper_size[0]),
-                    (taper_size[1], taper_size[1]),
-                ],
-                mode="constant",
-            )
+            filtered.data = _taper_edges(filtered.data, taper)
         return filtered
 
     def stack_register(
