@@ -483,3 +483,29 @@ class TestTiltCOMAccuracy:
         stack = etspy.TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
         coms = etspy.align.get_coms(stack, np.array([0, 3]))
         np.testing.assert_allclose(coms, 10 - 31.5)
+
+
+class TestCoMBackgroundIndependence:
+    """Test that center of mass alignment does not depend on the background."""
+
+    def test_get_coms_independent_of_offset(self, blob_tilt_series):
+        slices = np.arange(30, 210, 20)
+        offset = blob_tilt_series.deepcopy()
+        offset.data = offset.data * 1e4 - 30000
+        scaled = blob_tilt_series.deepcopy()
+        scaled.data = scaled.data * 1e4
+        np.testing.assert_allclose(
+            etspy.align.get_coms(offset, slices),
+            etspy.align.get_coms(scaled, slices),
+            atol=1e-3,
+        )
+
+    @pytest.mark.parametrize("background", [0.0, 4000.0, -30000.0])
+    def test_tilt_com_with_background_and_noise(self, blob_tilt_series, background):
+        misaligned = _misalign_tilt_axis(blob_tilt_series, 5.0, 3.0)
+        rng = np.random.default_rng(1)
+        signal = misaligned.data / misaligned.data.max() * 1000
+        misaligned.data = signal + background + rng.normal(0, 20, signal.shape)
+        tomo_meta = misaligned.tilt_align("CoM", nslices=20).metadata.Tomography
+        assert tomo_meta.yshift == pytest.approx(5.0, abs=1.0)
+        assert tomo_meta.tiltaxis == pytest.approx(3.0, abs=0.3)

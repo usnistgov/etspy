@@ -34,6 +34,7 @@ from etspy import (
 )
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
+from etspy._background import background_mode
 from etspy.transform import VolumeRotator, calculate_rotation
 from etspy.visualize import VolumeSlicer
 
@@ -62,24 +63,6 @@ logger = logging.getLogger(__name__)
 BACKGROUND_WARNING_FRACTION = 0.01
 
 
-def _background_mode(image: np.ndarray, nbins: int = 256) -> float:
-    """
-    Estimate the background (vacuum) level of an image from its intensity histogram.
-
-    The background is taken as the most common intensity: the peak of a lightly
-    smoothed histogram (ignoring the extreme 0.5% of values at each end), refined
-    as the median of the pixels close to that peak.
-    """
-    low, high = np.percentile(image, [0.5, 99.5])
-    if high <= low:
-        return float(np.median(image))
-    counts, edges = np.histogram(image, bins=nbins, range=(low, high))
-    peak = int(np.argmax(ndimage.gaussian_filter1d(counts.astype(float), 2)))
-    center = 0.5 * (edges[peak] + edges[peak + 1])
-    bin_width = edges[1] - edges[0]
-    return float(np.median(image[np.abs(image - center) <= 2 * bin_width]))
-
-
 def _warn_if_background(stack: "TomoStack", consequence: str):
     """
     Warn if a stack appears to have a significant background (vacuum) level.
@@ -101,7 +84,7 @@ def _warn_if_background(stack: "TomoStack", consequence: str):
     low, high = np.percentile(sample, [0.5, 99.5])
     if high <= low:
         return
-    background = float(np.median([_background_mode(im) for im in sample]))
+    background = float(np.median([background_mode(im) for im in sample]))
     if abs(background) > BACKGROUND_WARNING_FRACTION * (high - low):
         logger.warning(
             "The projections have a background (vacuum) level of about %.6g "
@@ -540,6 +523,11 @@ class CommonStack(Signal2D, ABC):
         """
         Create a copy of a Stack, transformed using the ``skimage`` Affine transform.
 
+        Pixels uncovered by the transformation are filled with the background
+        (vacuum) level of each image, estimated from its intensity histogram (zero if
+        the background has been removed with
+        :py:meth:`~etspy.base.TomoStack.remove_background`).
+
         Parameters
         ----------
         xshift
@@ -621,6 +609,8 @@ class CommonStack(Signal2D, ABC):
                 transformed.data[i, :, :],
                 inverse_map=tform.inverse,
                 order=interpolation_order,
+                cval=background_mode(transformed.data[i, :, :]),
+                preserve_range=True,
             )
 
         trans_tomo_meta = cast("Dtb", transformed.metadata.Tomography)
@@ -1355,7 +1345,7 @@ class TomoStack(CommonStack):
         images = self.data.reshape(-1, *self.data.shape[-2:])
         if isinstance(background, str):
             if background == "mode":
-                values = np.array([_background_mode(im) for im in images])
+                values = np.array([background_mode(im) for im in images])
             elif background == "border":
                 w = border_width
                 values = np.array(
@@ -1607,8 +1597,6 @@ class TomoStack(CommonStack):
         }
 
         if AlignmentMethod.is_valid_value(method):
-            if method in ("COM", "COM-CL"):
-                _warn_if_background(self, "biased center of mass alignment")
             aligner = aligners[method](
                 self,
                 start=start,
@@ -1732,8 +1720,6 @@ class TomoStack(CommonStack):
             "CoM",
             "MaxImage",
         ]:
-            if method == "CoM":
-                _warn_if_background(self, "biased tilt axis alignment")
             tilt_aligner = tilt_aligners[method](self, **kwargs)
             out = tilt_aligner.align_tilt_axis()
         else:

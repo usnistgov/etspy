@@ -127,16 +127,17 @@ class TestBackgroundWarnings:
             raw_needle.recon_error(iterations=2, cuda=False)
         assert "a ring of incorrect intensity" in caplog.text
 
-    @pytest.mark.parametrize(("method", "warns"), [("COM", True), ("PC", False)])
-    def test_stack_register(self, raw_needle, caplog, method, warns):
+    @pytest.mark.parametrize("method", ["COM", "PC"])
+    def test_stack_register_no_warning(self, raw_needle, caplog, method):
+        # center of mass alignment measures mass relative to the background
         with caplog.at_level(logging.WARNING, logger="etspy.base"):
             raw_needle.inav[:10].stack_register(method)
-        assert ("biased center of mass alignment" in caplog.text) == warns
+        assert "background (vacuum) level" not in caplog.text
 
-    def test_tilt_align_com_warns(self, raw_needle, caplog):
+    def test_tilt_align_com_no_warning(self, raw_needle, caplog):
         with caplog.at_level(logging.WARNING, logger="etspy.base"):
             raw_needle.tilt_align("CoM", iterations=1)
-        assert "biased tilt axis alignment" in caplog.text
+        assert "background (vacuum) level" not in caplog.text
 
     @pytest.mark.parametrize(("background", "warns"), [(2.0, False), (20.0, True)])
     def test_warning_threshold(self, caplog, background, warns):
