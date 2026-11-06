@@ -1,9 +1,14 @@
 """Tests for the TV operators of ETSpy's TV-regularized reconstruction."""
 
+import astra
 import numpy as np
 import pytest
 
+from etspy import recon
 from etspy import recon_tv as tv
+from etspy.recon import create_projector
+
+from . import count_astra_objects
 
 try:
     import cupy as cp  # type: ignore
@@ -172,3 +177,133 @@ class TestCupy:
                 rtol=1e-6,
                 atol=1e-9,
             )
+
+
+@pytest.fixture(scope="module")
+def limited_angle_phantom():
+    """Two-level phantom and its limited-angle (+/-60 degree) sinogram."""
+    n = 48
+    phantom = np.zeros((n, n), np.float32)
+    phantom[12:30, 14:34] = 0.5
+    phantom[18:24, 20:26] = 1.0
+    tilts = np.arange(-60, 61, 4.0)
+    vol_geom = astra.create_vol_geom(n, n)
+    proj_geom = astra.create_proj_geom("parallel", 1.0, n, np.deg2rad(tilts))
+    proj_id = create_projector(proj_geom, vol_geom)
+    sino_id, sino = astra.create_sino(phantom, proj_id)
+    astra.data2d.delete(sino_id)
+    astra.projector.delete(proj_id)
+    return phantom, sino.astype(np.float32), tilts
+
+
+def _relative_error(rec, phantom):
+    return np.linalg.norm(rec - phantom) / np.linalg.norm(phantom)
+
+
+class TestASDPOCS:
+    """Test ASD-POCS total variation reconstruction."""
+
+    def test_more_accurate_than_sirt_and_sart(self, limited_angle_phantom):
+        phantom, sino, tilts = limited_angle_phantom
+        stack = np.repeat(sino[:, :, np.newaxis], 2, axis=2)
+        rec, _ = tv.asd_pocs(stack, tilts, iterations=60, show_progressbar=False)
+        asd_error = _relative_error(rec[0], phantom)
+        for method, iterations in (("SIRT", 50), ("SART", 20)):
+            other = recon.run(
+                stack,
+                tilts,
+                method,
+                niterations=iterations,
+                constrain=True,
+                show_progressbar=False,
+            )
+            assert asd_error < 0.85 * _relative_error(other[0], phantom)
+
+    def test_history(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        _, history = tv.asd_pocs(
+            sino,
+            tilts,
+            iterations=20,
+            sart_relaxation=0.5,
+            sart_relaxation_reduction=0.9,
+            show_progressbar=False,
+        )
+        assert set(history) == {"data_distance", "tv", "tv_step", "relaxation"}
+        assert all(values.shape == (20,) for values in history.values())
+        assert history["data_distance"][-1] < history["data_distance"][0]
+        assert np.all(np.diff(history["tv_step"]) <= 0)
+        np.testing.assert_allclose(history["relaxation"], 0.5 * 0.9 ** np.arange(20))
+
+    def test_scale_invariance(self, limited_angle_phantom):
+        phantom, sino, tilts = limited_angle_phantom
+        rec, history = tv.asd_pocs(sino, tilts, iterations=30, show_progressbar=False)
+        scaled, scaled_history = tv.asd_pocs(
+            sino * 1000,
+            tilts,
+            iterations=30,
+            show_progressbar=False,
+        )
+        assert _relative_error(scaled[0] / 1000, phantom) == pytest.approx(
+            _relative_error(rec[0], phantom),
+            abs=0.01,
+        )
+        assert scaled_history["data_distance"][-1] == pytest.approx(
+            history["data_distance"][-1],
+            abs=0.005,
+        )
+
+    def test_repeatable(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        first, _ = tv.asd_pocs(sino, tilts, iterations=10, show_progressbar=False)
+        second, _ = tv.asd_pocs(sino, tilts, iterations=10, show_progressbar=False)
+        np.testing.assert_array_equal(first, second)
+
+    def test_tv_dims_2_reconstructs_slices_independently(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        # two different slices with the same maximum (so the same internal scaling)
+        stack = np.stack([sino, sino[:, ::-1]], axis=2)
+        both, history = tv.asd_pocs(
+            stack,
+            tilts,
+            iterations=10,
+            tv_dims=2,
+            show_progressbar=False,
+        )
+        for s in range(2):
+            alone, _ = tv.asd_pocs(
+                stack[:, :, s],
+                tilts,
+                iterations=10,
+                tv_dims=2,
+                show_progressbar=False,
+            )
+            np.testing.assert_allclose(both[s], alone[0], rtol=1e-5, atol=1e-6)
+        assert history["data_distance"].shape == (10,)
+
+    def test_shapes(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        rec, _ = tv.asd_pocs(
+            sino,
+            tilts,
+            iterations=2,
+            thickness=32,
+            show_progressbar=False,
+        )
+        assert rec.shape == (1, 32, 48)
+
+    def test_errors(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        with pytest.raises(ValueError, match="Number of tilts"):
+            tv.asd_pocs(sino, tilts[:-1], iterations=1)
+        with pytest.raises(ValueError, match="tv_dims must be 2 or 3"):
+            tv.asd_pocs(sino, tilts, iterations=1, tv_dims=1)  # type: ignore[arg-type]
+
+    @pytest.mark.usefixtures("astra_sentinel")
+    @pytest.mark.parametrize("tv_dims", [2, 3])
+    def test_frees_astra_objects(self, limited_angle_phantom, tv_dims):
+        _, sino, tilts = limited_angle_phantom
+        stack = np.repeat(sino[:, :, np.newaxis], 2, axis=2)
+        before = count_astra_objects()
+        tv.asd_pocs(stack, tilts, iterations=2, tv_dims=tv_dims, show_progressbar=False)
+        assert count_astra_objects() == before
