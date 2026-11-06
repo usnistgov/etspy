@@ -11,6 +11,8 @@ from scipy.fft import fft, fft2, fftfreq, ifft, ifft2
 from scipy.ndimage import fourier_shift, gaussian_filter
 from scipy.signal import convolve
 
+from etspy.recon import create_projector
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -252,10 +254,7 @@ class ProjMatch:
             proj_geom,
             np.zeros([self.nangles, current_ny]),
         )
-        if self.cuda:
-            self.proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-        else:
-            self.proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+        self.proj_id = create_projector(proj_geom, vol_geom, cuda=self.cuda)
         self.recon_config["ReconstructionDataId"] = self.rec_id
         self.recon_config["ProjectorId"] = self.proj_id
         self.recon_config["ProjectionDataId"] = self.sino_id

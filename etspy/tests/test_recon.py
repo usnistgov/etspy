@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 
 from etspy import datasets as ds
-from etspy import recon
+from etspy import projmatch, recon
+from etspy import simulation as sim
 from etspy.base import RecStack, TomoStack
 
 from . import count_astra_objects
@@ -525,3 +526,45 @@ class TestAstraErrorProgressBar:
             show_progressbar=show_progressbar,
         )
         assert ("it/s" in capsys.readouterr().err) == show_progressbar
+
+
+class TestConsistentProjector:
+    """Test that all CPU projections use the same (linear) forward model."""
+
+    @pytest.fixture
+    def projector_types(self, monkeypatch):
+        """Record the type of every ASTRA projector created."""
+        created = []
+        orig = astra.create_projector
+
+        def recording_create_projector(proj_type, *args, **kwargs):
+            created.append(proj_type)
+            return orig(proj_type, *args, **kwargs)
+
+        monkeypatch.setattr(astra, "create_projector", recording_create_projector)
+        return created
+
+    def test_cpu_code_paths_use_linear_projector(self, projector_types):
+        tilts = np.linspace(-70, 70, 15)
+        stack = TomoStack(
+            np.random.default_rng(0).random((15, 32, 2), np.float32),
+            tilts=tilts,
+        )
+        for method in ("FBP", "SIRT", "SART"):
+            stack.reconstruct(method, iterations=2, cuda=False, show_progressbar=False)
+        stack.reconstruct(
+            "DART",
+            iterations=2,
+            gray_levels=[0.0, 0.5, 1.0],
+            dart_iterations=1,
+            cuda=False,
+            show_progressbar=False,
+        )
+        stack.recon_error(iterations=2, cuda=False)
+        rec = stack.reconstruct("FBP", cuda=False, show_progressbar=False)
+        rec.forward_project(tilts, cuda=False)
+        model = np.ones((2, 32, 32), np.float32)
+        sim.create_model_tilt_series(model, tilts, cuda=False)
+        projmatch.ProjMatch(stack.isig[0:1, :], cuda=False).update_geometries(32)
+        assert projector_types
+        assert set(projector_types) == {"linear"}

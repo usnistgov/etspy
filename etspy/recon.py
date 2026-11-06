@@ -20,6 +20,38 @@ ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
 
 
+def create_projector(proj_geom: dict, vol_geom: dict, cuda: bool = False) -> int:
+    """
+    Create the ASTRA projector used for all ETSpy projections.
+
+    ETSpy uses the same forward model everywhere: the Joseph (linear
+    interpolation) projector, which is ASTRA's ``"linear"`` projector on the CPU
+    and its ``"cuda"`` projector on the GPU. Using one model keeps
+    reconstructions, forward projections, and simulations consistent with each
+    other and between CPU and GPU.
+
+    Parameters
+    ----------
+    proj_geom
+        ASTRA projection geometry
+    vol_geom
+        ASTRA volume geometry
+    cuda
+        If True, create the GPU projector. Otherwise, create the CPU projector.
+
+    Returns
+    -------
+    proj_id : int
+        ID of the ASTRA projector. It should be deleted with
+        ``astra.projector.delete`` when no longer needed.
+
+    Group
+    -----
+    recon
+    """
+    return astra.create_projector("cuda" if cuda else "linear", proj_geom, vol_geom)
+
+
 def run_alg(
     sino: np.ndarray,
     iters: int,
@@ -57,7 +89,7 @@ def run_alg(
     -----
     recon
     """
-    proj_id = astra.create_projector("strip", proj_geom, vol_geom)
+    proj_id = create_projector(proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, sino)
     # Copy so that the caller's configuration, which is shared between the dask
@@ -131,8 +163,8 @@ def run_dart(
     proj_geom
         ASTRA projection geometry
     cuda
-        If True, use the CUDA projector for forward projection. Otherwise, use
-        the CPU-based ``strip`` projector.
+        If True, use the GPU projector for forward projection. Otherwise, use the
+        CPU projector (see :py:func:`create_projector`).
 
     Returns
     -------
@@ -339,7 +371,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
             cfg["type"] = "SART_CUDA"
             gray_levels, thresholds = _dart_setup(gray_levels, cfg)
 
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
+        proj_id = create_projector(proj_geom, vol_geom, cuda=True)
         rec_id = astra.data2d.create("-vol", vol_geom)
         sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
         cfg["ReconstructionDataId"] = rec_id
@@ -587,12 +619,8 @@ def astra_error(
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
 
-    if cuda:  # coverage: nocuda
-        alg_name = method.upper() + "_CUDA"
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-    else:
-        alg_name = method.upper()
-        proj_id = astra.create_projector("strip", proj_geom, vol_geom)
+    alg_name = method.upper() + "_CUDA" if cuda else method.upper()
+    proj_id = create_projector(proj_geom, vol_geom, cuda=cuda)
 
     astra.data2d.store(sino_id, sinogram)
 

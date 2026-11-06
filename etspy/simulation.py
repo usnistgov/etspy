@@ -11,6 +11,7 @@ from scipy import ndimage
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
+from etspy.recon import create_projector
 
 
 def create_catalyst_model(
@@ -232,14 +233,7 @@ def create_model_tilt_series(
     thetas = np.radians(angles)
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ydim, thetas)
-    if cuda is False:
-        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-    else:
-        proj_id = astra.create_projector(
-            "cuda",
-            proj_geom,
-            vol_geom,
-        )  # coverage: nocuda
+    proj_id = create_projector(proj_geom, vol_geom, cuda=bool(cuda))
 
     try:
         for i in range(model.shape[0]):
