@@ -1394,7 +1394,7 @@ class TiltMaxImageAligner(TiltAligner):
         self.shift_limit = kwargs.get("shift_limit", 20.0)
 
     def align_tilt_axis(self) -> "TomoStack":
-        """Align tilt axis with center of mass tracking."""
+        """Align tilt axis using the maximum image method."""
         image = self.stack.data.max(0)
         image = image.astype("float32")
         edges = sobel(image)
@@ -1410,7 +1410,14 @@ class TiltMaxImageAligner(TiltAligner):
         _, angles, dists = hough_line_peaks(h, theta, d, num_peaks=5)
 
         # Calculate average angle from detected lines
-        rotation_angle = np.degrees(np.mean(angles))
+        if len(angles) == 0:
+            logger.warning(
+                "No lines were found in the maximum image; the tilt axis "
+                "rotation could not be determined and no rotation is applied",
+            )
+            rotation_angle = 0.0
+        else:
+            rotation_angle = float(np.degrees(np.mean(angles)))
 
         if self.plot_results:
             _, ax = plt.subplots(1)
@@ -1422,46 +1429,42 @@ class TiltMaxImageAligner(TiltAligner):
 
             plt.tight_layout()
 
-        ali = cast("TomoStack", self.stack.trans_stack(angle=-rotation_angle))
-        tomo_meta = cast("Dtb", ali.metadata.Tomography)
-        tomo_meta.tiltaxis = -rotation_angle
+        # trans_stack adds the rotation (and shift) to the alignment recorded in
+        # the stack metadata
 
+        ali = cast("TomoStack", self.stack.trans_stack(angle=-rotation_angle))
         logger.info("Calculated tilt-axis rotation %.2f", -rotation_angle)
 
         if self.also_shift:
-            idx = ali.data.shape[2] // 2
-            shifts = np.arange(-self.shift_limit, self.shift_limit, 1)
-            nshifts = shifts.shape[0]
-            shifted = ali.isig[0:nshifts, :].deepcopy()
-            for i in range(nshifts):
-                shifted.data[:, :, i] = np.roll(
-                    ali.isig[idx : idx + 1, :].data.squeeze(),
-                    int(shifts[i]),
-                )
-            shifted_rec = shifted.reconstruct("SIRT", 100, constrain=True)
-            image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2)))
-            tilt_shift = shifts[image_sum.data.argmin()]
-            tilt_shift = cast("float", tilt_shift)
-
+            tilt_shift = self._find_tilt_shift(ali)
+            ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
             logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
-        else:
-            tilt_shift = 0.0
 
-        # produce the aligned stack from the input in a single transformation
-        # (rotation followed by the shift)
-        ali = cast(
-            "TomoStack",
-            self.stack.trans_stack(
-                yshift=-tilt_shift,
-                angle=-rotation_angle,
-                interpolation=self.interpolation,
-            ),
-        )
-        tomo_meta = cast("Dtb", ali.metadata.Tomography)
-        tomo_meta.tiltaxis = -rotation_angle
-        if self.also_shift:
-            tomo_meta.yshift = -tilt_shift
         return ali
+
+    def _find_tilt_shift(self, ali: "TomoStack") -> float:
+        """
+        Find the tilt axis shift that minimizes the sum of the reconstruction.
+
+        The central sinogram of ``ali`` is shifted perpendicular to the tilt axis
+        by each whole number of pixels within ``shift_limit``, filling the pixels
+        uncovered by the shift with the background level of each projection, and
+        each shifted sinogram is reconstructed.
+        """
+        sinogram = ali.data[:, :, ali.data.shape[2] // 2]
+        fill = np.array([background_mode(projection) for projection in ali.data])
+        shifts = np.arange(-self.shift_limit, self.shift_limit, 1)
+        shifted = np.empty((*sinogram.shape, len(shifts)), dtype=float)
+        for i, shift in enumerate(shifts.astype(int)):
+            shifted[:, :, i] = fill[:, np.newaxis]
+            if shift >= 0:
+                shifted[:, shift:, i] = sinogram[:, : sinogram.shape[1] - shift]
+            else:
+                shifted[:, :shift, i] = sinogram[:, -shift:]
+        shifted_stack = type(ali)(shifted, tilts=ali.tilts)
+        shifted_rec = shifted_stack.reconstruct("SIRT", 100, constrain=True)
+        image_sum = cast("BaseSignal", shifted_rec.sum(axis=(1, 2)))
+        return float(shifts[image_sum.data.argmin()])
 
 
 def align_to_other(
