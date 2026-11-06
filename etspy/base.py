@@ -31,6 +31,7 @@ from etspy import (
     ReconMethodType,
     align,
     recon,
+    recon_tv,
 )
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
@@ -2046,7 +2047,10 @@ class TomoStack(CommonStack):
             p=p,
             show_progressbar=show_progressbar,
         )
+        return self._recstack_from_array(rec)
 
+    def _recstack_from_array(self, rec: np.ndarray) -> "RecStack":
+        """Create a RecStack from a reconstruction array with this stack's axes."""
         axes_dict = self.axes_manager.as_dictionary()
         rec_axes_dict = [
             axes_dict["axis-2"].copy(),
@@ -2056,8 +2060,185 @@ class TomoStack(CommonStack):
         rec_axes_dict[1]["name"] = "z"
         rec_axes_dict[1]["size"] = rec.shape[1]
         rec = RecStack(rec, axes=rec_axes_dict)
+        return RecStack(rec, axes=rec_axes_dict)
 
-        return rec
+    def reconstruct_tv(  # noqa: PLR0913
+        self,
+        method: Literal["FISTA", "ASD-POCS"] = "FISTA",
+        iterations: int = 100,
+        tv_dims: Literal[2, 3] = 3,
+        thickness: int | None = None,
+        cuda: bool | None = None,
+        ncores: int | None = None,
+        show_progressbar: bool = True,
+        tv_weight: float = 0.1,
+        fgp_iterations: int = 10,
+        sart_relaxation: float = 0.5,
+        sart_relaxation_reduction: float = 0.985,
+        tv_steps: int = 10,
+        alpha: float = 0.2,
+        alpha_reduction: float = 0.95,
+        r_max: float = 0.95,
+        eps: float = 0.02,
+    ) -> "RecStack":
+        """
+        Reconstruct the TomoStack with total variation (TV) regularization.
+
+        TV regularization favours reconstructions made of regions of nearly uniform
+        density with sharp boundaries (*e.g.* nanoparticles or phase-separated
+        materials), which suppresses noise and missing-wedge artifacts compared
+        with :py:meth:`reconstruct`. Unlike :py:meth:`reconstruct`, which
+        reconstructs each slice independently, these methods can regularize the
+        whole volume at once (``tv_dims=3``), so that neighbouring slices inform
+        each other. They are slower than SIRT or SART, and can give "cartoon-like"
+        results for specimens with gradual variations in density or fine
+        texture.
+
+        Two methods are available (see :py:mod:`etspy.recon_tv` for details and
+        references):
+
+        - ``"FISTA"`` (default): minimizes ``0.5 * |A x - b|**2 + tv_weight *
+          TV(x)`` with ``x >= 0``. The single parameter ``tv_weight`` sets how
+          strongly the result is regularized; larger values suit noisier data.
+        - ``"ASD-POCS"``: minimizes the TV subject to data consistency (relative
+          data error ``eps``) and positivity, alternating SART and TV gradient
+          descent steps with adaptive step sizes. It works best for few
+          projections or a limited tilt range with little noise.
+
+        The intensity scale of the data does not affect the parameters (the
+        projections are scaled internally), but the background should be removed
+        first (see :py:meth:`remove_background`), or bright-field data converted
+        to absorbance (see :py:meth:`log_transform`).
+
+        Parameters
+        ----------
+        method
+            ``"FISTA"`` (default) or ``"ASD-POCS"``
+        iterations
+            Number of iterations (default: 100)
+        tv_dims
+            3 (default) to regularize the TV of the whole volume, or 2 to
+            reconstruct each slice independently
+        thickness
+            Size of the output volume (in pixels) in the projection direction. If
+            ``None``, the y-size of the stack is used.
+        cuda
+            Whether to use CUDA-accelerated ASTRA projections (and CuPy for the TV
+            operations, if available). If ``None`` (default), CUDA is used if
+            ASTRA detects it.
+        ncores
+            Number of threads for CPU projections (default: 90% of the CPUs)
+        show_progressbar
+            If ``True`` (default), show a progress bar
+        tv_weight
+            (``"FISTA"``) Weight of the TV term (default: 0.1)
+        fgp_iterations
+            (``"FISTA"``) Iterations of the TV proximal step (default: 10)
+        sart_relaxation
+            (``"ASD-POCS"``) Initial SART relaxation parameter (default: 0.5)
+        sart_relaxation_reduction
+            (``"ASD-POCS"``) Reduction of the relaxation after each iteration
+            (default: 0.985)
+        tv_steps
+            (``"ASD-POCS"``) TV gradient descent steps per iteration (default: 10)
+        alpha
+            (``"ASD-POCS"``) Initial TV step size relative to the first SART step
+            (default: 0.2)
+        alpha_reduction
+            (``"ASD-POCS"``) Reduction of the TV step size when it is too large
+            (default: 0.95)
+        r_max
+            (``"ASD-POCS"``) Maximum ratio of the TV change to the SART change
+            before the TV step size is reduced (default: 0.95)
+        eps
+            (``"ASD-POCS"``) Relative data error below which the TV step size is
+            not reduced, around the relative noise level of the data (default:
+            0.02)
+
+        Returns
+        -------
+        rec : RecStack
+            The reconstructed volume. The method, its parameters, and the
+            convergence history (one value per iteration; *e.g.* the relative data
+            error ``|A x - b| / |b|`` and the total variation) are stored in
+            ``rec.metadata.Reconstruction``.
+
+        Examples
+        --------
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data(aligned=True)
+            >>> slices = stack.isig[118:122, :].deepcopy()
+            >>> rec = slices.reconstruct_tv("FISTA", iterations=20, tv_weight=0.1,
+            ...                             cuda=False, show_progressbar=False)
+            >>> history = rec.metadata.Reconstruction.history
+        """
+        if method not in ("FISTA", "ASD-POCS"):
+            msg = (
+                f'Invalid TV reconstruction method "{method}". Must be one of '
+                f"{_fmt(_get_lit(self.reconstruct_tv, 'method'))}."
+            )
+            raise ValueError(msg)
+        if np.all(self.tilts.data == 0):
+            msg = (
+                "Tilts are not defined in stack.tilts (values were all zeros). "
+                "Please set tilt values before reconstruction."
+            )
+            raise ValueError(msg)
+        if cuda is None:
+            cuda = bool(astra.use_cuda())
+            logger.info("CUDA %s with Astra", "detected" if cuda else "not detected")
+        _warn_if_background(
+            self,
+            "a ring of incorrect intensity around the reconstruction",
+        )
+
+        common = {
+            "iterations": iterations,
+            "tv_dims": tv_dims,
+            "thickness": thickness,
+            "cuda": cuda,
+            "ncores": ncores,
+            "show_progressbar": show_progressbar,
+        }
+        if method == "FISTA":
+            parameters = {"tv_weight": tv_weight, "fgp_iterations": fgp_iterations}
+            rec, history = recon_tv.fista_tv(
+                self.data,
+                self.tilts.data,
+                **common,
+                **parameters,
+            )
+        else:
+            parameters = {
+                "sart_relaxation": sart_relaxation,
+                "sart_relaxation_reduction": sart_relaxation_reduction,
+                "tv_steps": tv_steps,
+                "alpha": alpha,
+                "alpha_reduction": alpha_reduction,
+                "r_max": r_max,
+                "eps": eps,
+            }
+            rec, history = recon_tv.asd_pocs(
+                self.data,
+                self.tilts.data,
+                **common,
+                **parameters,
+            )
+
+        rec_stack = self._recstack_from_array(rec)
+        rec_stack.metadata.set_item(
+            "Reconstruction",
+            {
+                "method": method,
+                "parameters": {
+                    "iterations": iterations,
+                    "tv_dims": tv_dims,
+                    **parameters,
+                },
+                "history": history,
+            },
+        )
+        return rec_stack
 
     def test_align(  # noqa: PLR0913
         self,

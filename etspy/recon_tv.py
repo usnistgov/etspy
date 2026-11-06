@@ -309,6 +309,46 @@ def tv_fgp(
     return project_constraint(volume + weight * divergence(dual, tv_dims))
 
 
+def _prepare_tilt_series(
+    stack: np.ndarray,
+    tilts: np.ndarray,
+    tv_dims: TVDims,
+    thickness: int | None,
+    ncores: int | None,
+) -> tuple[np.ndarray, np.ndarray, float, int, int]:
+    """
+    Validate a tilt series and scale it to a maximum of 1.
+
+    Returns the scaled stack (shape ``(nangles, ny, nx)``), the tilts, the scale
+    factor, the reconstruction thickness, and the number of CPU threads.
+    """
+    if stack.ndim == 2:  # noqa: PLR2004
+        stack = stack[:, :, np.newaxis]
+    nangles, ny, nx = stack.shape
+    tilts = np.asarray(tilts, dtype=float).ravel()
+    if tilts.shape[0] != nangles:
+        msg = f"Number of tilts ({tilts.shape[0]}) does not match the stack ({nangles})"
+        raise ValueError(msg)
+    _tv_axes(tv_dims)  # validate
+    thickness = ny if thickness is None else int(thickness)
+    if ncores is None:
+        ncores = max(1, min(nx, int(0.9 * mp.cpu_count())))
+    scale = float(np.abs(stack).max())
+    scale = scale if scale > 0 else 1.0
+    return (stack / scale).astype(np.float32), tilts, scale, thickness, ncores
+
+
+def _tv_array_module(cuda: bool) -> Any:
+    """Array module for the TV steps: CuPy if running on the GPU and available."""
+    if cuda:
+        try:
+            import cupy as cp  # type: ignore  # noqa: PLC0415
+        except ImportError:
+            return np
+        return cp
+    return np
+
+
 def _sart_pass(
     sinogram: np.ndarray,
     initial: np.ndarray,
@@ -377,14 +417,7 @@ def _asd_pocs_volume(  # noqa: PLR0913
         name: np.zeros(iterations)
         for name in ("data_distance", "tv", "tv_step", "relaxation")
     }
-    xp = np
-    if cuda:
-        try:
-            import cupy as cp  # type: ignore  # noqa: PLC0415
-
-            xp = cp
-        except ImportError:
-            xp = np
+    xp = _tv_array_module(cuda)
 
     tv_step = 0.0
     for i in tqdm.tqdm(range(iterations), disable=not show_progressbar):
@@ -542,22 +575,15 @@ def asd_pocs(  # noqa: PLR0913
     -----
     recon
     """
-    if stack.ndim == 2:  # noqa: PLR2004
-        stack = stack[:, :, np.newaxis]
-    nangles, ny, nx = stack.shape
-    tilts = np.asarray(tilts, dtype=float).ravel()
-    if tilts.shape[0] != nangles:
-        msg = f"Number of tilts ({tilts.shape[0]}) does not match the stack ({nangles})"
-        raise ValueError(msg)
-    _tv_axes(tv_dims)  # validate
-    thickness = ny if thickness is None else int(thickness)
-    if ncores is None:
-        ncores = max(1, min(nx, int(0.9 * mp.cpu_count())))
+    sinograms, tilts, scale, thickness, ncores = _prepare_tilt_series(
+        stack,
+        tilts,
+        tv_dims,
+        thickness,
+        ncores,
+    )
+    nx = sinograms.shape[2]
     thetas = np.deg2rad(tilts)
-
-    scale = float(np.abs(stack).max())
-    scale = scale if scale > 0 else 1.0
-    sinograms = (stack / scale).astype(np.float32)
 
     settings = {
         "thetas": thetas,
@@ -619,3 +645,200 @@ def asd_pocs(  # noqa: PLR0913
         history["tv"][-1],
     )
     return rec * scale, history
+
+
+def _project_slices(
+    arrays: np.ndarray,
+    proj_id: int,
+    *,
+    backward: bool,
+    cuda: bool,
+    ncores: int,
+) -> np.ndarray:
+    """
+    Forward or back project a stack of slices with an ASTRA projector.
+
+    ``arrays`` has shape ``(nslices, thickness, ny)`` for forward projection or
+    ``(nslices, nangles, ny)`` for back projection.
+    """
+    create = astra.create_backprojection if backward else astra.create_sino
+
+    def project(array):
+        data_id, result = create(array, proj_id)
+        astra.data2d.delete(data_id)
+        return result
+
+    if cuda or arrays.shape[0] == 1:
+        results = [project(a) for a in arrays]
+    else:
+        tasks = [dask_delayed(project)(a) for a in arrays]
+        results = dask_compute(*tasks, num_workers=ncores, scheduler="threads")
+    return np.stack(results).astype(np.float32)
+
+
+def _operator_norm_squared(
+    proj_id: int,
+    shape: tuple[int, int],
+    n_iterations: int = 30,
+) -> float:
+    """Estimate ``|A|**2`` (Lipschitz constant of the data term) by power iteration."""
+    x = np.random.default_rng(0).random(shape).astype(np.float32)
+    norm_squared = 0.0
+    for _ in range(n_iterations):
+        x /= np.linalg.norm(x)
+        sino_id, ax = astra.create_sino(x, proj_id)
+        bp_id, x = astra.create_backprojection(ax, proj_id)
+        astra.data2d.delete([sino_id, bp_id])
+        norm_squared = float(np.linalg.norm(x))
+    return norm_squared
+
+
+def fista_tv(
+    stack: np.ndarray,
+    tilts: np.ndarray,
+    iterations: int = 100,
+    tv_weight: float = 0.1,
+    tv_dims: TVDims = 3,
+    fgp_iterations: int = 10,
+    thickness: int | None = None,
+    cuda: bool = False,
+    ncores: int | None = None,
+    show_progressbar: bool = True,
+) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """
+    Reconstruct a tilt series with FISTA total variation regularization.
+
+    Minimizes ``0.5 * |A x - b|**2 + tv_weight * TV(x)`` subject to ``x >= 0``,
+    where ``A`` is the (ASTRA) projection operator, ``b`` the projections, and TV
+    the isotropic total variation, using the fast iterative
+    shrinkage-thresholding algorithm (FISTA) with an FGP total variation proximal
+    step (Beck and Teboulle, 2009). Each iteration takes a gradient step on the
+    data term (step ``1 / |A|**2``, estimated by power iteration), applies
+    :py:func:`tv_fgp` with weight ``tv_weight / |A|**2``, and adds Nesterov
+    momentum.
+
+    ``tv_weight`` sets the balance between fitting the data and suppressing
+    variation, which makes FISTA-TV well suited to noisy data: larger values give
+    smoother reconstructions. The projections are scaled internally to a maximum
+    of 1 (and the reconstruction scaled back), so ``tv_weight`` does not depend
+    on the intensity scale of the data. Suitable values increase with the noise
+    level (on test data, about 0.03-0.1 for low noise and 0.3 for noise of 5% of
+    the maximum projection value); a well-chosen weight typically gives a final
+    relative data error (``history["data_distance"]``) close to the relative noise
+    level of the data. The projections should have their
+    background removed (or be converted to absorbance for bright-field data)
+    before reconstruction.
+
+    Parameters
+    ----------
+    stack
+        Tilt series of shape ``(nangles, ny, nx)`` (or ``(nangles, ny)`` for a
+        single slice), with the tilt axis along ``x``
+    tilts
+        Tilt angles in degrees
+    iterations
+        Number of FISTA iterations
+    tv_weight
+        Weight of the total variation term
+    tv_dims
+        3 (default) to regularize the TV of the 3D volume, coupling neighbouring
+        slices, or 2 to regularize each slice independently
+    fgp_iterations
+        Number of FGP iterations in each TV proximal step
+    thickness
+        Size of the reconstruction perpendicular to the projections (``z``); if
+        ``None``, ``ny`` is used
+    cuda
+        If True, use ASTRA's GPU projector (and CuPy for the TV steps, if
+        available)
+    ncores
+        Number of threads for the CPU projections (default: 90% of the CPUs)
+    show_progressbar
+        If True, show a progress bar
+
+    Returns
+    -------
+    rec : :py:class:`~numpy.ndarray`
+        Reconstruction of shape ``(nx, thickness, ny)``
+    history : dict
+        Arrays with one value per iteration: ``"objective"`` (of the scaled
+        problem), ``"data_distance"`` (relative data error ``|A x - b| / |b|``),
+        and ``"tv"`` (total variation of the scaled reconstruction)
+
+    Group
+    -----
+    recon
+    """
+    scaled, tilts, scale, thickness, ncores = _prepare_tilt_series(
+        stack,
+        tilts,
+        tv_dims,
+        thickness,
+        ncores,
+    )
+    _, ny, nx = scaled.shape
+    # (nslices, nangles, ny), the layout of ASTRA sinograms
+    sinograms = np.ascontiguousarray(np.transpose(scaled, (2, 0, 1)))
+    data_norm = float(np.linalg.norm(sinograms))
+    xp = _tv_array_module(cuda)
+
+    vol_geom = astra.create_vol_geom((thickness, ny))
+    proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
+    proj_id = create_projector(proj_geom, vol_geom, cuda=cuda)
+    history = {
+        name: np.zeros(iterations) for name in ("objective", "data_distance", "tv")
+    }
+    try:
+        lipschitz = _operator_norm_squared(proj_id, (thickness, ny))
+
+        def forward(volume):
+            return _project_slices(
+                volume,
+                proj_id,
+                backward=False,
+                cuda=cuda,
+                ncores=ncores,
+            )
+
+        def back(sinos):
+            return _project_slices(
+                sinos,
+                proj_id,
+                backward=True,
+                cuda=cuda,
+                ncores=ncores,
+            )
+
+        x = np.zeros((nx, thickness, ny), np.float32)
+        y = x.copy()
+        t = 1.0
+        for i in tqdm.tqdm(range(iterations), disable=not show_progressbar):
+            # gradient step on the data term, then the TV proximal step
+            gradient_step = y - back(forward(y) - sinograms) / lipschitz
+            x_new = tv_fgp(
+                xp.asarray(gradient_step),
+                tv_weight / lipschitz,
+                fgp_iterations,
+                tv_dims,
+            )
+            if xp is not np:
+                x_new = xp.asnumpy(x_new)  # type: ignore[attr-defined]
+            x_new = x_new.astype(np.float32)
+            # Nesterov momentum
+            t_new = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * t * t))
+            y = x_new + ((t - 1.0) / t_new) * (x_new - x)
+            x, t = x_new, t_new
+
+            data_error = float(np.linalg.norm(forward(x) - sinograms))
+            tv_value = total_variation(x, tv_dims)
+            history["objective"][i] = 0.5 * data_error**2 + tv_weight * tv_value
+            history["data_distance"][i] = data_error / data_norm if data_norm > 0 else 0
+            history["tv"][i] = tv_value
+    finally:
+        astra.projector.delete(proj_id)
+    logger.info(
+        "FISTA-TV finished: relative data error %.4g, total variation %.4g",
+        history["data_distance"][-1],
+        history["tv"][-1],
+    )
+    return x * scale, history

@@ -1,11 +1,14 @@
 """Tests for the TV operators of ETSpy's TV-regularized reconstruction."""
 
+import logging
+
 import astra
 import numpy as np
 import pytest
 
 from etspy import recon
 from etspy import recon_tv as tv
+from etspy.base import RecStack, TomoStack
 from etspy.recon import create_projector
 
 from . import count_astra_objects
@@ -203,22 +206,6 @@ def _relative_error(rec, phantom):
 class TestASDPOCS:
     """Test ASD-POCS total variation reconstruction."""
 
-    def test_more_accurate_than_sirt_and_sart(self, limited_angle_phantom):
-        phantom, sino, tilts = limited_angle_phantom
-        stack = np.repeat(sino[:, :, np.newaxis], 2, axis=2)
-        rec, _ = tv.asd_pocs(stack, tilts, iterations=60, show_progressbar=False)
-        asd_error = _relative_error(rec[0], phantom)
-        for method, iterations in (("SIRT", 50), ("SART", 20)):
-            other = recon.run(
-                stack,
-                tilts,
-                method,
-                niterations=iterations,
-                constrain=True,
-                show_progressbar=False,
-            )
-            assert asd_error < 0.85 * _relative_error(other[0], phantom)
-
     def test_history(self, limited_angle_phantom):
         _, sino, tilts = limited_angle_phantom
         _, history = tv.asd_pocs(
@@ -307,3 +294,180 @@ class TestASDPOCS:
         before = count_astra_objects()
         tv.asd_pocs(stack, tilts, iterations=2, tv_dims=tv_dims, show_progressbar=False)
         assert count_astra_objects() == before
+
+
+class TestFISTATV:
+    """Test FISTA total variation reconstruction."""
+
+    def test_operator_norm_estimate(self):
+        # compare the power iteration estimate with |A|**2 of the explicit matrix
+        n, tilts = 8, np.deg2rad(np.arange(-60, 61, 15.0))
+        vol_geom = astra.create_vol_geom(n, n)
+        proj_geom = astra.create_proj_geom("parallel", 1.0, n, tilts)
+        proj_id = create_projector(proj_geom, vol_geom)
+        columns = []
+        for k in range(n * n):
+            basis = np.zeros(n * n, np.float32)
+            basis[k] = 1
+            sino_id, sino = astra.create_sino(basis.reshape(n, n), proj_id)
+            astra.data2d.delete(sino_id)
+            columns.append(sino.ravel())
+        estimate = tv._operator_norm_squared(proj_id, (n, n))  # noqa: SLF001
+        astra.projector.delete(proj_id)
+        exact = np.linalg.norm(np.stack(columns, axis=1), 2) ** 2
+        assert estimate == pytest.approx(exact, rel=1e-3)
+
+    def test_more_accurate_than_sirt_and_sart(self, limited_angle_phantom):
+        phantom, sino, tilts = limited_angle_phantom
+        stack = np.repeat(sino[:, :, np.newaxis], 2, axis=2)
+        rec, _ = tv.fista_tv(stack, tilts, iterations=60, show_progressbar=False)
+        fista_error = _relative_error(rec[0], phantom)
+        for method, iterations in (("SIRT", 50), ("SART", 20)):
+            other = recon.run(
+                stack,
+                tilts,
+                method,
+                niterations=iterations,
+                constrain=True,
+                show_progressbar=False,
+            )
+            assert fista_error < 0.85 * _relative_error(other[0], phantom)
+
+    def test_noisy_data(self, limited_angle_phantom):
+        phantom, sino, tilts = limited_angle_phantom
+        rng = np.random.default_rng(0)
+        noisy = sino + rng.normal(0, 0.05 * sino.max(), sino.shape).astype(np.float32)
+        rec, _ = tv.fista_tv(
+            noisy,
+            tilts,
+            iterations=60,
+            tv_weight=0.3,
+            show_progressbar=False,
+        )
+        sirt = recon.run(noisy, tilts, "SIRT", constrain=True, show_progressbar=False)
+        assert _relative_error(rec[0], phantom) < 0.7 * _relative_error(
+            sirt[0],
+            phantom,
+        )
+
+    def test_history_and_positivity(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        rec, history = tv.fista_tv(sino, tilts, iterations=30, show_progressbar=False)
+        assert set(history) == {"objective", "data_distance", "tv"}
+        assert all(values.shape == (30,) for values in history.values())
+        objective = history["objective"]
+        assert objective[-1] < 0.1 * objective[0]
+        assert objective[-1] <= 1.01 * objective.min()
+        assert rec.min() >= 0
+
+    def test_scale_invariance(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        rec, _ = tv.fista_tv(sino, tilts, iterations=20, show_progressbar=False)
+        scaled, _ = tv.fista_tv(
+            sino * 1000, tilts, iterations=20, show_progressbar=False
+        )
+        np.testing.assert_allclose(scaled / 1000, rec, rtol=1e-3, atol=1e-6)
+
+    def test_tv_dims_2_reconstructs_slices_independently(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        stack = np.stack([sino, sino[:, ::-1]], axis=2)
+        both, _ = tv.fista_tv(
+            stack,
+            tilts,
+            iterations=10,
+            tv_dims=2,
+            show_progressbar=False,
+        )
+        for s in range(2):
+            alone, _ = tv.fista_tv(
+                stack[:, :, s],
+                tilts,
+                iterations=10,
+                tv_dims=2,
+                show_progressbar=False,
+            )
+            np.testing.assert_allclose(both[s], alone[0], rtol=1e-4, atol=1e-6)
+
+    def test_shapes_and_errors(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        rec, _ = tv.fista_tv(
+            sino,
+            tilts,
+            iterations=2,
+            thickness=32,
+            show_progressbar=False,
+        )
+        assert rec.shape == (1, 32, 48)
+        with pytest.raises(ValueError, match="Number of tilts"):
+            tv.fista_tv(sino, tilts[:-1], iterations=1)
+
+    @pytest.mark.usefixtures("astra_sentinel")
+    def test_frees_astra_objects(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        stack = np.repeat(sino[:, :, np.newaxis], 2, axis=2)
+        before = count_astra_objects()
+        tv.fista_tv(stack, tilts, iterations=2, show_progressbar=False)
+        assert count_astra_objects() == before
+
+
+class TestReconstructTV:
+    """Test TomoStack.reconstruct_tv."""
+
+    @pytest.fixture
+    def stack(self, limited_angle_phantom):
+        _, sino, tilts = limited_angle_phantom
+        data = np.repeat(sino[:, :, np.newaxis], 3, axis=2)
+        return TomoStack(data, tilts=tilts)
+
+    @pytest.mark.parametrize("method", ["FISTA", "ASD-POCS"])
+    def test_matches_algorithm_and_records_metadata(self, stack, method):
+        rec = stack.reconstruct_tv(
+            method,
+            iterations=5,
+            tv_dims=2,
+            cuda=False,
+            show_progressbar=False,
+        )
+        func = tv.fista_tv if method == "FISTA" else tv.asd_pocs
+        expected, history = func(
+            stack.data,
+            stack.tilts.data,
+            iterations=5,
+            tv_dims=2,
+            show_progressbar=False,
+        )
+        assert isinstance(rec, RecStack)
+        np.testing.assert_array_equal(rec.data, expected)
+        assert [ax.name for ax in rec.axes_manager._axes] == ["x", "z", "y"]  # noqa: SLF001
+        meta = rec.metadata.Reconstruction
+        assert meta.method == method
+        assert meta.parameters.iterations == 5  # noqa: PLR2004
+        assert meta.parameters.tv_dims == 2  # noqa: PLR2004
+        for key, values in history.items():
+            np.testing.assert_array_equal(meta.history[key], values)
+
+    def test_thickness(self, stack):
+        rec = stack.reconstruct_tv(
+            iterations=2,
+            thickness=32,
+            cuda=False,
+            show_progressbar=False,
+        )
+        assert rec.data.shape == (3, 32, 48)
+        assert rec.axes_manager["z"].size == 32  # noqa: PLR2004
+
+    def test_invalid_method(self, stack):
+        with pytest.raises(ValueError, match='Invalid TV reconstruction method "TV"'):
+            stack.reconstruct_tv("TV")  # type: ignore[arg-type]
+
+    def test_no_tilts(self, stack):
+        del stack.tilts
+        with pytest.raises(ValueError, match="Tilts are not defined"):
+            stack.reconstruct_tv(cuda=False)
+
+    def test_background_warning(self, stack, caplog):
+        offset = stack.deepcopy()
+        offset.data = offset.data + 0.2 * offset.data.max()
+        with caplog.at_level(logging.WARNING, logger="etspy.base"):
+            offset.reconstruct_tv(iterations=1, cuda=False, show_progressbar=False)
+        assert "background (vacuum) level" in caplog.text
