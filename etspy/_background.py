@@ -7,6 +7,30 @@ from scipy import ndimage
 MAX_BACKGROUND_SAMPLE_SIZE = 1_000_000
 
 
+def _subsample(image: np.ndarray) -> np.ndarray:
+    """Subsample a 2D image on a regular grid to at most ~1 million pixels."""
+    step = max(1, int(np.ceil(np.sqrt(image.size / MAX_BACKGROUND_SAMPLE_SIZE))))
+    return image[::step, ::step]
+
+
+def _histogram_mode(values: np.ndarray, nbins: int = 256) -> float:
+    """
+    Find the most common value of an array from its intensity histogram.
+
+    The mode is taken as the peak of a lightly smoothed histogram (ignoring the
+    extreme 0.5% of values at each end), refined as the median of the values close
+    to that peak.
+    """
+    low, high = np.percentile(values, [0.5, 99.5])
+    if high <= low:
+        return float(np.median(values))
+    counts, edges = np.histogram(values, bins=nbins, range=(low, high))
+    peak = int(np.argmax(ndimage.gaussian_filter1d(counts.astype(float), 2)))
+    center = 0.5 * (edges[peak] + edges[peak + 1])
+    bin_width = edges[1] - edges[0]
+    return float(np.median(values[np.abs(values - center) <= 2 * bin_width]))
+
+
 def background_mode(image: np.ndarray, nbins: int = 256) -> float:
     """
     Estimate the background (vacuum) level of an image from its intensity histogram.
@@ -28,16 +52,31 @@ def background_mode(image: np.ndarray, nbins: int = 256) -> float:
     background : float
         Estimated background level
     """
-    step = max(1, int(np.ceil(np.sqrt(image.size / MAX_BACKGROUND_SAMPLE_SIZE))))
-    sample = image[::step, ::step]
-    low, high = np.percentile(sample, [0.5, 99.5])
-    if high <= low:
-        return float(np.median(sample))
-    counts, edges = np.histogram(sample, bins=nbins, range=(low, high))
-    peak = int(np.argmax(ndimage.gaussian_filter1d(counts.astype(float), 2)))
-    center = 0.5 * (edges[peak] + edges[peak + 1])
-    bin_width = edges[1] - edges[0]
-    return float(np.median(sample[np.abs(sample - center) <= 2 * bin_width]))
+    return _histogram_mode(_subsample(image), nbins)
+
+
+def bright_mode(image: np.ndarray, nbins: int = 256) -> float:
+    """
+    Estimate the bright vacuum level of a bright-field image.
+
+    In bright-field images vacuum is brighter than the specimen, so the vacuum
+    level is taken as the most common intensity among the brighter half of the
+    pixels (see :py:func:`background_mode`).
+
+    Parameters
+    ----------
+    image
+        2D image
+    nbins
+        Number of histogram bins
+
+    Returns
+    -------
+    vacuum : float
+        Estimated vacuum (incident beam) intensity
+    """
+    sample = _subsample(image)
+    return _histogram_mode(sample[sample >= np.median(sample)], nbins)
 
 
 def projected_mass(data: np.ndarray) -> np.ndarray:
