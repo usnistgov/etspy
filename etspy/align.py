@@ -4,6 +4,7 @@
 
 import logging
 from abc import ABC, abstractmethod
+from itertools import pairwise
 from typing import TYPE_CHECKING, Literal, Union, cast
 
 import matplotlib.pylab as plt
@@ -11,7 +12,7 @@ import numpy as np
 import tqdm
 from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
-from scipy import ndimage, optimize
+from scipy import ndimage
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
@@ -90,8 +91,8 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     align
     """
     sinos = stack.data[:, :, slices] - min(stack.data.min(), 0)
-    com_range = int(sinos.shape[1] / 2)
-    y_coordinates = np.linspace(-com_range, com_range, sinos.shape[1])
+    # pixel coordinates relative to the tilt axis
+    y_coordinates = np.arange(sinos.shape[1]) - (sinos.shape[1] - 1) / 2
     total_mass = sinos.sum(1)
     coms = np.sum(np.transpose(sinos, [0, 2, 1]) * y_coordinates, 2) / total_mass
     return coms
@@ -1080,46 +1081,105 @@ class TiltAligner(ABC):
 class TiltCOMAligner(TiltAligner):
     """Tilt alignment class for center of mass method.
 
-    Perform tilt axis alignment using center of mass (CoM) tracking.
+    For each of a number of slices, the CoM is measured at each tilt and
+    fit to the path expected for rotation about an axis,
+    ``r + x0 * cos(theta) + z0 * sin(theta)``, where ``r`` is the position of the
+    tilt axis in that slice. A straight line fit of ``r`` along the tilt axis gives
+    the shift and in-plane rotation needed to center the tilt axis and make it
+    parallel to the x-axis; each slice is weighted by how closely its CoM follows
+    the expected path.
 
-    Compares path of specimen to the path expected for an ideal cylinder
-
-    Parameters
     ----------
     slices
         Locations at which to perform the Center of Mass analysis. If not
         provided, an appropriate list of slices will be automatically determined.
     nslices
         Nubmer of slices to use for the analysis (only used if the ``slices``
-        parameter is not specified). If ``None``, a value of 10% of the x-axis
-        size will be used, clamped to the range [3, 50].
+        parameter is not specified). The slices are spread along the central 80% of
+        the tilt axis. If ``None``, a value of 10% of the x-axis size will be used,
+        clamped to the range [3, 50].
+    iterations
+        Number of times to refine the estimate (default: 3).
 
     Returns
     -------
     out : TomoStack
         Copy of the input stack after rotation and translation to center and
-        make the tilt axis vertical
+        make the tilt axis horizontal
 
     Group
     -----
     align
     """
 
+    EDGE_FRACTION = 0.1  # fraction of the x-axis at each end excluded from slices
+
     def __init__(self, stack, **kwargs):
         super().__init__(stack, **kwargs)
         self.slices = kwargs.get("slices")
         self.nslices = kwargs.get("nslices")
+        self.iterations = kwargs.get("iterations", 3)
+
+    def _select_slices(self, stack: "TomoStack") -> np.ndarray:
+        """
+        Select slices spread along the tilt axis for the CoM analysis.
+
+        The central part of the x-axis is divided into ``nslices`` equal bins and
+        the slice with the highest ratio of total mass to mass variance is chosen
+        from each, so that the slices span the tilt axis (needed to determine the
+        rotation) rather than clustering in one region.
+        """
+        nx = stack.data.shape[2]
+        data = stack.data - min(stack.data.min(), 0)
+        total_mass = data.sum((0, 1))
+        ratio = total_mass / np.maximum(data.sum(1).std(0), 1e-5)
+        ratio[total_mass <= 0] = -np.inf  # never choose empty slices
+        nslices = cast("int", self.nslices)
+        bin_edges = np.linspace(
+            self.EDGE_FRACTION * nx,
+            (1 - self.EDGE_FRACTION) * nx,
+            nslices + 1,
+        ).astype(int)
+        return np.array(
+            [lo + np.argmax(ratio[lo:hi]) for lo, hi in pairwise(bin_edges) if hi > lo],
+        )
+
+    @staticmethod
+    def _estimate(stack: "TomoStack", slices: np.ndarray) -> tuple[float, float]:
+        """
+        Estimate the tilt axis shift and rotation from the CoM at given slices.
+
+        Returns
+        -------
+        tilt_shift, tilt_rotation
+            Shift (pixels) and rotation (degrees) to pass to ``trans_stack`` to
+            center the tilt axis and make it parallel to the x-axis
+        """
+        nx = stack.data.shape[2]
+        thetas = np.deg2rad(stack.tilts.data.squeeze())
+        coms = get_coms(stack, slices)
+
+        # the tilt axis position r in each slice is the constant term of a linear
+        # least squares fit of the CoM to [1, cos(theta), sin(theta)]
+        design = np.stack([np.ones_like(thetas), np.cos(thetas), np.sin(thetas)], 1)
+        coeffs = np.linalg.lstsq(design, coms, rcond=None)[0]
+        r = coeffs[0]
+
+        # weight each slice by how well its CoM follows the expected path, so that
+        # slices affected by e.g. material entering the field of view count less
+        fit_rms = np.sqrt(((design @ coeffs - coms) ** 2).mean(0))
+        weights = 1 / np.maximum(fit_rms, 1e-3 * np.median(fit_rms) + 1e-12)
+
+        # r varies linearly along the tilt axis; evaluate it at the rotation
+        # center used by trans_stack
+        slope, intercept = np.polyfit(slices, r, 1, w=weights)
+        tilt_shift = slope * nx / 2 + intercept
+        tilt_rotation = -np.degrees(np.arctan(slope))
+        return float(tilt_shift), float(tilt_rotation)
 
     def align_tilt_axis(self) -> "TomoStack":
         """Align tilt axis with center of mass tracking."""
-
-        def com_motion(theta, r, x0, z0):
-            return r - x0 * np.cos(theta) - z0 * np.sin(theta)
-
-        def fit_line(x, m, b):
-            return m * x + b
-
-        _, ny, nx = self.stack.data.shape
+        nx = self.stack.data.shape[2]
         nx_threshold = 3
 
         if np.all(self.stack.tilts.data == 0):
@@ -1136,7 +1196,6 @@ class TiltCOMAligner(TiltAligner):
             )
             raise ValueError(msg)
 
-        # Determine the best slice locations for the analysis
         if self.slices is None:
             if self.nslices is None:
                 self.nslices = int(0.1 * nx)
@@ -1152,53 +1211,41 @@ class TiltCOMAligner(TiltAligner):
                         f"Using {self.nslices} slices instead."
                     )
                     logger.warning(msg)
+            logger.info("Performing alignments using %s slices", self.nslices)
+        else:
+            self.slices = np.sort(self.slices)
 
-            self.slices = get_best_slices(self.stack, self.nslices)
-            logger.info("Performing alignments using best %s slices", self.nslices)
+        # Measure on a copy offset to a minimum of zero, so that the zeros used to
+        # fill pixels uncovered by trans_stack in later iterations add no mass
+        # (converted to at least float32 first, as subtracting the minimum could
+        # overflow integer data types)
+        measure = self.stack.deepcopy()
+        float_dtype = np.result_type(measure.data.dtype, np.float32)
+        measure.data = measure.data.astype(float_dtype) - measure.data.min()
 
-        self.slices = np.sort(self.slices)
-
-        coms = get_coms(self.stack, self.slices)
-        thetas = (
-            np.pi * self.stack.tilts.data.squeeze() / 180.0
-        )  # remove length 1 dimension
-
-        r, x0, z0 = (
-            np.zeros(len(self.slices)),
-            np.zeros(len(self.slices)),
-            np.zeros(
-                len(self.slices),
-            ),
-        )
-
-        for idx, _ in enumerate(self.slices):
-            r[idx], x0[idx], z0[idx] = optimize.curve_fit(
-                com_motion,
-                xdata=thetas,
-                ydata=coms[:, idx],
-                p0=[0, 0, 0],
-            )[0]
-        slope, intercept = optimize.curve_fit(
-            fit_line,
-            xdata=r,
-            ydata=self.slices,
-            p0=[0, 0],
-        )[0]
-        tilt_shift = (ny / 2 - intercept) / slope
-        tilt_rotation = -(180 * np.arctan(1 / slope) / np.pi)
-
-        final = cast(
-            "TomoStack",
-            self.stack.trans_stack(
-                yshift=tilt_shift,
-                angle=tilt_rotation,
-            ),
-        )
+        tilt_shift, tilt_rotation = 0.0, 0.0
+        current = measure
+        for i in range(self.iterations):
+            slices = (
+                self._select_slices(current) if self.slices is None else self.slices
+            )
+            shift_update, rotation_update = self._estimate(current, slices)
+            tilt_shift += shift_update
+            tilt_rotation += rotation_update
+            if i < self.iterations - 1:
+                # always transform from the untransformed data
+                current = cast(
+                    "TomoStack",
+                    measure.trans_stack(yshift=tilt_shift, angle=tilt_rotation),
+                )
 
         logger.info("Calculated tilt-axis shift %.2f", tilt_shift)
         logger.info("Calculated tilt-axis rotation %.2f", tilt_rotation)
 
-        return final
+        return cast(
+            "TomoStack",
+            self.stack.trans_stack(yshift=tilt_shift, angle=tilt_rotation),
+        )
 
 
 class TiltMaxImageAligner(TiltAligner):

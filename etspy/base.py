@@ -1467,11 +1467,14 @@ class TomoStack(CommonStack):
         Available methods are ``'CoM'`` and ``'MaxImage'``:
 
         **CoM:**
-        Track the center of mass (CoM) of the projections at three
-        locations.  Fit the motion of the CoM as a function of tilt to that
-        expected for an ideal cylinder to calculate an X-shift at each
-        location. Perform a  linear fit of the three X-shifts to calculate an
-        ideal rotation.
+        Track the center of mass (CoM) of the projections at a number of
+        slices along the tilt axis. Fit the motion of the CoM as a function of
+        tilt to that expected for rotation about an axis to find the tilt axis
+        position in each slice, then fit a line to these positions to calculate
+        the tilt axis shift and rotation. The estimate is refined iteratively.
+        The specimen must contain mass away from the tilt axis and remain within
+        the field of view at all tilts.
+
 
         **MaxImage:**
         Perform automated determination of the tilt axis of a
@@ -1498,9 +1501,14 @@ class TomoStack(CommonStack):
             nslices
                 (Only used when ``method == "CoM"``)
                 Nubmer of slices to use for the center of mass analysis (only used if
-                the ``slices`` parameter is not specified). If ``None``, a value of 10%
+                the ``slices`` parameter is not specified). The slices are spread
+                along the central 80% of the tilt axis. If ``None``, a value of 10%
                 of the x-axis size will be used, clamped to the range [3, 50], as
                 calculated in the :py:func:`~etspy.align.TiltCOMAligner` class.
+            iterations
+                (Only used when ``method == "CoM"``)
+                Number of times to refine the estimate (default: 3). Each
+                iteration requires transforming the full stack.
             limit
                 (Only used when ``method == "MaxImage"``)
                 Maximum rotation angle for MaxImage calculation
