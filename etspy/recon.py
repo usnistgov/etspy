@@ -175,7 +175,7 @@ def run_dart(
     -----
     recon
     """
-    proj_id = astra.create_projector("cuda" if cuda else "strip", proj_geom, vol_geom)
+    proj_id = create_projector(proj_geom, vol_geom, cuda=cuda)
     rec_id = astra.data2d.create("-vol", vol_geom, 0)
     sino_id = astra.data2d.create("-sino", proj_geom, sino)
     mask_id = astra.data2d.create("-vol", vol_geom, 1)
