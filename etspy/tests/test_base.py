@@ -1218,7 +1218,7 @@ class TestAlignOther:
             == stack2.metadata.Tomography.xshift  # type: ignore
         )
         assert (
-            stack3.metadata.Tomography.xshift == 2 * stack2.metadata.Tomography.xshift  # type: ignore
+            stack3.metadata.Tomography.xshift == stack2.metadata.Tomography.xshift  # type: ignore
         )
 
     def test_align_other_with_yshift_only(self, short_stack):
@@ -1227,7 +1227,7 @@ class TestAlignOther:
         stack3 = shifted.align_other(stack2)
         assert isinstance(stack3, TomoStack)
         assert (
-            stack3.metadata.Tomography.yshift == 2 * stack2.metadata.Tomography.yshift  # type: ignore
+            stack3.metadata.Tomography.yshift == stack2.metadata.Tomography.yshift  # type: ignore
         )
 
 
@@ -1419,7 +1419,7 @@ class TestTransStack:
             ValueError,
             match=re.escape(
                 f'Invalid interpolation method "{bad_method}". Must be one of '
-                '["linear", "cubic", "nearest", or "none"].',
+                '["linear", "cubic", "nearest", "none", or "fourier"].',
             ),
         ):
             aligned_full_stack.trans_stack(

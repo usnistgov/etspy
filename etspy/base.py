@@ -558,7 +558,9 @@ class CommonStack(Signal2D, ABC):
         xshift: float = 0.0,
         yshift: float = 0.0,
         angle: float = 0.0,
-        interpolation: Literal["linear", "cubic", "nearest", "none"] = "linear",
+        interpolation: Literal[
+            "linear", "cubic", "nearest", "none", "fourier"
+        ] = "linear",
     ) -> Self:
         """
         Create a copy of a Stack, transformed using the ``skimage`` Affine transform.
@@ -576,9 +578,13 @@ class CommonStack(Signal2D, ABC):
             Number of pixels by which to shift the stack in the Y dimension
         angle
             Angle in degrees by which to rotate the stack about the X-Y plane
-        interpolation
+                interpolation
             Mode of interpolation to employ. Must be either ``'linear'``,
-            ``'cubic'``, ``'nearest'`` or ``'none'``.  Note that ``'nearest'``
+            ``'cubic'``, ``'nearest'``, ``'none'``, or ``'fourier'``. ``'fourier'``
+            applies the rotation as three shears made of one-dimensional Fourier
+            shifts (see :py:func:`etspy.align.fourier_rigid_transform`), which
+            avoids the loss of resolution caused by interpolation (it is limited
+            to rotations of at most 90 degrees). Note that ``'nearest'``
             and ``'none'`` are equivalent.  Default is ``'linear'``.
 
         Returns
@@ -631,7 +637,9 @@ class CommonStack(Signal2D, ABC):
         full_transform = np.dot(shift, rotation_mat)
         tform = transform.AffineTransform(full_transform)
 
-        if interpolation.lower() == "nearest" or interpolation.lower() == "none":
+        if interpolation.lower() == "fourier":
+            interpolation_order = None
+        elif interpolation.lower() == "nearest" or interpolation.lower() == "none":
             interpolation_order = 0
         elif interpolation.lower() == "linear":
             interpolation_order = 1
@@ -644,14 +652,21 @@ class CommonStack(Signal2D, ABC):
             )
             raise ValueError(msg)
 
-        for i in range(self.data.shape[0]):
-            transformed.data[i, :, :] = transform.warp(
-                transformed.data[i, :, :],
-                inverse_map=tform.inverse,
-                order=interpolation_order,
-                cval=background_mode(transformed.data[i, :, :]),
-                preserve_range=True,
+        if interpolation_order is None:
+            transformed.data = align.fourier_rigid_transform(
+                self.data,
+                angle,
+                (xshift, -yshift),
             )
+        else:
+            for i in range(self.data.shape[0]):
+                transformed.data[i, :, :] = transform.warp(
+                    transformed.data[i, :, :],
+                    inverse_map=tform.inverse,
+                    order=interpolation_order,
+                    cval=background_mode(transformed.data[i, :, :]),
+                    preserve_range=True,
+                )
 
         trans_tomo_meta = cast("Dtb", transformed.metadata.Tomography)
         self_tomo_meta = cast("Dtb", self.metadata.Tomography)
