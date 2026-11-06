@@ -362,6 +362,44 @@ class TestAlignOther:
         ):
             reg.align_other(original_stack)
 
+    @staticmethod
+    def _stack_with_shifts(shifts):
+        data = np.random.default_rng(0).random((len(shifts), 40, 50), np.float32)
+        stack = etspy.TomoStack(data, tilts=np.arange(len(shifts), dtype=float))
+        stack.shifts = np.array(shifts, dtype=float)
+        return stack
+
+    def test_shift_crop_axes(self):
+        # shifts[:, 0] are Y-shifts (rows), shifts[:, 1] are X-shifts (columns)
+        stack = self._stack_with_shifts(
+            [[-2.0, 0.0], [1.0, -6.0], [2.5, 3.0], [3.0, 1.0], [1.0, 1.0]],
+        )
+        cropped = etspy.align.shift_crop(stack)
+        # Y: rows 3 through 40 - 2 = 38; X: columns 3 through 50 - 6 = 44
+        assert cropped.data.shape == (5, 35, 41)
+        np.testing.assert_array_equal(cropped.data, stack.data[:, 3:38, 3:44])
+        assert cropped.metadata.get_item("Tomography.cropped")
+
+    def test_shift_crop_non_negative_shifts(self):
+        stack = self._stack_with_shifts(
+            [[0.0, 0.0], [1.0, 2.0], [2.0, 3.0], [3.0, 1.0], [1.0, 1.0]],
+        )
+        cropped = etspy.align.shift_crop(stack)
+        assert cropped.data.shape == (5, 37, 47)
+        np.testing.assert_array_equal(cropped.data, stack.data[:, 3:, 3:])
+
+    def test_shift_crop_no_shifts(self):
+        stack = self._stack_with_shifts(np.zeros((5, 2)))
+        cropped = etspy.align.shift_crop(stack)
+        assert cropped.data.shape == stack.data.shape
+
+    def test_shift_crop_too_large(self):
+        stack = self._stack_with_shifts(
+            [[-25.0, 0.0], [20.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+        )
+        with pytest.raises(ValueError, match="Shifts are too large"):
+            etspy.align.shift_crop(stack)
+
     def test_align_to_other_with_crop(self, short_stack):
         reg = short_stack.stack_register("PC", crop=True)
         reg2 = reg.align_other(short_stack)

@@ -1418,19 +1418,36 @@ def shift_crop(stack: "TomoStack") -> "TomoStack":
     Returns
     -------
     out : TomoStack
-        Aligned copy of other TomoStack
+        Cropped copy of input TomoStack
+
+    Raises
+    ------
+    ValueError
+        If the shifts are so large that no common area remains
 
     Group
     -----
     align
     """
-    cropped = stack.deepcopy()
-    x_shifts = stack.shifts.data[:, 0]
-    y_shifts = stack.shifts.data[:, 1]
-    x_max = np.int32(np.floor(x_shifts.min()))
-    x_min = np.int32(np.ceil(x_shifts.max()))
-    y_max = np.int32(np.floor(y_shifts.min()))
-    y_min = np.int32(np.ceil(y_shifts.max()))
-    cropped = cropped.isig[x_min:x_max, y_min:y_max]
+    _, ny, nx = stack.data.shape
+    # shifts[:, 0] are Y-shifts (rows)
+    # shifts[:, 1] are X-shifts (columns)
+    y_shifts = stack.shifts.data[:, 0]
+    x_shifts = stack.shifts.data[:, 1]
+
+    y_start = int(np.ceil(max(y_shifts.max(), 0)))
+    y_stop = ny - int(np.ceil(max(-y_shifts.min(), 0)))
+    x_start = int(np.ceil(max(x_shifts.max(), 0)))
+    x_stop = nx - int(np.ceil(max(-x_shifts.min(), 0)))
+
+    if y_stop <= y_start or x_stop <= x_start:
+        msg = (
+            "Shifts are too large to crop the stack to a common area "
+            f"(Y-shift range: [{y_shifts.min():.1f}, {y_shifts.max():.1f}], "
+            f"X-shift range: [{x_shifts.min():.1f}, {x_shifts.max():.1f}])"
+        )
+        raise ValueError(msg)
+
+    cropped = stack.isig[x_start:x_stop, y_start:y_stop].deepcopy()
     cropped.metadata.set_item("Tomography.cropped", value=True)
     return cropped
