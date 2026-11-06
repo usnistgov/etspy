@@ -18,10 +18,12 @@ from hyperspy._signals.signal2d import Signal2D
 from hyperspy.io import load as hs_load
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
+from scipy import ndimage
 
 from etspy import datasets as ds
 from etspy.align import TiltCOMAligner, TiltMaxImageAligner
 from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
+from etspy.io import load
 
 from . import count_astra_objects, load_serialem_multiframe_data
 
@@ -989,6 +991,41 @@ class TestFiltering:
         )
         assert filt.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
 
+    @pytest.mark.parametrize("method", ["median", "sobel", "both", "bpf"])
+    def test_image_filter_non_square_keeps_shape(self, method):
+        data = np.random.default_rng(0).random((3, 40, 64), np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        filt = stack.filter(method=method)
+        assert filt.data.shape == stack.data.shape
+        assert filt.axes_manager.signal_shape == (64, 40)
+
+    def test_image_filter_no_taper(self):
+        data = np.random.default_rng(0).random((3, 40, 64), np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        filt = stack.filter(method="median", size=3, taper=0)
+        expected = ndimage.median_filter(data, size=(1, 3, 3))
+        np.testing.assert_array_equal(filt.data, expected)
+
+    def test_image_filter_taper(self):
+        data = np.random.default_rng(0).random((3, 40, 64), np.float32) + 5
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        untapered = stack.filter(method="median", size=3, taper=0).data
+        filt = stack.filter(method="median", size=3, taper=0.1)
+        assert filt.data.shape == data.shape
+        # taper border is 4 pixels in y and 6 pixels in x; interior is unchanged
+        np.testing.assert_allclose(filt.data[:, 4:-4, 6:-6], untapered[:, 4:-4, 6:-6])
+        # edge pixels are pulled close to each image's mean
+        means = untapered.mean(axis=(1, 2))
+        for i in range(3):
+            edge_dev = np.abs(filt.data[i, 0, :] - means[i]).max()
+            orig_dev = np.abs(untapered[i, 0, :] - means[i]).max()
+            assert edge_dev < 0.1 * orig_dev
+
+    @pytest.mark.parametrize("taper", [-0.1, 0.5, 1.0])
+    def test_image_filter_bad_taper(self, short_stack, taper):
+        with pytest.raises(ValueError, match=r"taper must be in the range \[0, 0.5\)"):
+            short_stack.filter(method="median", taper=taper)
+
     def test_image_filter_wrong_name(self, short_stack):
         bad_name = "WRONG"
         with pytest.raises(
@@ -1013,6 +1050,20 @@ class TestOperations:
         assert norm.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
         assert norm.data.min() == 0.0
 
+    @pytest.mark.parametrize("width", [1, 3])
+    def test_stack_normalize_values(self, width):
+        rng = np.random.default_rng(0)
+        # projections with different offsets and contrast
+        data = np.stack(
+            [rng.normal(100 * (i + 1), 10 * (i + 1), (32, 48)) for i in range(3)],
+        ).astype(np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        norm = stack.normalize(width=width)
+        for i in range(3):
+            shifted = data[i] - data[i].min()
+            expected = shifted / (shifted.mean() + width * shifted.std())
+            np.testing.assert_allclose(norm.data[i], expected, rtol=1e-5)
+
     def test_stack_invert(self):
         im = np.zeros([10, 100, 100])
         im[:, 40:60, 40:60] = 10
@@ -1021,6 +1072,33 @@ class TestOperations:
         hist, _ = np.histogram(stack.data)
         hist_inv, _ = np.histogram(invert.data)
         assert hist[0] > hist_inv[0]
+
+    def test_stack_invert_values(self):
+        rng = np.random.default_rng(0)
+        # projections with different offsets and ranges
+        data = np.stack(
+            [rng.uniform(10 * i, 100 * (i + 1), (32, 48)) for i in range(3)],
+        ).astype(np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        inverted = stack.invert()
+        atol = 1e-6 * data.max()  # float32 rounding
+        for i in range(3):
+            expected = data[i].max() + data[i].min() - data[i]
+            np.testing.assert_allclose(inverted.data[i], expected, atol=atol)
+        np.testing.assert_allclose(inverted.data.min((1, 2)), data.min((1, 2)))
+        np.testing.assert_allclose(inverted.data.max((1, 2)), data.max((1, 2)))
+        # inverting twice returns the original data
+        np.testing.assert_allclose(inverted.invert().data, data, atol=atol)
+
+    def test_stack_invert_uint16_no_overflow(self):
+        data = np.zeros((2, 8, 8), np.uint16)
+        data[:, 0, 0] = 60000
+        data[:, 1:, :] = 10000
+        stack = TomoStack(data, tilts=np.array([0.0, 1.0]))
+        inverted = stack.invert()
+        assert inverted.data.dtype == np.uint16
+        assert inverted.data[0, 0, 0] == 0
+        assert inverted.data[0, 1, 1] == 50000
 
     def test_stack_stats(self, capsys, short_stack):
         short_stack.stats()
@@ -1699,8 +1777,12 @@ class TestRemoveBackground:
 
     def test_remove_background_removes_ring(self):
         # a constant background in the projections reconstructs as a ring of
-        # incorrect intensity in the empty region around the specimen
-        raw = ds.get_needle_data()
+        # incorrect intensity in the empty region around the specimen (here using
+        # the stored values of the needle data, with a background of about -31900)
+        raw = load(
+            Path(ds.__file__).parent / "tests" / "test_data" / "HAADF.mrc",
+            fei_offset_correction=False,
+        )
         ny = raw.data.shape[1]
         yy, zz = np.mgrid[:ny, :ny] - (ny - 1) / 2
         radius = np.hypot(yy, zz) / (ny / 2)

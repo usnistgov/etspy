@@ -20,7 +20,7 @@ def get_needle_data(aligned: bool = False):
     ----------
     aligned
         If True, load a version of the data that has already been spatially
-        registered and tilt-axis aligned
+        registered and tilt-axis aligned.
 
     Returns
     -------

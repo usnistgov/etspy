@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
 logger = logging.getLogger(__name__)
-
 PathLike = str | Path
 
 # declare known file types for later use
@@ -597,6 +596,7 @@ def load(
             "Must be either a string, Path, or list of either."
         )
         raise TypeError(msg)
+
     _finalize_loaded_stack(stack, tilts, fei_offset_correction)
     return stack
 
