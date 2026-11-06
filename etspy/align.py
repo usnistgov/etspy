@@ -18,6 +18,8 @@ from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
 from skimage.transform import hough_line, hough_line_peaks
 
+from etspy._background import background_mode, projected_mass
+
 if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
 
@@ -43,7 +45,9 @@ def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
     Get best nslices for center of mass analysis.
 
     Slices which have the highest ratio of total mass to mass variance
-    and their location are returned.
+    and their location are returned. Mass is measured relative to the
+    background of each projection (see :py:func:`etspy._background.projected_mass`).
+
 
     Parameters
     ----------
@@ -61,13 +65,16 @@ def get_best_slices(stack: "TomoStack", nslices: int) -> np.ndarray:
     -----
     align
     """
-    data = stack.data - min(stack.data.min(), 0)
-    total_mass = data.sum((0, 1))
-    mass_std = data.sum(1).std(0)
+    return _best_slices_from_mass(projected_mass(stack.data), nslices)
+
+
+def _best_slices_from_mass(mass: np.ndarray, nslices: int) -> np.ndarray:
+    """Get the best slices for CoM analysis from projected mass data."""
+    total_mass = mass.sum((0, 1))
+    mass_std = mass.sum(1).std(0)
     mass_std[mass_std == 0] = 1e-5
     mass_ratio = total_mass / mass_std
-    best_slice_locations = mass_ratio.argsort()[::-1][0:nslices]
-    return best_slice_locations
+    return mass_ratio.argsort()[::-1][0:nslices]
 
 
 def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
@@ -90,7 +97,11 @@ def get_coms(stack: "TomoStack", slices: np.ndarray) -> np.ndarray:
     -----
     align
     """
-    sinos = stack.data[:, :, slices] - min(stack.data.min(), 0)
+    return _coms_from_mass(projected_mass(stack.data)[:, :, slices])
+
+
+def _coms_from_mass(sinos: np.ndarray) -> np.ndarray:
+    """Calculate the CoM (in pixels from the y-center) of projected mass data."""
     # pixel coordinates relative to the tilt axis
     y_coordinates = np.arange(sinos.shape[1]) - (sinos.shape[1] - 1) / 2
     total_mass = sinos.sum(1)
@@ -112,7 +123,11 @@ def apply_shifts(
     These operations are carried out using either CPU or GPU resources depending on the
     value of `cuda`. If `cuda` is True, the shifts will be applied using
     GPU-acceleration via CuPy. The shifts are stored in
-    ``shifted.metadata.Tomography.shifts``.
+    ``shifted.metadata.Tomography.shifts``. With either method, pixels uncovered by
+    a shift are filled with the background (vacuum) level of their projection,
+    estimated from its intensity histogram (zero if the background has been removed
+    with :py:meth:`~etspy.base.TomoStack.remove_background`). The result is
+    floating point.
 
     Parameters
     ----------
@@ -162,7 +177,16 @@ def apply_shifts(
         )
         raise ValueError(msg)
 
-    shifts, data = xp.array(shifts), xp.array(shifted.data)
+    # Shift relative to the background of each projection, so that pixels uncovered
+    # by a shift are filled with the background level
+    float_dtype = np.float64 if shifted.data.dtype == np.float64 else np.float32
+    complex_dtype = np.complex128 if float_dtype == np.float64 else np.complex64
+    background = np.array(
+        [background_mode(im) for im in shifted.data],
+        dtype=float_dtype,
+    )[:, np.newaxis, np.newaxis]
+    shifts = xp.array(shifts)
+    data = xp.array(shifted.data.astype(float_dtype) - background)
 
     if method.lower() == "interp":
         order = kwargs.pop("order", 3)
@@ -174,12 +198,7 @@ def apply_shifts(
                 order=order,
             )
     elif method.lower() == "fourier":
-        minvals = xp.min(data, axis=(1, 2), keepdims=True)
         ntilts, ny, nx = data.shape
-        dtype = data.dtype
-        float_dtype = np.float64 if dtype == np.float64 else np.float32
-        complex_dtype = np.complex128 if dtype == np.float64 else np.complex64
-        data = data.astype(float_dtype) - minvals
 
         # Ensure padding covers shift distance on each side (2 * max_shift)
         max_y_shift, max_x_shift = (
@@ -203,7 +222,7 @@ def apply_shifts(
             nx_pad - nx - x_pad_before,
         )
 
-        # Pad original data
+        # Pad original data with zeros, which fill the pixels uncovered by the shift
         padded_data = xp.pad(
             data,
             ((0, 0), (y_pad_before, y_pad_after), (x_pad_before, x_pad_after)),
@@ -242,12 +261,12 @@ def apply_shifts(
             slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
             slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
         )
-        data = xp.clip(data[:, slice_y, slice_x], 0, None) + minvals
+        data = data[:, slice_y, slice_x]
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)
 
-    shifted.data = cp.asnumpy(data) if cuda else data
+    shifted.data = (cp.asnumpy(data) if cuda else data) + background
     shifts = cp.asnumpy(shifts) if cuda else shifts
     shifted.shifts.data = shifted.shifts.data + shifts
     return shifted
@@ -696,6 +715,7 @@ class CoMAligner(StackAligner):
         """Calculate shifts using center of mass tracking method."""
         logger.info("Performing stack registration using center of mass method")
         shifts = np.zeros([self.stack.data.shape[0], 2])
+        self._mass = projected_mass(self.stack.data)
         # _calculate_shifts_conservation_of_mass: x-shifts (parallel to tilt axis)
         # _calculate_shifts_com: y-shifts (perpendicular to tilt axis)
         shifts[:, 1] = self._calculate_shifts_conservation_of_mass()
@@ -742,7 +762,7 @@ class CoMAligner(StackAligner):
 
         for i in range(ntilts):
             total_mass[i, :] = np.sum(
-                self.stack.data[i, :, xrange[0] - self.p - 1 : xrange[1] + self.p],
+                self._mass[i, :, xrange[0] - self.p - 1 : xrange[1] + self.p],
                 0,
             )
 
@@ -787,13 +807,13 @@ class CoMAligner(StackAligner):
         align
         """
         logger.info("Refinining Y-shifts using center of mass method")
-        slices = get_best_slices(self.stack, self.nslices)
+        slices = _best_slices_from_mass(self._mass, self.nslices)
 
         angles = self.stack.tilts.data.squeeze()
         ntilts, _, _ = self.stack.data.shape
         thetas = np.pi * cast("np.ndarray", angles) / 180
 
-        coms = get_coms(self.stack, slices)
+        coms = _coms_from_mass(self._mass[:, :, slices])
         i_tilts = np.eye(ntilts)
         gam = np.array([np.cos(thetas), np.sin(thetas)]).T
         gam = np.dot(gam, np.linalg.pinv(gam)) - i_tilts
@@ -910,8 +930,8 @@ class CommonLineAligner(StackAligner):
         """
         Calculate Y-shifts using center of mass tracking.
 
-        Shifts are calculated so that the center of mass of each projection
-        matches that of the reference projection.
+        Each projection is shifted so that its center of mass (perpendicular to
+        the tilt axis) matches that of the reference projection.
 
         Parameters
         ----------
@@ -925,11 +945,10 @@ class CommonLineAligner(StackAligner):
         """
         ntilts = self.stack.data.shape[0]
         coms = np.zeros(ntilts)
-        offset = min(self.stack.data.min(), 0)
+        mass = projected_mass(self.stack.data)
 
         for i in tqdm.tqdm(range(ntilts), disable=not self.show_progressbar):
-            im = self.stack.data[i, :, :] - offset
-            coms[i], _ = ndimage.center_of_mass(im)
+            coms[i], _ = ndimage.center_of_mass(mass[i])
         yshifts = coms[com_ref_index] - coms
         return yshifts
 
@@ -1130,7 +1149,7 @@ class TiltCOMAligner(TiltAligner):
         rotation) rather than clustering in one region.
         """
         nx = stack.data.shape[2]
-        data = stack.data - min(stack.data.min(), 0)
+        data = stack.data  # projected mass (see align_tilt_axis)
         total_mass = data.sum((0, 1))
         ratio = total_mass / np.maximum(data.sum(1).std(0), 1e-5)
         ratio[total_mass <= 0] = -np.inf  # never choose empty slices
@@ -1157,7 +1176,7 @@ class TiltCOMAligner(TiltAligner):
         """
         nx = stack.data.shape[2]
         thetas = np.deg2rad(stack.tilts.data.squeeze())
-        coms = get_coms(stack, slices)
+        coms = _coms_from_mass(stack.data[:, :, slices])
 
         # the tilt axis position r in each slice is the constant term of a linear
         # least squares fit of the CoM to [1, cos(theta), sin(theta)]
@@ -1215,13 +1234,11 @@ class TiltCOMAligner(TiltAligner):
         else:
             self.slices = np.sort(self.slices)
 
-        # Measure on a copy offset to a minimum of zero, so that the zeros used to
-        # fill pixels uncovered by trans_stack in later iterations add no mass
-        # (converted to at least float32 first, as subtracting the minimum could
-        # overflow integer data types)
+        # Measure on a copy converted to projected mass (background removed and
+        # negative values set to zero), so that the zeros used to fill pixels
+        # uncovered by trans_stack in later iterations add no mass
         measure = self.stack.deepcopy()
-        float_dtype = np.result_type(measure.data.dtype, np.float32)
-        measure.data = measure.data.astype(float_dtype) - measure.data.min()
+        measure.data = projected_mass(measure.data)
 
         tilt_shift, tilt_rotation = 0.0, 0.0
         current = measure
