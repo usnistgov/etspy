@@ -1367,6 +1367,23 @@ class TestErrorPlots:
             aligned_full_stack.data.shape[1],
         )
 
+    def test_recon_error_nslice_zero(self):
+        # nslice=0 previously selected the central slice instead of the first
+        data = np.random.default_rng(0).random((15, 32, 4), np.float32)
+        data[:, :, 0] = 0
+        stack = TomoStack(data, tilts=np.linspace(-70, 70, 15))
+        rec_stack, _ = stack.recon_error(0, iterations=3, cuda=False)
+        assert np.all(rec_stack.data == 0)
+
+    @pytest.mark.parametrize("nslice", [-1, 4])
+    def test_recon_error_nslice_out_of_range(self, nslice):
+        stack = TomoStack(
+            np.ones((15, 32, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        with pytest.raises(ValueError, match=r"nslice must be in the range \[0, 3\]"):
+            stack.recon_error(nslice, iterations=3, cuda=False)
+
 
 class TestTiltAlign:
     """Test tilt alignment of a TomoStack."""
