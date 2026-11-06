@@ -2195,11 +2195,7 @@ class RecStack(CommonStack):
         proj = np.zeros([len(tilts), ny, nx])
         vol_geom = astra.create_vol_geom(nz, ny)
         proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
-        proj_id = astra.create_projector(
-            "cuda" if cuda else "linear",
-            proj_geom,
-            vol_geom,
-        )
+        proj_id = recon.create_projector(proj_geom, vol_geom, cuda=bool(cuda))
         try:
             for i in range(nx):
                 sino_id, proj[:, :, i] = astra.create_sino(data[i], proj_id)
