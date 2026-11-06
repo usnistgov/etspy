@@ -570,6 +570,12 @@ class CommonStack(Signal2D, ABC):
         the background has been removed with
         :py:meth:`~etspy.base.TomoStack.remove_background`).
 
+        The rotation is about the point ``(nx / 2, ny / 2)`` in pixel index
+        coordinates (half a pixel from the center of the image,
+        ``((nx - 1) / 2, (ny - 1) / 2)``, for each axis). The tilt axis alignment
+        methods measure the tilt axis relative to the same point, so the shift and
+        rotation they find can be passed to this method unchanged.
+
         Parameters
         ----------
         xshift
