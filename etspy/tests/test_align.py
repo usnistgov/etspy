@@ -815,3 +815,78 @@ class TestCoMAligner:
         expected = np.zeros(21)
         expected[2] = -shift
         np.testing.assert_array_equal(shifts[:, 1], expected)
+
+
+def _integer_shift(data, shift, axis):
+    """Shift by a whole number of pixels, filling with zeros."""
+    out = np.zeros_like(data)
+    src = [slice(None)] * data.ndim
+    dst = [slice(None)] * data.ndim
+    if shift >= 0:
+        src[axis] = slice(0, data.shape[axis] - shift)
+        dst[axis] = slice(shift, None)
+    else:
+        src[axis] = slice(-shift, None)
+        dst[axis] = slice(0, shift)
+    out[tuple(dst)] = data[tuple(src)]
+    return out
+
+
+class TestFourierShift:
+    """Test the Fourier shift used by all of the ETSpy Fourier shift methods."""
+
+    @pytest.mark.parametrize("axis", [0, 1])
+    @pytest.mark.parametrize("shift", [-7, 3, 0])
+    def test_integer_shift(self, axis, shift):
+        image = np.random.default_rng(0).random((24, 30))
+        shifted = etspy.align.fourier_shift(image, float(shift), axis=axis)
+        np.testing.assert_allclose(
+            shifted,
+            _integer_shift(image, shift, axis),
+            atol=1e-5,
+        )
+
+    def test_zero_shift_is_exact(self):
+        image = np.random.default_rng(0).random((8, 9))
+        np.testing.assert_array_equal(
+            etspy.align.fourier_shift(image, 0.0, axis=1),
+            image,
+        )
+
+    def test_shift_per_image_and_per_line(self):
+        data = np.random.default_rng(1).random((3, 16, 20))
+        # one shift per image (along y)
+        per_image = etspy.align.fourier_shift(
+            data,
+            np.array([[2.0], [-3.0], [0.0]]),
+            axis=1,
+        )
+        for i, shift in enumerate([2, -3, 0]):
+            np.testing.assert_allclose(
+                per_image[i],
+                _integer_shift(data[i], shift, 0),
+                atol=1e-5,
+            )
+        # one shift per row of an image (along x)
+        image = data[0]
+        row_shifts = np.arange(16) % 3 - 1.0
+        per_line = etspy.align.fourier_shift(image, row_shifts, axis=1)
+        for k, shift in enumerate(row_shifts.astype(int)):
+            np.testing.assert_allclose(
+                per_line[k],
+                _integer_shift(image[k], shift, 0),
+                atol=1e-5,
+            )
+
+    def test_subpixel_round_trip(self):
+        x = np.arange(64)
+        line = np.exp(-(((x - 30) / 4.0) ** 2))
+        there = etspy.align.fourier_shift(line, 2.3, axis=0)
+        back = etspy.align.fourier_shift(there, -2.3, axis=0)
+        np.testing.assert_allclose(back, line, atol=1e-6)
+        # a smooth peak moves by the sub-pixel shift
+        assert np.sum(x * there) / np.sum(there) == pytest.approx(32.3, abs=1e-3)
+
+    def test_float32_preserved(self):
+        image = np.ones((4, 4), np.float32)
+        assert etspy.align.fourier_shift(image, 0.5, axis=0).dtype == np.float32

@@ -5,7 +5,7 @@
 import logging
 from abc import ABC, abstractmethod
 from itertools import pairwise
-from typing import TYPE_CHECKING, Literal, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Union, cast
 
 import matplotlib.pylab as plt
 import numpy as np
@@ -13,6 +13,7 @@ import tqdm
 from hyperspy.signal import BaseSignal
 from pystackreg import StackReg
 from scipy import ndimage
+from scipy.fft import next_fast_len
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.registration import phase_cross_correlation as pcc
@@ -113,24 +114,61 @@ def _coms_from_mass(sinos: np.ndarray) -> np.ndarray:
 MAX_FOURIER_ROTATION = 90.0
 
 
-def _fourier_shift_lines(
-    image: np.ndarray, shifts: np.ndarray, axis: int
+def fourier_shift(
+    data: np.ndarray,
+    shifts: np.ndarray | float,
+    axis: int,
+    xp: Any = np,
 ) -> np.ndarray:
     """
-    Shift each line of an image along ``axis`` by its own amount (Fourier shift).
+    Shift an array along one axis using the Fourier shift theorem.
 
-    ``shifts`` has one value per line (i.e. per index along the other axis); the
-    content of line ``k`` moves by ``shifts[k]`` pixels. The image is zero-padded
-    so that content does not wrap around.
+    Each line of ``data`` along ``axis`` is shifted by its own amount: ``shifts``
+    must broadcast to the shape of ``data`` without ``axis`` (for example one
+    value per image of a stack, with shape ``(nimages, 1)``, or one value per
+    line). Positive shifts move the content towards higher indices. The data are
+    zero-padded by more than the largest shift, so that content does not wrap
+    around, and pixels uncovered by the shift are filled with zeros (subtract the
+    background first to fill with the background level).
+
+    Parameters
+    ----------
+    data
+        Real array to shift
+    shifts
+        Shift in pixels of each line along ``axis``
+    axis
+        Axis along which to shift
+    xp
+        Array module, :py:mod:`numpy` (default) or :py:mod:`cupy`
+
+    Returns
+    -------
+    shifted : :py:class:`~numpy.ndarray`
+        Shifted copy of ``data`` (floating point)
+
+    Group
+    -----
+    align
     """
-    work = np.moveaxis(image, axis, 1)
-    n = work.shape[1]
-    pad = int(np.ceil(np.abs(shifts).max())) + 2
-    padded = np.pad(work, ((0, 0), (pad, pad)))
-    freqs = np.fft.fftfreq(padded.shape[1])
-    phase = np.exp(-2j * np.pi * shifts[:, np.newaxis] * freqs[np.newaxis, :])
-    shifted = np.fft.ifft(np.fft.fft(padded, axis=1) * phase, axis=1).real
-    return np.moveaxis(shifted[:, pad : pad + n], 1, axis)
+    float_dtype = xp.float64 if data.dtype == xp.float64 else xp.float32
+    work = xp.moveaxis(xp.asarray(data, dtype=float_dtype), axis, -1)
+    shifts = xp.broadcast_to(
+        xp.asarray(shifts, dtype=float_dtype),
+        work.shape[:-1],
+    )
+    if not xp.any(shifts):
+        return xp.moveaxis(work, -1, axis).copy()
+    n = work.shape[-1]
+    pad = int(np.ceil(float(xp.abs(shifts).max()))) + 1
+    length = next_fast_len(n + 2 * pad, real=True)
+    padding = [(0, 0)] * (work.ndim - 1) + [(pad, length - n - pad)]
+    padded = xp.pad(work, padding)
+    freqs = xp.fft.rfftfreq(length).astype(float_dtype)
+    phase = xp.exp(-2j * float_dtype(np.pi) * shifts[..., np.newaxis] * freqs)
+    shifted = xp.fft.irfft(xp.fft.rfft(padded, axis=-1) * phase, n=length, axis=-1)
+    shifted = shifted[..., pad : pad + n].astype(float_dtype)
+    return xp.moveaxis(shifted, -1, axis)
 
 
 def fourier_rigid_transform(
@@ -190,9 +228,9 @@ def fourier_rigid_transform(
         image = data[i].astype(np.float64) - background
         tx, ty = translations[i]
         # rows (fixed y) shift along x, then columns along y, then rows along x
-        image = _fourier_shift_lines(image, a * y_rel, axis=1)
-        image = _fourier_shift_lines(image, b * x_rel + ty, axis=0)
-        image = _fourier_shift_lines(image, a * y_rel + tx - a * ty, axis=1)
+        image = fourier_shift(image, a * y_rel, axis=1)
+        image = fourier_shift(image, b * x_rel + ty, axis=0)
+        image = fourier_shift(image, a * y_rel + tx - a * ty, axis=1)
         out[i] = image + background
     return out
 
@@ -268,7 +306,6 @@ def apply_shifts(
     # Shift relative to the background of each projection, so that pixels uncovered
     # by a shift are filled with the background level
     float_dtype = np.float64 if shifted.data.dtype == np.float64 else np.float32
-    complex_dtype = np.complex128 if float_dtype == np.float64 else np.complex64
     background = np.array(
         [background_mode(im) for im in shifted.data],
         dtype=float_dtype,
@@ -286,70 +323,10 @@ def apply_shifts(
                 order=order,
             )
     elif method.lower() == "fourier":
-        ntilts, ny, nx = data.shape
-
-        # Ensure padding covers shift distance on each side (2 * max_shift)
-        max_y_shift, max_x_shift = (
-            float(xp.abs(shifts[:, 0]).max()),
-            float(xp.abs(shifts[:, 1]).max()),
-        )
-        y_pad_min, x_pad_min = (
-            int(np.ceil(ny + 2 * max_y_shift)),
-            int(np.ceil(nx + 2 * max_x_shift)),
-        )
-
-        # Power-of-2 dimensions for optimal FFT performance
-        ny_pad, nx_pad = (
-            int(2 ** np.ceil(np.log2(y_pad_min))),
-            int(2 ** np.ceil(np.log2(x_pad_min))),
-        )
-
-        y_pad_before, x_pad_before = (ny_pad - ny) // 2, (nx_pad - nx) // 2
-        y_pad_after, x_pad_after = (
-            ny_pad - ny - y_pad_before,
-            nx_pad - nx - x_pad_before,
-        )
-
-        # Pad original data with zeros, which fill the pixels uncovered by the shift
-        padded_data = xp.pad(
-            data,
-            ((0, 0), (y_pad_before, y_pad_after), (x_pad_before, x_pad_after)),
-            mode="constant",
-        )
-
-        # 2. Use Real FFT (rfft2) for 2x speedup and 50% memory savings
-        data_fft = xp.fft.rfft2(padded_data, axes=(1, 2))
-
-        # 3. Construct frequency grids with explicit data types
-        v = xp.fft.fftfreq(ny_pad, d=1.0).astype(float_dtype).reshape(1, ny_pad, 1)
-        u = (
-            xp.fft.rfftfreq(nx_pad, d=1.0)
-            .astype(float_dtype)
-            .reshape(1, 1, nx_pad // 2 + 1)
-        )
-
-        sy, sx = (
-            shifts[:, 0].astype(float_dtype).reshape(ntilts, 1, 1),
-            shifts[:, 1].astype(float_dtype).reshape(ntilts, 1, 1),
-        )
-
-        # Phase ramp kernel calculation
-        pi = float_dtype(np.pi)
-        phi = -2j * pi * (v * sy + u * sx)
-        kernel = xp.exp(phi).astype(complex_dtype)
-
-        # 4. In-place frequency multiplication to conserve memory
-        data_fft *= kernel
-
-        # 5. Inverse Real FFT and unpad
-        data = xp.fft.irfft2(data_fft, s=(ny_pad, nx_pad), axes=(1, 2))
-
-        # Immutable slice definitions (prevents mutation bugs)
-        slice_y, slice_x = (
-            slice(y_pad_before, -y_pad_after if y_pad_after > 0 else None),
-            slice(x_pad_before, -x_pad_after if x_pad_after > 0 else None),
-        )
-        data = data[:, slice_y, slice_x]
+        # shift along y (rows) and then x (columns); with a single shift per
+        # image this is the same as one two-dimensional Fourier shift
+        data = fourier_shift(data, shifts[:, 0:1].astype(float_dtype), axis=1, xp=xp)
+        data = fourier_shift(data, shifts[:, 1:2].astype(float_dtype), axis=2, xp=xp)
     else:
         msg = f"Invalid shift application method {method}."
         raise ValueError(msg)

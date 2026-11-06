@@ -9,6 +9,7 @@ from scipy import ndimage
 from scipy.stats import pearsonr
 
 import etspy.api as etspy
+from etspy import datasets as ds
 from etspy import projmatch
 from etspy import simulation as sim
 
@@ -147,3 +148,55 @@ class TestProjMatchInit:
         stack = etspy.TomoStack(data, tilts=np.linspace(-60, 60, 5))
         pm = projmatch.ProjMatch(stack, cuda=False)
         np.testing.assert_array_equal(pm.sino, data[:, :, 0])
+
+
+class TestBackgroundFill:
+    """Test that projection matching shifts fill with the background level."""
+
+    def test_shift_sinogram_fills_with_background(self):
+        sino = np.full((3, 40), 5.0)
+        sino[:, 15:25] = 9.0
+        shifted = projmatch.projmatch.shift_sinogram(sino, np.array([3.0, -3.0, 0.0]))
+        np.testing.assert_allclose(shifted[0, :3], 5.0, atol=1e-6)
+        np.testing.assert_allclose(shifted[1, -3:], 5.0, atol=1e-6)
+        np.testing.assert_allclose(shifted[0, 18:28], 9.0, atol=1e-6)
+        np.testing.assert_allclose(shifted[2], sino[2])
+
+    def test_shift_sinogram_per_projection_background(self):
+        sino = np.array([[1.0] * 20, [2.0] * 20])
+        shifted = projmatch.projmatch.shift_sinogram(
+            sino,
+            np.array([4.0, 4.0]),
+            background=np.array([1.0, 2.0]),
+        )
+        np.testing.assert_allclose(shifted, sino, atol=1e-6)
+
+    def test_apply_shifts_fills_with_background(self):
+        data = np.full((4, 32, 8), 7.0, np.float32)
+        data[:, 12:20, :] = 10.0
+        stack = etspy.TomoStack(data, tilts=np.linspace(-30, 30, 4))
+        pm = projmatch.ProjMatch(stack, params={"levels": [1], "iterations": 1})
+        pm.total_shifts = np.array([3.0, -3.0, 2.0, 0.0])
+        ali = pm.apply_shifts()
+        np.testing.assert_allclose(ali.data[0, :3], 7.0, atol=1e-4)
+        np.testing.assert_allclose(ali.data[1, -3:], 7.0, atol=1e-4)
+        np.testing.assert_allclose(ali.shifts.data[:, 0], pm.total_shifts)
+
+    @pytest.mark.parametrize("offset", [0.2, -0.2])
+    def test_alignment_with_background_offset(self, offset):
+        # with zero fill, an offset background made the alignment fail (errors
+        # of 2-3 px rms for shifts within +/-4 px)
+        small = ds.get_catalyst_data().inav[::2].rebin(scale=(1, 2, 2))
+        small.data = small.data / small.data.max()
+        np.random.seed(3)
+        stack = sim.misalign_stack(small, min_shift=-4, max_shift=4, y_only=True)
+        applied = stack.shifts.data[:, 0].copy()
+        stack.data = stack.data + offset
+        pm = projmatch.ProjMatch(stack, nslice=150)
+        pm.calculate_shifts()
+        error = pm.total_shifts + applied
+        # shifts a + b cos(theta) + c sin(theta) only translate the object
+        thetas = np.deg2rad(stack.tilts.data.squeeze())
+        basis = np.array([np.ones_like(thetas), np.cos(thetas), np.sin(thetas)]).T
+        error = error - basis @ np.linalg.lstsq(basis, error)[0]
+        assert np.sqrt((error**2).mean()) < 1.0
