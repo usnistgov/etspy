@@ -1,5 +1,6 @@
 """Test the reconstruction module of ETSpy."""
 
+import logging
 import re
 from typing import cast
 
@@ -279,7 +280,7 @@ class TestDart:
 
     def test_dart_beats_sart(self, phantom_sinogram):
         phantom, sino, tilts = phantom_sinogram
-        niterations = 10 * len(tilts)  # SART updates one projection per iteration
+        niterations = 10
         np.random.seed(0)
         dart = recon.run(
             sino,
@@ -317,7 +318,7 @@ class TestDart:
             sino * scale,
             tilts,
             "DART",
-            niterations=len(tilts),
+            niterations=1,
             gray_levels=[0.0, 0.5 * scale, scale],
             dart_iterations=2,
             show_progressbar=False,
@@ -568,3 +569,74 @@ class TestConsistentProjector:
         projmatch.ProjMatch(stack.isig[0:1, :], cuda=False).update_geometries(32)
         assert projector_types
         assert set(projector_types) == {"linear"}
+
+
+class TestIterationCounting:
+    """Test that iterations are full passes through the projections."""
+
+    @pytest.fixture
+    def astra_runs(self, monkeypatch):
+        """Record the number of ASTRA iterations requested in each run."""
+        runs = []
+        orig = astra.algorithm.run
+
+        def recording_run(alg_id, iterations=1):
+            runs.append(iterations)
+            return orig(alg_id, iterations)
+
+        monkeypatch.setattr(astra.algorithm, "run", recording_run)
+        return runs
+
+    @pytest.mark.parametrize(
+        ("method", "iterations", "expected"),
+        [
+            ("FBP", None, (1, 1)),
+            ("FBP", 7, (1, 1)),
+            ("SIRT", None, (50, 50)),
+            ("SIRT", 7, (7, 7)),
+            ("SART", None, (5, 5 * 15)),
+            ("SART", 3, (3, 3 * 15)),
+            ("DART", None, (5, 5 * 15)),
+        ],
+    )
+    def test_astra_iterations(self, method, iterations, expected):
+        assert recon.astra_iterations(method, iterations, 15) == expected
+
+    def test_sart_many_passes_warns(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="etspy.recon"):
+            recon.astra_iterations("SART", 20, 15)
+        assert "counted as full passes through all 15 projections" in caplog.text
+        caplog.clear()
+        with caplog.at_level(logging.WARNING, logger="etspy.recon"):
+            recon.astra_iterations("SART", 5, 15)
+            recon.astra_iterations("SART", None, 3)
+        assert "counted as full passes" not in caplog.text
+
+    @pytest.mark.parametrize(
+        ("method", "iterations", "expected"),
+        [("SIRT", None, 50), ("SART", None, 75), ("SART", 2, 30)],
+    )
+    def test_reconstruct_runs_passes(self, astra_runs, method, iterations, expected):
+        stack = TomoStack(
+            np.random.default_rng(0).random((15, 32, 2), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        stack.reconstruct(
+            method,
+            iterations=iterations,
+            cuda=False,
+            ncores=1,
+            show_progressbar=False,
+        )
+        assert astra_runs == [expected, expected]  # one run per slice
+
+    def test_recon_error_sart_records_each_pass(self, astra_runs):
+        stack = TomoStack(
+            np.random.default_rng(0).random((15, 32, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        rec_stack, error = stack.recon_error(algorithm="SART", cuda=False)
+        assert error.data.shape == (50,)
+        assert rec_stack.data.shape[0] == 50  # noqa: PLR2004
+        # each pass runs 15 SART iterations, followed by a forward projection (1)
+        assert astra_runs == [50, 1]

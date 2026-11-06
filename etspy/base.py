@@ -1878,7 +1878,7 @@ class TomoStack(CommonStack):
     def reconstruct(  # noqa: PLR0913
         self,
         method: ReconMethodType = "FBP",
-        iterations: int = 5,
+        iterations: int | None = None,
         constrain: bool = False,
         thresh: float = 0,
         cuda: bool | None = None,
@@ -1899,8 +1899,10 @@ class TomoStack(CommonStack):
             Reconstruction algorithm to use.  Must be one of ``"FBP"`` (default),
             ``"SIRT"``, ``"SART"``, or ``"DART"``
         iterations
-            Number of iterations for the SIRT reconstruction (used with ``SIRT``,
-            ``SART``, and ``DART`` methods) (default: 5)
+            Number of iterations for the reconstruction. If ``None`` (default),
+            the default for the algorithm is used (SIRT: 50,
+            SART: 5, DART: 5 SART passes per DART iteration).
+            :py:meth:`recon_error` can help to choose the number.
         constrain
             If ``True``, output reconstruction is constrained above value given
             by ``thresh``
@@ -2049,7 +2051,7 @@ class TomoStack(CommonStack):
         slices: np.ndarray | None = None,
         thickness: int | None = None,
         method: Literal["FBP", "SIRT", "SART"] = "FBP",
-        iterations: int = 50,
+        iterations: int | None = None,
         constrain: bool = True,
         cuda: bool | None = None,
         thresh: float = 0,
@@ -2079,8 +2081,10 @@ class TomoStack(CommonStack):
             Reconstruction algorithm to use.  Must be one of ``"FBP"`` (default),
             ``"SIRT"``, or ``"SART"`` (inapplicable for the ``"DART"`` algorithm)
         iterations
-            Number of iterations for the SIRT reconstruction (used with ``SIRT``,
-            and ``SART`` methods) (default: 50)
+            Number of iterations for the reconstruction. If ``None`` (default),
+            the default for the algorithm is used (SIRT: 50,
+            SART: 5, DART: 5 SART passes per DART iteration).
+            :py:meth:`recon_error` can help to choose the number.
         cuda
             Whether or not to use CUDA-accelerated reconstruction algorithms. If
             ``None`` (the default), the decision to use CUDA will be left to
@@ -2283,9 +2287,10 @@ class TomoStack(CommonStack):
         """
         Determine the optimum number of iterations for reconstruction.
 
-        Evaluates the difference between reconstruction and input data
-        at each iteration and terminates when the change between iterations is
-        below tolerance.
+        Reconstructs a single slice, recording the reconstruction and the
+        difference between its forward projection and the input data after each
+        iteration, so that the number of iterations can be chosen.
+
 
         Parameters
         ----------
@@ -2294,6 +2299,9 @@ class TomoStack(CommonStack):
         algorithm
             Reconstruction algorithm use.  Must be either ``'SIRT'`` (default)
             or ``'SART'`` (this method is inapplicable for ``'FBP'`` and ``'DART'``).
+        iterations
+            Number of iterations for the reconstruction. If ``None`` (default),
+            the default for the algorithm is used (SIRT: 50, SART: 5).
         constrain
             If True, perform SIRT reconstruction with a non-negativity
             constraint.  Default is ``True``
