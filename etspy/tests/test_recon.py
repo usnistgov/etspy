@@ -716,3 +716,85 @@ class TestResolveCuda:
             pytest.raises(RuntimeError, match="ASTRA did not detect a CUDA GPU"),
         ):
             call(stack)
+
+
+class TestAlgorithmConfig:
+    """Test the ASTRA configuration built for each reconstruction method."""
+
+    @pytest.mark.parametrize("cuda", [False, True])
+    @pytest.mark.parametrize(
+        ("method", "algorithm", "options"),
+        [
+            ("FBP", "FBP", {"FilterType": "ram-lak"}),
+            ("SIRT", "SIRT", {"MinConstraint": 0.5}),
+            ("SART", "SART", {"MinConstraint": 0.5}),
+            ("DART", "SART", {"MinConstraint": 0.0, "MaxConstraint": 2.0}),
+        ],
+    )
+    def test_config(self, method, algorithm, options, cuda):
+        cfg, gray_levels, thresholds = recon._algorithm_config(  # noqa: SLF001
+            method.lower(),
+            cuda=cuda,
+            constrain=True,
+            thresh=0.5,
+            bp_filter="Ram-Lak",
+            gray_levels=[2.0, 0.0, 1.0],
+        )
+        assert cfg == {
+            "type": algorithm + "_CUDA" if cuda else algorithm,
+            "option": options,
+        }
+        if method == "DART":
+            np.testing.assert_array_equal(gray_levels, [0.0, 1.0, 2.0])
+            np.testing.assert_array_equal(thresholds, [0.5, 1.5])
+        else:
+            assert thresholds.size == 0
+
+    def test_unconstrained(self):
+        cfg, _, _ = recon._algorithm_config("SIRT", cuda=False)  # noqa: SLF001
+        assert cfg == {"type": "SIRT", "option": {}}
+
+    def test_run_unknown_method(self):
+        with pytest.raises(ValueError, match='Invalid reconstruction method "WBP"'):
+            recon.run(np.ones((3, 8)), np.array([-10.0, 0, 10]), "WBP", cuda=False)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("method", ["FBP", "DART"])
+    def test_astra_error_unsupported_method(self, method):
+        with pytest.raises(ValueError, match="Must be SIRT or SART"):
+            recon.astra_error(
+                np.ones((3, 8)),
+                np.array([-10.0, 0, 10]),
+                method,  # type: ignore[arg-type]
+            )
+
+    def test_run_resolves_cuda_none(self, caplog):
+        # cuda=None previously meant the CPU without checking for a GPU
+        with (
+            patch("astra.use_cuda", new=_no_gpu),
+            caplog.at_level(logging.INFO, logger="etspy.recon"),
+        ):
+            recon.run(
+                np.ones((3, 8, 2), np.float32),
+                np.array([-10.0, 0, 10]),
+                "SIRT",
+                niterations=1,
+                cuda=None,
+                show_progressbar=False,
+            )
+        assert "CUDA not detected with Astra" in caplog.text
+        assert "Reconstructing with CPU-based SIRT algorithm" in caplog.text
+
+    def test_run_at_least_one_worker(self):
+        with (
+            patch("etspy.recon.mp.cpu_count", return_value=1),
+            patch("etspy.recon.dask_compute", wraps=recon.dask_compute) as compute,
+        ):
+            recon.run(
+                np.ones((3, 8, 2), np.float32),
+                np.array([-10.0, 0, 10]),
+                "SIRT",
+                niterations=1,
+                cuda=False,
+                show_progressbar=False,
+            )
+        assert compute.call_args.kwargs["num_workers"] == 1

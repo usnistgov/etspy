@@ -329,7 +329,102 @@ def run_dart(
     return dart_rec
 
 
-def run(  # noqa: PLR0912, PLR0913, PLR0915
+RECONSTRUCTION_METHODS = ("FBP", "SIRT", "SART", "DART")
+
+
+def _algorithm_config(
+    method: str,
+    *,
+    cuda: bool,
+    constrain: bool = False,
+    thresh: float = 0,
+    bp_filter: str = "shepp-logan",
+    gray_levels: Union[list, np.ndarray] | None = None,
+) -> tuple[dict, np.ndarray | None, np.ndarray]:
+    """
+    Build the ASTRA algorithm configuration for a reconstruction method.
+
+    Returns the configuration (without data or projector IDs) and, for DART, the
+    sorted gray levels and the thresholds between them (``None`` and an empty
+    array otherwise). DART uses SART, constrained to the range of the gray levels.
+    """
+    method = method.upper()
+    if method not in RECONSTRUCTION_METHODS:
+        msg = (
+            f'Invalid reconstruction method "{method}". Must be one of '
+            f"{', '.join(RECONSTRUCTION_METHODS)}."
+        )
+        raise ValueError(msg)
+    algorithm = "SART" if method == "DART" else method
+    cfg: dict = {"type": algorithm + "_CUDA" if cuda else algorithm, "option": {}}
+    thresholds = np.array([])
+    if method == "FBP":
+        cfg["option"]["FilterType"] = bp_filter.lower()
+    elif method == "DART":
+        gray_levels, thresholds = _dart_setup(gray_levels, cfg)
+    elif constrain:
+        cfg["option"]["MinConstraint"] = thresh
+    return cfg, gray_levels, thresholds
+
+
+def _compute(tasks: list, ncores: int, show_progressbar: bool) -> tuple:
+    """Compute dask tasks with ``ncores`` threads, optionally with a progress bar."""
+    if show_progressbar:
+        with ProgressBar():
+            return dask_compute(*tasks, num_workers=ncores)
+    return dask_compute(*tasks, num_workers=ncores)
+
+
+def _log_reconstruction(method: str, *, cuda: bool, passes: int) -> None:
+    """Log the reconstruction algorithm (and number of iterations) used."""
+    device = "CUDA-accelerated" if cuda else "CPU-based"
+    if method == "FBP":
+        logger.info("Reconstructing with %s FBP algorithm", device)
+    else:
+        logger.info(
+            "Reconstructing with %s %s algorithm (%s iterations)",
+            device,
+            method,
+            passes,
+        )
+
+
+def _run_cuda(  # coverage: nocuda
+    stack: np.ndarray,
+    rec: np.ndarray,
+    iters: int,
+    cfg: dict,
+    vol_geom: dict,
+    proj_geom: dict,
+    show_progressbar: bool,
+) -> None:
+    """
+    Reconstruct each slice of ``stack`` (nangles, ny, nx) into ``rec`` on the GPU.
+
+    One ASTRA algorithm (and set of GPU data objects) is reused for every slice.
+    """
+    nangles, ny, nx = stack.shape
+    proj_id = create_projector(proj_geom, vol_geom, cuda=True)
+    rec_id = astra.data2d.create("-vol", vol_geom)
+    sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
+    cfg = copy.deepcopy(cfg)
+    cfg["ReconstructionDataId"] = rec_id
+    cfg["ProjectorId"] = proj_id
+    cfg["ProjectionDataId"] = sino_id
+    alg = astra.algorithm.create(cfg)
+    try:
+        for i in tqdm.tqdm(range(nx), disable=not show_progressbar):
+            astra.data2d.store(sino_id, stack[:, :, i])
+            astra.data2d.store(rec_id, np.zeros(rec.shape[1:]))
+            astra.algorithm.run(alg, iters)
+            rec[i] = astra.data2d.get(rec_id)
+    finally:
+        astra.algorithm.delete(alg)
+        astra.data2d.delete([rec_id, sino_id])
+        astra.projector.delete(proj_id)
+
+
+def run(  # noqa: PLR0913
     stack: np.ndarray,
     tilts: np.ndarray,
     method: Literal["FBP", "SIRT", "SART", "DART"],
@@ -397,8 +492,9 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     thresh
         Value above which to constrain the reconstructed data
     cuda
-        If True, use the CUDA-accelerated Astra algorithms. Otherwise,
-        use the CPU-based algorithms
+        If True, use the CUDA-accelerated Astra algorithms. If False, use the
+        CPU-based algorithms. If ``None`` (default), use CUDA if a CUDA GPU is
+        detected (see :py:func:`resolve_cuda`).
     thickness
         Limit for the height of the reconstruction. If ``None``, the y-size
         of the stack is used.
@@ -424,6 +520,17 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     -----
     recon
     """
+    cuda = resolve_cuda(cuda)
+    method = cast("Literal['FBP', 'SIRT', 'SART', 'DART']", method.upper())
+    cfg, gray_levels, thresholds = _algorithm_config(
+        method,
+        cuda=cuda,
+        constrain=constrain,
+        thresh=thresh,
+        bp_filter=bp_filter,
+        gray_levels=gray_levels,
+    )
+
     if len(stack.shape) == 2:  # noqa: PLR2004
         nangles, ny = stack.shape
         stack = stack[:, :, np.newaxis]
@@ -432,7 +539,6 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         nangles, ny, nx = stack.shape
 
     thetas = np.pi * tilts / 180.0
-    thresholds = np.array([])
     passes, niterations = astra_iterations(method, niterations, nangles)
 
     if thickness is None:
@@ -443,106 +549,36 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((thickness, ny))
-    cfg = {}
-    cfg["option"] = {}
 
-    if cuda:  # coverage: nocuda
-        if method.lower() == "fbp":
-            logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
-            cfg["type"] = "FBP_CUDA"
-            cfg["option"]["FilterType"] = bp_filter.lower()
-            niterations = 1
-        elif method.lower() == "sirt":
-            logger.info(
-                "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)",
-                passes,
-            )
-            cfg["type"] = "SIRT_CUDA"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == "sart":
-            logger.info(
-                "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)",
-                passes,
-            )
-            cfg["type"] = "SART_CUDA"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
+    _log_reconstruction(method, cuda=cuda, passes=passes)
 
-        elif method.lower() == "dart":
-            logger.info(
-                "Reconstructing with CUDA-accelerated DART algorithm (%s iterations)",
-                passes,
-            )
-            cfg["type"] = "SART_CUDA"
-            gray_levels, thresholds = _dart_setup(gray_levels, cfg)
+    def reconstruct_dart(i: int) -> np.ndarray:
+        return run_dart(
+            stack[:, :, i],
+            niterations,
+            dart_iterations,
+            p,
+            thresholds,
+            cast("np.ndarray", gray_levels),
+            cfg,
+            vol_geom,
+            proj_geom,
+            cuda=cuda,
+        )
 
-        proj_id = create_projector(proj_geom, vol_geom, cuda=True)
-        rec_id = astra.data2d.create("-vol", vol_geom)
-        sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
-        cfg["ReconstructionDataId"] = rec_id
-        cfg["ProjectorId"] = proj_id
-        cfg["ProjectionDataId"] = sino_id
-        alg = astra.algorithm.create(cfg)
-
-        try:
-            for i in tqdm.tqdm(range(nx), disable=not (show_progressbar)):
-                astra.data2d.store(sino_id, stack[:, :, i])
-                astra.data2d.store(rec_id, np.zeros([thickness, ny]))
-                if method.lower() == "dart":
-                    rec[i, :, :] = run_dart(
-                        stack[:, :, i],
-                        niterations,
-                        dart_iterations,
-                        p,
-                        thresholds,
-                        gray_levels,
-                        cfg,
-                        vol_geom,
-                        proj_geom,
-                        cuda=True,
-                    )
-                else:
-                    astra.algorithm.run(alg, niterations)
-                    rec[i, :, :] = astra.data2d.get(rec_id)
-        finally:
-            astra.algorithm.delete(alg)
-            astra.data2d.delete([rec_id, sino_id])
-            astra.projector.delete(proj_id)
+    if cuda and method == "DART":  # coverage: nocuda
+        # run_dart creates its own ASTRA objects for each slice
+        for i in tqdm.tqdm(range(nx), disable=not show_progressbar):
+            rec[i] = reconstruct_dart(i)
+    elif cuda:  # coverage: nocuda
+        _run_cuda(stack, rec, niterations, cfg, vol_geom, proj_geom, show_progressbar)
     else:
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
-
-        if method.lower() == "fbp":
-            logger.info("Reconstructing with CPU-based FBP algorithm")
-            cfg["type"] = "FBP"
-            cfg["option"]["FilterType"] = bp_filter.lower()
-            niterations = 1
-        elif method.lower() == "sirt":
-            logger.info(
-                "Reconstructing with CPU-based SIRT algorithm (%s iterations)",
-                passes,
-            )
-            cfg["type"] = "SIRT"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == "sart":
-            logger.info(
-                "Reconstructing with CPU-based SART algorithm (%s iterations)",
-                passes,
-            )
-            cfg["type"] = "SART"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == "dart":
-            logger.info(
-                "Reconstructing with CPU-based DART algorithm (%s iterations)",
-                passes,
-            )
-            cfg["type"] = "SART"
-            gray_levels, thresholds = _dart_setup(gray_levels, cfg)
-
-        if method.lower() in ["fbp", "sirt", "sart"]:
+        ncores = max(1, ncores)
+        if method == "DART":
+            tasks = [dask_delayed(reconstruct_dart)(i) for i in range(nx)]
+        else:
             tasks = [
                 dask_delayed(run_alg)(
                     stack[:, :, i],
@@ -553,38 +589,8 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
                 )
                 for i in range(nx)
             ]
-            if show_progressbar:
-                with ProgressBar():
-                    results = dask_compute(*tasks, num_workers=ncores)
-            else:
-                results = dask_compute(*tasks, num_workers=ncores)
-
-            for i, result in enumerate(results):
-                rec[i] = result
-        elif method.lower() == "dart":
-            tasks = [
-                dask_delayed(run_dart)(
-                    stack[:, :, i],
-                    niterations,
-                    dart_iterations,
-                    p,
-                    thresholds,
-                    gray_levels,
-                    cfg,
-                    vol_geom,
-                    proj_geom,
-                )
-                for i in range(nx)
-            ]
-            if show_progressbar:
-                with ProgressBar():
-                    results = dask_compute(*tasks, num_workers=ncores)
-            else:
-                results = dask_compute(*tasks, num_workers=ncores)
-
-            for i, result in enumerate(results):
-                rec[i] = result
-
+        for i, result in enumerate(_compute(tasks, ncores, show_progressbar)):
+            rec[i] = result
     return rec
 
 
@@ -723,6 +729,10 @@ def astra_error(
 
     nangles, ny = sinogram.shape
 
+    if method.upper() not in ("SIRT", "SART"):
+        msg = f'Invalid method "{method}" for astra_error. Must be SIRT or SART.'
+        raise ValueError(msg)
+
     if nangles != len(angles):
         msg = (
             "Number of angles must match size of the first dimension of "
@@ -736,18 +746,19 @@ def astra_error(
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
 
-    alg_name = method.upper() + "_CUDA" if cuda else method.upper()
     proj_id = create_projector(proj_geom, vol_geom, cuda=cuda)
 
     astra.data2d.store(sino_id, sinogram)
 
-    cfg = astra.astra_dict(alg_name)
+    cfg, _, _ = _algorithm_config(
+        method,
+        cuda=cuda,
+        constrain=constrain,
+        thresh=thresh,
+    )
     cfg["ProjectionDataId"] = sino_id
     cfg["ProjectorId"] = proj_id
     cfg["ReconstructionDataId"] = rec_id
-    if constrain:
-        cfg["option"] = {}  # pyright: ignore[reportArgumentType]
-        cfg["option"]["MinConstraint"] = thresh
 
     alg = astra.algorithm.create(cfg)
 
