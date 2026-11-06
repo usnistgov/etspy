@@ -3,6 +3,7 @@
 import logging
 import re
 from typing import cast
+from unittest.mock import patch
 
 import astra
 import numpy as np
@@ -641,3 +642,77 @@ class TestIterationCounting:
         assert rec_stack.data.shape[0] == 50  # noqa: PLR2004
         # each pass runs 15 SART iterations, followed by a forward projection (1)
         assert astra_runs == [50, 1]
+
+
+def _no_gpu():
+    return False
+
+
+def _gpu():
+    return True
+
+
+class TestResolveCuda:
+    """Test the decision whether to use CUDA."""
+
+    def test_none_with_gpu(self, caplog):
+        with (
+            patch("astra.use_cuda", new=_gpu),
+            caplog.at_level(logging.INFO, logger="etspy.recon"),
+        ):
+            assert recon.resolve_cuda(None) is True
+        assert "CUDA detected with Astra" in caplog.text
+
+    def test_none_without_gpu(self, caplog):
+        with (
+            patch("astra.use_cuda", new=_no_gpu),
+            caplog.at_level(logging.INFO, logger="etspy.recon"),
+        ):
+            assert recon.resolve_cuda(None) is False
+        assert "CUDA not detected with Astra" in caplog.text
+
+    def test_false_does_not_check_gpu(self):
+        with patch("astra.use_cuda", side_effect=AssertionError("not called")):
+            assert recon.resolve_cuda(False) is False  # noqa: FBT003
+
+    def test_true_with_gpu(self):
+        with patch("astra.use_cuda", new=_gpu):
+            assert recon.resolve_cuda(True) is True  # noqa: FBT003
+
+    def test_true_without_gpu(self):
+        with (
+            patch("astra.use_cuda", new=_no_gpu),
+            pytest.raises(RuntimeError, match="ASTRA did not detect a CUDA GPU"),
+        ):
+            recon.resolve_cuda(True)  # noqa: FBT003
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda s: s.reconstruct("SIRT", iterations=1, cuda=True),
+            lambda s: s.recon_error(iterations=1, cuda=True),
+            lambda s: s.test_align(cuda=True),
+            lambda s: RecStack(np.ones((2, 8, 16))).forward_project(
+                s.tilts,
+                cuda=True,
+            ),
+            lambda _: sim.create_model_tilt_series(np.ones((2, 8, 16)), cuda=True),
+        ],
+        ids=[
+            "reconstruct",
+            "recon_error",
+            "test_align",
+            "forward_project",
+            "create_model_tilt_series",
+        ],
+    )
+    def test_entry_points_raise_without_gpu(self, call):
+        stack = TomoStack(
+            np.ones((5, 16, 4), np.float32),
+            tilts=np.linspace(-60, 60, 5),
+        )
+        with (
+            patch("astra.use_cuda", new=_no_gpu),
+            pytest.raises(RuntimeError, match="ASTRA did not detect a CUDA GPU"),
+        ):
+            call(stack)

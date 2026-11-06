@@ -2010,13 +2010,7 @@ class TomoStack(CommonStack):
                 "Please set tilt values before alignment."
             )
             raise ValueError(msg)
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                logger.info("CUDA not detected with Astra")
-                cuda = False
+        cuda = recon.resolve_cuda(cuda)
 
         if method.lower() == "dart":
             if gray_levels is None:
@@ -2138,13 +2132,8 @@ class TomoStack(CommonStack):
             "Uda",
             self.axes_manager[0],
         ).axis
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+        cuda = recon.resolve_cuda(cuda)
+
         rec = shifted.reconstruct(
             method=method,
             iterations=iterations,
@@ -2360,13 +2349,8 @@ class TomoStack(CommonStack):
             msg = f"nslice must be in the range [0, {nx - 1}] (was {nslice})"
             raise ValueError(msg)
 
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+        cuda = recon.resolve_cuda(cuda)
+
         _warn_if_background(
             self,
             "a ring of incorrect intensity around the reconstruction",
@@ -2540,13 +2524,8 @@ class RecStack(CommonStack):
         if isinstance(tilts, BaseSignal):
             tilts = tilts.data
         tilts = np.atleast_1d(np.asarray(tilts, dtype=float).squeeze())
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+
+        cuda = recon.resolve_cuda(cuda)
 
         data = self.data[np.newaxis] if self.data.ndim == 2 else self.data  # noqa: PLR2004
         nx, nz, ny = data.shape

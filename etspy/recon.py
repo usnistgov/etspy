@@ -52,6 +52,45 @@ def create_projector(proj_geom: dict, vol_geom: dict, cuda: bool = False) -> int
     return astra.create_projector("cuda" if cuda else "linear", proj_geom, vol_geom)
 
 
+def resolve_cuda(cuda: bool | None) -> bool:
+    """
+    Decide whether to use CUDA (GPU) reconstruction and projection.
+
+    Parameters
+    ----------
+    cuda
+        ``True`` to use CUDA, ``False`` to use the CPU, or ``None`` to use CUDA if
+        :py:func:`astra.astra.use_cuda` detects a CUDA GPU.
+
+    Returns
+    -------
+    cuda : bool
+        Whether to use CUDA
+
+    Raises
+    ------
+    RuntimeError
+        If ``cuda`` is ``True`` but ASTRA does not detect a CUDA GPU (ASTRA would
+        otherwise fail with a low-level error, or for 3D operations crash the
+        Python process)
+
+    Group
+    -----
+    recon
+    """
+    if cuda is None:
+        cuda = bool(astra.use_cuda())
+        logger.info("CUDA %s with Astra", "detected" if cuda else "not detected")
+        return cuda
+    if cuda and not astra.use_cuda():
+        msg = (
+            "CUDA was requested (cuda=True) but ASTRA did not detect a CUDA GPU. "
+            "Use cuda=False to run on the CPU."
+        )
+        raise RuntimeError(msg)
+    return bool(cuda)
+
+
 # Default number of iterations for each iterative algorithm. Iterations are full
 # passes through all of the projections; for SART (and the SART steps of DART), ETSpy
 # converts them to ASTRA iterations, each of which uses a single projection.
