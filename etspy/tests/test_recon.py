@@ -268,7 +268,7 @@ def phantom_sinogram():
     tilts = np.arange(-70, 71, 2.0)
     vol_geom = astra.create_vol_geom(ny, ny)
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
-    proj_id = astra.create_projector("strip", proj_geom, vol_geom)
+    proj_id = astra.create_projector("linear", proj_geom, vol_geom)
     _, sino = astra.create_sino(phantom, proj_id)
     astra.projector.delete(proj_id)
     return phantom, sino[:, :, np.newaxis].astype(np.float32), tilts
