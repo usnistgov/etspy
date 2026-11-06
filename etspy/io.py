@@ -31,6 +31,11 @@ mrc_file_types = [".mrc", ".ali", ".rec"]
 dm_file_types = [".dm3", ".dm4"]
 known_file_types = hspy_file_types + mrc_file_types + dm_file_types
 
+# int16 data with more than this fraction of values below this threshold are
+# likely unsigned values stored with an offset of -32768
+INT16_OFFSET_THRESHOLD = -16384
+INT16_OFFSET_FRACTION = 0.5
+
 
 def get_mrc_tilts(
     stack: Signal2D | TomoStack,
@@ -587,6 +592,30 @@ def load(
             "Set them with stack.set_tilts(start, increment) or by passing tilts "
             "to load() before alignment or reconstruction.",
         )
-
+    _warn_if_offset_int16(stack)
     stack.change_data_type("float32")
     return stack
+
+
+def _warn_if_offset_int16(stack: TomoStack):
+    """
+    Warn if signed 16-bit data appear to be unsigned values stored with an offset.
+
+    Some software stores unsigned 16-bit detector counts as signed integers by
+    subtracting 32768, so that most of the stored values (including the
+    background) are large and negative. The values are not changed, since the
+    offset is removed along with the rest of the background by
+    :py:meth:`~etspy.base.TomoStack.remove_background`.
+    """
+    if stack.data.dtype != np.int16:
+        return
+    fraction_low = float(np.mean(stack.data < INT16_OFFSET_THRESHOLD))
+    if fraction_low > INT16_OFFSET_FRACTION:
+        logger.warning(
+            "The data are stored as signed 16-bit integers, but %.0f%% of the values "
+            "are below -16384, so they may be unsigned values stored with an "
+            "offset of -32768. The values have not been changed. For dark-field "
+            "data, use stack.remove_background() to remove the offset along with "
+            "the background; otherwise add 32768 to recover the original values.",
+            100 * fraction_low,
+        )

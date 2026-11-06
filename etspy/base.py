@@ -58,6 +58,9 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
+# fractional background level above which a warning is given
+BACKGROUND_WARNING_FRACTION = 0.01
+
 
 def _background_mode(image: np.ndarray, nbins: int = 256) -> float:
     """
@@ -75,6 +78,40 @@ def _background_mode(image: np.ndarray, nbins: int = 256) -> float:
     center = 0.5 * (edges[peak] + edges[peak + 1])
     bin_width = edges[1] - edges[0]
     return float(np.median(image[np.abs(image - center) <= 2 * bin_width]))
+
+
+def _warn_if_background(stack: "TomoStack", consequence: str):
+    """
+    Warn if a stack appears to have a significant background (vacuum) level.
+
+    The background is estimated (as in :py:meth:`TomoStack.remove_background`)
+    from up to five evenly spaced projections, and a warning is logged if it is
+    more than 1% of the range of the data.
+
+    Parameters
+    ----------
+    stack
+        The stack to check
+    consequence
+        Description of the artifact the background will cause in the current
+        operation, used to complete the warning message
+    """
+    images = stack.data.reshape(-1, *stack.data.shape[-2:])
+    sample = images[np.unique(np.linspace(0, images.shape[0] - 1, 5).astype(int))]
+    low, high = np.percentile(sample, [0.5, 99.5])
+    if high <= low:
+        return
+    background = float(np.median([_background_mode(im) for im in sample]))
+    if abs(background) > BACKGROUND_WARNING_FRACTION * (high - low):
+        logger.warning(
+            "The projections have a background (vacuum) level of about %.6g "
+            "(%.0f%% of the data range), which will cause %s. For dark-field data, "
+            "remove it first with stack.remove_background(); bright-field data "
+            "should instead be converted to absorbance with a log transform.",
+            background,
+            100 * abs(background) / (high - low),
+            consequence,
+        )
 
 
 class MismatchedTiltError(ValueError):
@@ -1570,6 +1607,8 @@ class TomoStack(CommonStack):
         }
 
         if AlignmentMethod.is_valid_value(method):
+            if method in ("COM", "COM-CL"):
+                _warn_if_background(self, "biased center of mass alignment")
             aligner = aligners[method](
                 self,
                 start=start,
@@ -1693,6 +1732,8 @@ class TomoStack(CommonStack):
             "CoM",
             "MaxImage",
         ]:
+            if method == "CoM":
+                _warn_if_background(self, "biased tilt axis alignment")
             tilt_aligner = tilt_aligners[method](self, **kwargs)
             out = tilt_aligner.align_tilt_axis()
         else:
@@ -1837,6 +1878,10 @@ class TomoStack(CommonStack):
             dart_iterations = None
             gray_levels = None
 
+            _warn_if_background(
+                self,
+                "a ring of incorrect intensity around the reconstruction",
+            )
         rec = recon.run(
             stack=self.data,
             tilts=self.tilts.data,
@@ -2157,6 +2202,11 @@ class TomoStack(CommonStack):
             else:
                 cuda = False
                 logger.info("CUDA not detected with Astra")
+        _warn_if_background(
+            self,
+            "a ring of incorrect intensity around the reconstruction",
+        )
+
         sinogram = self.isig[nslice : nslice + 1, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
