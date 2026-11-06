@@ -63,6 +63,17 @@ def catalyst_stack():
     return s
 
 
+class TestApplyShiftsNoCuda:
+    """Test requesting CUDA when it is unavailable."""
+
+    def test_apply_shifts_cuda_unavailable(self, short_stack):
+        with (
+            patch.object(etspy.align, "has_cupy", new=False),
+            pytest.raises(ValueError, match="CUDA was requested"),
+        ):
+            etspy.align.apply_shifts(short_stack, np.zeros((5, 2)), cuda=True)
+
+
 class TestProgressBars:
     """Test that progress bars respect show_progressbar."""
 
@@ -249,6 +260,20 @@ class TestAlignStackRegister:
             reg.axes_manager.navigation_shape
             == short_stack.axes_manager.navigation_shape
         )
+
+    @pytest.mark.parametrize("method", ["PC", "StackReg", "COM", "COM-CL"])
+    def test_register_recovers_shifts(self, small_misaligned_catalyst, method):
+        stack = small_misaligned_catalyst
+        reg = stack.stack_register(method, show_progressbar=False)
+        # the stack records the applied misalignment as its shifts, and
+        # stack_register adds the correction found, so the result is the error
+        error = reg.shifts.data
+        thetas = np.deg2rad(stack.tilts.data.squeeze())
+        # Y-shifts of the form a + b cos(theta) + c sin(theta) only translate the
+        # reconstruction, and cannot be determined by the CoM methods
+        y_error = _without_rigid_translation(error[:, 0], thetas)
+        assert np.sqrt((y_error**2).mean()) < 0.4  # noqa: PLR2004
+        assert _rms_error(error[:, 1], 0) < 0.6  # noqa: PLR2004
 
     def test_register_unknown_method(self, short_stack):
         bad_method = "WRONG"
@@ -611,11 +636,131 @@ class TestCoMBackgroundIndependence:
         assert tomo_meta.tiltaxis == pytest.approx(3.0, abs=0.3)
 
 
+def _smooth_image_stack():
+    yy, xx = np.mgrid[:96, :128]
+    image = np.exp(-(((xx - 60) / 9.0) ** 2 + ((yy - 40) / 6.0) ** 2)) + 0.5 * np.exp(
+        -(((xx - 85) / 7.0) ** 2 + ((yy - 62) / 11.0) ** 2),
+    )
+    return etspy.TomoStack(
+        np.stack([image, image]).astype(np.float32),
+        tilts=np.array([0.0, 1.0]),
+    )
+
+
+def _sharp_image(n=128, seed=0):
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[:n, :n]
+    image = np.zeros((n, n))
+    image[(yy - n / 2) ** 2 + (xx - n / 2) ** 2 < (0.27 * n) ** 2] = 0.4
+    for _ in range(40):
+        cy, cx = rng.uniform(0.3 * n, 0.7 * n, 2)
+        image[(yy - cy) ** 2 + (xx - cx) ** 2 < rng.uniform(1, 3) ** 2] = 1.0
+    return image
+
+
+class TestFourierTransform:
+    """Test the Fourier (shear-based) rotation and translation of images."""
+
+    @pytest.mark.parametrize(
+        ("angle", "xshift", "yshift"),
+        [(0, 3.3, 0), (0, 0, -2.6), (7.5, 0, 0), (-12, 4.2, 2.8), (30, -3, 5)],
+    )
+    def test_matches_cubic_trans_stack(self, angle, xshift, yshift):
+        stack = _smooth_image_stack()
+        cubic = stack.trans_stack(xshift, yshift, angle, interpolation="cubic")
+        fourier = stack.trans_stack(xshift, yshift, angle, interpolation="fourier")
+        np.testing.assert_allclose(
+            fourier.data,
+            cubic.data,
+            atol=1e-3 * cubic.data.max(),
+        )
+        tomo_meta = fourier.metadata.Tomography
+        assert (tomo_meta.xshift, tomo_meta.yshift, tomo_meta.tiltaxis) == (
+            xshift,
+            yshift,
+            angle,
+        )
+
+    def test_rotation_round_trip_keeps_resolution(self):
+        image = _sharp_image()
+        n = image.shape[0]
+        yy, xx = np.mgrid[:n, :n]
+        inner = (yy - n / 2) ** 2 + (xx - n / 2) ** 2 < (0.4 * n) ** 2
+        kk = np.hypot(*np.meshgrid(np.fft.fftfreq(n), np.fft.fftfreq(n)))
+
+        def high_frequency(a):
+            return np.abs(np.fft.fft2(np.where(inner, a, 0)))[kk > 0.2].sum()  # noqa: PLR2004
+
+        stack = etspy.TomoStack(
+            image[np.newaxis].astype(np.float32),
+            tilts=np.array([0.0]),
+        )
+        retained = {}
+        for method in ("fourier", "linear"):
+            there = stack.trans_stack(angle=2.7, interpolation=method)
+            back = there.trans_stack(angle=-2.7, interpolation=method)
+            retained[method] = high_frequency(back.data[0]) / high_frequency(image)
+        assert retained["fourier"] > 0.98  # noqa: PLR2004
+        assert retained["linear"] < 0.6  # noqa: PLR2004
+
+    def test_background_fill(self):
+        data = np.full((2, 64, 64), 500.0, np.float32)
+        data[:, 24:40, 24:40] = 1500.0
+        stack = etspy.TomoStack(data, tilts=np.array([0.0, 1.0]))
+        out = stack.trans_stack(xshift=10, yshift=-8, angle=20, interpolation="fourier")
+        np.testing.assert_allclose(out.data[:, :3, :3], 500.0, atol=5.0)
+        np.testing.assert_allclose(out.data[:, -3:, -3:], 500.0, atol=5.0)
+
+    def test_integer_data(self):
+        stack = _smooth_image_stack()
+        stack.data = (stack.data * 1000).astype(np.uint16)
+        out = stack.trans_stack(xshift=1.5, interpolation="fourier")
+        assert np.issubdtype(out.data.dtype, np.floating)
+
+    def test_rotation_limit(self):
+        with pytest.raises(ValueError, match=r"at most 90\.0 degrees"):
+            etspy.align.fourier_rigid_transform(np.zeros((1, 8, 8)), 95, (0, 0))
+
+    @pytest.mark.parametrize("method", ["CoM", "MaxImage"])
+    def test_tilt_align_output_is_one_fourier_transform(self, method):
+        stack = ds.get_needle_data(aligned=True).inav[::4]
+        kwargs = {"also_shift": True, "shift_limit": 4} if method == "MaxImage" else {}
+        out = stack.tilt_align(method, **kwargs)
+        # both methods add their result to the alignment recorded in the stack
+        tomo_meta = out.metadata.Tomography
+        yshift = tomo_meta.yshift - stack.metadata.Tomography.yshift
+        angle = tomo_meta.tiltaxis - stack.metadata.Tomography.tiltaxis
+        expected = stack.trans_stack(
+            yshift=yshift,
+            angle=angle,
+            interpolation="fourier",
+        )
+        np.testing.assert_allclose(out.data, expected.data, rtol=1e-5, atol=1e-3)
+
+
+@pytest.fixture(scope="module")
+def small_misaligned_catalyst():
+    """Binned catalyst tilt series (45 tilts) with known random shifts."""
+    small = ds.get_catalyst_data().inav[::2].rebin(scale=(1, 2, 2))
+    np.random.seed(1)
+    return sim.misalign_stack(small)
+
+
 @pytest.fixture(scope="module")
 def misaligned_catalyst():
     """Catalyst tilt series with known random shifts (stored in ``.shifts``)."""
     np.random.seed(1)
     return ds.get_catalyst_data(misalign=True)
+
+
+def _without_rigid_translation(yshifts, thetas):
+    """Remove the a + b cos(theta) + c sin(theta) part of Y-shifts.
+
+    Such Y-shifts only translate the reconstruction, so alignment methods based on
+    the center of mass cannot (and need not) determine them.
+    """
+    basis = np.array([np.ones_like(thetas), np.cos(thetas), np.sin(thetas)]).T
+    return yshifts - basis @ np.linalg.lstsq(basis, yshifts)[0]
 
 
 def _rms_error(measured, expected):
@@ -628,12 +773,23 @@ class TestCoMAligner:
     """Test the center of mass stack alignment."""
 
     def test_yshifts_recover_applied_shifts(self, misaligned_catalyst):
-        # the correction is the negative of the applied jitter; a constant offset
-        # cannot be determined (it is a shift of the tilt axis)
         shifts = etspy.align.CoMAligner(misaligned_catalyst).calculate_shifts()
         applied = misaligned_catalyst.shifts.data
-        assert _rms_error(shifts[:, 0], -applied[:, 0]) < 0.4  # noqa: PLR2004
+        thetas = np.deg2rad(misaligned_catalyst.tilts.data.squeeze())
+        y_error = _without_rigid_translation(shifts[:, 0] + applied[:, 0], thetas)
+        assert np.sqrt((y_error**2).mean()) < 0.2  # noqa: PLR2004
         assert _rms_error(shifts[:, 1], -applied[:, 1]) < 0.5  # noqa: PLR2004
+
+    def test_yshifts_add_no_translation(self, misaligned_catalyst):
+        # the Y-shifts are determined only up to a + b cos(theta) + c sin(theta);
+        # no arbitrary b cos(theta) + c sin(theta) component should be added
+        # (it moves the reconstruction; previously numerical noise was amplified
+        # into a translation of several pixels)
+        shifts = etspy.align.CoMAligner(misaligned_catalyst).calculate_shifts()
+        thetas = np.deg2rad(misaligned_catalyst.tilts.data.squeeze())
+        design = np.array([np.cos(thetas), np.sin(thetas)]).T
+        coeffs = np.linalg.lstsq(design, shifts[:, 0])[0]
+        np.testing.assert_allclose(coeffs, 0, atol=1e-6)
 
     def test_xshifts_small_image(self, misaligned_catalyst):
         # an 80 pixel wide image previously gave a negative slice index
