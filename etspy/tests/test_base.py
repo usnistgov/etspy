@@ -24,6 +24,7 @@ from etspy import datasets as ds
 from etspy.align import TiltCOMAligner, TiltMaxImageAligner
 from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
 from etspy.io import load
+from etspy.visualize import VolumeSlicer
 
 from . import count_astra_objects, load_serialem_multiframe_data
 
@@ -1548,6 +1549,52 @@ class TestRecStack:
             ),
         ):
             RecStack(np.random.rand(10, 8, 11, 12))
+
+
+class TestVolumeSlicer:
+    """Test the interactive volume slicer used by RecStack.plot_3d."""
+
+    @staticmethod
+    def _volume():
+        # RecStack data order is (x, z, y); distinct sizes catch swapped axes
+        nx, nz, ny = 4, 5, 6
+        data = np.arange(nx * nz * ny, dtype=float).reshape(nx, nz, ny)
+        return RecStack(data), data
+
+    def test_views(self):
+        rec, data = self._volume()
+        slicer = VolumeSlicer(rec)
+        # slices perpendicular to x: (z, y)
+        np.testing.assert_array_equal(slicer.stackZY.inav[2].data, data[2])
+        # slices perpendicular to y: (z, x)
+        np.testing.assert_array_equal(slicer.stackXZ.inav[3].data, data[:, :, 3].T)
+        # slices perpendicular to z: (x, y)
+        np.testing.assert_array_equal(slicer.stackXY.inav[1].data, data[:, 1, :])
+        assert (slicer.sliderX.max, slicer.sliderY.max, slicer.sliderZ.max) == (3, 5, 4)
+        plt.close("all")
+
+    @pytest.mark.parametrize(
+        ("slider", "panel", "view"),
+        [
+            ("sliderX", 0, "stackZY"),
+            ("sliderY", 1, "stackXZ"),
+            ("sliderZ", 2, "stackXY"),
+        ],
+    )
+    def test_update_plot(self, slider, panel, view):
+        rec, _ = self._volume()
+        slicer = VolumeSlicer(rec)
+        slicer.update_plot({"owner": getattr(slicer, slider), "new": 2})
+        np.testing.assert_array_equal(
+            slicer.axes[panel].images[0].get_array(),
+            getattr(slicer, view).inav[2].data,
+        )
+        plt.close("all")
+
+    def test_plot_3d(self):
+        rec, _ = self._volume()
+        rec.plot_3d()
+        plt.close("all")
 
 
 class TestRecStackPlotSlices:
