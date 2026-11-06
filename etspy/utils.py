@@ -1,6 +1,5 @@
 """Utility module for ETSpy package."""
 
-import logging
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -85,9 +84,6 @@ def register_serialem_stack(
     -----
     utilities
     """
-    align_logger = logging.getLogger("etspy.align")
-    log_level = align_logger.getEffectiveLevel()
-    align_logger.setLevel(logging.ERROR)
     ntilts, nframes, ny, nx = stack.data.shape
 
     if ncpus == 1:
@@ -132,7 +128,6 @@ def register_serialem_stack(
         reg.metadata.Acquisition_instrument = stack.metadata.Acquisition_instrument
     if stack.metadata.has_item("Tomography"):
         reg.metadata.Tomography = stack.metadata.Tomography
-    align_logger.setLevel(log_level)
     return reg
 
 
