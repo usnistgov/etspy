@@ -8,9 +8,11 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+from scipy import ndimage
 
 import etspy.api as etspy
 from etspy import datasets as ds
+from etspy import simulation as sim
 
 if TYPE_CHECKING:
     from hyperspy.misc.utils import DictionaryTreeBrowser as Dtb
@@ -373,3 +375,73 @@ class TestAlignOther:
         reg2 = reg.align_other(original_stack)
         diff = reg.data - reg2.data
         assert diff.sum() == 0.0
+
+
+@pytest.fixture(scope="module")
+def blob_tilt_series():
+    """
+    Tilt series of randomly placed blobs, with the tilt axis along x.
+
+    Unlike a specimen that is symmetric about the tilt axis, this contains mass
+    away from the axis at all positions along it, so misalignment of the tilt
+    axis can be detected from the centers of mass of the projections.
+    """
+    rng = np.random.default_rng(0)
+    nx, nyz = 240, 160
+    model = np.zeros((nx, nyz, nyz), np.float32)  # (x, z, y)
+    for _ in range(40):
+        x = rng.uniform(15, nx - 15)
+        radius, angle = rng.uniform(0, 0.3 * nyz), rng.uniform(0, 2 * np.pi)
+        z = nyz / 2 + radius * np.cos(angle)
+        y = nyz / 2 + radius * np.sin(angle)
+        model[int(x), int(z), int(y)] += rng.uniform(0.5, 1.5)
+    model = ndimage.gaussian_filter(model, 3)
+    return sim.create_model_tilt_series(model, np.arange(-70, 71, 2.0), cuda=False)
+
+
+def _misalign_tilt_axis(stack, yshift, angle):
+    out = stack.deepcopy()
+    data = ndimage.shift(stack.data, [0, yshift, 0], order=1)
+    out.data = ndimage.rotate(data, angle, axes=(1, 2), reshape=False, order=1)
+    return out
+
+
+class TestTiltCOMAccuracy:
+    """Test that the CoM tilt axis alignment recovers known misalignments."""
+
+    @pytest.mark.parametrize(
+        ("yshift", "angle"),
+        [(8.0, 0.0), (0.0, 3.0), (8.0, 3.0), (-5.0, -2.0), (3.0, -4.0)],
+    )
+    def test_tilt_com_recovers_misalignment(self, blob_tilt_series, yshift, angle):
+        misaligned = _misalign_tilt_axis(blob_tilt_series, yshift, angle)
+        aligned = misaligned.tilt_align("CoM", nslices=20)
+        tomo_meta = aligned.metadata.Tomography
+        assert tomo_meta.yshift == pytest.approx(yshift, abs=0.5)
+        assert tomo_meta.tiltaxis == pytest.approx(angle, abs=0.5)
+
+    def test_tilt_com_aligned_input_unchanged(self, blob_tilt_series):
+        aligned = blob_tilt_series.tilt_align("CoM", nslices=20)
+        tomo_meta = aligned.metadata.Tomography
+        assert tomo_meta.yshift == pytest.approx(0, abs=0.05)
+        assert tomo_meta.tiltaxis == pytest.approx(0, abs=0.05)
+
+    def test_tilt_com_background_offset(self, blob_tilt_series):
+        # a constant background must not change the result (pixels uncovered by
+        # the transformation in later iterations are filled with zeros)
+        misaligned = _misalign_tilt_axis(blob_tilt_series, 5.0, 3.0)
+        misaligned.data = misaligned.data * 1e4  # realistic counts (max ~500)
+        offset = misaligned.deepcopy()
+        offset.data = offset.data - 30000
+        meta = misaligned.tilt_align("CoM", nslices=20).metadata.Tomography
+        meta_offset = offset.tilt_align("CoM", nslices=20).metadata.Tomography
+        assert meta_offset.yshift == pytest.approx(meta.yshift, abs=0.05)
+        assert meta_offset.tiltaxis == pytest.approx(meta.tiltaxis, abs=0.05)
+
+    def test_get_coms_pixel_coordinates(self):
+        # mass at row 10 of 64 should have a CoM of 10 - 31.5 pixels
+        data = np.zeros((3, 64, 4), np.float32)
+        data[:, 10, :] = 1
+        stack = etspy.TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        coms = etspy.align.get_coms(stack, np.array([0, 3]))
+        np.testing.assert_allclose(coms, 10 - 31.5)
