@@ -296,7 +296,7 @@ class TestTiltAlign:
 
     def test_tilt_align_maximage(self, catalyst_stack):
         assert catalyst_stack.metadata.get_item("Tomography.tiltaxis") == 0
-        rotated = catalyst_stack.trans_stack(angle=2.3)
+        rotated = _clear_alignment(catalyst_stack.trans_stack(angle=2.3))
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
             rotated,
         )
@@ -316,20 +316,64 @@ class TestTiltAlign:
         _ = maximage_tilt_aligner.align_tilt_axis()
 
     def test_tilt_align_maximage_also_shift(self, catalyst_stack):
-        assert catalyst_stack.metadata.get_item("Tomography.tiltaxis") == 0
-        assert catalyst_stack.metadata.get_item("Tomography.yshift") == 0
-        misaligned = catalyst_stack.trans_stack(angle=2.3, yshift=2)
+        # binned for speed; the rotation is tested at full size above
+        small = catalyst_stack.inav[::2].rebin(scale=(1, 4, 4))
+        misaligned = _clear_alignment(small.trans_stack(yshift=2))
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
             misaligned,
+            also_shift=True,
         )
         ali = maximage_tilt_aligner.align_tilt_axis()
-        tilt_axis = ali.metadata.get_item("Tomography.tiltaxis")
         tilt_shift = ali.metadata.get_item("Tomography.yshift")
-        assert isinstance(tilt_axis, float)
-        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
-        assert round(tilt_shift, 1) == pytest.approx(2.0, rel=1e-1)
-        assert round(tilt_axis, 1) == pytest.approx(-2.3, rel=1e-1)
-        assert np.all(ali.shifts.data == catalyst_stack.shifts.data)
+        assert ali.metadata.get_item("Tomography.tiltaxis") == pytest.approx(0, abs=1)
+        assert tilt_shift == pytest.approx(-2.0, abs=0.5)
+        assert np.all(ali.shifts.data == small.shifts.data)
+
+    def test_tilt_align_maximage_adds_to_recorded_alignment(self, catalyst_stack):
+        # like trans_stack (and the CoM method), the rotation found is added to
+        # the alignment already recorded in the stack
+        rotated = _clear_alignment(catalyst_stack.trans_stack(angle=2.3))
+        rotated.metadata.set_item("Tomography.tiltaxis", 1.0)
+        rotated.metadata.set_item("Tomography.yshift", 3.0)
+        ali = etspy.align.TiltMaxImageAligner(rotated).align_tilt_axis()
+        assert ali.metadata.Tomography.tiltaxis == pytest.approx(1.0 - 2.3, abs=0.25)
+        assert ali.metadata.Tomography.yshift == 3.0  # noqa: PLR2004
+
+    def test_tilt_align_maximage_no_lines(self, caplog):
+        stack = etspy.TomoStack(
+            np.ones([5, 32, 32], np.float32),
+            tilts=np.linspace(-40, 40, 5),
+        )
+        caplog.clear()
+        ali = etspy.align.TiltMaxImageAligner(stack).align_tilt_axis()
+        assert "No lines were found in the maximum image" in caplog.text
+        assert ali.metadata.Tomography.tiltaxis == 0
+        assert not np.isnan(ali.data).any()
+        np.testing.assert_allclose(ali.data, stack.data)
+
+    def test_tilt_align_maximage_shift_search_does_not_wrap(self):
+        # each projection contains only its own value and the background (0): the
+        # shifted sinograms must not wrap content around the edges or into the
+        # neighbouring projections
+        data = np.zeros([4, 32, 48], np.float32)
+        for i in range(4):
+            data[i, 8:22, :] = i + 1
+        stack = etspy.TomoStack(data, tilts=np.linspace(-30, 30, 4))
+        aligner = etspy.align.TiltMaxImageAligner(stack, shift_limit=20)
+        captured = {}
+
+        def fake_reconstruct(self, *_args, **_kwargs):
+            captured["data"] = self.data.copy()
+            return etspy.RecStack(np.zeros([self.data.shape[2], 4, 4]))
+
+        with patch.object(etspy.TomoStack, "reconstruct", fake_reconstruct):
+            aligner._find_tilt_shift(stack)  # noqa: SLF001
+        shifted = captured["data"]
+        assert shifted.shape[2] == 40  # noqa: PLR2004
+        for i in range(4):
+            assert set(np.unique(shifted[i])) <= {0.0, i + 1.0}
+        # a shift of +19 pixels leaves rows 0-18 empty
+        assert np.all(shifted[:, :19, -1] == 0)
 
     def test_tilt_align_unknown_method(self, full_stack):
         bad_method = "WRONG"
@@ -484,6 +528,13 @@ def blob_tilt_series():
         model[int(x), int(z), int(y)] += rng.uniform(0.5, 1.5)
     model = ndimage.gaussian_filter(model, 3)
     return sim.create_model_tilt_series(model, np.arange(-70, 71, 2.0), cuda=False)
+
+
+def _clear_alignment(stack):
+    """Reset the alignment recorded by trans_stack (for simulated misalignments)."""
+    for key in ("xshift", "yshift", "tiltaxis"):
+        stack.metadata.set_item(f"Tomography.{key}", 0.0)
+    return stack
 
 
 def _misalign_tilt_axis(stack, yshift, angle):
