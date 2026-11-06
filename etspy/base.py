@@ -1393,7 +1393,7 @@ class TomoStack(CommonStack):
             values = values + np.asarray(previous)
         corrected.metadata.set_item("Tomography.background", values)
         logger.info(
-            "Removed background of %.4g to %.4g from the projections",
+            "Removed background of %.6g to %.6g from the projections",
             values.min(),
             values.max(),
         )
