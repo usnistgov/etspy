@@ -1716,3 +1716,89 @@ class TestRemoveBackground:
 
         assert abs(ring(raw)) > 0.1
         assert abs(ring(raw.remove_background())) < 0.005
+
+
+class TestLogTransform:
+    """Test conversion of bright-field data to absorbance."""
+
+    i0 = np.array([20000.0, 19000.0, 21000.0, 20500.0, 19500.0])
+    dark = -32768.0 + 100.0  # int16 offset storage plus a detector dark level
+
+    @pytest.fixture
+    def absorbance(self):
+        """Absorbance of a disc covering about 30% of each projection."""
+        yy, xx = np.mgrid[:64, :96]
+        r2 = (yy - 32) ** 2 + (xx - 48) ** 2
+        return np.where(r2 < 28**2, 0.4 + 0.8 * np.exp(-r2 / (2 * 10**2)), 0.0)
+
+    def _bright_field(self, absorbance, noise=True, dark=None):
+        dark = self.dark if dark is None else dark
+        counts = self.i0[:, None, None] * np.exp(-absorbance)[None]
+        if noise:
+            counts = np.random.default_rng(0).poisson(counts).astype(float)
+        data = (dark + counts).astype(np.float32)
+        return TomoStack(data, tilts=np.linspace(-60, 60, len(self.i0)))
+
+    def test_log_transform_recovers_absorbance(self, absorbance):
+        stack = self._bright_field(absorbance)
+        result = stack.log_transform(dark=self.dark)
+        found_i0 = result.metadata.Tomography.log_transform["i0"] - self.dark
+        np.testing.assert_allclose(found_i0, self.i0, rtol=0.005)
+        np.testing.assert_allclose(
+            result.metadata.Tomography.log_transform["dark"],
+            self.dark,
+        )
+        assert np.median(np.abs(result.data - absorbance)) < 0.01
+        assert result.data.dtype == np.float32
+
+    def test_log_transform_exact_values(self, absorbance):
+        stack = self._bright_field(absorbance, noise=False)
+        result = stack.log_transform(i0=self.i0 + self.dark, dark=self.dark)
+        np.testing.assert_allclose(
+            result.data, np.broadcast_to(absorbance, result.data.shape), atol=1e-4
+        )
+
+    def test_log_transform_border(self, absorbance):
+        stack = self._bright_field(absorbance)
+        result = stack.log_transform(i0="border", dark=self.dark)
+        found_i0 = result.metadata.Tomography.log_transform["i0"] - self.dark
+        np.testing.assert_allclose(found_i0, self.i0, rtol=0.005)
+
+    def test_log_transform_no_reconstruction_warning(self, absorbance, caplog):
+        stack = self._bright_field(absorbance)
+        with caplog.at_level(logging.WARNING, logger="etspy.base"):
+            stack.reconstruct("FBP", cuda=False, show_progressbar=False)
+        assert "stack.log_transform()" in caplog.text
+        caplog.clear()
+        result = stack.log_transform(dark=self.dark)
+        with caplog.at_level(logging.WARNING, logger="etspy.base"):
+            result.reconstruct("FBP", cuda=False, show_progressbar=False)
+        assert "background (vacuum) level" not in caplog.text
+
+    def test_log_transform_clips_low_transmission(self, absorbance, caplog):
+        stack = self._bright_field(absorbance, dark=0.0)
+        stack.data[:, 0, :10] = 0  # no transmitted intensity
+        with caplog.at_level(logging.WARNING, logger="etspy.base"):
+            result = stack.log_transform(min_transmission=1e-4)
+        assert "50 pixels" in caplog.text
+        assert np.all(np.isfinite(result.data))
+        np.testing.assert_allclose(result.data[:, 0, :10], -np.log(1e-4), rtol=1e-5)
+
+    def test_log_transform_integer_data(self):
+        data = np.full((3, 32, 32), 10000, np.uint16)
+        data[:, 10:20, 10:20] = 5000
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        result = stack.log_transform()
+        np.testing.assert_allclose(result.data[:, 0, 0], 0, atol=1e-6)
+        np.testing.assert_allclose(result.data[:, 15, 15], np.log(2), rtol=1e-5)
+
+    def test_log_transform_errors(self, absorbance):
+        stack = self._bright_field(absorbance)
+        with pytest.raises(ValueError, match='Invalid i0 method "median"'):
+            stack.log_transform(i0="median")  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="i0 has 2 values, but the stack has 5"):
+            stack.log_transform(i0=np.array([1.0, 2.0]))
+        with pytest.raises(ValueError, match="dark has 3 values"):
+            stack.log_transform(dark=np.zeros(3))
+        with pytest.raises(ValueError, match="must be greater than the dark level"):
+            stack.log_transform(i0=100.0, dark=200.0)

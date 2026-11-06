@@ -34,7 +34,7 @@ from etspy import (
 )
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
-from etspy._background import background_mode
+from etspy._background import background_mode, bright_mode
 from etspy.transform import VolumeRotator, calculate_rotation
 from etspy.visualize import VolumeSlicer
 
@@ -61,6 +61,36 @@ logger = logging.getLogger(__name__)
 
 # fractional background level above which a warning is given
 BACKGROUND_WARNING_FRACTION = 0.01
+
+
+def _border_median(image: np.ndarray, width: int) -> float:
+    """Median of the pixels within ``width`` pixels of the edges of an image."""
+    return float(
+        np.median(
+            np.concatenate(
+                [
+                    image[:width].ravel(),
+                    image[-width:].ravel(),
+                    image[width:-width, :width].ravel(),
+                    image[width:-width, -width:].ravel(),
+                ],
+            ),
+        ),
+    )
+
+
+def _per_projection_values(value, nprojections: int, name: str) -> np.ndarray:
+    """Convert a number or one value per projection to an array of values."""
+    values = np.asarray(value, dtype=float).ravel()
+    if values.shape[0] == 1:
+        values = np.repeat(values, nprojections)
+    if values.shape[0] != nprojections:
+        msg = (
+            f"{name} has {values.shape[0]} values, but the stack has "
+            f"{nprojections} projections"
+        )
+        raise ValueError(msg)
+    return values
 
 
 def _warn_if_background(stack: "TomoStack", consequence: str):
@@ -90,7 +120,7 @@ def _warn_if_background(stack: "TomoStack", consequence: str):
             "The projections have a background (vacuum) level of about %.6g "
             "(%.0f%% of the data range), which will cause %s. For dark-field data, "
             "remove it first with stack.remove_background(); bright-field data "
-            "should instead be converted to absorbance with a log transform.",
+            "should instead be converted to absorbance with stack.log_transform().",
             background,
             100 * abs(background) / (high - low),
             consequence,
@@ -1347,22 +1377,7 @@ class TomoStack(CommonStack):
             if background == "mode":
                 values = np.array([background_mode(im) for im in images])
             elif background == "border":
-                w = border_width
-                values = np.array(
-                    [
-                        np.median(
-                            np.concatenate(
-                                [
-                                    im[:w].ravel(),
-                                    im[-w:].ravel(),
-                                    im[w:-w, :w].ravel(),
-                                    im[w:-w, -w:].ravel(),
-                                ],
-                            ),
-                        )
-                        for im in images
-                    ],
-                )
+                values = np.array([_border_median(im, border_width) for im in images])
             else:
                 msg = (
                     f'Invalid background method "{background}". Must be "mode", '
@@ -1370,15 +1385,7 @@ class TomoStack(CommonStack):
                 )
                 raise ValueError(msg)
         else:
-            values = np.asarray(background, dtype=float).ravel()
-            if values.shape[0] == 1:
-                values = np.repeat(values, images.shape[0])
-            if values.shape[0] != images.shape[0]:
-                msg = (
-                    f"background has {values.shape[0]} values, but the stack has "
-                    f"{images.shape[0]} projections"
-                )
-                raise ValueError(msg)
+            values = _per_projection_values(background, images.shape[0], "background")
 
         corrected = self.deepcopy()
         float_dtype = np.result_type(self.data.dtype, np.float32)
@@ -1398,6 +1405,137 @@ class TomoStack(CommonStack):
             values.max(),
         )
         return corrected
+
+    def log_transform(
+        self,
+        i0: Literal["mode", "border"] | float | np.ndarray = "mode",
+        dark: float | np.ndarray = 0.0,
+        border_width: int = 8,
+        min_transmission: float = 1e-4,
+    ) -> "TomoStack":
+        """
+        Create a copy of a bright-field stack converted to absorbance.
+
+        In bright-field data, vacuum is bright and the specimen appears dark,
+        with the transmitted intensity decreasing roughly exponentially with
+        projected mass (Beer-Lambert law). Bright-field data must therefore be
+        converted to absorbance before reconstruction, which assumes intensities
+        proportional to projected mass:
+
+        ``absorbance = -ln((I - dark) / (i0 - dark))``
+
+        where ``i0`` is the intensity of the incident beam (vacuum) and ``dark`` is
+        the detector's zero-signal level. Vacuum then has an absorbance of zero, so
+        :py:meth:`remove_background` is not needed afterwards. Note that
+        bright-field contrast in the TEM also includes diffraction and phase
+        contrast, so the result is only approximately proportional to projected
+        mass.
+
+        Parameters
+        ----------
+        i0
+            Incident beam (vacuum) intensity for each projection:
+
+            - ``"mode"`` (default): the most common intensity among the brighter
+              half of the pixels in each projection, which is the vacuum level
+              when vacuum makes up a reasonable part of the image.
+            - ``"border"``: the median of the pixels within ``border_width``
+              pixels of the edges of each projection.
+            - A number, used for every projection, or an array with one value
+              per projection.
+        dark
+            The detector's zero-signal (dark) level, as a number or an array with
+            one value per projection. Default is 0. For data stored as signed
+            integers with an offset of -32768, this is -32768 plus the
+            detector's dark level.
+        border_width
+            Width (in pixels) of the edge region used when ``i0="border"``.
+        min_transmission
+            Transmission values (``(I - dark) / (i0 - dark)``) below this value,
+            including zero and negative values due to noise, are set to this
+            value before taking the logarithm, which limits the absorbance to
+            ``-ln(min_transmission)``.
+
+        Returns
+        -------
+        absorbance : TomoStack
+            Copy of the stack converted to absorbance. The ``i0`` and ``dark``
+            values used are stored in ``metadata.Tomography.log_transform``.
+
+        Raises
+        ------
+        ValueError
+            If ``i0`` is not a valid method name, if ``i0`` or ``dark`` has the
+            wrong number of values, or if ``i0`` is not greater than ``dark``
+
+        Examples
+        --------
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()  # (dark-field data, for illustration)
+            >>> absorbance = stack.log_transform()
+        """
+        nav_shape = self.data.shape[:-2]
+        images = self.data.reshape(-1, *self.data.shape[-2:])
+        nprojections = images.shape[0]
+        if isinstance(i0, str):
+            if i0 == "mode":
+                i0_values = np.array([bright_mode(im) for im in images])
+            elif i0 == "border":
+                i0_values = np.array(
+                    [_border_median(im, border_width) for im in images],
+                )
+            else:
+                msg = (
+                    f'Invalid i0 method "{i0}". Must be "mode", "border", a number, '
+                    "or an array with one value per projection."
+                )
+                raise ValueError(msg)
+        else:
+            i0_values = _per_projection_values(i0, nprojections, "i0")
+        dark_values = _per_projection_values(dark, nprojections, "dark")
+        if np.any(i0_values <= dark_values):
+            msg = (
+                "The incident beam intensity (i0) must be greater than the dark level "
+                f"for every projection (i0: {i0_values.min():.6g} to "
+                f"{i0_values.max():.6g}, dark: {dark_values.min():.6g} to "
+                f"{dark_values.max():.6g})"
+            )
+            raise ValueError(msg)
+
+        float_dtype = np.result_type(self.data.dtype, np.float32)
+        transmission = (
+            images.astype(float_dtype) - dark_values.astype(float_dtype)[:, None, None]
+        ) / (i0_values - dark_values).astype(float_dtype)[:, None, None]
+        nclipped = int(np.count_nonzero(transmission < min_transmission))
+        if nclipped:
+            logger.warning(
+                "%d pixels (%.2g%%) had a transmission below %.3g (e.g. due to noise "
+                "or the dark level) and were set to %.3g before taking the logarithm",
+                nclipped,
+                100 * nclipped / transmission.size,
+                min_transmission,
+                min_transmission,
+            )
+        np.clip(transmission, min_transmission, None, out=transmission)
+
+        absorbance = self.deepcopy()
+        absorbance.data = (-np.log(transmission)).reshape(self.data.shape)
+        absorbance.metadata.set_item(
+            "Tomography.log_transform",
+            {
+                "i0": i0_values.reshape(nav_shape),
+                "dark": dark_values.reshape(nav_shape),
+            },
+        )
+        logger.info(
+            "Converted to absorbance using i0 of %.6g to %.6g and dark level of %.6g "
+            "to %.6g",
+            i0_values.min(),
+            i0_values.max(),
+            dark_values.min(),
+            dark_values.max(),
+        )
+        return absorbance
 
     def filter(
         self,
