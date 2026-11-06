@@ -1429,18 +1429,27 @@ class TiltMaxImageAligner(TiltAligner):
 
             plt.tight_layout()
 
-        # trans_stack adds the rotation (and shift) to the alignment recorded in
-        # the stack metadata
-
-        ali = cast("TomoStack", self.stack.trans_stack(angle=-rotation_angle))
         logger.info("Calculated tilt-axis rotation %.2f", -rotation_angle)
 
         if self.also_shift:
-            tilt_shift = self._find_tilt_shift(ali)
-            ali = cast("TomoStack", ali.trans_stack(yshift=-tilt_shift))
+            # measure the shift on the rotated stack
+            rotated = cast("TomoStack", self.stack.trans_stack(angle=-rotation_angle))
+            tilt_shift = self._find_tilt_shift(rotated)
             logger.info("Calculated tilt-axis shift %.2f", -tilt_shift)
+        else:
+            tilt_shift = 0.0
 
-        return ali
+        # produce the aligned stack from the input in a single transformation
+        # (rotation followed by the shift); trans_stack adds the rotation and
+        # shift to the alignment recorded in the stack metadata
+        return cast(
+            "TomoStack",
+            self.stack.trans_stack(
+                yshift=-tilt_shift,
+                angle=-rotation_angle,
+                interpolation=self.interpolation,
+            ),
+        )
 
     def _find_tilt_shift(self, ali: "TomoStack") -> float:
         """
