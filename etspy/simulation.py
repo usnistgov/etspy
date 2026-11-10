@@ -1,6 +1,6 @@
 """Simulation module for ETSpy package."""
 
-from typing import Literal, cast
+from typing import Literal, NamedTuple, cast
 
 import astra
 import hyperspy.api as hs
@@ -11,6 +11,7 @@ from scipy import ndimage
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
 from etspy.api import TomoStack
+from etspy.recon import create_projector, resolve_cuda
 
 
 def create_catalyst_model(
@@ -214,8 +215,7 @@ def create_model_tilt_series(
     -----
     3
     """
-    if cuda is None:
-        cuda = astra.use_cuda()
+    cuda = resolve_cuda(cuda)
 
     if angles is None:
         angles = np.arange(0, 180, 2)
@@ -232,17 +232,14 @@ def create_model_tilt_series(
     thetas = np.radians(angles)
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ydim, thetas)
-    if cuda is False:
-        proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-    else:
-        proj_id = astra.create_projector(
-            "cuda",
-            proj_geom,
-            vol_geom,
-        )  # coverage: nocuda
+    proj_id = create_projector(proj_geom, vol_geom, cuda=bool(cuda))
 
-    for i in range(model.shape[0]):
-        _, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
+    try:
+        for i in range(model.shape[0]):
+            sino_id, proj_data[:, :, i] = astra.create_sino(model[i, :, :], proj_id)
+            astra.data2d.delete(sino_id)
+    finally:
+        astra.projector.delete(proj_id)
 
     stack = TomoStack(proj_data, angles)
     return stack
@@ -269,7 +266,8 @@ def misalign_stack(
     max_shift
         Maximum amount of jitter to apply to the stack
     tilt_shift
-        Number of pixels by which to offset the tilt axis from the center
+        Number of pixels by which to offset the tilt axis from the center, i.e. to
+        shift the stack along the y-axis (perpendicular to the tilt axis)
     tilt_rotate
         Amount of rotation to apply to the stack
     y_only
@@ -297,7 +295,7 @@ def misalign_stack(
     if tilt_shift != 0:
         misaligned.data = ndimage.shift(
             misaligned.data,
-            shift=[0, 0, tilt_shift],
+            shift=[0, tilt_shift, 0],
             order=interp_order,
         )
     if tilt_rotate != 0:
@@ -380,3 +378,349 @@ def add_noise(
         raise ValueError(msg)
 
     return noisy
+
+
+class AlignmentTestSeries(NamedTuple):
+    """
+    A simulated misaligned tilt series with its known alignment.
+
+    Returned by :py:func:`create_alignment_test_series`.
+
+    Group
+    -----
+    simulation
+    """
+
+    misaligned: TomoStack
+    """The misaligned (and optionally noisy) tilt series"""
+    aligned: TomoStack
+    """The noise-free tilt series without misalignment"""
+    shifts: np.ndarray
+    """Shifts ``(Y, X)`` of each projection, shape ``(ntilts, 2)``, that correct the
+    misalignment (in the same order as :py:func:`etspy.align.apply_shifts`)"""
+    tilt_axis: float
+    """In-plane rotation (degrees) that corrects the tilt axis direction, applied
+    after the shifts, about the image center (as in
+    :py:func:`etspy.align.fourier_rigid_transform`)"""
+
+
+# Features of the alignment test phantom: ellipsoids and boxes
+_ELLIPSOID = 0
+_BOX = 1
+
+
+def _random_rotation(rng: np.random.Generator) -> np.ndarray:
+    """Return a uniformly distributed random 3D rotation matrix."""
+    q, r = np.linalg.qr(rng.normal(size=(3, 3)))
+    q = q * np.sign(np.diag(r))
+    if np.linalg.det(q) < 0:
+        q[:, 0] = -q[:, 0]
+    return q
+
+
+def _alignment_phantom(
+    rng: np.random.Generator,
+    ny: int,
+    nx: int,
+    nparticles: int,
+    nboxes: int,
+    nplates: int,
+    nrods: int,
+) -> list[tuple[int, np.ndarray, np.ndarray, np.ndarray, float]]:
+    """
+    Create the features of the alignment test phantom.
+
+    Each feature is ``(kind, center, rotation, half_size, density)``, with
+    coordinates ``(X, A, B)`` in pixels from the center of the volume: ``X`` along
+    the tilt axis (the image x-axis) and ``(A, B)`` in the plane of each slice. All
+    features lie within a radius of ``0.42 * ny`` of the tilt axis, so that they
+    stay inside the field of view at all tilts.
+    """
+    scale = ny / 128
+    features = []
+    # weak support film, which also contributes smooth, low-frequency contrast
+    support = np.array([0.48 * nx, 0.38 * ny, 0.12 * ny])
+    features.append((_ELLIPSOID, np.zeros(3), np.eye(3), support, 0.01))
+
+    def center(radius: float) -> np.ndarray:
+        # a random position inside the support, keeping the feature in the field
+        # of view
+        while True:
+            pos = rng.uniform(-1, 1, 3) * (support - [0, radius, 0])
+            if np.hypot(pos[1], pos[2]) + radius < 0.42 * ny:
+                return pos
+
+    for _ in range(nparticles):
+        # small dense particles (like gold fiducials), sharp in both x and y
+        radius = rng.uniform(0.8, 2.5) * scale
+        features.append(
+            (_ELLIPSOID, center(radius), np.eye(3), np.full(3, radius), 1.0),
+        )
+    for i in range(nboxes):
+        # boxes, half of them aligned with the axes (edges sharp along x and y)
+        half = rng.uniform(2, 6, 3) * scale
+        rotation = np.eye(3) if i % 2 == 0 else _random_rotation(rng)
+        features.append(
+            (_BOX, center(np.linalg.norm(half)), rotation, half, 0.3),
+        )
+    for i in range(nplates):
+        # thin plates, normal to the tilt axis (sharp along x) or in the slice
+        # plane (sharp along y at some tilts)
+        half = np.array([rng.uniform(0.6, 1.2), *rng.uniform(4, 10, 2)]) * scale
+        if i % 2 == 0:
+            rotation = np.eye(3)
+        else:
+            angle = rng.uniform(0, np.pi)
+            rotation = np.array(
+                [
+                    [0, 0, 1],
+                    [np.cos(angle), -np.sin(angle), 0],
+                    [np.sin(angle), np.cos(angle), 0],
+                ],
+            )
+        features.append(
+            (_BOX, center(np.linalg.norm(half)), rotation, half, 0.4),
+        )
+    for _ in range(nrods):
+        # long thin rods at oblique angles
+        half = np.array([rng.uniform(12, 25), 1.0, 1.0]) * scale
+        features.append(
+            (_BOX, center(half[0]), _random_rotation(rng), half, 0.4),
+        )
+    return features
+
+
+def _line_integrals(
+    feature: tuple[int, np.ndarray, np.ndarray, np.ndarray, float],
+    x: np.ndarray,
+    u: np.ndarray,
+    theta: float,
+) -> np.ndarray:
+    """
+    Calculate the line integrals through a phantom feature.
+
+    The rays are parallel to ``(0, sin(theta), -cos(theta))`` and pass through
+    ``(x, u cos(theta), u sin(theta))``, where ``u`` is the detector coordinate
+    perpendicular to the tilt axis (the parallel beam geometry of ASTRA).
+    """
+    kind, center, rotation, half, density = feature
+    origin = (
+        np.stack(
+            [
+                x - center[0],
+                u * np.cos(theta) - center[1],
+                u * np.sin(theta) - center[2],
+            ],
+            axis=-1,
+        )
+        @ rotation
+    )
+    direction = np.array([0.0, np.sin(theta), -np.cos(theta)]) @ rotation
+    if kind == _ELLIPSOID:
+        o = origin / half
+        v = direction / half
+        a = v @ v
+        b = 2 * (o @ v)
+        c = np.sum(o**2, axis=-1) - 1
+        return density * np.sqrt(np.maximum(b**2 - 4 * a * c, 0)) / a
+    # box: intersect the ray with the three slabs |coordinate| <= half
+    t_min = np.full(x.shape, -np.inf)
+    t_max = np.full(x.shape, np.inf)
+    for k in range(3):
+        if abs(direction[k]) > 1e-12:  # noqa: PLR2004
+            t1 = (-half[k] - origin[..., k]) / direction[k]
+            t2 = (half[k] - origin[..., k]) / direction[k]
+            t_min = np.maximum(t_min, np.minimum(t1, t2))
+            t_max = np.minimum(t_max, np.maximum(t1, t2))
+        else:
+            outside = np.abs(origin[..., k]) > half[k]
+            t_min[outside] = np.inf
+    return density * np.maximum(t_max - t_min, 0)
+
+
+def _render_projections(
+    features: list,
+    tilts: np.ndarray,
+    ny: int,
+    nx: int,
+    shifts: np.ndarray,
+    tilt_axis: float,
+    supersample: int,
+) -> np.ndarray:
+    """
+    Render the projections of the phantom, with a known misalignment.
+
+    The content of the ideal projection at ``p`` appears in the rendered image at
+    ``q``, where ``p = R (q + s - c) + c``: correcting the image by the shift ``s``
+    and then rotating it by ``tilt_axis`` about ``c`` recovers the ideal projection.
+    Each pixel is the average of ``supersample**2`` samples over its area.
+    """
+    ss = supersample
+    # coordinates of the samples from the image center (pixel i spans
+    # [i - n/2, i + 1 - n/2]); the rotation center is pixel (nx/2, ny/2), as in
+    # fourier_rigid_transform
+    x_samples = (np.arange(nx * ss) + 0.5) / ss - nx / 2
+    u_samples = (np.arange(ny * ss) + 0.5) / ss - ny / 2
+    rot_center = np.array([0.5, 0.5])
+    image_center = np.array([nx / 2, ny / 2])
+    phi = np.deg2rad(tilt_axis)
+    rotation = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
+    out = np.zeros((len(tilts), ny, nx))
+    for i, theta in enumerate(np.deg2rad(tilts)):
+        sampled = np.zeros((ny * ss, nx * ss))
+        for feature in features:
+            # bounding box of the feature's ideal projection, mapped to the
+            # rendered image
+            _, center, _, half, _ = feature
+            radius = np.linalg.norm(half) if feature[0] == _BOX else half.max()
+            u_center = center[1] * np.cos(theta) + center[2] * np.sin(theta)
+            corners = np.array(
+                [
+                    [center[0] + dx * radius, u_center + du * radius]
+                    for dx in (-1, 1)
+                    for du in (-1, 1)
+                ],
+            )
+            corners = (corners - rot_center) @ rotation + rot_center - shifts[i, ::-1]
+            lo = np.floor((corners.min(0) + image_center - 1) * ss).astype(int)
+            hi = np.ceil((corners.max(0) + image_center + 1) * ss).astype(int)
+            x0, u0 = np.maximum(lo, 0)
+            x1, u1 = np.minimum(hi, [nx * ss, ny * ss])
+            if x1 <= x0 or u1 <= u0:
+                continue
+            qx, qu = np.meshgrid(x_samples[x0:x1], u_samples[u0:u1])
+            q = np.stack([qx, qu], axis=-1) + shifts[i, ::-1] - rot_center
+            p = q @ rotation.T + rot_center
+            sampled[u0:u1, x0:x1] += _line_integrals(
+                feature,
+                p[..., 0],
+                p[..., 1],
+                theta,
+            )
+        out[i] = sampled.reshape(ny, ss, nx, ss).mean(axis=(1, 3))
+    return out
+
+
+def create_alignment_test_series(  # noqa: PLR0913
+    shape: tuple[int, int] = (128, 128),
+    tilts: np.ndarray | None = None,
+    max_shift: float = 3.0,
+    drift: float = 2.0,
+    tilt_axis: float = 1.0,
+    background: float = 0.2,
+    dose: float | None = None,
+    blur: float = 0.0,
+    supersample: int = 4,
+    features: tuple[int, int, int, int] = (30, 12, 10, 6),
+    seed: int = 0,
+) -> AlignmentTestSeries:
+    """
+    Create a misaligned tilt series with a known alignment, for testing alignment.
+
+    The phantom is a weak support film carrying small dense particles, boxes, thin
+    plates and rods, with edges that are sharp along both the x-axis (the tilt
+    axis) and the y-axis, to test sub-pixel alignment in both directions. The
+    projections are calculated analytically (exact line integrals through
+    ellipsoids and boxes, averaged over the area of each pixel), and the
+    misalignment is applied while rendering them, so that no interpolation is
+    involved and the correcting alignment is known exactly.
+
+    Parameters
+    ----------
+    shape
+        Image shape ``(ny, nx)``; the tilt axis is along x
+    tilts
+        Tilt angles in degrees (default: -70 to 70 degrees in 2 degree steps)
+    max_shift
+        Each projection is shifted by a random jitter, uniform in
+        ``[-max_shift, max_shift]`` pixels in both x and y, plus a drift
+    drift
+        Amplitude (pixels) of a smooth drift of the projections across the tilt
+        series, in both x and y
+    tilt_axis
+        Rotation (degrees) of the tilt axis away from the x-axis
+    background
+        Constant background (vacuum) level added to the projections, relative to
+        their maximum (which is scaled to 1)
+    dose
+        If given, Poisson noise is added for this number of counts per pixel at an
+        intensity of 1
+    blur
+        Standard deviation (pixels) of a Gaussian point spread function applied to
+        the projections (default: none)
+    supersample
+        Number of samples per pixel along each axis used to integrate over the
+        pixel area
+    features
+        Number of particles, boxes, plates and rods in the phantom
+    seed
+        Seed of the random number generator, for a reproducible series
+
+    Returns
+    -------
+    AlignmentTestSeries
+        The misaligned series, the aligned (noise-free) series, and the shifts and
+        tilt axis rotation that correct the misalignment
+
+    Group
+    -----
+    simulation
+
+    Order
+    -----
+    6
+    """
+    rng = np.random.default_rng(seed)
+    ny, nx = shape
+    if tilts is None:
+        tilts = np.arange(-70, 71, 2)
+    tilts = np.asarray(tilts, dtype=float)
+    ntilts = len(tilts)
+    phantom = _alignment_phantom(rng, ny, nx, *features)
+
+    # the correcting shifts: a smooth drift (a few low-order cosines) plus jitter
+    position = np.linspace(0, 1, ntilts)
+    shifts = rng.uniform(-max_shift, max_shift, (ntilts, 2))
+    for k in range(1, 4):
+        amplitude = rng.normal(0, drift / k, 2)
+        shifts += (
+            np.cos(np.pi * k * position + rng.uniform(0, 2 * np.pi))[
+                :,
+                np.newaxis,
+            ]
+            * amplitude
+        )
+
+    ideal = _render_projections(
+        phantom,
+        tilts,
+        ny,
+        nx,
+        np.zeros((ntilts, 2)),
+        0.0,
+        supersample,
+    )
+    misaligned = _render_projections(
+        phantom,
+        tilts,
+        ny,
+        nx,
+        shifts,
+        tilt_axis,
+        supersample,
+    )
+    if blur > 0:
+        ideal = ndimage.gaussian_filter(ideal, (0, blur, blur))
+        misaligned = ndimage.gaussian_filter(misaligned, (0, blur, blur))
+    scale = 1 / ideal.max()
+    ideal = ideal * scale + background
+    misaligned = misaligned * scale + background
+    if dose is not None:
+        misaligned = rng.poisson(misaligned * dose) / dose
+
+    return AlignmentTestSeries(
+        misaligned=TomoStack(misaligned.astype(np.float32), tilts),
+        aligned=TomoStack(ideal.astype(np.float32), tilts),
+        shifts=shifts,
+        tilt_axis=tilt_axis,
+    )

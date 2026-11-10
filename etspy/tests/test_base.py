@@ -18,12 +18,15 @@ from hyperspy._signals.signal2d import Signal2D
 from hyperspy.io import load as hs_load
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
+from scipy import ndimage
 
 from etspy import datasets as ds
 from etspy.align import TiltCOMAligner, TiltMaxImageAligner
 from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
+from etspy.io import load
+from etspy.visualize import VolumeSlicer
 
-from . import load_serialem_multiframe_data
+from . import count_astra_objects, load_serialem_multiframe_data
 
 if TYPE_CHECKING:
     from hyperspy.axes import UniformDataAxis as Uda
@@ -989,6 +992,41 @@ class TestFiltering:
         )
         assert filt.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
 
+    @pytest.mark.parametrize("method", ["median", "sobel", "both", "bpf"])
+    def test_image_filter_non_square_keeps_shape(self, method):
+        data = np.random.default_rng(0).random((3, 40, 64), np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        filt = stack.filter(method=method)
+        assert filt.data.shape == stack.data.shape
+        assert filt.axes_manager.signal_shape == (64, 40)
+
+    def test_image_filter_no_taper(self):
+        data = np.random.default_rng(0).random((3, 40, 64), np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        filt = stack.filter(method="median", size=3, taper=0)
+        expected = ndimage.median_filter(data, size=(1, 3, 3))
+        np.testing.assert_array_equal(filt.data, expected)
+
+    def test_image_filter_taper(self):
+        data = np.random.default_rng(0).random((3, 40, 64), np.float32) + 5
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        untapered = stack.filter(method="median", size=3, taper=0).data
+        filt = stack.filter(method="median", size=3, taper=0.1)
+        assert filt.data.shape == data.shape
+        # taper border is 4 pixels in y and 6 pixels in x; interior is unchanged
+        np.testing.assert_allclose(filt.data[:, 4:-4, 6:-6], untapered[:, 4:-4, 6:-6])
+        # edge pixels are pulled close to each image's mean
+        means = untapered.mean(axis=(1, 2))
+        for i in range(3):
+            edge_dev = np.abs(filt.data[i, 0, :] - means[i]).max()
+            orig_dev = np.abs(untapered[i, 0, :] - means[i]).max()
+            assert edge_dev < 0.1 * orig_dev
+
+    @pytest.mark.parametrize("taper", [-0.1, 0.5, 1.0])
+    def test_image_filter_bad_taper(self, short_stack, taper):
+        with pytest.raises(ValueError, match=r"taper must be in the range \[0, 0.5\)"):
+            short_stack.filter(method="median", taper=taper)
+
     def test_image_filter_wrong_name(self, short_stack):
         bad_name = "WRONG"
         with pytest.raises(
@@ -1013,6 +1051,20 @@ class TestOperations:
         assert norm.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
         assert norm.data.min() == 0.0
 
+    @pytest.mark.parametrize("width", [1, 3])
+    def test_stack_normalize_values(self, width):
+        rng = np.random.default_rng(0)
+        # projections with different offsets and contrast
+        data = np.stack(
+            [rng.normal(100 * (i + 1), 10 * (i + 1), (32, 48)) for i in range(3)],
+        ).astype(np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        norm = stack.normalize(width=width)
+        for i in range(3):
+            shifted = data[i] - data[i].min()
+            expected = shifted / (shifted.mean() + width * shifted.std())
+            np.testing.assert_allclose(norm.data[i], expected, rtol=1e-5)
+
     def test_stack_invert(self):
         im = np.zeros([10, 100, 100])
         im[:, 40:60, 40:60] = 10
@@ -1021,6 +1073,33 @@ class TestOperations:
         hist, _ = np.histogram(stack.data)
         hist_inv, _ = np.histogram(invert.data)
         assert hist[0] > hist_inv[0]
+
+    def test_stack_invert_values(self):
+        rng = np.random.default_rng(0)
+        # projections with different offsets and ranges
+        data = np.stack(
+            [rng.uniform(10 * i, 100 * (i + 1), (32, 48)) for i in range(3)],
+        ).astype(np.float32)
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        inverted = stack.invert()
+        atol = 1e-6 * data.max()  # float32 rounding
+        for i in range(3):
+            expected = data[i].max() + data[i].min() - data[i]
+            np.testing.assert_allclose(inverted.data[i], expected, atol=atol)
+        np.testing.assert_allclose(inverted.data.min((1, 2)), data.min((1, 2)))
+        np.testing.assert_allclose(inverted.data.max((1, 2)), data.max((1, 2)))
+        # inverting twice returns the original data
+        np.testing.assert_allclose(inverted.invert().data, data, atol=atol)
+
+    def test_stack_invert_uint16_no_overflow(self):
+        data = np.zeros((2, 8, 8), np.uint16)
+        data[:, 0, 0] = 60000
+        data[:, 1:, :] = 10000
+        stack = TomoStack(data, tilts=np.array([0.0, 1.0]))
+        inverted = stack.invert()
+        assert inverted.data.dtype == np.uint16
+        assert inverted.data[0, 0, 0] == 0
+        assert inverted.data[0, 1, 1] == 50000
 
     def test_stack_stats(self, capsys, short_stack):
         short_stack.stats()
@@ -1042,14 +1121,21 @@ class TestOperations:
         assert ax.scale == increment
         assert ax.units == "degrees"
         assert ax.offset == start
-        assert (
-            ax.axis.all()
-            == np.arange(
-                start,
-                full_stack.data.shape[0] * increment + start,
-                increment,
-            ).all()
-        )
+        expected = start + increment * np.arange(full_stack.data.shape[0])
+        np.testing.assert_allclose(ax.axis, expected)
+        np.testing.assert_allclose(full_stack.tilts.data.squeeze(), expected)
+
+    @pytest.mark.parametrize(
+        ("start", "increment", "nimages"),
+        [(-60, 0.1, 61), (-60, 2, 61), (-70.3, 0.3, 469), (70, -2, 71)],
+    )
+    def test_set_tilts_float_increment(self, start, increment, nimages):
+        stack = TomoStack(np.zeros((nimages, 4, 4), np.float32))
+        stack.set_tilts(start, increment)
+        tilts = stack.tilts.data.squeeze()
+        assert tilts.shape == (nimages,)
+        np.testing.assert_allclose(tilts, start + increment * np.arange(nimages))
+        np.testing.assert_allclose(tilts[-1], start + increment * (nimages - 1))
 
     def test_set_tilts_no_metadata(self, full_stack):
         stack = full_stack.deepcopy()
@@ -1061,14 +1147,9 @@ class TestOperations:
         assert ax.scale == increment
         assert ax.units == "degrees"
         assert ax.offset == start
-        assert (
-            ax.axis.all()
-            == np.arange(
-                start,
-                stack.data.shape[0] * increment + start,
-                increment,
-            ).all()
-        )
+        expected = start + increment * np.arange(stack.data.shape[0])
+        np.testing.assert_allclose(ax.axis, expected)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), expected)
 
 
 class TestTestAlign:
@@ -1138,7 +1219,7 @@ class TestAlignOther:
             == stack2.metadata.Tomography.xshift  # type: ignore
         )
         assert (
-            stack3.metadata.Tomography.xshift == 2 * stack2.metadata.Tomography.xshift  # type: ignore
+            stack3.metadata.Tomography.xshift == stack2.metadata.Tomography.xshift  # type: ignore
         )
 
     def test_align_other_with_yshift_only(self, short_stack):
@@ -1147,7 +1228,7 @@ class TestAlignOther:
         stack3 = shifted.align_other(stack2)
         assert isinstance(stack3, TomoStack)
         assert (
-            stack3.metadata.Tomography.yshift == 2 * stack2.metadata.Tomography.yshift  # type: ignore
+            stack3.metadata.Tomography.yshift == stack2.metadata.Tomography.yshift  # type: ignore
         )
 
 
@@ -1287,6 +1368,23 @@ class TestErrorPlots:
             aligned_full_stack.data.shape[1],
         )
 
+    def test_recon_error_nslice_zero(self):
+        # nslice=0 previously selected the central slice instead of the first
+        data = np.random.default_rng(0).random((15, 32, 4), np.float32)
+        data[:, :, 0] = 0
+        stack = TomoStack(data, tilts=np.linspace(-70, 70, 15))
+        rec_stack, _ = stack.recon_error(0, iterations=3, cuda=False)
+        assert np.all(rec_stack.data == 0)
+
+    @pytest.mark.parametrize("nslice", [-1, 4])
+    def test_recon_error_nslice_out_of_range(self, nslice):
+        stack = TomoStack(
+            np.ones((15, 32, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        with pytest.raises(ValueError, match=r"nslice must be in the range \[0, 3\]"):
+            stack.recon_error(nslice, iterations=3, cuda=False)
+
 
 class TestTiltAlign:
     """Test tilt alignment of a TomoStack."""
@@ -1339,7 +1437,7 @@ class TestTransStack:
             ValueError,
             match=re.escape(
                 f'Invalid interpolation method "{bad_method}". Must be one of '
-                '["linear", "cubic", "nearest", or "none"].',
+                '["linear", "cubic", "nearest", "none", or "fourier"].',
             ),
         ):
             aligned_full_stack.trans_stack(
@@ -1380,11 +1478,12 @@ class TestReconstruct:
             sino.data.max() / 2,
             sino.data.max(),
         ]
-        sino.reconstruct(
-            "DART",
-            dart_iterations=None,
-            gray_levels=gray_levels,
-        )
+        with caplog.at_level(logging.INFO, logger="etspy.base"):
+            sino.reconstruct(
+                "DART",
+                dart_iterations=None,
+                gray_levels=gray_levels,
+            )
         assert "Using default number of DART iterations (5)" in caplog.text
 
 
@@ -1452,6 +1551,52 @@ class TestRecStack:
             RecStack(np.random.rand(10, 8, 11, 12))
 
 
+class TestVolumeSlicer:
+    """Test the interactive volume slicer used by RecStack.plot_3d."""
+
+    @staticmethod
+    def _volume():
+        # RecStack data order is (x, z, y); distinct sizes catch swapped axes
+        nx, nz, ny = 4, 5, 6
+        data = np.arange(nx * nz * ny, dtype=float).reshape(nx, nz, ny)
+        return RecStack(data), data
+
+    def test_views(self):
+        rec, data = self._volume()
+        slicer = VolumeSlicer(rec)
+        # slices perpendicular to x: (z, y)
+        np.testing.assert_array_equal(slicer.stackZY.inav[2].data, data[2])
+        # slices perpendicular to y: (z, x)
+        np.testing.assert_array_equal(slicer.stackXZ.inav[3].data, data[:, :, 3].T)
+        # slices perpendicular to z: (x, y)
+        np.testing.assert_array_equal(slicer.stackXY.inav[1].data, data[:, 1, :])
+        assert (slicer.sliderX.max, slicer.sliderY.max, slicer.sliderZ.max) == (3, 5, 4)
+        plt.close("all")
+
+    @pytest.mark.parametrize(
+        ("slider", "panel", "view"),
+        [
+            ("sliderX", 0, "stackZY"),
+            ("sliderY", 1, "stackXZ"),
+            ("sliderZ", 2, "stackXY"),
+        ],
+    )
+    def test_update_plot(self, slider, panel, view):
+        rec, _ = self._volume()
+        slicer = VolumeSlicer(rec)
+        slicer.update_plot({"owner": getattr(slicer, slider), "new": 2})
+        np.testing.assert_array_equal(
+            slicer.axes[panel].images[0].get_array(),
+            getattr(slicer, view).inav[2].data,
+        )
+        plt.close("all")
+
+    def test_plot_3d(self):
+        rec, _ = self._volume()
+        rec.plot_3d()
+        plt.close("all")
+
+
 class TestRecStackPlotSlices:
     """Test plotting slices of a RecStack."""
 
@@ -1479,7 +1624,6 @@ class TestRecStackPlotSlices:
         assert isinstance(fig, Figure)
 
 
-@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
 class TestRecStackForwardProject:
     """Test forward projection of RecStacks."""
 
@@ -1497,6 +1641,59 @@ class TestRecStackForwardProject:
         assert isinstance(sino, TomoStack)
         assert isinstance(sino.tilts, TomoTilts)
 
+    def test_rec_stack_forward_project_thickness(self):
+        # An object contained within the central 32 rows (z) should give the same
+        # projections whether the volume is 64 or 32 pixels thick
+        nx, nz, ny = 3, 64, 64
+        full = np.zeros((nx, nz, ny), np.float32)
+        full[:, 24:40, 20:44] = 1.0
+        thin = full[:, 16:48, :]
+        tilts = np.linspace(-70, 70, 15)
+        proj_full = RecStack(full).forward_project(tilts, cuda=False)
+        proj_thin = RecStack(thin).forward_project(tilts, cuda=False)
+        assert proj_thin.data.shape == (len(tilts), ny, nx)
+        # tolerance allows for float32 accumulation differences inside ASTRA
+        atol = 1e-5 * proj_full.data.max()
+        np.testing.assert_allclose(proj_thin.data, proj_full.data, atol=atol)
+
+    def test_rec_stack_forward_project_reconstruction_thickness(self):
+        stack = TomoStack(
+            np.random.default_rng(0).random((15, 64, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        rec = stack.reconstruct(
+            "SIRT",
+            iterations=2,
+            thickness=32,
+            cuda=False,
+            show_progressbar=False,
+        )
+        assert rec.data.shape == (4, 32, 64)
+        proj = rec.forward_project(stack.tilts.data.squeeze(), cuda=False)
+        assert proj.data.shape == stack.data.shape
+
+    @pytest.mark.parametrize("ndim", [2, 3])
+    def test_rec_stack_forward_project_tilt_types(self, ndim):
+        shape = (32, 32) if ndim == 2 else (2, 32, 32)
+        rec = RecStack(np.random.default_rng(0).random(shape, np.float32))
+        tilts = np.linspace(-60, 60, 7)
+        stack = TomoStack(np.zeros((7, 32, 2), np.float32), tilts=tilts)
+        expected = rec.forward_project(tilts, cuda=False).data
+        for tilt_input in (stack.tilts, stack.tilts.data, list(tilts)):
+            proj = rec.forward_project(tilt_input, cuda=False)
+            np.testing.assert_allclose(proj.data, expected)
+            np.testing.assert_allclose(proj.tilts.data.squeeze(), tilts)
+
+    def test_rec_stack_forward_project_no_tilts(self):
+        rec = RecStack(np.zeros((2, 32, 32), np.float32))
+        with pytest.raises(ValueError, match="Tilt angles must be provided"):
+            rec.forward_project(None, cuda=False)
+
+
+@pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
+class TestRecStackForwardProjectCuda:
+    """Test forward projection of RecStacks with CUDA."""
+
     def test_rec_stack_forward_project_3d_cuda(self):
         rec = RecStack(np.random.rand(10, 100, 100))
         tilts = np.linspace(0, 180, 90)
@@ -1510,3 +1707,244 @@ class TestRecStackForwardProject:
         sino = rec.forward_project(tilts, cuda=True)
         assert isinstance(sino, TomoStack)
         assert isinstance(sino.tilts, TomoTilts)
+
+
+class TestAstraObjectCleanup:
+    """Test that TomoStack/RecStack methods free the ASTRA objects they create."""
+
+    pytestmark = pytest.mark.usefixtures("astra_sentinel")
+
+    @pytest.mark.parametrize("shape", [(32, 32), (3, 32, 32)])
+    def test_forward_project_frees_astra_objects(self, shape):
+        rec = RecStack(np.random.default_rng(0).random(shape, np.float32))
+        before = count_astra_objects()
+        rec.forward_project(np.linspace(-70, 70, 15), cuda=False)
+        assert count_astra_objects() == before
+
+    def test_recon_error_frees_astra_objects(self):
+        stack = TomoStack(
+            np.random.default_rng(0).random((15, 32, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        before = count_astra_objects()
+        stack.recon_error(iterations=3, cuda=False)
+        assert count_astra_objects() == before
+
+
+class TestRecStackRotateVolume:
+    """Test applying a 3D rotation to a RecStack."""
+
+    @pytest.fixture
+    def volume(self):
+        vol = np.zeros((9, 9, 9), np.float32)
+        vol[2:4, 1:3, 5:8] = 1
+        return vol
+
+    def test_rotate_volume_zero(self, volume):
+        rotated = RecStack(volume).rotate_volume([0, 0, 0])
+        np.testing.assert_allclose(rotated.data, volume, atol=1e-6)
+        np.testing.assert_array_equal(rotated.rotation_angles, [0, 0, 0])
+        np.testing.assert_allclose(rotated.rotation_matrix, np.eye(3))
+        np.testing.assert_allclose(rotated.rotation_offset, 0, atol=1e-12)
+
+    @pytest.mark.parametrize(
+        ("angles", "k", "axes"),
+        [([90, 0, 0], 3, (1, 2)), ([0, 90, 0], 1, (0, 2)), ([0, 0, 90], 3, (0, 1))],
+    )
+    def test_rotate_volume_90(self, volume, angles, k, axes):
+        rotated = RecStack(volume).rotate_volume(angles)
+        np.testing.assert_allclose(rotated.data, np.rot90(volume, k, axes), atol=1e-4)
+        assert rotated.rotation_offset is not None
+
+    def test_rotate_volume_no_angles(self, volume):
+        with pytest.raises(ValueError, match="No rotation angles were provided"):
+            RecStack(volume).rotate_volume()
+
+
+class TestVolumeRotator:
+    """Test the interactive volume rotation widget."""
+
+    @pytest.mark.filterwarnings("ignore:FigureCanvasAgg is non-interactive")
+    def test_button_click_records_angles_and_disables_widgets(self):
+        rec = RecStack(np.random.default_rng(0).random((8, 8, 8), np.float32))
+        rec.interactive_rotation()
+        rotator = rec.rotator
+        rotator.slider1.value, rotator.slider2.value, rotator.slider3.value = 1, 2, 3
+        rotator.on_button_click(None)
+        np.testing.assert_array_equal(rotator.slider_values, [1, 2, 3])
+        assert rotator.slider1.disabled
+        assert rotator.slider2.disabled
+        assert rotator.slider3.disabled
+        assert rotator.button.disabled
+
+
+class TestRemoveBackground:
+    """Test removal of the background (vacuum) level of a TomoStack."""
+
+    backgrounds = np.array([100.0, -50.0, 2500.0, -31900.0, 0.0])
+
+    @pytest.fixture
+    def stack_with_background(self):
+        """Projections of a disc (30% of the area) on known backgrounds, with noise."""
+        rng = np.random.default_rng(0)
+        yy, xx = np.mgrid[:64, :96]
+        disc = 1000.0 * (((yy - 32) ** 2 + (xx - 48) ** 2) < 24**2)
+        data = (
+            disc[np.newaxis]
+            + self.backgrounds[:, np.newaxis, np.newaxis]
+            + rng.normal(0, 5, (5, 64, 96))
+        )
+        return TomoStack(data.astype(np.float32), tilts=np.linspace(-60, 60, 5))
+
+    @pytest.mark.parametrize("method", ["mode", "border"])
+    def test_remove_background_estimates(self, stack_with_background, method):
+        corrected = stack_with_background.remove_background(method)
+        found = corrected.metadata.get_item("Tomography.background")
+        np.testing.assert_allclose(found, self.backgrounds, atol=1.0)
+        vacuum = corrected.data[:, :4, :]
+        assert abs(np.median(vacuum)) < 1.0
+        assert corrected.data.dtype == np.float32
+
+    def test_remove_background_values(self, stack_with_background):
+        scalar = stack_with_background.remove_background(100.0)
+        np.testing.assert_allclose(
+            scalar.data,
+            stack_with_background.data - 100.0,
+            rtol=1e-6,
+        )
+        per_projection = stack_with_background.remove_background(self.backgrounds)
+        np.testing.assert_allclose(
+            per_projection.metadata.get_item("Tomography.background"),
+            self.backgrounds,
+        )
+
+    def test_remove_background_accumulates(self, stack_with_background):
+        corrected = stack_with_background.remove_background(10.0).remove_background(5.0)
+        np.testing.assert_allclose(corrected.metadata.Tomography.background, 15.0)
+
+    def test_remove_background_integer_data(self):
+        data = np.full((3, 16, 16), 1000, np.uint16)
+        data[:, 4:8, 4:8] = 3000
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        corrected = stack.remove_background()
+        assert np.issubdtype(corrected.data.dtype, np.floating)
+        np.testing.assert_allclose(corrected.data[:, 0, 0], 0)
+        np.testing.assert_allclose(corrected.data[:, 5, 5], 2000)
+
+    def test_remove_background_wrong_length(self, stack_with_background):
+        with pytest.raises(ValueError, match="background has 3 values, but the stack"):
+            stack_with_background.remove_background(np.zeros(3))
+
+    def test_remove_background_bad_method(self, stack_with_background):
+        with pytest.raises(ValueError, match='Invalid background method "median"'):
+            stack_with_background.remove_background("median")  # type: ignore[arg-type]
+
+    def test_remove_background_removes_ring(self):
+        # a constant background in the projections reconstructs as a ring of
+        # incorrect intensity in the empty region around the specimen (here using
+        # the stored values of the needle data, with a background of about -31900)
+        raw = load(
+            Path(ds.__file__).parent / "tests" / "test_data" / "HAADF.mrc",
+            fei_offset_correction=False,
+        )
+        ny = raw.data.shape[1]
+        yy, zz = np.mgrid[:ny, :ny] - (ny - 1) / 2
+        radius = np.hypot(yy, zz) / (ny / 2)
+        annulus = (radius > 0.85) & (radius < 1.0)
+
+        def ring(stack):
+            rec = stack.isig[120:121, :].reconstruct(
+                "FBP",
+                cuda=False,
+                show_progressbar=False,
+            )
+            return rec.data[:, annulus].mean() / np.abs(rec.data).max()
+
+        assert abs(ring(raw)) > 0.1
+        assert abs(ring(raw.remove_background())) < 0.005
+
+
+class TestLogTransform:
+    """Test conversion of bright-field data to absorbance."""
+
+    i0 = np.array([20000.0, 19000.0, 21000.0, 20500.0, 19500.0])
+    dark = -32768.0 + 100.0  # int16 offset storage plus a detector dark level
+
+    @pytest.fixture
+    def absorbance(self):
+        """Absorbance of a disc covering about 30% of each projection."""
+        yy, xx = np.mgrid[:64, :96]
+        r2 = (yy - 32) ** 2 + (xx - 48) ** 2
+        return np.where(r2 < 28**2, 0.4 + 0.8 * np.exp(-r2 / (2 * 10**2)), 0.0)
+
+    def _bright_field(self, absorbance, noise=True, dark=None):
+        dark = self.dark if dark is None else dark
+        counts = self.i0[:, None, None] * np.exp(-absorbance)[None]
+        if noise:
+            counts = np.random.default_rng(0).poisson(counts).astype(float)
+        data = (dark + counts).astype(np.float32)
+        return TomoStack(data, tilts=np.linspace(-60, 60, len(self.i0)))
+
+    def test_log_transform_recovers_absorbance(self, absorbance):
+        stack = self._bright_field(absorbance)
+        result = stack.log_transform(dark=self.dark)
+        found_i0 = result.metadata.Tomography.log_transform["i0"] - self.dark
+        np.testing.assert_allclose(found_i0, self.i0, rtol=0.005)
+        np.testing.assert_allclose(
+            result.metadata.Tomography.log_transform["dark"],
+            self.dark,
+        )
+        assert np.median(np.abs(result.data - absorbance)) < 0.01
+        assert result.data.dtype == np.float32
+
+    def test_log_transform_exact_values(self, absorbance):
+        stack = self._bright_field(absorbance, noise=False)
+        result = stack.log_transform(i0=self.i0 + self.dark, dark=self.dark)
+        np.testing.assert_allclose(
+            result.data, np.broadcast_to(absorbance, result.data.shape), atol=1e-4
+        )
+
+    def test_log_transform_border(self, absorbance):
+        stack = self._bright_field(absorbance)
+        result = stack.log_transform(i0="border", dark=self.dark)
+        found_i0 = result.metadata.Tomography.log_transform["i0"] - self.dark
+        np.testing.assert_allclose(found_i0, self.i0, rtol=0.005)
+
+    def test_log_transform_no_reconstruction_warning(self, absorbance, caplog):
+        stack = self._bright_field(absorbance)
+        with caplog.at_level(logging.WARNING, logger="etspy.base"):
+            stack.reconstruct("FBP", cuda=False, show_progressbar=False)
+        assert "stack.log_transform()" in caplog.text
+        caplog.clear()
+        result = stack.log_transform(dark=self.dark)
+        with caplog.at_level(logging.WARNING, logger="etspy.base"):
+            result.reconstruct("FBP", cuda=False, show_progressbar=False)
+        assert "background (vacuum) level" not in caplog.text
+
+    def test_log_transform_clips_low_transmission(self, absorbance, caplog):
+        stack = self._bright_field(absorbance, dark=0.0)
+        stack.data[:, 0, :10] = 0  # no transmitted intensity
+        with caplog.at_level(logging.WARNING, logger="etspy.base"):
+            result = stack.log_transform(min_transmission=1e-4)
+        assert "50 pixels" in caplog.text
+        assert np.all(np.isfinite(result.data))
+        np.testing.assert_allclose(result.data[:, 0, :10], -np.log(1e-4), rtol=1e-5)
+
+    def test_log_transform_integer_data(self):
+        data = np.full((3, 32, 32), 10000, np.uint16)
+        data[:, 10:20, 10:20] = 5000
+        stack = TomoStack(data, tilts=np.array([-10.0, 0.0, 10.0]))
+        result = stack.log_transform()
+        np.testing.assert_allclose(result.data[:, 0, 0], 0, atol=1e-6)
+        np.testing.assert_allclose(result.data[:, 15, 15], np.log(2), rtol=1e-5)
+
+    def test_log_transform_errors(self, absorbance):
+        stack = self._bright_field(absorbance)
+        with pytest.raises(ValueError, match='Invalid i0 method "median"'):
+            stack.log_transform(i0="median")  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="i0 has 2 values, but the stack has 5"):
+            stack.log_transform(i0=np.array([1.0, 2.0]))
+        with pytest.raises(ValueError, match="dark has 3 values"):
+            stack.log_transform(dark=np.zeros(3))
+        with pytest.raises(ValueError, match="must be greater than the dark level"):
+            stack.log_transform(i0=100.0, dark=200.0)

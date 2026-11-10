@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from etspy.base import TomoStack
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class VolumeRotator:
@@ -170,8 +169,9 @@ class VolumeRotator:
 
         self.slider1.disabled = True
         self.slider2.disabled = True
+        self.slider3.disabled = True
         self.button.disabled = True
-        logger.info("Rotation angles retrieved from ImageRotator")
+        logger.info("Rotation angles retrieved from VolumeRotator")
 
     def link_widgets(self):
         """Links the slider widgets and button to their respective event handlers.

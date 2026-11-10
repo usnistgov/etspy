@@ -34,6 +34,7 @@ from etspy import (
 )
 from etspy import _format_choices as _fmt
 from etspy import _get_literal_hint_values as _get_lit
+from etspy._background import background_mode, bright_mode
 from etspy.transform import VolumeRotator, calculate_rotation
 from etspy.visualize import VolumeSlicer
 
@@ -57,7 +58,95 @@ except Exception:
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
+# fractional background level above which a warning is given
+BACKGROUND_WARNING_FRACTION = 0.01
+
+
+def _taper_edges(data: np.ndarray, taper: float) -> np.ndarray:
+    """
+    Smoothly taper the edges of each image in a stack to that image's mean.
+
+    A raised-cosine ramp of width ``taper`` times the image size is applied
+    along each image axis; pixels in the interior are unchanged.
+    """
+    window = np.ones(data.shape[1:])
+    for axis, n in enumerate(data.shape[1:]):
+        n_taper = int(taper * n)
+        if n_taper == 0:
+            continue
+        ramp = np.sin(0.5 * np.pi * (np.arange(n_taper) + 0.5) / n_taper) ** 2
+        profile = np.ones(n)
+        profile[:n_taper] = ramp
+        profile[-n_taper:] = ramp[::-1]
+        window *= profile[:, np.newaxis] if axis == 0 else profile[np.newaxis, :]
+    dtype = np.result_type(data.dtype, np.float32)
+    means = data.mean(axis=(1, 2), keepdims=True)
+    return (means + (data - means) * window).astype(dtype)
+
+
+def _border_median(image: np.ndarray, width: int) -> float:
+    """Median of the pixels within ``width`` pixels of the edges of an image."""
+    return float(
+        np.median(
+            np.concatenate(
+                [
+                    image[:width].ravel(),
+                    image[-width:].ravel(),
+                    image[width:-width, :width].ravel(),
+                    image[width:-width, -width:].ravel(),
+                ],
+            ),
+        ),
+    )
+
+
+def _per_projection_values(value, nprojections: int, name: str) -> np.ndarray:
+    """Convert a number or one value per projection to an array of values."""
+    values = np.asarray(value, dtype=float).ravel()
+    if values.shape[0] == 1:
+        values = np.repeat(values, nprojections)
+    if values.shape[0] != nprojections:
+        msg = (
+            f"{name} has {values.shape[0]} values, but the stack has "
+            f"{nprojections} projections"
+        )
+        raise ValueError(msg)
+    return values
+
+
+def _warn_if_background(stack: "TomoStack", consequence: str):
+    """
+    Warn if a stack appears to have a significant background (vacuum) level.
+
+    The background is estimated (as in :py:meth:`TomoStack.remove_background`)
+    from up to five evenly spaced projections, and a warning is logged if it is
+    more than 1% of the range of the data.
+
+    Parameters
+    ----------
+    stack
+        The stack to check
+    consequence
+        Description of the artifact the background will cause in the current
+        operation, used to complete the warning message
+    """
+    images = stack.data.reshape(-1, *stack.data.shape[-2:])
+    sample = images[np.unique(np.linspace(0, images.shape[0] - 1, 5).astype(int))]
+    low, high = np.percentile(sample, [0.5, 99.5])
+    if high <= low:
+        return
+    background = float(np.median([background_mode(im) for im in sample]))
+    if abs(background) > BACKGROUND_WARNING_FRACTION * (high - low):
+        logger.warning(
+            "The projections have a background (vacuum) level of about %.6g "
+            "(%.0f%% of the data range), which will cause %s. For dark-field data, "
+            "remove it first with stack.remove_background(); bright-field data "
+            "should instead be converted to absorbance with stack.log_transform().",
+            background,
+            100 * abs(background) / (high - low),
+            consequence,
+        )
 
 
 class MismatchedTiltError(ValueError):
@@ -369,6 +458,10 @@ class CommonStack(Signal2D, ABC):
         """
         Create a copy of a Stack with inverted contrast levels.
 
+        Each image is inverted independently about the midpoint of its intensity
+        range (``max + min - data``), so the minimum and maximum of each image are
+        swapped and the intensity range is preserved.
+
         Returns
         -------
         inverted : Self
@@ -380,29 +473,22 @@ class CommonStack(Signal2D, ABC):
             >>> stack = ds.get_needle_data()
             >>> s_inverted = stack.invert()
         """
-        maxvals = self.data.max(2).max(1)
-        maxvals = maxvals.reshape([self.data.shape[0], 1, 1])
-        minvals = self.data.min(2).min(1)
-        minvals = minvals.reshape([self.data.shape[0], 1, 1])
-        ranges = maxvals - minvals
+        maxvals = self.data.max(axis=(1, 2), keepdims=True)
+        minvals = self.data.min(axis=(1, 2), keepdims=True)
 
         inverted = self.deepcopy()
-        inverted.data = inverted.data - np.reshape(
-            inverted.data.mean(2).mean(1),
-            [self.data.shape[0], 1, 1],
-        )
-        inverted.data = (inverted.data - minvals) / ranges
-
-        inverted.data = inverted.data - 1
-        inverted.data = np.sqrt(inverted.data**2)
-
-        inverted.data = (inverted.data * ranges) + minvals
-
+        # (max - data) is non-negative and <= (max - min), so adding min stays
+        # within [min, max] and cannot overflow integer data types
+        inverted.data = (maxvals - inverted.data) + minvals
         return inverted
 
     def normalize(self, width: int = 3) -> Self:
         """
         Create a copy of a stack with normalized contrast levels.
+
+        Each projection is normalized independently: its minimum is subtracted,
+        and the result is divided by ``mean + width * std`` (both calculated over
+        the whole projection after the minimum is subtracted).
 
         Parameters
         ----------
@@ -422,19 +508,10 @@ class CommonStack(Signal2D, ABC):
             >>> s_normalized = stack.normalize()
         """
         normalized = self.deepcopy()
-        minvals = np.reshape(
-            (normalized.data.min(2).min(1)),
-            [self.data.shape[0], 1, 1],
-        )
+        minvals = normalized.data.min(axis=(1, 2), keepdims=True)
         normalized.data = normalized.data - minvals
-        meanvals = np.reshape(
-            (normalized.data.mean(2).mean(1)),
-            [self.data.shape[0], 1, 1],
-        )
-        stdvals = np.reshape(
-            (normalized.data.std(2).std(1)),
-            [self.data.shape[0], 1, 1],
-        )
+        meanvals = normalized.data.mean(axis=(1, 2), keepdims=True)
+        stdvals = normalized.data.std(axis=(1, 2), keepdims=True)
         normalized.data = normalized.data / (meanvals + width * stdvals)
         return normalized
 
@@ -481,10 +558,23 @@ class CommonStack(Signal2D, ABC):
         xshift: float = 0.0,
         yshift: float = 0.0,
         angle: float = 0.0,
-        interpolation: Literal["linear", "cubic", "nearest", "none"] = "linear",
+        interpolation: Literal[
+            "linear", "cubic", "nearest", "none", "fourier"
+        ] = "linear",
     ) -> Self:
         """
         Create a copy of a Stack, transformed using the ``skimage`` Affine transform.
+
+        Pixels uncovered by the transformation are filled with the background
+        (vacuum) level of each image, estimated from its intensity histogram (zero if
+        the background has been removed with
+        :py:meth:`~etspy.base.TomoStack.remove_background`).
+
+        The rotation is about the point ``(nx / 2, ny / 2)`` in pixel index
+        coordinates (half a pixel from the center of the image,
+        ``((nx - 1) / 2, (ny - 1) / 2)``, for each axis). The tilt axis alignment
+        methods measure the tilt axis relative to the same point, so the shift and
+        rotation they find can be passed to this method unchanged.
 
         Parameters
         ----------
@@ -494,9 +584,13 @@ class CommonStack(Signal2D, ABC):
             Number of pixels by which to shift the stack in the Y dimension
         angle
             Angle in degrees by which to rotate the stack about the X-Y plane
-        interpolation
+                interpolation
             Mode of interpolation to employ. Must be either ``'linear'``,
-            ``'cubic'``, ``'nearest'`` or ``'none'``.  Note that ``'nearest'``
+            ``'cubic'``, ``'nearest'``, ``'none'``, or ``'fourier'``. ``'fourier'``
+            applies the rotation as three shears made of one-dimensional Fourier
+            shifts (see :py:func:`etspy.align.fourier_rigid_transform`), which
+            avoids the loss of resolution caused by interpolation (it is limited
+            to rotations of at most 90 degrees). Note that ``'nearest'``
             and ``'none'`` are equivalent.  Default is ``'linear'``.
 
         Returns
@@ -549,7 +643,9 @@ class CommonStack(Signal2D, ABC):
         full_transform = np.dot(shift, rotation_mat)
         tform = transform.AffineTransform(full_transform)
 
-        if interpolation.lower() == "nearest" or interpolation.lower() == "none":
+        if interpolation.lower() == "fourier":
+            interpolation_order = None
+        elif interpolation.lower() == "nearest" or interpolation.lower() == "none":
             interpolation_order = 0
         elif interpolation.lower() == "linear":
             interpolation_order = 1
@@ -562,12 +658,21 @@ class CommonStack(Signal2D, ABC):
             )
             raise ValueError(msg)
 
-        for i in range(self.data.shape[0]):
-            transformed.data[i, :, :] = transform.warp(
-                transformed.data[i, :, :],
-                inverse_map=tform.inverse,
-                order=interpolation_order,
+        if interpolation_order is None:
+            transformed.data = align.fourier_rigid_transform(
+                self.data,
+                angle,
+                (xshift, -yshift),
             )
+        else:
+            for i in range(self.data.shape[0]):
+                transformed.data[i, :, :] = transform.warp(
+                    transformed.data[i, :, :],
+                    inverse_map=tform.inverse,
+                    order=interpolation_order,
+                    cval=background_mode(transformed.data[i, :, :]),
+                    preserve_range=True,
+                )
 
         trans_tomo_meta = cast("Dtb", transformed.metadata.Tomography)
         self_tomo_meta = cast("Dtb", self.metadata.Tomography)
@@ -1172,7 +1277,7 @@ class TomoStack(CommonStack):
         ax2.set_axis_off()
         ax2.set_title("Offset image")
 
-        ax3.imshow(cc_image.real, cmap="inferno")
+        ax3.imshow(cc_image.real, cmap="inferno")  # type: ignore
         ax3.set_axis_off()
         ax3.set_title("Cross-correlation")
         return fig
@@ -1238,6 +1343,231 @@ class TomoStack(CommonStack):
 
         return out
 
+    def remove_background(
+        self,
+        background: Literal["mode", "border"] | float | np.ndarray = "mode",
+        border_width: int = 8,
+    ) -> "TomoStack":
+        """
+        Create a copy of the stack with the background (vacuum) level removed.
+
+        Projections should have an intensity of zero where there is no specimen.
+        A constant background left in the data is inconsistent with the
+        projections of a compact object, and reconstructs as a ring of incorrect
+        intensity around the edge of the reconstruction (brighter for a positive
+        background, darker for a negative one). It also biases center of mass
+        alignment, and makes the zero-valued pixels introduced by shifting or
+        rotating the stack stand out. The background can be offset from zero by
+        the detector or by the file format (*e.g.* unsigned 16-bit data stored
+        as signed integers with an offset of -32768).
+
+        ``load`` does not change the stored intensities, so this method should be
+        applied to (dark-field) data before alignment and reconstruction. For
+        bright-field data, where vacuum is bright, it should not be used.
+
+        Parameters
+        ----------
+        background
+            How to determine the background of each projection:
+
+            - ``"mode"`` (default): the most common intensity in each projection,
+              which is the vacuum level when vacuum makes up a large part of the
+              image. This is robust to specimens that touch the image edges, but
+              is unsuitable if the specimen fills most of the field of view.
+            - ``"border"``: the median of the pixels within ``border_width``
+              pixels of the edges of each projection.
+            - A number, subtracted from every projection.
+            - An array with one value per projection.
+        border_width
+            Width (in pixels) of the edge region used when
+            ``background="border"``.
+
+        Returns
+        -------
+        corrected : TomoStack
+            Copy of the stack with the background subtracted. The subtracted value
+            for each projection is added to
+            ``metadata.Tomography.background`` (an array with one value per
+            projection), so repeated corrections accumulate.
+
+        Raises
+        ------
+        ValueError
+            If ``background`` is not a valid method name or has the wrong number
+            of values
+
+        Examples
+        --------
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()
+            >>> corrected = stack.remove_background()
+        """
+        nav_shape = self.data.shape[:-2]
+        images = self.data.reshape(-1, *self.data.shape[-2:])
+        if isinstance(background, str):
+            if background == "mode":
+                values = np.array([background_mode(im) for im in images])
+            elif background == "border":
+                values = np.array([_border_median(im, border_width) for im in images])
+            else:
+                msg = (
+                    f'Invalid background method "{background}". Must be "mode", '
+                    '"border", a number, or an array with one value per projection.'
+                )
+                raise ValueError(msg)
+        else:
+            values = _per_projection_values(background, images.shape[0], "background")
+
+        corrected = self.deepcopy()
+        float_dtype = np.result_type(self.data.dtype, np.float32)
+        corrected.data = (
+            images.astype(float_dtype)
+            - values.astype(float_dtype)[:, np.newaxis, np.newaxis]
+        ).reshape(self.data.shape)
+
+        values = values.reshape(nav_shape)
+        previous = corrected.metadata.get_item("Tomography.background")
+        if previous is not None:
+            values = values + np.asarray(previous)
+        corrected.metadata.set_item("Tomography.background", values)
+        logger.info(
+            "Removed background of %.6g to %.6g from the projections",
+            values.min(),
+            values.max(),
+        )
+        return corrected
+
+    def log_transform(
+        self,
+        i0: Literal["mode", "border"] | float | np.ndarray = "mode",
+        dark: float | np.ndarray = 0.0,
+        border_width: int = 8,
+        min_transmission: float = 1e-4,
+    ) -> "TomoStack":
+        """
+        Create a copy of a bright-field stack converted to absorbance.
+
+        In bright-field data, vacuum is bright and the specimen appears dark,
+        with the transmitted intensity decreasing roughly exponentially with
+        projected mass (Beer-Lambert law). Bright-field data must therefore be
+        converted to absorbance before reconstruction, which assumes intensities
+        proportional to projected mass:
+
+        ``absorbance = -ln((I - dark) / (i0 - dark))``
+
+        where ``i0`` is the intensity of the incident beam (vacuum) and ``dark`` is
+        the detector's zero-signal level. Vacuum then has an absorbance of zero, so
+        :py:meth:`remove_background` is not needed afterwards. Note that
+        bright-field contrast in the TEM also includes diffraction and phase
+        contrast, so the result is only approximately proportional to projected
+        mass.
+
+        Parameters
+        ----------
+        i0
+            Incident beam (vacuum) intensity for each projection:
+
+            - ``"mode"`` (default): the most common intensity among the brighter
+              half of the pixels in each projection, which is the vacuum level
+              when vacuum makes up a reasonable part of the image.
+            - ``"border"``: the median of the pixels within ``border_width``
+              pixels of the edges of each projection.
+            - A number, used for every projection, or an array with one value
+              per projection.
+        dark
+            The detector's zero-signal (dark) level, as a number or an array with
+            one value per projection. Default is 0. For data stored as signed
+            integers with an offset of -32768, this is -32768 plus the
+            detector's dark level.
+        border_width
+            Width (in pixels) of the edge region used when ``i0="border"``.
+        min_transmission
+            Transmission values (``(I - dark) / (i0 - dark)``) below this value,
+            including zero and negative values due to noise, are set to this
+            value before taking the logarithm, which limits the absorbance to
+            ``-ln(min_transmission)``.
+
+        Returns
+        -------
+        absorbance : TomoStack
+            Copy of the stack converted to absorbance. The ``i0`` and ``dark``
+            values used are stored in ``metadata.Tomography.log_transform``.
+
+        Raises
+        ------
+        ValueError
+            If ``i0`` is not a valid method name, if ``i0`` or ``dark`` has the
+            wrong number of values, or if ``i0`` is not greater than ``dark``
+
+        Examples
+        --------
+            >>> import etspy.datasets as ds
+            >>> stack = ds.get_needle_data()  # (dark-field data, for illustration)
+            >>> absorbance = stack.log_transform()
+        """
+        nav_shape = self.data.shape[:-2]
+        images = self.data.reshape(-1, *self.data.shape[-2:])
+        nprojections = images.shape[0]
+        if isinstance(i0, str):
+            if i0 == "mode":
+                i0_values = np.array([bright_mode(im) for im in images])
+            elif i0 == "border":
+                i0_values = np.array(
+                    [_border_median(im, border_width) for im in images],
+                )
+            else:
+                msg = (
+                    f'Invalid i0 method "{i0}". Must be "mode", "border", a number, '
+                    "or an array with one value per projection."
+                )
+                raise ValueError(msg)
+        else:
+            i0_values = _per_projection_values(i0, nprojections, "i0")
+        dark_values = _per_projection_values(dark, nprojections, "dark")
+        if np.any(i0_values <= dark_values):
+            msg = (
+                "The incident beam intensity (i0) must be greater than the dark level "
+                f"for every projection (i0: {i0_values.min():.6g} to "
+                f"{i0_values.max():.6g}, dark: {dark_values.min():.6g} to "
+                f"{dark_values.max():.6g})"
+            )
+            raise ValueError(msg)
+
+        float_dtype = np.result_type(self.data.dtype, np.float32)
+        transmission = (
+            images.astype(float_dtype) - dark_values.astype(float_dtype)[:, None, None]
+        ) / (i0_values - dark_values).astype(float_dtype)[:, None, None]
+        nclipped = int(np.count_nonzero(transmission < min_transmission))
+        if nclipped:
+            logger.warning(
+                "%d pixels (%.2g%%) had a transmission below %.3g (e.g. due to noise "
+                "or the dark level) and were set to %.3g before taking the logarithm",
+                nclipped,
+                100 * nclipped / transmission.size,
+                min_transmission,
+                min_transmission,
+            )
+        np.clip(transmission, min_transmission, None, out=transmission)
+
+        absorbance = self.deepcopy()
+        absorbance.data = (-np.log(transmission)).reshape(self.data.shape)
+        absorbance.metadata.set_item(
+            "Tomography.log_transform",
+            {
+                "i0": i0_values.reshape(nav_shape),
+                "dark": dark_values.reshape(nav_shape),
+            },
+        )
+        logger.info(
+            "Converted to absorbance using i0 of %.6g to %.6g and dark level of %.6g "
+            "to %.6g",
+            i0_values.min(),
+            i0_values.max(),
+            dark_values.min(),
+            dark_values.max(),
+        )
+        return absorbance
+
     def filter(
         self,
         method: Literal["median", "bpf", "both", "sobel"] = "median",
@@ -1255,7 +1585,11 @@ class TomoStack(CommonStack):
         size
             Size of filtering neighborhood.
         taper
-            Fraction of image size to pad to the mean.
+            Fraction of the image size (along each axis) over which the edges of
+            each filtered image are smoothly tapered to that image's mean using a
+            raised-cosine window. This reduces edge artifacts in subsequent
+            Fourier-based processing (*e.g.* alignment) without changing the image
+            size. Must be in the range [0, 0.5). If ``0``, no tapering is applied.
 
         Returns
         -------
@@ -1268,6 +1602,9 @@ class TomoStack(CommonStack):
             >>> stack = ds.get_needle_data()
             >>> filtered = stack.filter(method='median')
         """
+        if not 0 <= taper < 0.5:  # noqa: PLR2004
+            msg = f"taper must be in the range [0, 0.5) (was {taper})"
+            raise ValueError(msg)
         filtered = self.deepcopy()
         if method == "median":
             filtered.data = ndimage.median_filter(filtered.data, size=(1, size, size))
@@ -1303,8 +1640,7 @@ class TomoStack(CommonStack):
 
             filtered.data = np.fft.ifft2(np.fft.ifftshift(fft_filtered)).real
 
-            h = np.hamming(rows)
-            ham2d = np.sqrt(np.outer(h, h))
+            ham2d = np.sqrt(np.outer(np.hamming(rows), np.hamming(cols)))
             filtered.data = filtered.data * ham2d
         else:
             msg = (
@@ -1313,16 +1649,7 @@ class TomoStack(CommonStack):
             )
             raise ValueError(msg)
         if taper:
-            taper_size = np.array(np.array(taper) * self.data.shape[1:], dtype=np.int32)
-            filtered.data = np.pad(
-                filtered.data,
-                [
-                    (0, 0),
-                    (taper_size[0], taper_size[0]),
-                    (taper_size[1], taper_size[1]),
-                ],
-                mode="constant",
-            )
+            filtered.data = _taper_edges(filtered.data, taper)
         return filtered
 
     def stack_register(
@@ -1468,11 +1795,14 @@ class TomoStack(CommonStack):
         Available methods are ``'CoM'`` and ``'MaxImage'``:
 
         **CoM:**
-        Track the center of mass (CoM) of the projections at three
-        locations.  Fit the motion of the CoM as a function of tilt to that
-        expected for an ideal cylinder to calculate an X-shift at each
-        location. Perform a  linear fit of the three X-shifts to calculate an
-        ideal rotation.
+        Track the center of mass (CoM) of the projections at a number of
+        slices along the tilt axis. Fit the motion of the CoM as a function of
+        tilt to that expected for rotation about an axis to find the tilt axis
+        position in each slice, then fit a line to these positions to calculate
+        the tilt axis shift and rotation. The estimate is refined iteratively.
+        The specimen must contain mass away from the tilt axis and remain within
+        the field of view at all tilts.
+
 
         **MaxImage:**
         Perform automated determination of the tilt axis of a
@@ -1499,9 +1829,14 @@ class TomoStack(CommonStack):
             nslices
                 (Only used when ``method == "CoM"``)
                 Nubmer of slices to use for the center of mass analysis (only used if
-                the ``slices`` parameter is not specified). If ``None``, a value of 10%
+                the ``slices`` parameter is not specified). The slices are spread
+                along the central 80% of the tilt axis. If ``None``, a value of 10%
                 of the x-axis size will be used, clamped to the range [3, 50], as
                 calculated in the :py:func:`~etspy.align.TiltCOMAligner` class.
+            iterations
+                (Only used when ``method == "CoM"``)
+                Number of times to refine the estimate (default: 3). Each
+                iteration requires transforming the full stack.
             limit
                 (Only used when ``method == "MaxImage"``)
                 Maximum rotation angle for MaxImage calculation
@@ -1564,7 +1899,7 @@ class TomoStack(CommonStack):
     def reconstruct(  # noqa: PLR0913
         self,
         method: ReconMethodType = "FBP",
-        iterations: int = 5,
+        iterations: int | None = None,
         constrain: bool = False,
         thresh: float = 0,
         cuda: bool | None = None,
@@ -1585,8 +1920,10 @@ class TomoStack(CommonStack):
             Reconstruction algorithm to use.  Must be one of ``"FBP"`` (default),
             ``"SIRT"``, ``"SART"``, or ``"DART"``
         iterations
-            Number of iterations for the SIRT reconstruction (used with ``SIRT``,
-            ``SART``, and ``DART`` methods) (default: 5)
+            Number of iterations for the reconstruction. If ``None`` (default),
+            the default for the algorithm is used (SIRT: 50,
+            SART: 5, DART: 5 SART passes per DART iteration).
+            :py:meth:`recon_error` can help to choose the number.
         constrain
             If ``True``, output reconstruction is constrained above value given
             by ``thresh``
@@ -1627,20 +1964,20 @@ class TomoStack(CommonStack):
         Filtered backprojection (FBP) reconstruction:
             >>> import etspy.datasets as ds
             >>> stack = ds.get_needle_data(aligned=True)
-            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> slices = stack.isig[120:121, :].deepcopy()
             >>> rec = slices.reconstruct('FBP', cuda=False, show_progressbar=False)
 
         Simultaneous iterative reconstruction technique (SIRT) reconstruction:
             >>> import etspy.datasets as ds
             >>> stack = ds.get_needle_data(aligned=True)
-            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> slices = stack.isig[120:121, :].deepcopy()
             >>> rec = slices.reconstruct('SIRT',iterations=5,
             ...                          cuda=False, show_progressbar=False)
 
         SIRT reconstruction with positivity constraint:
             >>> import etspy.datasets as ds
             >>> stack = ds.get_needle_data(aligned=True)
-            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> slices = stack.isig[120:121, :].deepcopy()
             >>> iterations = 5
             >>> constrain = True
             >>> thresh = 0
@@ -1650,7 +1987,7 @@ class TomoStack(CommonStack):
         Discreate algebraice reconstruction technique (DART) reconstruction:
             >>> import etspy.datasets as ds
             >>> stack = ds.get_needle_data(aligned=True)
-            >>> slices = stack.isig[:, 120:121].deepcopy()
+            >>> slices = stack.isig[120:121, :].deepcopy()
             >>> gray_levels = [0., slices.data.max()/2, slices.data.max()]
             >>> rec = slices.reconstruct('DART', iterations=5, cuda=False,
             ...                          gray_levels=gray_levels, p=0.99,
@@ -1673,13 +2010,7 @@ class TomoStack(CommonStack):
                 "Please set tilt values before alignment."
             )
             raise ValueError(msg)
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                logger.info("CUDA not detected with Astra")
-                cuda = False
+        cuda = recon.resolve_cuda(cuda)
 
         if method.lower() == "dart":
             if gray_levels is None:
@@ -1695,6 +2026,10 @@ class TomoStack(CommonStack):
             dart_iterations = None
             gray_levels = None
 
+            _warn_if_background(
+                self,
+                "a ring of incorrect intensity around the reconstruction",
+            )
         rec = recon.run(
             stack=self.data,
             tilts=self.tilts.data,
@@ -1731,7 +2066,7 @@ class TomoStack(CommonStack):
         slices: np.ndarray | None = None,
         thickness: int | None = None,
         method: Literal["FBP", "SIRT", "SART"] = "FBP",
-        iterations: int = 50,
+        iterations: int | None = None,
         constrain: bool = True,
         cuda: bool | None = None,
         thresh: float = 0,
@@ -1761,8 +2096,10 @@ class TomoStack(CommonStack):
             Reconstruction algorithm to use.  Must be one of ``"FBP"`` (default),
             ``"SIRT"``, or ``"SART"`` (inapplicable for the ``"DART"`` algorithm)
         iterations
-            Number of iterations for the SIRT reconstruction (used with ``SIRT``,
-            and ``SART`` methods) (default: 50)
+            Number of iterations for the reconstruction. If ``None`` (default),
+            the default for the algorithm is used (SIRT: 50,
+            SART: 5, DART: 5 SART passes per DART iteration).
+            :py:meth:`recon_error` can help to choose the number.
         cuda
             Whether or not to use CUDA-accelerated reconstruction algorithms. If
             ``None`` (the default), the decision to use CUDA will be left to
@@ -1795,13 +2132,8 @@ class TomoStack(CommonStack):
             "Uda",
             self.axes_manager[0],
         ).axis
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+        cuda = recon.resolve_cuda(cuda)
+
         rec = shifted.reconstruct(
             method=method,
             iterations=iterations,
@@ -1855,7 +2187,8 @@ class TomoStack(CommonStack):
         ax.units = "degrees"
         ax.scale = increment
         ax.offset = start
-        tilts = np.arange(start, nimages * increment + start, increment)
+        # integer-indexed so the length always matches the number of images
+        tilts = start + increment * np.arange(nimages)
 
         if not self.metadata.has_item("Tomography"):
             self.metadata.add_node("Tomography")
@@ -1964,17 +2297,22 @@ class TomoStack(CommonStack):
         """
         Determine the optimum number of iterations for reconstruction.
 
-        Evaluates the difference between reconstruction and input data
-        at each iteration and terminates when the change between iterations is
-        below tolerance.
+        Reconstructs a single slice, recording the reconstruction and the
+        difference between its forward projection and the input data after each
+        iteration, so that the number of iterations can be chosen.
+
 
         Parameters
         ----------
         nslice
-            Slice location at which to perform the evaluation.
+            Index of the slice (along the tilt axis) at which to perform the
+            evaluation. If ``None`` (default), the central slice is used.
         algorithm
             Reconstruction algorithm use.  Must be either ``'SIRT'`` (default)
             or ``'SART'`` (this method is inapplicable for ``'FBP'`` and ``'DART'``).
+        iterations
+            Number of iterations for the reconstruction. If ``None`` (default),
+            the default for the algorithm is used (SIRT: 50, SART: 5).
         constrain
             If True, perform SIRT reconstruction with a non-negativity
             constraint.  Default is ``True``
@@ -2004,16 +2342,20 @@ class TomoStack(CommonStack):
             msg = "Tilt angles not defined"
             raise ValueError(msg)
 
-        if not nslice:
-            nslice = int(self.data.shape[2] / 2)
+        nx = self.data.shape[2]
+        if nslice is None:
+            nslice = nx // 2
+        elif not 0 <= nslice < nx:
+            msg = f"nslice must be in the range [0, {nx - 1}] (was {nslice})"
+            raise ValueError(msg)
 
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
+        cuda = recon.resolve_cuda(cuda)
+
+        _warn_if_background(
+            self,
+            "a ring of incorrect intensity around the reconstruction",
+        )
+
         sinogram = self.isig[nslice : nslice + 1, :].data.squeeze()
         rec_stack, error = recon.astra_error(
             sinogram,
@@ -2163,48 +2505,40 @@ class RecStack(CommonStack):
         Parameters
         ----------
         tilts
-            Tilt angles in degrees to use for the projection
-            :py:class:`~numpy.ndarray`
+            Tilt angles in degrees to use for the projection, as either a
+            :py:class:`~etspy.base.TomoTilts` signal (*e.g.* ``stack.tilts``) or
+            a 1D array or list of values.
         cuda
             Whether or not to use CUDA-accelerated reconstruction algorithms. If
             ``None`` (the default), the decision to use CUDA will be left to
             :py:func:`astra.astra.use_cuda`.
+
+        Raises
+        ------
+        ValueError
+            If ``tilts`` is ``None``
         """
-        if cuda is None:
-            if astra.use_cuda():  # coverage: nocuda
-                logger.info("CUDA detected with Astra")
-                cuda = True
-            else:
-                cuda = False
-                logger.info("CUDA not detected with Astra")
-        if len(self.data.shape) == 2:  # noqa: PLR2004
-            nz, ny = self.data.shape
-            ntilts = len(tilts)
-            thetas = np.deg2rad(tilts)
-            vol_geom = astra.create_vol_geom(nz, ny)
-            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
+        if tilts is None:
+            msg = "Tilt angles must be provided for forward projection"
+            raise ValueError(msg)
+        if isinstance(tilts, BaseSignal):
+            tilts = tilts.data
+        tilts = np.atleast_1d(np.asarray(tilts, dtype=float).squeeze())
 
-            if cuda:
-                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-            else:
-                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
-            proj_id, proj = astra.create_sino(self.data, proj_id)
-            proj = proj[:, :, np.newaxis]
-        else:
-            nx, nz, ny = self.data.shape
-            ntilts = len(tilts)
-            proj = np.zeros([ntilts, ny, nx])
-            thetas = np.deg2rad(tilts)
-            vol_geom = astra.create_vol_geom(ny, ny)
-            proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
+        cuda = recon.resolve_cuda(cuda)
 
-            if cuda:
-                proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-            else:
-                proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+        data = self.data[np.newaxis] if self.data.ndim == 2 else self.data  # noqa: PLR2004
+        nx, nz, ny = data.shape
+        proj = np.zeros([len(tilts), ny, nx])
+        vol_geom = astra.create_vol_geom(nz, ny)
+        proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
+        proj_id = recon.create_projector(proj_geom, vol_geom, cuda=bool(cuda))
+        try:
             for i in range(nx):
-                _, proj[:, :, i] = astra.create_sino(self.data[i, :, :], proj_id)
-        astra.clear()
+                sino_id, proj[:, :, i] = astra.create_sino(data[i], proj_id)
+                astra.data2d.delete(sino_id)
+        finally:
+            astra.projector.delete(proj_id)
         return TomoStack(proj, tilts)
 
     def plot_slices(
@@ -2300,6 +2634,12 @@ class RecStack(CommonStack):
             if not np.any(self.rotator.slider_values):
                 logger.warning("Rotation angles have not been defined")
                 return None
+        else:
+            msg = (
+                "No rotation angles were provided and no rotator is defined. Provide "
+                "rotation_angles or use RecStack.interactive_rotation() first."
+            )
+            raise ValueError(msg)
 
         rotation_matrix, offset = calculate_rotation(rotation_angles, self.data.shape)
         rotated = self.deepcopy()
@@ -2327,10 +2667,10 @@ class RecStack(CommonStack):
 
             rotated.data = cp.asnumpy(rotated_gpu)
         else:
-            msg = "CUDA selected buy CuPy is unavailable."
+            msg = "CUDA selected but CuPy is unavailable."
             raise ValueError(msg)
 
         rotated.rotation_angles = rotation_angles
         rotated.rotation_matrix = rotation_matrix
-        rotated.rotation_offet = offset
+        rotated.rotation_offset = offset
         return rotated

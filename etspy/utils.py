@@ -1,6 +1,5 @@
 """Utility module for ETSpy package."""
 
-import logging
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -61,7 +60,9 @@ def multiaverage(stack: np.ndarray, nframes: int, ny: int, nx: int) -> np.ndarra
 
 
 # TODO: Create Multistack class to handle edge case of multi-frame stacks
-def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
+def register_serialem_stack(
+    stack: Signal2D, ncpus: int = 1, show_progressbar: bool = True
+) -> TomoStack:
     """
     Register a multi-frame series collected by SerialEM.
 
@@ -74,20 +75,21 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
     -------
     reg : TomoStack
         Result of aligning and averaging frames at each tilt with shape [ntilts, ny, nx]
+    ncpus
+        Number of processes to use. If 1 (default), frames are registered serially.
+    show_progressbar
+        If True (default), show a progress bar when registering serially.
 
     Group
     -----
     utilities
     """
-    align_logger = logging.getLogger("etspy.align")
-    log_level = align_logger.getEffectiveLevel()
-    align_logger.setLevel(logging.ERROR)
     ntilts, nframes, ny, nx = stack.data.shape
 
     if ncpus == 1:
         reg = np.zeros([ntilts, ny, nx], stack.data.dtype)
         sr = StackReg(StackReg.TRANSLATION)
-        for i in tqdm.tqdm(range(ntilts)):
+        for i in tqdm.tqdm(range(ntilts), disable=not show_progressbar):
             shifts = sr.register_stack(stack.data[i], reference="previous")
             shifts = -np.array([i[0:2, 2][::-1] for i in shifts])
             shifted = np.zeros([nframes, ny, nx])
@@ -126,7 +128,6 @@ def register_serialem_stack(stack: Signal2D, ncpus: int = 1) -> TomoStack:
         reg.metadata.Acquisition_instrument = stack.metadata.Acquisition_instrument
     if stack.metadata.has_item("Tomography"):
         reg.metadata.Tomography = stack.metadata.Tomography
-    align_logger.setLevel(log_level)
     return reg
 
 
@@ -414,8 +415,11 @@ def filter_stack(
     filter_name
         Type of filter to apply.
     cutoff
-        Factor of sampling rate to use as the cutoff.  Default is 0.5 which
-        corresponds to the Nyquist frequency.
+        Cutoff frequency as a fraction of the sampling rate. Must be in the range
+        (0, 0.5]. Frequencies above the cutoff are removed, and the window
+        applied by the ``shepp-logan``, ``hann``, and ``cosine`` filters is
+        scaled to the cutoff. Default is 0.5, which corresponds to the Nyquist
+        frequency.
 
     Returns
     -------
@@ -426,54 +430,63 @@ def filter_stack(
     -----
     utilities
     """
+    if not 0 < cutoff <= 0.5:  # noqa: PLR2004
+        msg = f"cutoff must be in the range (0, 0.5] (was {cutoff})"
+        raise ValueError(msg)
+
     _, ny = stack.data.shape[0:2]
 
     filter_length = max(64, 2 ** (int(np.ceil(np.log2(2 * ny)))))
     freq_indices = np.arange(filter_length // 2 + 1)
+    # spatial frequency of each filter element in cycles/pixel (Nyquist = 0.5)
+    freqs = freq_indices / filter_length
     ffilter = np.linspace(
-        cutoff / filter_length,
-        1 - cutoff / filter_length,
+        0.5 / filter_length,
+        1 - 0.5 / filter_length,
         len(freq_indices),
     )
-    omega = 2 * np.pi * freq_indices / filter_length
 
     if filter_name == "ram-lak":
         pass
     elif filter_name == "shepp-logan":
-        ffilter[1:] = ffilter[1:] * np.sinc(omega[1:] / (2 * np.pi))
+        ffilter[1:] = ffilter[1:] * np.sinc(freqs[1:] / (2 * cutoff))
     elif filter_name in [
         "hanning",
         "hann",
     ]:
-        ffilter[1:] = ffilter[1:] * (1 + np.cos(omega[1:])) / 2
+        ffilter[1:] = ffilter[1:] * (1 + np.cos(np.pi * freqs[1:] / cutoff)) / 2
     elif filter_name in [
         "cosine",
         "cos",
     ]:
-        ffilter[1:] = ffilter[1:] * np.cos(omega[1:] / 2)
+        ffilter[1:] = ffilter[1:] * np.cos(np.pi * freqs[1:] / (2 * cutoff))
     else:
         msg = (
             f'Invalid filter type "{filter_name}". Must be one of '
             f"{_fmt(_get_lit(filter_stack, 'filter_name'))}."
         )
         raise ValueError(msg)
+    ffilter[freqs > cutoff] = 0
 
     ffilter = np.concatenate((ffilter, ffilter[-2:0:-1]))
 
     nfilter = ffilter.shape[0]
-    pad_length = int((nfilter - ny) / 2)
+    # pad so that the padded length matches the filter length (for odd ny the
+    # padding after the data is one pixel larger than before)
+    pad_before = (nfilter - ny) // 2
+    pad_after = nfilter - ny - pad_before
 
     if len(stack.data.shape) == 2:  # noqa: PLR2004
-        padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length]])
+        padded = np.pad(stack.data, [[0, 0], [pad_before, pad_after]])
         proj_fft = np.fft.fft(padded, axis=1)
         filtered = np.fft.ifft(proj_fft * ffilter, axis=1).real
-        filtered = filtered[:, pad_length:-pad_length]
+        filtered = filtered[:, pad_before : pad_before + ny]
 
     elif len(stack.data.shape) == 3:  # noqa: PLR2004
-        padded = np.pad(stack.data, [[0, 0], [pad_length, pad_length], [0, 0]])
+        padded = np.pad(stack.data, [[0, 0], [pad_before, pad_after], [0, 0]])
         proj_fft = np.fft.fft(padded, axis=1)
         filtered = np.fft.ifft(proj_fft * ffilter[:, np.newaxis], axis=1).real
-        filtered = filtered[:, pad_length:-pad_length, :]
+        filtered = filtered[:, pad_before : pad_before + ny, :]
     else:
         msg = "Method can only be applied to 2 or 3-dimensional stacks"
         raise ValueError(msg)

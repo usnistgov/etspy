@@ -8,10 +8,9 @@ from etspy import align, io, utils
 from etspy.base import RecStack, TomoStack
 from etspy.io import load
 
-from . import __version__
+from . import __version__, set_log_level
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 etspy_path = _Path(__file__).parent
 
@@ -20,5 +19,6 @@ __all__ = [
     "align",
     "io",
     "load",
+    "set_log_level",
     "utils",
 ]

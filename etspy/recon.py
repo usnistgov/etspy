@@ -18,7 +18,138 @@ from scipy.ndimage import convolve, gaussian_filter
 
 ncpus = mp.cpu_count()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
+
+def create_projector(proj_geom: dict, vol_geom: dict, cuda: bool = False) -> int:
+    """
+    Create the ASTRA projector used for all ETSpy projections.
+
+    ETSpy uses the same forward model everywhere: the Joseph (linear
+    interpolation) projector, which is ASTRA's ``"linear"`` projector on the CPU
+    and its ``"cuda"`` projector on the GPU. Using one model keeps
+    reconstructions, forward projections, and simulations consistent with each
+    other and between CPU and GPU.
+
+    Parameters
+    ----------
+    proj_geom
+        ASTRA projection geometry
+    vol_geom
+        ASTRA volume geometry
+    cuda
+        If True, create the GPU projector. Otherwise, create the CPU projector.
+
+    Returns
+    -------
+    proj_id : int
+        ID of the ASTRA projector. It should be deleted with
+        ``astra.projector.delete`` when no longer needed.
+
+    Group
+    -----
+    recon
+    """
+    return astra.create_projector("cuda" if cuda else "linear", proj_geom, vol_geom)
+
+
+def resolve_cuda(cuda: bool | None) -> bool:
+    """
+    Decide whether to use CUDA (GPU) reconstruction and projection.
+
+    Parameters
+    ----------
+    cuda
+        ``True`` to use CUDA, ``False`` to use the CPU, or ``None`` to use CUDA if
+        :py:func:`astra.astra.use_cuda` detects a CUDA GPU.
+
+    Returns
+    -------
+    cuda : bool
+        Whether to use CUDA
+
+    Raises
+    ------
+    RuntimeError
+        If ``cuda`` is ``True`` but ASTRA does not detect a CUDA GPU (ASTRA would
+        otherwise fail with a low-level error, or for 3D operations crash the
+        Python process)
+
+    Group
+    -----
+    recon
+    """
+    if cuda is None:
+        cuda = bool(astra.use_cuda())
+        logger.info("CUDA %s with Astra", "detected" if cuda else "not detected")
+        return cuda
+    if cuda and not astra.use_cuda():
+        msg = (
+            "CUDA was requested (cuda=True) but ASTRA did not detect a CUDA GPU. "
+            "Use cuda=False to run on the CPU."
+        )
+        raise RuntimeError(msg)
+    return bool(cuda)
+
+
+# Default number of iterations for each iterative algorithm. Iterations are full
+# passes through all of the projections; for SART (and the SART steps of DART), ETSpy
+# converts them to ASTRA iterations, each of which uses a single projection.
+DEFAULT_ITERATIONS = {"SIRT": 50, "SART": 5, "DART": 5}
+
+
+def astra_iterations(
+    method: str,
+    iterations: int | None,
+    nangles: int,
+) -> tuple[int, int]:
+    """
+    Convert a number of passes through the projections to ASTRA iterations.
+
+    In ASTRA, an iteration of SIRT uses all of the projections, but an iteration of
+    SART uses a single projection. ETSpy always counts iterations as full passes
+    through the projections, so for SART (and the SART steps of DART) the number
+    of passes is multiplied by the number of projections.
+
+    Parameters
+    ----------
+    method
+        Reconstruction algorithm (``"FBP"``, ``"SIRT"``, ``"SART"``, or
+        ``"DART"``)
+    iterations
+        Number of passes through the projections. If ``None``, the default for
+        the algorithm (:py:data:`DEFAULT_ITERATIONS`) is used.
+    nangles
+        Number of projections
+
+    Returns
+    -------
+    passes : int
+        Number of passes through the projections
+    n_astra : int
+        Number of ASTRA iterations to run
+
+    Group
+    -----
+    recon
+    """
+    method = method.upper()
+    if method == "FBP":
+        return 1, 1
+    passes = DEFAULT_ITERATIONS[method] if iterations is None else int(iterations)
+    if method in ("SART", "DART"):
+        if iterations is not None and passes >= nangles:
+            logger.warning(
+                "%s iterations are counted as full passes through all %d "
+                "projections, so %d iterations will run %d single-projection ASTRA "
+                "SART iterations. (Earlier versions of ETSpy counted single "
+                "projections; SART typically needs only a few passes.)",
+                method,
+                nangles,
+                passes,
+                passes * nangles,
+            )
+        return passes, passes * nangles
+    return passes, passes
 
 
 def run_alg(
@@ -39,7 +170,9 @@ def run_alg(
         Number of iterations for the reconstruction
     cfg
         ASTRA algorithm configuration, as described for each of the algorithms present
-        in the :external+astra:doc:`ASTRA docs (Algorithms)<docs/algs/index>`
+        in the :external+astra:doc:`ASTRA docs (Algorithms)<docs/algs/index>`. The
+        data and projector IDs are filled in by this function, and the dictionary
+        passed in is not modified.
     vol_geom
         ASTRA volume geometry, as described in the
         :external+astra:doc:`ASTRA docs (Toolbox concepts)<docs/concepts>`
@@ -56,16 +189,30 @@ def run_alg(
     -----
     recon
     """
-    proj_id = astra.create_projector("strip", proj_geom, vol_geom)
+    proj_id = create_projector(proj_geom, vol_geom)
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, sino)
+    # Copy so that the caller's configuration, which is shared between the dask
+    # threads reconstructing different slices, is never mutated
+    cfg = copy.deepcopy(cfg)
     cfg["ReconstructionDataId"] = rec_id
     cfg["ProjectorId"] = proj_id
     cfg["ProjectionDataId"] = sino_id
-    cfg["ReconstructionDataId"] = rec_id
     alg_id = astra.algorithm.create(cfg)
-    astra.algorithm.run(alg_id, iters)
-    return astra.data2d.get(rec_id)
+    try:
+        astra.algorithm.run(alg_id, iters)
+        return astra.data2d.get(rec_id)
+    finally:
+        astra.algorithm.delete(alg_id)
+        astra.data2d.delete([rec_id, sino_id])
+        astra.projector.delete(proj_id)
+
+
+def _forward_project(rec: np.ndarray, proj_id: int) -> np.ndarray:
+    """Forward project a slice, deleting the temporary ASTRA sinogram object."""
+    sino_id, sino = astra.create_sino(rec, proj_id)
+    astra.data2d.delete(sino_id)
+    return sino
 
 
 def run_dart(
@@ -78,20 +225,28 @@ def run_dart(
     cfg: dict,
     vol_geom: dict,
     proj_geom: dict,
+    cuda: bool = False,
 ) -> np.ndarray:
     """
-    Run discrete algebraic reoncsturction technique (DART) algorithm.
+    Run discrete algebraic reconstruction technique (DART) algorithm.
 
     Adapted from pseudo-code published in:
     K. J. Batenburg and J. Sijbers, "DART: A Practical Reconstruction
     Algorithm for Discrete Tomography," doi: 10.1109/TIP.2011.2131661.
+
+    Each DART iteration segments the current reconstruction, holds the
+    non-boundary pixels (minus a random subset) fixed at their segmented
+    gray level, and re-reconstructs only the remaining free pixels from the
+    residual sinogram (measured sinogram minus the forward projection of the
+    fixed pixels). The free pixels are then smoothed before the next iteration.
 
     Parameters
     ----------
     sino
        Sinogram of shape (nangles, ny)
     iters
-        Number of iterations for the SART reconstruction
+        Number of ASTRA SART iterations for each SART reconstruction (each uses a
+        single projection; see :py:func:`astra_iterations`)
     dart_iters
         Number of iterations for the DART reconstruction
     p
@@ -101,11 +256,16 @@ def run_dart(
     gray_levels
         Gray levels for DART reconstruction
     cfg
-        ASTRA algorithm configuration
+        ASTRA algorithm configuration (a SART or SART_CUDA configuration). The
+        data, projector, and mask IDs are filled in by this function, and the
+        dictionary passed in is not modified.
     vol_geom
         ASTRA volume geometry
     proj_geom
         ASTRA projection geometry
+    cuda
+        If True, use the GPU projector for forward projection. Otherwise, use the
+        CPU projector (see :py:func:`create_projector`).
 
     Returns
     -------
@@ -116,60 +276,159 @@ def run_dart(
     -----
     recon
     """
-    proj_id = astra.create_projector("strip", proj_geom, vol_geom)
-    rec_id = astra.data2d.create("-vol", vol_geom)
+    proj_id = create_projector(proj_geom, vol_geom, cuda=cuda)
+    rec_id = astra.data2d.create("-vol", vol_geom, 0)
     sino_id = astra.data2d.create("-sino", proj_geom, sino)
     mask_id = astra.data2d.create("-vol", vol_geom, 1)
+
+    # Copy so that the caller's configuration (which may be shared between
+    # threads) is never mutated
+    cfg = copy.deepcopy(cfg)
     cfg["ReconstructionDataId"] = rec_id
     cfg["ProjectorId"] = proj_id
     cfg["ProjectionDataId"] = sino_id
-    cfg["ReconstructionDataId"] = rec_id
+    cfg["option"]["ReconstructionMaskId"] = mask_id
     alg_id = astra.algorithm.create(cfg)
-    astra.algorithm.run(alg_id, iters)
-    curr_rec = astra.data2d.get(rec_id)
-    dart_rec = copy.deepcopy(curr_rec)
-    for j in range(dart_iters):
-        segmented = dart_segment(dart_rec, thresholds, gray_levels)
-        boundary = get_dart_boundaries(segmented)
 
-        # Define free and fixed pixels
-        free = np.random.rand(*dart_rec.shape)
-        free = free < 1 - p
-        free = np.logical_or(boundary, free)
-        fixed = ~free
-        free_idx = np.where(free)
-        fixed_idx = np.where(fixed)
-
-        # Set fixed pixels to segmented values
-        dart_rec[fixed_idx[0], fixed_idx[1]] = segmented[fixed_idx[0], fixed_idx[1]]
-
-        # Calculate sinogram of free pixels
-        fixed_rec = copy.deepcopy(dart_rec)
-        fixed_rec[free_idx[0], free_idx[1]] = 0
-        _, fixed_sino = astra.creators.create_sino(fixed_rec, proj_id)
-        free_sino = sino - fixed_sino
-
-        # Run SART reconstruction on free sinogram with free pixel mask
-        astra.data2d.store(rec_id, dart_rec)
-        astra.data2d.store(mask_id, free)
-        astra.data2d.store(sino_id, free_sino)
+    try:
+        # Initial continuous reconstruction of all pixels
         astra.algorithm.run(alg_id, iters)
         dart_rec = astra.data2d.get(rec_id)
 
-        # Smooth reconstruction
-        if j < dart_iters - 1:
-            smooth = gaussian_filter(dart_rec, sigma=1)
-            curr_rec[free_idx[0], free_idx[1]] = smooth[free_idx[0], free_idx[1]]
-        else:
-            curr_rec = dart_rec
-    return curr_rec
+        for j in range(dart_iters):
+            segmented = dart_segment(dart_rec, thresholds, gray_levels)
+            boundary = get_dart_boundaries(segmented)
+
+            # Free pixels are the boundary pixels plus a random subset of the
+            # rest (each non-boundary pixel is free with probability 1 - p)
+            free = np.logical_or(boundary, np.random.rand(*dart_rec.shape) >= p)
+
+            # Fixed pixels take their segmented values; free pixels start from
+            # zero so the forward projection of the volume only contains the
+            # fixed pixels
+            fixed_rec = np.where(free, 0, segmented).astype(np.float32)
+            fixed_sino = _forward_project(fixed_rec, proj_id)
+
+            # Reconstruct only the free pixels from the residual sinogram
+            astra.data2d.store(rec_id, np.where(free, dart_rec, 0))
+            astra.data2d.store(mask_id, free.astype(np.float32))
+            astra.data2d.store(sino_id, sino - fixed_sino)
+            astra.algorithm.run(alg_id, iters)
+            free_rec = astra.data2d.get(rec_id)
+
+            dart_rec = np.where(free, free_rec, fixed_rec)
+
+            # Smooth the free pixels before the next iteration
+            if j < dart_iters - 1:
+                smooth = gaussian_filter(dart_rec, sigma=1)
+                dart_rec[free] = smooth[free]
+    finally:
+        astra.algorithm.delete(alg_id)
+        astra.data2d.delete([rec_id, sino_id, mask_id])
+        astra.projector.delete(proj_id)
+    return dart_rec
 
 
-def run(  # noqa: PLR0912, PLR0913, PLR0915
+RECONSTRUCTION_METHODS = ("FBP", "SIRT", "SART", "DART")
+
+
+def _algorithm_config(
+    method: str,
+    *,
+    cuda: bool,
+    constrain: bool = False,
+    thresh: float = 0,
+    bp_filter: str = "shepp-logan",
+    gray_levels: Union[list, np.ndarray] | None = None,
+) -> tuple[dict, np.ndarray | None, np.ndarray]:
+    """
+    Build the ASTRA algorithm configuration for a reconstruction method.
+
+    Returns the configuration (without data or projector IDs) and, for DART, the
+    sorted gray levels and the thresholds between them (``None`` and an empty
+    array otherwise). DART uses SART, constrained to the range of the gray levels.
+    """
+    method = method.upper()
+    if method not in RECONSTRUCTION_METHODS:
+        msg = (
+            f'Invalid reconstruction method "{method}". Must be one of '
+            f"{', '.join(RECONSTRUCTION_METHODS)}."
+        )
+        raise ValueError(msg)
+    algorithm = "SART" if method == "DART" else method
+    cfg: dict = {"type": algorithm + "_CUDA" if cuda else algorithm, "option": {}}
+    thresholds = np.array([])
+    if method == "FBP":
+        cfg["option"]["FilterType"] = bp_filter.lower()
+    elif method == "DART":
+        gray_levels, thresholds = _dart_setup(gray_levels, cfg)
+    elif constrain:
+        cfg["option"]["MinConstraint"] = thresh
+    return cfg, gray_levels, thresholds
+
+
+def _compute(tasks: list, ncores: int, show_progressbar: bool) -> tuple:
+    """Compute dask tasks with ``ncores`` threads, optionally with a progress bar."""
+    if show_progressbar:
+        with ProgressBar():
+            return dask_compute(*tasks, num_workers=ncores)
+    return dask_compute(*tasks, num_workers=ncores)
+
+
+def _log_reconstruction(method: str, *, cuda: bool, passes: int) -> None:
+    """Log the reconstruction algorithm (and number of iterations) used."""
+    device = "CUDA-accelerated" if cuda else "CPU-based"
+    if method == "FBP":
+        logger.info("Reconstructing with %s FBP algorithm", device)
+    else:
+        logger.info(
+            "Reconstructing with %s %s algorithm (%s iterations)",
+            device,
+            method,
+            passes,
+        )
+
+
+def _run_cuda(  # coverage: nocuda
+    stack: np.ndarray,
+    rec: np.ndarray,
+    iters: int,
+    cfg: dict,
+    vol_geom: dict,
+    proj_geom: dict,
+    show_progressbar: bool,
+) -> None:
+    """
+    Reconstruct each slice of ``stack`` (nangles, ny, nx) into ``rec`` on the GPU.
+
+    One ASTRA algorithm (and set of GPU data objects) is reused for every slice.
+    """
+    nangles, ny, nx = stack.shape
+    proj_id = create_projector(proj_geom, vol_geom, cuda=True)
+    rec_id = astra.data2d.create("-vol", vol_geom)
+    sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
+    cfg = copy.deepcopy(cfg)
+    cfg["ReconstructionDataId"] = rec_id
+    cfg["ProjectorId"] = proj_id
+    cfg["ProjectionDataId"] = sino_id
+    alg = astra.algorithm.create(cfg)
+    try:
+        for i in tqdm.tqdm(range(nx), disable=not show_progressbar):
+            astra.data2d.store(sino_id, stack[:, :, i])
+            astra.data2d.store(rec_id, np.zeros(rec.shape[1:]))
+            astra.algorithm.run(alg, iters)
+            rec[i] = astra.data2d.get(rec_id)
+    finally:
+        astra.algorithm.delete(alg)
+        astra.data2d.delete([rec_id, sino_id])
+        astra.projector.delete(proj_id)
+
+
+def run(  # noqa: PLR0913
     stack: np.ndarray,
     tilts: np.ndarray,
     method: Literal["FBP", "SIRT", "SART", "DART"],
-    niterations: int = 20,
+    niterations: int | None = None,
     constrain: bool = False,
     thresh: float = 0,
     cuda: bool | None = None,
@@ -222,15 +481,20 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         'SART', or 'DART
     niterations
         Number of iterations for reconstruction (used with ``SIRT``, ``SART``, and
-        ``DART`` methods)
+        ``DART`` methods). Each iteration is a full pass through all of the
+        projections, for SART as well as SIRT (see :py:func:`astra_iterations`).
+        For DART, this is the number of SART passes in each DART step. If
+        ``None``, the default for the algorithm is used (SIRT: 50, SART: 5, DART:
+        5).
     constrain
         If True, output reconstruction is constrained above value given by
         'thresh'
     thresh
         Value above which to constrain the reconstructed data
     cuda
-        If True, use the CUDA-accelerated Astra algorithms. Otherwise,
-        use the CPU-based algorithms
+        If True, use the CUDA-accelerated Astra algorithms. If False, use the
+        CPU-based algorithms. If ``None`` (default), use CUDA if a CUDA GPU is
+        detected (see :py:func:`resolve_cuda`).
     thickness
         Limit for the height of the reconstruction. If ``None``, the y-size
         of the stack is used.
@@ -256,6 +520,17 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
     -----
     recon
     """
+    cuda = resolve_cuda(cuda)
+    method = cast("Literal['FBP', 'SIRT', 'SART', 'DART']", method.upper())
+    cfg, gray_levels, thresholds = _algorithm_config(
+        method,
+        cuda=cuda,
+        constrain=constrain,
+        thresh=thresh,
+        bp_filter=bp_filter,
+        gray_levels=gray_levels,
+    )
+
     if len(stack.shape) == 2:  # noqa: PLR2004
         nangles, ny = stack.shape
         stack = stack[:, :, np.newaxis]
@@ -264,8 +539,7 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
         nangles, ny, nx = stack.shape
 
     thetas = np.pi * tilts / 180.0
-    mask_id = None
-    thresholds = []
+    passes, niterations = astra_iterations(method, niterations, nangles)
 
     if thickness is None:
         thickness = ny
@@ -275,118 +549,36 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
 
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, thetas)
     vol_geom = astra.create_vol_geom((thickness, ny))
-    cfg = {}
-    cfg["option"] = {}
 
-    if cuda:  # coverage: nocuda
-        if method.lower() == "fbp":
-            logger.info("Reconstructing with CUDA-accelerated FBP algorithm")
-            cfg["type"] = "FBP_CUDA"
-            cfg["option"]["FilterType"] = bp_filter.lower()
-            niterations = 1
-        elif method.lower() == "sirt":
-            logger.info(
-                "Reconstructing with CUDA-accelerated SIRT algorithm (%s iterations)",
-                niterations,
-            )
-            cfg["type"] = "SIRT_CUDA"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == "sart":
-            logger.info(
-                "Reconstructing with CUDA-accelerated SART algorithm (%s iterations)",
-                niterations,
-            )
-            cfg["type"] = "SART_CUDA"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
+    _log_reconstruction(method, cuda=cuda, passes=passes)
 
-        elif method.lower() == "dart":
-            logger.info(
-                "Reconstructing with CUDA-accelerated DART algorithm (%s iterations)",
-                niterations,
-            )
-            cfg["type"] = "SART_CUDA"
-            if gray_levels is None:
-                msg = "gray_levels must be provided for DART"
-                raise ValueError(msg)
-            gray_levels = cast("Union[list, np.ndarray]", gray_levels)
-            thresholds = [
-                (gray_levels[i] + gray_levels[i + 1]) // 2
-                for i in range(len(gray_levels) - 1)
-            ]
-            mask = np.ones([thickness, ny])
-            mask_id = astra.data2d.create("-vol", vol_geom, mask)
-            cfg["option"]["MinConstraint"] = 0
-            cfg["option"]["MaxConstraint"] = 255
-            cfg["option"]["ReconstructionMaskId"] = mask_id
+    def reconstruct_dart(i: int) -> np.ndarray:
+        return run_dart(
+            stack[:, :, i],
+            niterations,
+            dart_iterations,
+            p,
+            thresholds,
+            cast("np.ndarray", gray_levels),
+            cfg,
+            vol_geom,
+            proj_geom,
+            cuda=cuda,
+        )
 
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-        rec_id = astra.data2d.create("-vol", vol_geom)
-        sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-        cfg["ReconstructionDataId"] = rec_id
-        cfg["ProjectorId"] = proj_id
-        cfg["ProjectionDataId"] = sino_id
-        cfg["ReconstructionDataId"] = rec_id
-        alg = astra.algorithm.create(cfg)
-
-        for i in tqdm.tqdm(range(nx), disable=not (show_progressbar)):
-            astra.data2d.store(sino_id, stack[:, :, i])
-            astra.data2d.store(rec_id, np.zeros([thickness, ny]))
-            if method.lower() == "dart":
-                astra.data2d.store(mask_id, np.ones([thickness, ny]))
-                rec[i, :, :] = run_dart(
-                    stack[:, :, i],
-                    niterations,
-                    dart_iterations,
-                    p,
-                    thresholds,
-                    cast("Union[list, np.ndarray]", gray_levels),
-                    cfg,
-                    vol_geom,
-                    proj_geom,
-                )
-            else:
-                astra.algorithm.run(alg, niterations)
-                rec[i, :, :] = astra.data2d.get(rec_id)
+    if cuda and method == "DART":  # coverage: nocuda
+        # run_dart creates its own ASTRA objects for each slice
+        for i in tqdm.tqdm(range(nx), disable=not show_progressbar):
+            rec[i] = reconstruct_dart(i)
+    elif cuda:  # coverage: nocuda
+        _run_cuda(stack, rec, niterations, cfg, vol_geom, proj_geom, show_progressbar)
     else:
         if ncores is None:
             ncores = min(nx, int(0.9 * mp.cpu_count()))
-
-        if method.lower() == "fbp":
-            logger.info("Reconstructing with CPU-based FBP algorithm")
-            cfg["type"] = "FBP"
-            cfg["option"]["FilterType"] = bp_filter.lower()
-            niterations = 1
-        elif method.lower() == "sirt":
-            logger.info("Reconstructing with CPU-based SIRT algorithm")
-            cfg["type"] = "SIRT"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == "sart":
-            logger.info("Reconstructing with CPU-based SART algorithm")
-            cfg["type"] = "SART"
-            if constrain:
-                cfg["option"]["MinConstraint"] = thresh
-        elif method.lower() == "dart":
-            logger.info("Reconstructing with CPU-based DART algorithm")
-            cfg["type"] = "SART"
-            if gray_levels is None:
-                msg = "gray_levels must be provided for DART"
-                raise ValueError(msg)
-            gray_levels = cast("np.ndarray", gray_levels)  # explicit type-checking cast
-            thresholds = [
-                (gray_levels[i] + gray_levels[i + 1]) // 2
-                for i in range(len(gray_levels) - 1)
-            ]
-            mask = np.ones([thickness, ny])
-            mask_id = astra.data2d.create("-vol", vol_geom, mask)
-            cfg["option"]["MinConstraint"] = 0
-            cfg["option"]["MaxConstraint"] = 255
-            cfg["option"]["ReconstructionMaskId"] = mask_id
-
-        if method.lower() in ["fbp", "sirt", "sart"]:
+        ncores = max(1, ncores)
+        if method == "DART":
+            tasks = [dask_delayed(reconstruct_dart)(i) for i in range(nx)]
+        else:
             tasks = [
                 dask_delayed(run_alg)(
                     stack[:, :, i],
@@ -397,40 +589,29 @@ def run(  # noqa: PLR0912, PLR0913, PLR0915
                 )
                 for i in range(nx)
             ]
-            if show_progressbar:
-                with ProgressBar():
-                    results = dask_compute(*tasks, num_workers=ncores)
-            else:
-                results = dask_compute(*tasks, num_workers=ncores)
-
-            for i, result in enumerate(results):
-                rec[i] = result
-        elif method.lower() == "dart":
-            tasks = [
-                dask_delayed(run_dart)(
-                    stack[:, :, i],
-                    niterations,
-                    dart_iterations,
-                    p,
-                    thresholds,
-                    gray_levels,
-                    cfg,
-                    vol_geom,
-                    proj_geom,
-                )
-                for i in range(nx)
-            ]
-            if show_progressbar:
-                with ProgressBar():
-                    results = dask_compute(*tasks, num_workers=ncores)
-            else:
-                results = dask_compute(*tasks, num_workers=ncores)
-
-            for i, result in enumerate(results):
-                rec[i] = result
-
-    astra.clear()
+        for i, result in enumerate(_compute(tasks, ncores, show_progressbar)):
+            rec[i] = result
     return rec
+
+
+def _dart_setup(
+    gray_levels: Union[list, np.ndarray] | None,
+    cfg: dict,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Validate DART gray levels, calculate thresholds, and set SART constraints.
+
+    Thresholds are the midpoints between adjacent (sorted) gray levels, and the
+    SART reconstruction is constrained to the range spanned by the gray levels.
+    """
+    if gray_levels is None:
+        msg = "gray_levels must be provided for DART"
+        raise ValueError(msg)
+    gray_levels = np.sort(np.asarray(gray_levels, dtype=np.float32))
+    thresholds = (gray_levels[:-1] + gray_levels[1:]) / 2
+    cfg["option"]["MinConstraint"] = float(gray_levels[0])
+    cfg["option"]["MaxConstraint"] = float(gray_levels[-1])
+    return gray_levels, thresholds
 
 
 def dart_segment(
@@ -492,13 +673,14 @@ def astra_error(
     sinogram: np.ndarray,
     angles: np.ndarray,
     method: Literal["SIRT", "SART"] = "SIRT",
-    iterations: int = 50,
+    iterations: int | None = None,
     constrain: bool = True,
     thresh: float = 0,
     cuda=False,
+    show_progressbar: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Perform SIRT reconstruction using the Astra toolbox algorithms.
+    Perform a SIRT or SART reconstruction, recording the result after each iteration.
 
     Parameters
     ----------
@@ -510,7 +692,9 @@ def astra_error(
     method
         Reconstruction algorithm use.  Must be 'SIRT' or 'SART'.
     iterations
-        Number of iterations for the SIRT reconstruction.
+        Number of iterations, each a full pass through all of the projections
+        (see :py:func:`astra_iterations`). If ``None``, the default for the
+        algorithm is used (SIRT: 50, SART: 5).
     constrain
         If True, output reconstruction is constrained above value given by
         'thresh'. Default is True.
@@ -520,6 +704,8 @@ def astra_error(
     cuda
         If True, use the CUDA-accelerated Astra algorithms. Otherwise,
         use the CPU-based algorithms
+    show_progressbar
+        If True (default), show a progress bar over the iterations.
 
     Returns
     -------
@@ -543,6 +729,10 @@ def astra_error(
 
     nangles, ny = sinogram.shape
 
+    if method.upper() not in ("SIRT", "SART"):
+        msg = f'Invalid method "{method}" for astra_error. Must be SIRT or SART.'
+        raise ValueError(msg)
+
     if nangles != len(angles):
         msg = (
             "Number of angles must match size of the first dimension of "
@@ -556,36 +746,39 @@ def astra_error(
     rec_id = astra.data2d.create("-vol", vol_geom)
     sino_id = astra.data2d.create("-sino", proj_geom, np.zeros([nangles, ny]))
 
-    if cuda:  # coverage: nocuda
-        alg_name = method.upper() + "_CUDA"
-        proj_id = astra.create_projector("cuda", proj_geom, vol_geom)
-    else:
-        alg_name = method.upper()
-        proj_id = astra.create_projector("strip", proj_geom, vol_geom)
+    proj_id = create_projector(proj_geom, vol_geom, cuda=cuda)
 
     astra.data2d.store(sino_id, sinogram)
 
-    cfg = astra.astra_dict(alg_name)
+    cfg, _, _ = _algorithm_config(
+        method,
+        cuda=cuda,
+        constrain=constrain,
+        thresh=thresh,
+    )
     cfg["ProjectionDataId"] = sino_id
     cfg["ProjectorId"] = proj_id
     cfg["ReconstructionDataId"] = rec_id
-    if constrain:
-        cfg["option"] = {}  # pyright: ignore[reportArgumentType]
-        cfg["option"]["MinConstraint"] = thresh
 
     alg = astra.algorithm.create(cfg)
 
-    rec = np.zeros([iterations, ny, ny], np.float32)
-    residual_error = np.zeros(iterations)
+    passes, n_astra = astra_iterations(method, iterations, nangles)
+    per_pass = n_astra // passes
+    rec = np.zeros([passes, ny, ny], np.float32)
+    residual_error = np.zeros(passes)
 
-    for i in tqdm.tqdm(range(iterations)):
-        astra.algorithm.run(alg, 1)
-        rec[i] = astra.data2d.get(rec_id)
-        if cuda:  # coverage: nocuda
-            residual_error[i] = astra.algorithm.get_res_norm(alg)
-        else:
-            _, curr = astra.create_sino(rec[i], proj_id)
-            residual_error[i] = np.linalg.norm(sinogram - curr)
-    astra.clear()
+    try:
+        for i in tqdm.tqdm(range(passes), disable=not show_progressbar):
+            astra.algorithm.run(alg, per_pass)
+            rec[i] = astra.data2d.get(rec_id)
+            if cuda:  # coverage: nocuda
+                residual_error[i] = astra.algorithm.get_res_norm(alg)
+            else:
+                curr = _forward_project(rec[i], proj_id)
+                residual_error[i] = np.linalg.norm(sinogram - curr)
+    finally:
+        astra.algorithm.delete(alg)
+        astra.data2d.delete([rec_id, sino_id])
+        astra.projector.delete(proj_id)
 
     return rec, residual_error

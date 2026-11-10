@@ -1,6 +1,6 @@
 [project]
 name = "etspy"
-version = "1.3.0"
+version = "1.4.0"
 description = "Suite of tools for processing and reconstruction of electron tomography data"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -71,6 +71,7 @@ known-first-party = ["etspy"]
 
 [tool.ruff.lint.per-file-ignores]
 "etspy/tests/*" = ["S101", "D102"]
+"etspy/benchmarks/*" = ["T201", "INP001", "PLR2004"]
 
 [tool.ruff.lint.pylint]
 max-args = 10

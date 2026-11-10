@@ -178,6 +178,54 @@ class TestWeightingFilter:
         )
         assert isinstance(filtered, TomoStack)
 
+    @pytest.mark.parametrize("ny", [63, 64, 255])
+    @pytest.mark.parametrize("filter_name", ["ram-lak", "shepp-logan", "hann"])
+    def test_weighting_filter_shape(self, ny, filter_name):
+        data = np.random.default_rng(0).random((5, ny, 3), np.float32)
+        stack = TomoStack(data, tilts=np.arange(5.0))
+        filtered = utils.filter_stack(stack, filter_name=filter_name)
+        assert filtered.data.shape == data.shape
+
+    @staticmethod
+    def _sinusoid_stack(freq, ny=256):
+        """Stack whose projections are a sinusoid along y at freq cycles/pixel."""
+        y = np.arange(ny)
+        profile = np.cos(2 * np.pi * freq * y)
+        data = np.broadcast_to(profile[np.newaxis, :, np.newaxis], (3, ny, 2))
+        return TomoStack(data.astype(np.float32), tilts=np.arange(3.0))
+
+    def test_weighting_filter_cutoff_removes_high_frequencies(self):
+        stack = self._sinusoid_stack(0.4)
+        center = slice(64, 192)  # avoid edge effects from zero padding
+        full = utils.filter_stack(stack, filter_name="ram-lak", cutoff=0.5)
+        cut = utils.filter_stack(stack, filter_name="ram-lak", cutoff=0.25)
+        assert np.abs(full.data[:, center]).max() > 0.5  # noqa: PLR2004
+        assert (
+            np.abs(cut.data[:, center]).max()
+            < 0.05
+            * np.abs(
+                full.data[:, center],
+            ).max()
+        )
+
+    def test_weighting_filter_cutoff_keeps_low_frequencies(self):
+        # ram-lak is unchanged below the cutoff, so a low-frequency signal is too
+        stack = self._sinusoid_stack(0.1)
+        center = slice(64, 192)
+        full = utils.filter_stack(stack, filter_name="ram-lak", cutoff=0.5)
+        cut = utils.filter_stack(stack, filter_name="ram-lak", cutoff=0.25)
+        amplitude = np.abs(full.data[:, center]).max()
+        np.testing.assert_allclose(
+            cut.data[:, center],
+            full.data[:, center],
+            atol=0.05 * amplitude,
+        )
+
+    @pytest.mark.parametrize("cutoff", [0, -0.1, 0.6])
+    def test_weighting_filter_bad_cutoff(self, aligned_short_stack, cutoff):
+        with pytest.raises(ValueError, match=r"cutoff must be in the range \(0, 0.5\]"):
+            utils.filter_stack(aligned_short_stack, cutoff=cutoff)
+
     def test_weighting_filter_bad_filter(self, aligned_short_stack):
         bad_filter = "wrong"
         with pytest.raises(
