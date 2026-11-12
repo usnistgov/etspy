@@ -99,30 +99,6 @@ class TestTotalVariation:
             assert dtv[index] == pytest.approx(numeric, rel=1e-5, abs=1e-8)
 
 
-class TestTVGradientDescent:
-    """Test the normalized TV gradient descent (ASD-POCS TV step)."""
-
-    def test_reduces_tv(self, noisy_block):
-        result = tv.tv_gradient_descent(noisy_block, 20, 0.5, positivity=False)
-        assert tv.total_variation(result) < 0.8 * tv.total_variation(noisy_block)
-
-    def test_step_length(self, noisy_block):
-        result = tv.tv_gradient_descent(noisy_block, 1, 0.25, positivity=False)
-        assert np.linalg.norm(result - noisy_block) == pytest.approx(0.25)
-        result = tv.tv_gradient_descent(noisy_block, 4, 0.25, positivity=False)
-        assert np.linalg.norm(result - noisy_block) <= 1.0 + 1e-9
-
-    def test_positivity_and_input_unchanged(self, noisy_block):
-        original = noisy_block.copy()
-        result = tv.tv_gradient_descent(noisy_block, 5, 0.5)
-        assert result.min() >= 0
-        np.testing.assert_array_equal(noisy_block, original)
-
-    def test_constant_volume_unchanged(self):
-        volume = np.full((3, 4, 5), 2.0)
-        np.testing.assert_array_equal(tv.tv_gradient_descent(volume, 5, 1.0), volume)
-
-
 class TestTVFGP:
     """Test FGP total variation denoising (FISTA-TV proximal step)."""
 
@@ -171,7 +147,6 @@ class TestCupy:
         gpu = cp.asarray(noisy_block)
         for func in (
             lambda v: tv.tv_gradient(v, 3),
-            lambda v: tv.tv_gradient_descent(v, 3, 0.5),
             lambda v: tv.tv_fgp(v, 0.3, 10),
         ):
             np.testing.assert_allclose(
@@ -201,99 +176,6 @@ def limited_angle_phantom():
 
 def _relative_error(rec, phantom):
     return np.linalg.norm(rec - phantom) / np.linalg.norm(phantom)
-
-
-class TestASDPOCS:
-    """Test ASD-POCS total variation reconstruction."""
-
-    def test_history(self, limited_angle_phantom):
-        _, sino, tilts = limited_angle_phantom
-        _, history = tv.asd_pocs(
-            sino,
-            tilts,
-            iterations=20,
-            sart_relaxation=0.5,
-            sart_relaxation_reduction=0.9,
-            show_progressbar=False,
-        )
-        assert set(history) == {"data_distance", "tv", "tv_step", "relaxation"}
-        assert all(values.shape == (20,) for values in history.values())
-        assert history["data_distance"][-1] < history["data_distance"][0]
-        assert np.all(np.diff(history["tv_step"]) <= 0)
-        np.testing.assert_allclose(history["relaxation"], 0.5 * 0.9 ** np.arange(20))
-
-    def test_scale_invariance(self, limited_angle_phantom):
-        phantom, sino, tilts = limited_angle_phantom
-        rec, history = tv.asd_pocs(sino, tilts, iterations=30, show_progressbar=False)
-        scaled, scaled_history = tv.asd_pocs(
-            sino * 1000,
-            tilts,
-            iterations=30,
-            show_progressbar=False,
-        )
-        assert _relative_error(scaled[0] / 1000, phantom) == pytest.approx(
-            _relative_error(rec[0], phantom),
-            abs=0.01,
-        )
-        assert scaled_history["data_distance"][-1] == pytest.approx(
-            history["data_distance"][-1],
-            abs=0.005,
-        )
-
-    def test_repeatable(self, limited_angle_phantom):
-        _, sino, tilts = limited_angle_phantom
-        first, _ = tv.asd_pocs(sino, tilts, iterations=10, show_progressbar=False)
-        second, _ = tv.asd_pocs(sino, tilts, iterations=10, show_progressbar=False)
-        np.testing.assert_array_equal(first, second)
-
-    def test_tv_dims_2_reconstructs_slices_independently(self, limited_angle_phantom):
-        _, sino, tilts = limited_angle_phantom
-        # two different slices with the same maximum (so the same internal scaling)
-        stack = np.stack([sino, sino[:, ::-1]], axis=2)
-        both, history = tv.asd_pocs(
-            stack,
-            tilts,
-            iterations=10,
-            tv_dims=2,
-            show_progressbar=False,
-        )
-        for s in range(2):
-            alone, _ = tv.asd_pocs(
-                stack[:, :, s],
-                tilts,
-                iterations=10,
-                tv_dims=2,
-                show_progressbar=False,
-            )
-            np.testing.assert_allclose(both[s], alone[0], rtol=1e-5, atol=1e-6)
-        assert history["data_distance"].shape == (10,)
-
-    def test_shapes(self, limited_angle_phantom):
-        _, sino, tilts = limited_angle_phantom
-        rec, _ = tv.asd_pocs(
-            sino,
-            tilts,
-            iterations=2,
-            thickness=32,
-            show_progressbar=False,
-        )
-        assert rec.shape == (1, 32, 48)
-
-    def test_errors(self, limited_angle_phantom):
-        _, sino, tilts = limited_angle_phantom
-        with pytest.raises(ValueError, match="Number of tilts"):
-            tv.asd_pocs(sino, tilts[:-1], iterations=1)
-        with pytest.raises(ValueError, match="tv_dims must be 2 or 3"):
-            tv.asd_pocs(sino, tilts, iterations=1, tv_dims=1)  # type: ignore[arg-type]
-
-    @pytest.mark.usefixtures("astra_sentinel")
-    @pytest.mark.parametrize("tv_dims", [2, 3])
-    def test_frees_astra_objects(self, limited_angle_phantom, tv_dims):
-        _, sino, tilts = limited_angle_phantom
-        stack = np.repeat(sino[:, :, np.newaxis], 2, axis=2)
-        before = count_astra_objects()
-        tv.asd_pocs(stack, tilts, iterations=2, tv_dims=tv_dims, show_progressbar=False)
-        assert count_astra_objects() == before
 
 
 class TestFISTATV:
@@ -419,17 +301,15 @@ class TestReconstructTV:
         data = np.repeat(sino[:, :, np.newaxis], 3, axis=2)
         return TomoStack(data, tilts=tilts)
 
-    @pytest.mark.parametrize("method", ["FISTA", "ASD-POCS"])
-    def test_matches_algorithm_and_records_metadata(self, stack, method):
+    def test_matches_algorithm_and_records_metadata(self, stack):
         rec = stack.reconstruct_tv(
-            method,
             iterations=5,
             tv_dims=2,
             cuda=False,
             show_progressbar=False,
         )
-        func = tv.fista_tv if method == "FISTA" else tv.asd_pocs
-        expected, history = func(
+
+        expected, history = tv.fista_tv(
             stack.data,
             stack.tilts.data,
             iterations=5,
@@ -440,7 +320,7 @@ class TestReconstructTV:
         np.testing.assert_array_equal(rec.data, expected)
         assert [ax.name for ax in rec.axes_manager._axes] == ["x", "z", "y"]  # noqa: SLF001
         meta = rec.metadata.Reconstruction
-        assert meta.method == method
+        assert meta.method == "FISTA"
         assert meta.parameters.iterations == 5  # noqa: PLR2004
         assert meta.parameters.tv_dims == 2  # noqa: PLR2004
         for key, values in history.items():
@@ -455,10 +335,6 @@ class TestReconstructTV:
         )
         assert rec.data.shape == (3, 32, 48)
         assert rec.axes_manager["z"].size == 32  # noqa: PLR2004
-
-    def test_invalid_method(self, stack):
-        with pytest.raises(ValueError, match='Invalid TV reconstruction method "TV"'):
-            stack.reconstruct_tv("TV")  # type: ignore[arg-type]
 
     def test_no_tilts(self, stack):
         del stack.tilts

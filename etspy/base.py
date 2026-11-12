@@ -2062,9 +2062,8 @@ class TomoStack(CommonStack):
         rec = RecStack(rec, axes=rec_axes_dict)
         return RecStack(rec, axes=rec_axes_dict)
 
-    def reconstruct_tv(  # noqa: PLR0913
+    def reconstruct_tv(
         self,
-        method: Literal["FISTA", "ASD-POCS"] = "FISTA",
         iterations: int = 100,
         tv_dims: Literal[2, 3] = 3,
         thickness: int | None = None,
@@ -2073,13 +2072,6 @@ class TomoStack(CommonStack):
         show_progressbar: bool = True,
         tv_weight: float = 0.1,
         fgp_iterations: int = 10,
-        sart_relaxation: float = 0.5,
-        sart_relaxation_reduction: float = 0.985,
-        tv_steps: int = 10,
-        alpha: float = 0.2,
-        alpha_reduction: float = 0.95,
-        r_max: float = 0.95,
-        eps: float = 0.02,
     ) -> "RecStack":
         """
         Reconstruct the TomoStack with total variation (TV) regularization.
@@ -2094,16 +2086,10 @@ class TomoStack(CommonStack):
         results for specimens with gradual variations in density or fine
         texture.
 
-        Two methods are available (see :py:mod:`etspy.recon_tv` for details and
-        references):
-
-        - ``"FISTA"`` (default): minimizes ``0.5 * |A x - b|**2 + tv_weight *
-          TV(x)`` with ``x >= 0``. The single parameter ``tv_weight`` sets how
-          strongly the result is regularized; larger values suit noisier data.
-        - ``"ASD-POCS"``: minimizes the TV subject to data consistency (relative
-          data error ``eps``) and positivity, alternating SART and TV gradient
-          descent steps with adaptive step sizes. It works best for few
-          projections or a limited tilt range with little noise.
+        TVMin is implemented using the FISTA method. FISTA minimizes
+        ``0.5 * |A x - b|**2 + tv_weight * TV(x)`` with ``x >= 0``. The single
+        parameter ``tv_weight`` sets how strongly the result is regularized; larger
+        values suit noisier data. (see :py:mod:`etspy.recon_tv` for details)
 
         The intensity scale of the data does not affect the parameters (the
         projections are scaled internally), but the background should be removed
@@ -2112,8 +2098,6 @@ class TomoStack(CommonStack):
 
         Parameters
         ----------
-        method
-            ``"FISTA"`` (default) or ``"ASD-POCS"``
         iterations
             Number of iterations (default: 100)
         tv_dims
@@ -2131,29 +2115,9 @@ class TomoStack(CommonStack):
         show_progressbar
             If ``True`` (default), show a progress bar
         tv_weight
-            (``"FISTA"``) Weight of the TV term (default: 0.1)
+            Weight of the FISTA TV term (default: 0.1)
         fgp_iterations
-            (``"FISTA"``) Iterations of the TV proximal step (default: 10)
-        sart_relaxation
-            (``"ASD-POCS"``) Initial SART relaxation parameter (default: 0.5)
-        sart_relaxation_reduction
-            (``"ASD-POCS"``) Reduction of the relaxation after each iteration
-            (default: 0.985)
-        tv_steps
-            (``"ASD-POCS"``) TV gradient descent steps per iteration (default: 10)
-        alpha
-            (``"ASD-POCS"``) Initial TV step size relative to the first SART step
-            (default: 0.2)
-        alpha_reduction
-            (``"ASD-POCS"``) Reduction of the TV step size when it is too large
-            (default: 0.95)
-        r_max
-            (``"ASD-POCS"``) Maximum ratio of the TV change to the SART change
-            before the TV step size is reduced (default: 0.95)
-        eps
-            (``"ASD-POCS"``) Relative data error below which the TV step size is
-            not reduced, around the relative noise level of the data (default:
-            0.02)
+            Iterations of the FISTA TV proximal step (default: 10)
 
         Returns
         -------
@@ -2168,16 +2132,10 @@ class TomoStack(CommonStack):
             >>> import etspy.datasets as ds
             >>> stack = ds.get_needle_data(aligned=True)
             >>> slices = stack.isig[118:122, :].deepcopy()
-            >>> rec = slices.reconstruct_tv("FISTA", iterations=20, tv_weight=0.1,
+            >>> rec = slices.reconstruct_tv(iterations=20, tv_weight=0.1,
             ...                             cuda=False, show_progressbar=False)
             >>> history = rec.metadata.Reconstruction.history
         """
-        if method not in ("FISTA", "ASD-POCS"):
-            msg = (
-                f'Invalid TV reconstruction method "{method}". Must be one of '
-                f"{_fmt(_get_lit(self.reconstruct_tv, 'method'))}."
-            )
-            raise ValueError(msg)
         if np.all(self.tilts.data == 0):
             msg = (
                 "Tilts are not defined in stack.tilts (values were all zeros). "
@@ -2200,36 +2158,19 @@ class TomoStack(CommonStack):
             "ncores": ncores,
             "show_progressbar": show_progressbar,
         }
-        if method == "FISTA":
-            parameters = {"tv_weight": tv_weight, "fgp_iterations": fgp_iterations}
-            rec, history = recon_tv.fista_tv(
-                self.data,
-                self.tilts.data,
-                **common,
-                **parameters,
-            )
-        else:
-            parameters = {
-                "sart_relaxation": sart_relaxation,
-                "sart_relaxation_reduction": sart_relaxation_reduction,
-                "tv_steps": tv_steps,
-                "alpha": alpha,
-                "alpha_reduction": alpha_reduction,
-                "r_max": r_max,
-                "eps": eps,
-            }
-            rec, history = recon_tv.asd_pocs(
-                self.data,
-                self.tilts.data,
-                **common,
-                **parameters,
-            )
+        parameters = {"tv_weight": tv_weight, "fgp_iterations": fgp_iterations}
+        rec, history = recon_tv.fista_tv(
+            self.data,
+            self.tilts.data,
+            **common,
+            **parameters,
+        )
 
         rec_stack = self._recstack_from_array(rec)
         rec_stack.metadata.set_item(
             "Reconstruction",
             {
-                "method": method,
+                "method": "FISTA",
                 "parameters": {
                     "iterations": iterations,
                     "tv_dims": tv_dims,
