@@ -32,8 +32,8 @@ which allow for creation of [`TomoStack`](#etspy.base.TomoStack) objects either 
 from NumPy arrays, or by loading data from `.mrc`, `.dm3`, or `.dm4` files.
 
 :::{tip}
-For more examples, please consult the example notebook on the 
-[Example Usage](examples/etspy_demo) page.
+For more examples, please consult the example notebook on the
+[Example Usage](examples/etspy_demo) page, and the other notebooks in the Examples section.
 :::
 
 (signals)=
@@ -92,7 +92,7 @@ be used internally by other parts of the code, but can be used directly, if desi
 
 :::{tip}
 For an easier way to reconstruct a {py:class}`~etspy.base.TomoStack` signal, use the
-{py:meth}`etspy.base.TomoStack.reconstruct` function instead, or {py:meth}`etspy.base.TomoStack.reconstruct` function instead, or
+{py:meth}`etspy.base.TomoStack.reconstruct` function instead, or
 {py:meth}`etspy.base.TomoStack.reconstruct_tv` for total variation (TV) regularized
 reconstruction.
 :::
