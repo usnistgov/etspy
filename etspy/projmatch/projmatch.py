@@ -451,7 +451,10 @@ class ProjMatch:
                     axis=(1, 2),
                 )
             update = np.minimum(MAX_STEP, np.abs(update)) * np.sign(update) * self.relax
-            update = update - np.median(update, axis=0)
+            # a common shift along the tilt axis (X) cannot be determined, so fixt its
+            # median; a common Y-shift is the tilt axis offset, which can be determined
+            # and must stay free (as in the reference.
+            update[:, 1] -= np.median(update[:, 1])
             max_step = np.minimum(np.quantile(np.abs(update), 0.99, axis=0), MAX_STEP)
             update = np.minimum(max_step, np.abs(update)) * np.sign(update)
             shifts += update
@@ -471,7 +474,7 @@ class ProjMatch:
                 logger.info("Converged after %i iterations", i)
                 break
 
-        shifts = shifts - np.median(shifts, axis=0)
+        shifts[:, 1] -= np.median(shifts[:, 1])
         self.total_shifts = self.total_shifts + shifts * j
         return errors, projection_errors, sinos, recs
 
