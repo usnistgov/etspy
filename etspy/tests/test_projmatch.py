@@ -20,6 +20,8 @@ from . import count_astra_objects
 RMSE_THRESH = 0.1
 CORR_COEFF = 0.95
 NOISE_THRESH = 0.1
+AXIS_OFFSET_THRESH = 0.015
+ALIGNED_RMS_THRESH = 0.03
 
 
 @pytest.fixture(scope="class")
@@ -212,6 +214,33 @@ def small_misaligned_stack():
     small = ds.get_catalyst_data().inav[::2].rebin(scale=(1, 4, 4))
     np.random.seed(3)
     return sim.misalign_stack(small, min_shift=-2, max_shift=2, y_only=True)
+
+
+class TestAlignedInput:
+    """Projection matching of an already aligned series."""
+
+    def test_no_axis_offset_from_coarse_levels(self):
+        # with downsampling that moved the centre, the coarse levels introduced a
+        # tilt axis offset that hid in a + b cos(theta) shifts of zero median and
+        # survived the full-resolution level (+0.03 px, rms 0.05 px here; about
+        # -0.2 px on larger objects)
+        obj = np.zeros([96, 96])
+        obj[60:70, 58:72] = 10
+        obj[28:56, 30:52] = 8
+        obj[16:24, 62:74] = 5
+        obj = ndimage.gaussian_filter(obj, sigma=1)
+        stack = sim.create_model_tilt_series(
+            obj[np.newaxis, :, :],
+            angles=np.arange(-90, 90, 2.0),
+        )
+        pm = projmatch.ProjMatch(stack, nslice=0, params={"levels": [4, 2, 1]})
+        pm.calculate_shifts(show_progressbar=False)
+        thetas = np.deg2rad(stack.tilts.data.squeeze())
+        basis = np.array([np.ones_like(thetas), np.cos(thetas), np.sin(thetas)]).T
+        coeffs = np.linalg.lstsq(basis, pm.total_shifts[:, 0])[0]
+        # the constant term is the tilt axis offset: determinable over 180 deg
+        assert abs(coeffs[0]) < AXIS_OFFSET_THRESH
+        assert np.sqrt((pm.total_shifts[:, 0] ** 2).mean()) < ALIGNED_RMS_THRESH
 
 
 class TestHistory:
@@ -467,6 +496,35 @@ class TestDownsampling:
             axis=1,
         )
         np.testing.assert_allclose(along_x, np.swapaxes(along_y, 1, 2))
+
+    @pytest.mark.parametrize("n", [100, 111, 112])
+    @pytest.mark.parametrize("factor", [2, 4, 8])
+    def test_binned_positions(self, n, factor):
+        pos = projmatch.projmatch.binned_positions(n, factor)
+        assert len(pos) == n // factor
+        np.testing.assert_allclose(np.diff(pos), factor)
+        np.testing.assert_allclose(pos.mean(), (n - 1) / 2)
+
+    @pytest.mark.parametrize("n", [100, 111, 112])
+    @pytest.mark.parametrize("factor", [2, 4, 8])
+    @pytest.mark.parametrize("offset", [0.0, -15.2, 9.7])
+    def test_downsampling_keeps_centre_and_pixel_size(self, n, factor, offset):
+        # a centred object stays centred and an off-centre one keeps its distance
+        # from the centre in input pixels: otherwise the coarse levels of projection
+        # matching see a tilt axis offset (formerly about -0.5 px at every level)
+        y = np.arange(n)
+        line = np.exp(-0.5 * ((y - (n - 1) / 2 - offset) / 3.0) ** 2)
+        data = line[np.newaxis, :, np.newaxis]
+        binned = projmatch.projmatch.interpolate_ft(
+            projmatch.projmatch.blur_convolve(data, factor, axis=1),
+            factor,
+            axis=1,
+        )[0, :, 0]
+        nb = len(binned)
+        centroid = (binned * np.arange(nb)).sum() / binned.sum()
+        assert (centroid - (nb - 1) / 2) * factor == pytest.approx(offset, abs=0.05)
+        # average intensity preserved
+        assert binned.sum() * factor == pytest.approx(line.sum(), rel=0.02)
 
     def test_gradient_of_ramp(self):
         ramp = np.tile(np.arange(32.0), (2, 4, 1))
