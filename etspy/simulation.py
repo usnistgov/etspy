@@ -337,7 +337,12 @@ def add_noise(
     noise_type
         Type of noise. Must be ``"gaussian"`` or ``"poissonian"``/``"shot"``
     scale_factor
-        Amount of noise to add
+        Amount of noise. For ``"gaussian"``, the standard deviation of the
+        zero-mean noise added, as a fraction of the mean of the stack (larger
+        values give more noise). For ``"poissonian"``/``"shot"``, the number of
+        counts per unit of intensity: each value is replaced by a Poisson count
+        with mean ``data * scale_factor``, divided by ``scale_factor`` (larger
+        values give less noise). Either way, the mean intensity is unchanged.
 
     Returns
     -------
@@ -356,19 +361,14 @@ def add_noise(
 
     if noise_type == "gaussian":
         noise = np.random.normal(
-            stack.data.mean(),
+            0.0,
             scale_factor * stack.data.mean(),
             stack.data.shape,
         )
-        noisy.data = noisy.data + noise
-        if noisy.data.min() < 0:
-            noisy.data -= noisy.data.min()
-        scale_factor = noisy.data.max() / stack.data.max()
-        noisy.data = noisy.data / scale_factor
+        noisy.data = stack.data + noise
 
     elif noise_type in ["poissonian", "shot"]:
-        noise = np.random.poisson(stack.data * scale_factor) / scale_factor
-        noisy.data = noisy.data + noise
+        noisy.data = np.random.poisson(stack.data * scale_factor) / scale_factor
 
     else:
         msg = (
