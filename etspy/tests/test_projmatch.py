@@ -21,7 +21,7 @@ RMSE_THRESH = 0.1
 CORR_COEFF = 0.95
 NOISE_THRESH = 0.1
 AXIS_OFFSET_THRESH = 0.015
-ALIGNED_RMS_THRESH = 0.03
+ALIGNED_RMS_THRESH = 0.02
 
 
 @pytest.fixture(scope="class")
@@ -220,10 +220,6 @@ class TestAlignedInput:
     """Projection matching of an already aligned series."""
 
     def test_no_axis_offset_from_coarse_levels(self):
-        # with downsampling that moved the centre, the coarse levels introduced a
-        # tilt axis offset that hid in a + b cos(theta) shifts of zero median and
-        # survived the full-resolution level (+0.03 px, rms 0.05 px here; about
-        # -0.2 px on larger objects)
         obj = np.zeros([96, 96])
         obj[60:70, 58:72] = 10
         obj[28:56, 30:52] = 8
@@ -240,7 +236,8 @@ class TestAlignedInput:
         coeffs = np.linalg.lstsq(basis, pm.total_shifts[:, 0])[0]
         # the constant term is the tilt axis offset: determinable over 180 deg
         assert abs(coeffs[0]) < AXIS_OFFSET_THRESH
-        assert np.sqrt((pm.total_shifts[:, 0] ** 2).mean()) < ALIGNED_RMS_THRESH
+        rest = pm.total_shifts[:, 0] - basis @ coeffs
+        assert np.sqrt((rest**2).mean()) < ALIGNED_RMS_THRESH
 
 
 class TestHistory:
