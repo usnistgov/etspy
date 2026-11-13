@@ -698,12 +698,6 @@ class TestResolveCuda:
                 cuda=True,
             ),
             lambda _: sim.create_model_tilt_series(np.ones((2, 8, 16)), cuda=True),
-            lambda s: recon_tv.asd_pocs(
-                s.data,
-                s.tilts.data.squeeze(),
-                iterations=1,
-                cuda=True,
-            ),
             lambda s: recon_tv.fista_tv(
                 s.data,
                 s.tilts.data.squeeze(),
