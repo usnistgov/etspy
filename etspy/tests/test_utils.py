@@ -46,12 +46,22 @@ class TestMultiframeAverage:
         data_shape = 3
         assert isinstance(stack_avg, TomoStack)
         assert stack_avg.data.shape[0] == data_shape
+        self.check_tilts(multiframe_small_stack, stack_avg)
 
     def test_register_serialem_stack_multicpu(self, multiframe_small_stack):
         stack_avg = utils.register_serialem_stack(multiframe_small_stack, ncpus=2)
         data_shape = 3
         assert isinstance(stack_avg, TomoStack)
         assert stack_avg.data.shape[0] == data_shape
+        self.check_tilts(multiframe_small_stack, stack_avg)
+
+    @staticmethod
+    def check_tilts(frames, averaged):
+        """Check that the averaged stack has the tilt of each set of frames."""
+        ntilts, nframes = frames.data.shape[:2]
+        expected = frames.tilts.data.reshape(ntilts, nframes)[:, 0]
+        assert np.any(expected != 0)
+        np.testing.assert_allclose(averaged.tilts.data.squeeze(), expected)
 
     def test_multiaverage(self, multiframe_small_stack):
         _, nframes, ny, nx = multiframe_small_stack.data.shape

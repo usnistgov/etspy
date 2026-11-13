@@ -128,6 +128,10 @@ def register_serialem_stack(
         reg.metadata.Acquisition_instrument = stack.metadata.Acquisition_instrument
     if stack.metadata.has_item("Tomography"):
         reg.metadata.Tomography = stack.metadata.Tomography
+
+    tilts = getattr(stack, "tilts", None)
+    if tilts is not None:
+        reg.tilts = np.asarray(tilts.data).reshape(ntilts, nframes)[:, 0]
     return reg
 
 
