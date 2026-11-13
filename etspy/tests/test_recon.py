@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from etspy import datasets as ds
-from etspy import projmatch, recon
+from etspy import projmatch, recon, recon_tv
 from etspy import simulation as sim
 from etspy.base import RecStack, TomoStack
 
@@ -690,6 +690,7 @@ class TestResolveCuda:
         "call",
         [
             lambda s: s.reconstruct("SIRT", iterations=1, cuda=True),
+            lambda s: s.reconstruct_tv(iterations=1, cuda=True),
             lambda s: s.recon_error(iterations=1, cuda=True),
             lambda s: s.test_align(cuda=True),
             lambda s: RecStack(np.ones((2, 8, 16))).forward_project(
@@ -697,13 +698,21 @@ class TestResolveCuda:
                 cuda=True,
             ),
             lambda _: sim.create_model_tilt_series(np.ones((2, 8, 16)), cuda=True),
+            lambda s: recon_tv.fista_tv(
+                s.data,
+                s.tilts.data.squeeze(),
+                iterations=1,
+                cuda=True,
+            ),
         ],
         ids=[
             "reconstruct",
+            "reconstruct_tv",
             "recon_error",
             "test_align",
             "forward_project",
             "create_model_tilt_series",
+            "fista_tv",
         ],
     )
     def test_entry_points_raise_without_gpu(self, call):

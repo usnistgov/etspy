@@ -92,7 +92,9 @@ be used internally by other parts of the code, but can be used directly, if desi
 
 :::{tip}
 For an easier way to reconstruct a {py:class}`~etspy.base.TomoStack` signal, use the
-{py:meth}`etspy.base.TomoStack.reconstruct` function instead.
+{py:meth}`etspy.base.TomoStack.reconstruct` function instead, or {py:meth}`etspy.base.TomoStack.reconstruct` function instead, or
+{py:meth}`etspy.base.TomoStack.reconstruct_tv` for total variation (TV) regularized
+reconstruction.
 :::
 
 ```{eval-rst}

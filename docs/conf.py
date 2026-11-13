@@ -195,6 +195,7 @@ python_apigen_modules = {
     "etspy.datasets": "api/etspy.datasets.",
     "etspy.io": "api/etspy.io.",
     "etspy.recon": "api/etspy.recon.",
+    "etspy.recon_tv": "api/etspy.recon_tv.",
     "etspy.simulation": "api/etspy.simulation.",
     "etspy.utils": "api/etspy.utils.",
 }
