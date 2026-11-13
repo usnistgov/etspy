@@ -28,7 +28,7 @@ import tqdm
 from dask.base import compute as dask_compute
 from dask.delayed import delayed as dask_delayed
 
-from etspy.recon import create_projector
+from etspy.recon import create_projector, resolve_cuda
 
 logger = logging.getLogger(__name__)
 
@@ -450,6 +450,7 @@ def fista_tv(
     -----
     recon
     """
+    cuda = resolve_cuda(cuda)
     scaled, tilts, scale, thickness, ncores = _prepare_tilt_series(
         stack,
         tilts,

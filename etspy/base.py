@@ -2142,9 +2142,9 @@ class TomoStack(CommonStack):
                 "Please set tilt values before reconstruction."
             )
             raise ValueError(msg)
-        if cuda is None:
-            cuda = bool(astra.use_cuda())
-            logger.info("CUDA %s with Astra", "detected" if cuda else "not detected")
+
+        cuda = recon.resolve_cuda(cuda)
+
         _warn_if_background(
             self,
             "a ring of incorrect intensity around the reconstruction",
