@@ -1514,7 +1514,7 @@ class TestManualAlign:
 
     def test_manual_align_negative_y(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=-10)
-        self.check(short_stack, shifted, xshift=-10)
+        self.check(short_stack, shifted, yshift=-10)
 
     def test_manual_align_negative_y_positive_x(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=-10, xshift=10)
