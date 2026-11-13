@@ -6,9 +6,9 @@ and y are simulated with a known misalignment (see
 :py:func:`etspy.simulation.create_alignment_test_series`), and aligned with
 :py:class:`etspy.projmatch.ProjMatch` in several configurations:
 
-- a single slice (Y-shifts only)
+- a single slice (Y-shifts only, as ETSpy did before)
 - all slices, Y-shifts only
-- all slices, Y- and X-shifts, with FBP, SIRT and SART reconstructions
+- all slices, Y- and X-shifts, with FBP, SIRT (the default) and SART reconstructions
 
 For each configuration and dose, the script reports the RMS error of the Y- and
 X-shifts (without the components that cannot be determined: a + b cos + c sin for
@@ -35,12 +35,12 @@ from etspy import simulation as sim
 from etspy.base import TomoStack
 
 CONFIGS = {
-    "single slice (FBP)": {"nslice": "middle", "params": {}},
-    "all slices, Y only (FBP)": {"params": {"align_x": False}},
-    "all slices, Y+X (FBP)": {"params": {}},
-    "all slices, Y+X (SIRT)": {
-        "params": {"recon_algorithm": "SIRT", "recon_iterations": 20},
+    "single slice (FBP)": {"nslice": "middle", "params": {"recon_algorithm": "FBP"}},
+    "all slices, Y only (FBP)": {
+        "params": {"align_x": False, "recon_algorithm": "FBP"},
     },
+    "all slices, Y+X (FBP)": {"params": {"recon_algorithm": "FBP"}},
+    "all slices, Y+X (SIRT, default)": {"params": {}},
     "all slices, Y+X (SART)": {
         "params": {"recon_algorithm": "SART", "recon_iterations": 5},
     },
