@@ -171,9 +171,12 @@ class ProjMatch:
             - "levels": downsampling factors, from coarse to fine (default
               ``[8, 4, 2, 1]``)
             - "iterations": maximum number of iterations per level (default 100)
-            - "recon_algorithm": "FBP" (default), "SIRT" or "SART"
+            - "recon_algorithm": "SIRT" (default), "SART" or "FBP". Each SIRT
+              reconstruction starts from that of the previous iteration. FBP is
+              several times faster, but aligns about five times less precisely
+              perpendicular to the tilt axis.
             - "recon_iterations": passes through all of the projections for each
-              SIRT or SART reconstruction (default: 20 for SIRT, 5 for SART)
+              SIRT or SART reconstruction (default: 10 for SIRT, 5 for SART)
             - "relax": relaxation of the shift updates (default 0.5)
             - "minstep": the refinement at each level stops when the updates
               (before relaxation) are smaller than this (pixels at full
@@ -245,10 +248,10 @@ class ProjMatch:
         self.rec_update: list[Any] | None = None
         self.shift_update: Any = None
 
-        self.recon_algorithm = self.params.get("recon_algorithm", "FBP")
+        self.recon_algorithm = self.params.get("recon_algorithm", "SIRT")
         # recon_iterations are full passes through the projections (also for
         # SART), converted here to the number of ASTRA iterations to run
-        default_passes = {"sirt": 20, "sart": 5}.get(self.recon_algorithm.lower())
+        default_passes = {"sirt": 10, "sart": 5}.get(self.recon_algorithm.lower())
         _, self.recon_iterations = astra_iterations(
             self.recon_algorithm,
             self.params.get("recon_iterations", default_passes),
