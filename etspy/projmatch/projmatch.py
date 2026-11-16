@@ -10,7 +10,7 @@ import numpy as np
 import tqdm
 from hyperspy.signals import Signal1D, Signal2D
 from scipy.fft import fft, fftfreq, ifft
-from scipy.ndimage import fourier_shift, gaussian_filter
+from scipy.ndimage import gaussian_filter, map_coordinates
 from scipy.signal import convolve
 
 from etspy._background import background_mode
@@ -171,9 +171,12 @@ class ProjMatch:
             - "levels": downsampling factors, from coarse to fine (default
               ``[8, 4, 2, 1]``)
             - "iterations": maximum number of iterations per level (default 100)
-            - "recon_algorithm": "FBP" (default), "SIRT" or "SART"
+            - "recon_algorithm": "SIRT" (default), "SART" or "FBP". Each SIRT
+              reconstruction starts from that of the previous iteration. FBP is
+              several times faster, but aligns about five times less precisely
+              perpendicular to the tilt axis.
             - "recon_iterations": passes through all of the projections for each
-              SIRT or SART reconstruction (default: 20 for SIRT, 5 for SART)
+              SIRT or SART reconstruction (default: 10 for SIRT, 5 for SART)
             - "relax": relaxation of the shift updates (default 0.5)
             - "minstep": the refinement at each level stops when the updates
               (before relaxation) are smaller than this (pixels at full
@@ -245,10 +248,10 @@ class ProjMatch:
         self.rec_update: list[Any] | None = None
         self.shift_update: Any = None
 
-        self.recon_algorithm = self.params.get("recon_algorithm", "FBP")
+        self.recon_algorithm = self.params.get("recon_algorithm", "SIRT")
         # recon_iterations are full passes through the projections (also for
         # SART), converted here to the number of ASTRA iterations to run
-        default_passes = {"sirt": 20, "sart": 5}.get(self.recon_algorithm.lower())
+        default_passes = {"sirt": 10, "sart": 5}.get(self.recon_algorithm.lower())
         _, self.recon_iterations = astra_iterations(
             self.recon_algorithm,
             self.params.get("recon_iterations", default_passes),
@@ -398,7 +401,7 @@ class ProjMatch:
         # apply the current alignment at full resolution, then downsample
         corrected = _shift(self._data - background, self.total_shifts)
         binned = self._downsample(corrected + background, j)
-        # downsampling scales the intensities slightly; scale the background too
+        # keep the background consistent with any intensity change of the downsampling
         scale = float(self._downsample(np.ones((1, *self._data.shape[1:])), j).mean())
         background = background * scale
         binned = binned - background
@@ -406,9 +409,9 @@ class ProjMatch:
         _, ny, nx = binned.shape
         if self.nslices > 1:
             nx_full = self._data.shape[2]
-            x0 = int(np.floor(self.slices[0] * nx / nx_full))
-            x1 = max(x0 + 1, int(np.ceil(self.slices[1] * nx / nx_full)))
-            x1 = min(x1, nx)
+            edges = (np.array(self.slices) - 0.5 - (nx_full - 1) / 2) / j + (nx - 1) / 2
+            x0 = max(int(np.floor(edges[0] + 0.5)), 0)
+            x1 = min(max(x0 + 1, int(np.ceil(edges[1] + 0.5))), nx)
         else:
             x0, x1 = 0, nx
         nslices = x1 - x0
@@ -448,7 +451,10 @@ class ProjMatch:
                     axis=(1, 2),
                 )
             update = np.minimum(MAX_STEP, np.abs(update)) * np.sign(update) * self.relax
-            update = update - np.median(update, axis=0)
+            # a common shift along the tilt axis (X) cannot be determined, so fixt its
+            # median; a common Y-shift is the tilt axis offset, which can be determined
+            # and must stay free (as in the reference.
+            update[:, 1] -= np.median(update[:, 1])
             max_step = np.minimum(np.quantile(np.abs(update), 0.99, axis=0), MAX_STEP)
             update = np.minimum(max_step, np.abs(update)) * np.sign(update)
             shifts += update
@@ -468,7 +474,7 @@ class ProjMatch:
                 logger.info("Converged after %i iterations", i)
                 break
 
-        shifts = shifts - np.median(shifts, axis=0)
+        shifts[:, 1] -= np.median(shifts[:, 1])
         self.total_shifts = self.total_shifts + shifts * j
         return errors, projection_errors, sinos, recs
 
@@ -774,65 +780,29 @@ def high_pass_fourier_filter(
     return sino_filtered
 
 
+def binned_positions(n: int, factor: int) -> np.ndarray:
+    """Positions (in input pixels) of the pixels of a downsampled line.
+
+    A line of ``n`` pixels downsampled by ``factor`` has ``n // factor`` pixels,
+    spaced by exactly ``factor`` input pixels and centred on the input line: the
+    centre ``(n - 1) / 2`` of the input, where the tilt axis is placed for
+    reconstruction, is also the centre of the binned line.
+    """
+    nb = max(n // factor, 1)
+    return (n - 1) / 2 + (np.arange(nb) - (nb - 1) / 2) * factor
+
+
 def _interpolate_ft_lines(
     sino: np.ndarray,
     blur_factor: int,
 ) -> np.ndarray:
     """Downsample each line of a ``(nlines, n)`` array (see interpolate_ft)."""
-    _, ny = sino.shape
-    ny_new = int(np.ceil(ny / blur_factor / 2) * 2)
-    ny_new = 2 + ny_new
-
-    scale = ny_new / ny
-    pad_pix = int(np.ceil(np.sqrt(1 / scale)))
-
-    # Pad sinogram in y-dimension
-    sino = np.pad(
-        sino,
-        (
-            (0, 0),
-            (pad_pix, pad_pix + 1),
-        ),
-        "symmetric",
-    )
-    sino_fft = fft(sino, axis=1)
-
-    # Apply +0.5 shift in Fourier space
-    sino_fft = fourier_shift(sino_fft, 0.5)
-
-    # Apply FFT shift
-    _, ny_fft = sino_fft.shape
-    crop_pix = int(np.ceil(ny_fft / 2))
-    idx = np.concatenate((np.arange(crop_pix, ny_fft), np.arange(crop_pix)))
-    sino_fft = sino_fft[:, idx]
-
-    # Crop in Fourier space while preserving center position
-    center = np.floor(ny_new / 2) - np.floor(ny_fft / 2)
-    y_crop = np.arange(
-        np.maximum(-center, 0),
-        np.minimum(-center + ny_new, ny_fft),
-        dtype=int,
-    )
-    sino_fft = sino_fft[:, y_crop]
-
-    # Reverse FFT shift
-    offset = int(np.floor(ny_new / 2))
-    idx = np.concatenate((np.arange(offset, ny_new), np.arange(offset)))
-    sino_fft = sino_fft[:, idx]
-
-    # Apply -0.5 shift in cropped Fourier space
-    sino_fft = fourier_shift(sino_fft, -0.5)
-
-    # Return to the Real Space
-    sino_centered = ifft(sino_fft, axis=1)
-
-    # Scale intensities to maintain average value between input and output
-    sino_centered = sino_centered * scale
-    # Remove the Padding
-    sino_centered = sino_centered[:, 1:-1]
-
-    sino_centered = np.real(sino_centered)
-    return sino_centered
+    nlines, n = sino.shape
+    pos = binned_positions(n, blur_factor)
+    rows = np.repeat(np.arange(nlines, dtype=float), len(pos))
+    cols = np.tile(pos, nlines)
+    out = map_coordinates(sino, [rows, cols], order=3, mode="nearest")
+    return out.reshape(nlines, len(pos))
 
 
 def interpolate_ft(
@@ -840,7 +810,14 @@ def interpolate_ft(
     blur_factor: int,
     axis: int = 1,
 ) -> np.ndarray:
-    """Interpolate the FT of sinogram after convolution to maintain cente of mass.
+    """Downsample a sinogram after blurring, keeping its centre and pixel size.
+
+    The (already blurred, see :py:func:`blur_convolve`) data are resampled with cubic
+    splines at the positions given by :py:func:`binned_positions`: ``n // blur_factor``
+    pixels spaced by exactly ``blur_factor`` input pixels, with the centre of the line
+    kept at the centre. A different centre would act as a tilt axis offset at the
+    coarse levels of projection matching, and a different spacing would scale the
+    shifts found there. Average intensities are preserved.
 
     Parameters
     ----------
@@ -854,7 +831,7 @@ def interpolate_ft(
     Returns
     -------
     sino_centered : np.ndarray
-        Interpolated version of blurred sinogram
+        Downsampled sinogram
 
     """
     return _along_axis(_interpolate_ft_lines, sino, axis, blur_factor)
