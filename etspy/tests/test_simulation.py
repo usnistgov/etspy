@@ -141,6 +141,24 @@ class TestModifications:
         # ensure signal to noise is higher for non-noisy signal
         assert stack_snr > noisy_snr
 
+    def test_add_noise_gaussian_level(self):
+        np.random.seed(0)
+        stack = TomoStack(np.full((20, 50, 50), 100.0), tilts=np.arange(20.0))
+        noisy = sim.add_noise(stack, "gaussian", 0.2)
+        noise = noisy.data - stack.data
+        # zero-mean noise with a standard deviation of 0.2 x the mean
+        assert abs(noise.mean()) < 0.1  # noqa: PLR2004
+        np.testing.assert_allclose(noise.std(), 20.0, rtol=0.01)
+
+    @pytest.mark.parametrize("noise_type", ["poissonian", "shot"])
+    def test_add_noise_poisson_level(self, noise_type):
+        np.random.seed(0)
+        stack = TomoStack(np.full((20, 50, 50), 100.0), tilts=np.arange(20.0))
+        noisy = sim.add_noise(stack, noise_type, 0.5)
+        # the mean is kept, and the variance is that of 50 counts scaled by 1/0.5
+        np.testing.assert_allclose(noisy.data.mean(), 100.0, rtol=0.005)
+        np.testing.assert_allclose(noisy.data.var(), 100.0 / 0.5, rtol=0.03)
+
     def test_add_noise_invalid_type(self, catalyst_proj):
         with pytest.raises(
             ValueError,

@@ -1490,45 +1490,66 @@ class TestReconstruct:
 class TestManualAlign:
     """Test manual alignment of a TomoStack."""
 
+    @staticmethod
+    def check(stack, shifted, xshift=0, yshift=0):
+        """Check the type, the cropped size, and that the axes match the data."""
+        assert isinstance(shifted, TomoStack)
+        ntilts, ny, nx = stack.data.shape
+        assert shifted.data.shape == (ntilts, ny - abs(yshift), nx - abs(xshift))
+        assert shifted.axes_manager.signal_shape == (nx - abs(xshift), ny - abs(yshift))
+        assert shifted.axes_manager.navigation_shape == (ntilts,)
+        assert np.array_equal(shifted.tilts.data, stack.tilts.data)
+
     def test_manual_align_positive_x(self, short_stack):
         shifted = short_stack.manual_align(2, xshift=10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, xshift=10)
 
     def test_manual_align_negative_x(self, short_stack):
         shifted = short_stack.manual_align(2, xshift=-10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, xshift=-10)
 
     def test_manual_align_positive_y(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, yshift=10)
 
     def test_manual_align_negative_y(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=-10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, yshift=-10)
 
     def test_manual_align_negative_y_positive_x(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=-10, xshift=10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, xshift=10, yshift=-10)
 
     def test_manual_align_negative_x_positive_y(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=10, xshift=-10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, xshift=-10, yshift=10)
 
     def test_manual_align_negative_y_negative_x(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=-10, xshift=-10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, xshift=-10, yshift=-10)
 
     def test_manual_align_positive_y_positive_x(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=10, xshift=10)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, xshift=10, yshift=10)
 
     def test_manual_align_no_shifts(self, short_stack):
         shifted = short_stack.manual_align(2)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted)
+
+    def test_manual_align_undoes_jump(self):
+        rng = np.random.default_rng(0)
+        data = rng.random((6, 20, 30)).astype(np.float32)
+        jumped = data.copy()
+        # projections 3 onwards jump by +4 px in y and -3 px in x
+        jumped[3:] = np.roll(data[3:], (4, -3), axis=(1, 2))
+        stack = TomoStack(jumped, tilts=np.arange(6.0))
+        fixed = stack.manual_align(3, xshift=3, yshift=-4)
+        self.check(stack, fixed, xshift=3, yshift=-4)
+        np.testing.assert_array_equal(fixed.data, data[:, :16, 3:])
 
     def test_manual_align_with_display(self, short_stack):
         shifted = short_stack.manual_align(2, yshift=10, xshift=-10, display=True)
-        assert isinstance(shifted, TomoStack)
+        self.check(short_stack, shifted, xshift=-10, yshift=10)
 
 
 class TestRecStack:

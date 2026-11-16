@@ -52,7 +52,11 @@ class TestSimDatasetRetrieval:
         stack = ds.get_catalyst_data(noise=True)
         noiseless_stack = ds.get_catalyst_data(noise=False)
         assert isinstance(stack, TomoStack)
-        assert noiseless_stack.data.sum() < stack.data.sum()
+        noise = stack.data - noiseless_stack.data
+        mean = noiseless_stack.data.mean()
+        # zero-mean noise with a standard deviation of 0.2 x the mean intensity
+        assert abs(noise.mean()) < 0.01 * mean
+        np.testing.assert_allclose(noise.std(), 0.2 * mean, rtol=0.01)
 
     def test_get_noisy_misaligned_simulated_series(self):
         stack = ds.get_catalyst_data(noise=True, misalign=True)

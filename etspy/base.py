@@ -2322,7 +2322,7 @@ class TomoStack(CommonStack):
 
         self.tilts = tilts
 
-    def manual_align(  # noqa: PLR0915
+    def manual_align(
         self,
         nslice: int,
         xshift: int = 0,
@@ -2345,42 +2345,23 @@ class TomoStack(CommonStack):
         display
             If True, display the result.
         """
-        output = self.deepcopy()
-        if yshift == 0:
-            if xshift > 0:  # x+ , y0
-                output.data = output.data[:, :, :-xshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :, xshift:]
-                output.data[nslice:, :, :] = self.data[nslice:, :, :-xshift]
-            elif xshift < 0:  # x- , y0
-                output.data = output.data[:, :, :xshift]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :, :xshift]
-                output.data[nslice:, :, :] = self.data[nslice:, :, -xshift:]
 
-        elif xshift == 0:
-            if yshift > 0:  # x0 , y+
-                output.data = output.data[:, :-yshift, :]
-                output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :]
-                output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :]
-            elif yshift < 0:  # x0 , y-
-                output.data = output.data[:, :yshift, :]
-                output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :]
-                output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :]
-        elif (xshift > 0) and (yshift > 0):  # x+ , y+
-            output.data = output.data[:, :-yshift, :-xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, xshift:]
-            output.data[nslice:, :, :] = self.data[nslice:, :-yshift, :-xshift]
-        elif (xshift > 0) and (yshift < 0):  # x+ , y-
-            output.data = output.data[:, :yshift, :-xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, xshift:]
-            output.data[nslice:, :, :] = self.data[nslice:, -yshift:, :-xshift]
-        elif (xshift < 0) and (yshift > 0):  # x- , y +
-            output.data = output.data[:, :-yshift, :xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, yshift:, :xshift]
-            output.data[nslice:, :, :] = self.data[nslice:, :-yshift, -xshift:]
-        elif (xshift < 0) and (yshift < 0):  # x- , x-
-            output.data = output.data[:, :yshift, :xshift]
-            output.data[0:nslice, :, :] = self.data[0:nslice, :yshift, :xshift]
-            output.data[nslice:, :, :] = self.data[nslice:, -yshift:, -xshift:]
+        def _ranges(shift: int, n: int) -> tuple[slice, slice]:
+            # pixels kept before and after nslice so that the second part moves
+            # by -shift relative to the first; the result is cropped by |shift|
+            if shift > 0:
+                return slice(shift, n), slice(0, n - shift)
+            if shift < 0:
+                return slice(0, n + shift), slice(-shift, n)
+            return slice(0, n), slice(0, n)
+
+        ny, nx = self.data.shape[1:]
+        y_first, y_second = _ranges(yshift, ny)
+        x_first, x_second = _ranges(xshift, nx)
+        # slicing with isig keeps the signal axes consistent with the cropped data
+        output = self.isig[: nx - abs(xshift), : ny - abs(yshift)].deepcopy()
+        output.data[:nslice] = self.data[:nslice, y_first, x_first]
+        output.data[nslice:] = self.data[nslice:, y_second, x_second]
 
         if display:
             old_im1 = self.data[nslice - 1, :, :]

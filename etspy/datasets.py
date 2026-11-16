@@ -74,7 +74,8 @@ def get_catalyst_data(
     noise
         If ``True``, add Gaussian noise to the stack
     noise_factor
-        Percentage noise to be added. Must be between 0 and 1.
+        Standard deviation of the Gaussian noise, as a fraction of the mean
+        intensity of the stack (see :py:func:`etspy.simulation.add_noise`).
 
     Returns
     -------
