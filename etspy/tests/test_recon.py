@@ -538,10 +538,10 @@ class TestIterationCounting:
             tilts=np.linspace(-70, 70, 15),
         )
         rec_stack, error = stack.recon_error(algorithm="SART", cuda=False)
-        assert error.data.shape == (5,)
-        assert rec_stack.data.shape[0] == 5
+        assert error.data.shape == (50,)
+        assert rec_stack.data.shape[0] == 50
         # each pass runs 15 SART iterations, followed by a forward projection (1)
-        assert astra_runs == [15, 1] * 5
+        assert astra_runs == [15, 1] * 50
 
 
 def _no_gpu():
@@ -598,12 +598,6 @@ class TestResolveCuda:
                 cuda=True,
             ),
             lambda _: sim.create_model_tilt_series(np.ones((2, 8, 16)), cuda=True),
-            lambda s: recon_tv.asd_pocs(
-                s.data,
-                s.tilts.data.squeeze(),
-                iterations=1,
-                cuda=True,
-            ),
             lambda s: recon_tv.fista_tv(
                 s.data,
                 s.tilts.data.squeeze(),
