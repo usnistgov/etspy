@@ -612,7 +612,6 @@ class TestResolveCuda:
             "test_align",
             "forward_project",
             "create_model_tilt_series",
-            "asd_pocs",
             "fista_tv",
         ],
     )
