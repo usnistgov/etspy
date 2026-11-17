@@ -27,12 +27,6 @@ NUM_FIG_AXES = 3
 
 
 @pytest.fixture(scope="module")
-def short_stack():
-    """Load stack from test data and truncate to 5 images."""
-    return ds.get_needle_data().inav[0:5]
-
-
-@pytest.fixture(scope="module")
 def aligned_full_stack():
     """Create full spatially registered stack from test data."""
     s = ds.get_needle_data(aligned=True)
