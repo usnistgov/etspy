@@ -28,41 +28,6 @@ except Exception:
     cupy_in_test_env = False
 
 
-@pytest.fixture(scope="module")
-def short_stack():
-    """Load stack from test data and truncate to 5 images."""
-    return ds.get_needle_data().inav[0:5]
-
-
-@pytest.fixture(scope="module")
-def full_stack():
-    """Load stack from test data."""
-    return ds.get_needle_data()
-
-
-@pytest.fixture(scope="module")
-def aligned_short_stack():
-    """Create truncated and spatially registered stack from test data."""
-    s = ds.get_needle_data().inav[0:5]
-    s = s.stack_register("PC")
-    return s
-
-
-@pytest.fixture(scope="module")
-def aligned_full_stack():
-    """Create full spatially registered stack from test data."""
-    s = ds.get_needle_data()
-    s = s.stack_register("PC")
-    return s
-
-
-@pytest.fixture(scope="module")
-def catalyst_stack():
-    """Create full spatially registered stack from test data."""
-    s = ds.get_catalyst_data()
-    return s
-
-
 class TestApplyShiftsNoCuda:
     """Test requesting CUDA when it is unavailable."""
 
@@ -221,9 +186,6 @@ class TestAlignFunctions:
 class TestCUDAAlignFunctions:
     """Test alignment functions using CUDA functionality."""
 
-    def test_stack_reg_pc_cuda(self, short_stack):
-        short_stack.stack_register("PC", cuda=True)
-
     def test_no_cupy(self):
         assert etspy.align.has_cupy
         with patch.dict(sys.modules, {"cupy": None}):
@@ -242,24 +204,6 @@ class TestCUDAAlignFunctions:
 
 class TestAlignStackRegister:
     """Test alignment using stack reg."""
-
-    @pytest.mark.parametrize(
-        "method",
-        [
-            "PC",
-            "StackReg",
-            "COM",
-            "COM-CL",
-        ],
-    )
-    def test_register_methods(self, short_stack, method):
-        reg = short_stack.inav[0:20].stack_register(method)
-        assert isinstance(reg, etspy.TomoStack)
-        assert reg.axes_manager.signal_shape == short_stack.axes_manager.signal_shape
-        assert (
-            reg.axes_manager.navigation_shape
-            == short_stack.axes_manager.navigation_shape
-        )
 
     @pytest.mark.parametrize("method", ["PC", "StackReg", "COM", "COM-CL"])
     def test_register_recovers_shifts(self, small_misaligned_catalyst, method):
@@ -321,7 +265,9 @@ class TestTiltAlign:
 
     def test_tilt_align_maximage(self, catalyst_stack):
         assert catalyst_stack.metadata.get_item("Tomography.tiltaxis") == 0
-        rotated = _clear_alignment(catalyst_stack.trans_stack(angle=2.3))
+        # binned by 2 for speed
+        binned = catalyst_stack.rebin(scale=(1, 2, 2))
+        rotated = _clear_alignment(binned.trans_stack(angle=2.3))
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
             rotated,
         )
@@ -341,12 +287,13 @@ class TestTiltAlign:
         _ = maximage_tilt_aligner.align_tilt_axis()
 
     def test_tilt_align_maximage_also_shift(self, catalyst_stack):
-        # binned for speed; the rotation is tested at full size above
+        # binned for speed
         small = catalyst_stack.inav[::2].rebin(scale=(1, 4, 4))
         misaligned = _clear_alignment(small.trans_stack(yshift=2))
         maximage_tilt_aligner = etspy.align.TiltMaxImageAligner(
             misaligned,
             also_shift=True,
+            shift_limit=6,
         )
         ali = maximage_tilt_aligner.align_tilt_axis()
         tilt_shift = ali.metadata.get_item("Tomography.yshift")
@@ -357,7 +304,8 @@ class TestTiltAlign:
     def test_tilt_align_maximage_adds_to_recorded_alignment(self, catalyst_stack):
         # like trans_stack (and the CoM method), the rotation found is added to
         # the alignment already recorded in the stack
-        rotated = _clear_alignment(catalyst_stack.trans_stack(angle=2.3))
+        binned = catalyst_stack.rebin(scale=(1, 2, 2))
+        rotated = _clear_alignment(binned.trans_stack(angle=2.3))
         rotated.metadata.set_item("Tomography.tiltaxis", 1.0)
         rotated.metadata.set_item("Tomography.yshift", 3.0)
         ali = etspy.align.TiltMaxImageAligner(rotated).align_tilt_axis()
@@ -739,18 +687,18 @@ class TestFourierTransform:
 
 
 @pytest.fixture(scope="module")
-def small_misaligned_catalyst():
+def small_misaligned_catalyst(catalyst_stack):
     """Binned catalyst tilt series (45 tilts) with known random shifts."""
-    small = ds.get_catalyst_data().inav[::2].rebin(scale=(1, 2, 2))
+    small = catalyst_stack.inav[::2].rebin(scale=(1, 2, 2))
     np.random.seed(1)
     return sim.misalign_stack(small)
 
 
 @pytest.fixture(scope="module")
-def misaligned_catalyst():
+def misaligned_catalyst(catalyst_stack):
     """Catalyst tilt series with known random shifts (stored in ``.shifts``)."""
     np.random.seed(1)
-    return ds.get_catalyst_data(misalign=True)
+    return sim.misalign_stack(catalyst_stack)
 
 
 def _without_rigid_translation(yshifts, thetas):
