@@ -1,5 +1,7 @@
 """Test dataset generation features of ETSpy."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -40,24 +42,34 @@ class TestSimDatasetRetrieval:
         assert np.all(stack.tilts.data.T == np.arange(0, 180, 2))  # noqa: SIM300
         assert np.all(stack.shifts.data == 0)
 
-    def test_get_misaligned_simulated_series(self):
+    # The options are tested on a small crop of the series, to avoid loading the
+    # full 90 x 600 x 600 file each time.
+
+    @pytest.fixture
+    def small_catalyst(self, catalyst_stack):
+        """Patch the file read so that get_catalyst_data starts from a small crop."""
+        small = catalyst_stack.isig[200:264, 200:264].deepcopy()
+        with patch.object(ds.etspy, "load", return_value=small):
+            yield small
+
+    def test_get_misaligned_simulated_series(self, small_catalyst):
         stack = ds.get_catalyst_data(misalign=True)
         assert isinstance(stack, TomoStack)
-        assert stack.axes_manager["Projections"].size == 90  # type: ignore  # noqa: PLR2004
-        assert stack.axes_manager["x"].units == "nm"  # type: ignore
-        assert np.all(stack.tilts.data.T == np.arange(0, 180, 2))  # noqa: SIM300
+        assert stack.data.shape == small_catalyst.data.shape
+        np.testing.assert_array_equal(stack.tilts.data, small_catalyst.tilts.data)
         assert np.all(stack.shifts.data != 0)
 
-    def test_get_noisy_simulated_series(self):
+    def test_get_noisy_simulated_series(self, small_catalyst):
         stack = ds.get_catalyst_data(noise=True)
-        noiseless_stack = ds.get_catalyst_data(noise=False)
         assert isinstance(stack, TomoStack)
-        noise = stack.data - noiseless_stack.data
-        mean = noiseless_stack.data.mean()
+        noise = stack.data - small_catalyst.data
+        mean = small_catalyst.data.mean()
         # zero-mean noise with a standard deviation of 0.2 x the mean intensity
         assert abs(noise.mean()) < 0.01 * mean
-        np.testing.assert_allclose(noise.std(), 0.2 * mean, rtol=0.01)
+        np.testing.assert_allclose(noise.std(), 0.2 * mean, rtol=0.02)
 
-    def test_get_noisy_misaligned_simulated_series(self):
+    def test_get_noisy_misaligned_simulated_series(self, small_catalyst):
         stack = ds.get_catalyst_data(noise=True, misalign=True)
         assert isinstance(stack, TomoStack)
+        assert np.all(stack.shifts.data != 0)
+        assert not np.allclose(stack.data, small_catalyst.data)

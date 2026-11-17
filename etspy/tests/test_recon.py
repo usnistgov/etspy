@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 """Test the reconstruction module of ETSpy."""
 
 import logging
@@ -44,15 +46,6 @@ class TestReconstruction:
         ):
             aligned_sinogram_no_tilts.reconstruct("FBP")
 
-    def test_recon_single_slice(self, aligned_full_stack, aligned_sinogram):
-        tilts = aligned_full_stack.tilts.data.squeeze()
-        rec = recon.run(aligned_sinogram.data, tilts, "FBP", cuda=False)
-        assert isinstance(aligned_full_stack, TomoStack)
-        assert isinstance(rec, np.ndarray)
-        data_shape = rec.data.shape
-        data_shape = cast("tuple[int, int, int]", data_shape)  # cast for type checking
-        assert data_shape[2] == aligned_sinogram.data.shape[1]
-
     def test_recon_unknown_algorithm(self, aligned_sinogram):
         bad_method = "UNKNOWN"
         with pytest.raises(
@@ -64,148 +57,56 @@ class TestReconstruction:
         ):
             aligned_sinogram.reconstruct(bad_method)  # type: ignore
 
-    def test_recon_fbp_cpu(self, aligned_sinogram):
-        rec = aligned_sinogram.reconstruct("FBP", cuda=False)
-        assert isinstance(rec, RecStack)
-        assert rec.data.shape[2] == aligned_sinogram.data.shape[1]
-
-    def test_recon_fbp_cpu_multicore(self, aligned_sinogram):
-        rec = aligned_sinogram.reconstruct("FBP", cuda=False)
-        assert isinstance(rec, RecStack)
-        assert rec.data.shape[2] == aligned_sinogram.data.shape[1]
-
-    def test_recon_sirt_cpu(self, aligned_sinogram):
-        rec = aligned_sinogram.reconstruct(
-            "SIRT",
-            constrain=True,
-            iterations=2,
-            thresh=0,
-            cuda=False,
+    @pytest.mark.parametrize(
+        ("algorithm", "kwargs"),
+        [
+            ("FBP", {}),
+            ("SIRT", {"iterations": 50, "constrain": True, "thresh": 0}),
+            ("SART", {"iterations": 10, "constrain": True, "thresh": 0}),
+            (
+                "DART",
+                {"iterations": 10, "gray_levels": [0, 1, 2], "dart_iterations": 3},
+            ),
+        ],
+    )
+    def test_recon_recovers_phantom(self, algorithm, kwargs):
+        yy, xx = np.mgrid[:64, :64] - 31.5
+        phantom = (np.hypot(yy, xx) < 20).astype(np.float32)
+        phantom[np.hypot(yy - 5, xx + 5) < 6] = 2
+        sino = RecStack(phantom[np.newaxis]).forward_project(
+            np.arange(-90, 90, 3.0), cuda=False
         )
+        rec = sino.reconstruct(algorithm, cuda=False, show_progressbar=False, **kwargs)
         assert isinstance(rec, RecStack)
-        assert rec.data.shape[2] == aligned_sinogram.data.shape[1]
-
-    def test_recon_sart_cpu(self, aligned_sinogram):
-        rec = aligned_sinogram.reconstruct(
-            "SART",
-            constrain=True,
-            iterations=2,
-            thresh=0,
-            cuda=False,
-        )
-        assert isinstance(rec, RecStack)
-        assert rec.data.shape[2] == aligned_sinogram.data.shape[1]
-
-    def test_recon_dart_cpu(self, aligned_sinogram):
-        gray_levels = [
-            0.0,
-            aligned_sinogram.data.max() / 2,
-            aligned_sinogram.data.max(),
-        ]
-        rec = aligned_sinogram.reconstruct(
-            "DART",
-            iterations=2,
-            cuda=False,
-            gray_levels=gray_levels,
-            dart_iterations=1,
-            ncores=1,
-        )
-        assert isinstance(rec, RecStack)
-        assert rec.data.shape[2] == aligned_sinogram.data.shape[1]
-
-    def test_recon_dart_cpu_multicore(self, aligned_sinogram):
-        gray_levels = [
-            0.0,
-            aligned_sinogram.data.max() / 2,
-            aligned_sinogram.data.max(),
-        ]
-        rec = aligned_sinogram.reconstruct(
-            "DART",
-            iterations=2,
-            cuda=False,
-            gray_levels=gray_levels,
-            dart_iterations=1,
-            ncores=1,
-        )
-        assert isinstance(rec, RecStack)
-        assert rec.data.shape[2] == aligned_sinogram.data.shape[1]
+        assert rec.data.shape == (1, 64, 64)
+        rel_error = np.sqrt(np.mean((rec.data[0] - phantom) ** 2)) / phantom.std()
+        assert rel_error < 0.25
 
 
 class TestReconRun:
     """Test the reconstruction "run" method."""
 
-    def test_run_fbp_no_cuda(self, aligned_sinogram):
+    @pytest.mark.parametrize(
+        ("algorithm", "squeeze"),
+        [
+            ("FBP", False),
+            ("FBP", True),
+            ("SIRT", False),
+            ("SART", False),
+            ("DART", False),
+        ],
+    )
+    def test_run_no_cuda_shape(self, aligned_sinogram, algorithm, squeeze):
         tilts = aligned_sinogram.tilts.data.squeeze()
-        rec = recon.run(aligned_sinogram.data, tilts, "FBP", cuda=False)
-        data_shape = cast("tuple[int, int, int]", rec.data.shape)
-        assert data_shape == (
-            1,
-            aligned_sinogram.data.shape[1],
-            aligned_sinogram.data.shape[1],
-        )
-        assert data_shape[0] == aligned_sinogram.data.shape[2]
+        data = aligned_sinogram.data.squeeze() if squeeze else aligned_sinogram.data
+        kwargs = {}
+        if algorithm == "DART":
+            vmax = aligned_sinogram.data.max()
+            kwargs = {"gray_levels": [0.0, vmax / 2, vmax], "dart_iterations": 1}
+        rec = recon.run(data, tilts, algorithm, niterations=2, cuda=False, **kwargs)
         assert isinstance(rec, np.ndarray)
-
-    def test_run_fbp_no_cuda_2d_array(self, aligned_sinogram):
-        tilts = aligned_sinogram.tilts.data.squeeze()
-        rec = recon.run(aligned_sinogram.data.squeeze(), tilts, "FBP", cuda=False)
-        data_shape = cast("tuple[int, int, int]", rec.data.shape)
-        assert data_shape == (
-            1,
-            aligned_sinogram.data.shape[1],
-            aligned_sinogram.data.shape[1],
-        )
-        assert data_shape[0] == aligned_sinogram.data.shape[2]
-        assert isinstance(rec, np.ndarray)
-
-    def test_run_sirt_no_cuda(self, aligned_sinogram):
-        tilts = aligned_sinogram.tilts.data.squeeze()
-        rec = recon.run(aligned_sinogram.data, tilts, "SIRT", niterations=2, cuda=False)
-        data_shape = cast("tuple[int, int, int]", rec.data.shape)
-        assert data_shape == (
-            1,
-            aligned_sinogram.data.shape[1],
-            aligned_sinogram.data.shape[1],
-        )
-        assert data_shape[0] == aligned_sinogram.data.shape[2]
-        assert isinstance(rec, np.ndarray)
-
-    def test_run_sart_no_cuda(self, aligned_sinogram):
-        tilts = aligned_sinogram.tilts.data.squeeze()
-        rec = recon.run(aligned_sinogram.data, tilts, "SART", niterations=2, cuda=False)
-        data_shape = cast("tuple[int, int, int]", rec.data.shape)
-        assert data_shape == (
-            1,
-            aligned_sinogram.data.shape[1],
-            aligned_sinogram.data.shape[1],
-        )
-        assert data_shape[0] == aligned_sinogram.data.shape[2]
-        assert isinstance(rec, np.ndarray)
-
-    def test_run_dart_no_cuda(self, aligned_sinogram):
-        gray_levels = [
-            0.0,
-            aligned_sinogram.data.max() / 2,
-            aligned_sinogram.data.max(),
-        ]
-        tilts = aligned_sinogram.tilts.data.squeeze()
-        rec = recon.run(
-            aligned_sinogram.data,
-            tilts,
-            "DART",
-            niterations=2,
-            cuda=False,
-            gray_levels=gray_levels,
-            dart_iterations=1,
-        )
-        data_shape = cast("tuple[int, int, int]", rec.data.shape)
-        assert data_shape == (
-            1,
-            aligned_sinogram.data.shape[1],
-            aligned_sinogram.data.shape[1],
-        )
-        assert data_shape[0] == aligned_sinogram.data.shape[2]
-        assert isinstance(rec, np.ndarray)
+        ny = aligned_sinogram.data.shape[1]
+        assert rec.shape == (1, ny, ny)
 
     @pytest.mark.skipif(not astra.use_cuda(), reason="CUDA not detected")
     def test_run_dart_no_gray_levels_cuda(self, aligned_sinogram):
@@ -270,7 +171,7 @@ def phantom_sinogram():
     tilts = np.arange(-70, 71, 2.0)
     vol_geom = astra.create_vol_geom(ny, ny)
     proj_geom = astra.create_proj_geom("parallel", 1.0, ny, np.deg2rad(tilts))
-    proj_id = astra.create_projector("linear", proj_geom, vol_geom)
+    proj_id = astra.create_projector("strip", proj_geom, vol_geom)
     _, sino = astra.create_sino(phantom, proj_id)
     astra.projector.delete(proj_id)
     return phantom, sino[:, :, np.newaxis].astype(np.float32), tilts
@@ -281,7 +182,7 @@ class TestDart:
 
     def test_dart_beats_sart(self, phantom_sinogram):
         phantom, sino, tilts = phantom_sinogram
-        niterations = 10
+        niterations = 10  # passes through all of the projections
         np.random.seed(0)
         dart = recon.run(
             sino,
@@ -324,7 +225,7 @@ class TestDart:
             dart_iterations=2,
             show_progressbar=False,
         )
-        assert rec.max() > 255  # noqa: PLR2004
+        assert rec.max() > 255
 
     def test_run_dart_does_not_mutate_cfg(self, phantom_sinogram):
         _, sino, tilts = phantom_sinogram
@@ -631,7 +532,6 @@ class TestIterationCounting:
         )
         assert astra_runs == [expected, expected]  # one run per slice
 
-    @pytest.mark.xfail(reason="Requires further investigation", strict=True)
     def test_recon_error_sart_records_each_pass(self, astra_runs):
         stack = TomoStack(
             np.random.default_rng(0).random((15, 32, 4), np.float32),
@@ -639,9 +539,9 @@ class TestIterationCounting:
         )
         rec_stack, error = stack.recon_error(algorithm="SART", cuda=False)
         assert error.data.shape == (50,)
-        assert rec_stack.data.shape[0] == 50  # noqa: PLR2004
+        assert rec_stack.data.shape[0] == 50
         # each pass runs 15 SART iterations, followed by a forward projection (1)
-        assert astra_runs == [50, 1]
+        assert astra_runs == [15, 1] * 50
 
 
 def _no_gpu():

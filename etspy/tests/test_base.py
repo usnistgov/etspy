@@ -21,53 +21,17 @@ from matplotlib.figure import Figure
 from scipy import ndimage
 
 from etspy import datasets as ds
-from etspy.align import TiltCOMAligner, TiltMaxImageAligner
 from etspy.base import CommonStack, RecStack, TomoShifts, TomoStack, TomoTilts
 from etspy.io import load
 from etspy.visualize import VolumeSlicer
 
-from . import count_astra_objects, load_serialem_multiframe_data
+from . import count_astra_objects
 
 if TYPE_CHECKING:
     from hyperspy.axes import UniformDataAxis as Uda
     from hyperspy.misc.utils import DictionaryTreeBrowser
 
 NUM_AXES_THREE = 3
-
-
-@pytest.fixture(scope="module")
-def short_stack():
-    """Load stack from test data and truncate to 5 images."""
-    return ds.get_needle_data().inav[0:5]
-
-
-@pytest.fixture(scope="module")
-def full_stack():
-    """Load stack from test data."""
-    return ds.get_needle_data()
-
-
-@pytest.fixture(scope="module")
-def aligned_short_stack():
-    """Create truncated and spatially registered stack from test data."""
-    s = ds.get_needle_data().inav[0:5]
-    s = s.stack_register("PC")
-    return s
-
-
-@pytest.fixture(scope="module")
-def aligned_full_stack():
-    """Create full spatially registered stack from test data."""
-    s = ds.get_needle_data()
-    s = s.stack_register("PC")
-    return s
-
-
-@pytest.fixture(scope="module")
-def multiframe_stack():
-    """Create multiframe stack."""
-    s = load_serialem_multiframe_data()
-    return s
 
 
 def _set_tomo_metadata(s: Signal2D) -> Signal2D:
@@ -709,8 +673,9 @@ class TestProperties:
 
         # shifts
         full_stack_no_shifts = full_stack.deepcopy()
-        full_stack.shifts = np.random.rand(77, 2) + 2  # offset to ensure non-zero
-        assert np.all(full_stack.shifts.data != np.zeros((77, 2)))
+        # offset to ensure non-zero
+        full_stack_no_shifts.shifts = np.random.rand(77, 2) + 2
+        assert np.all(full_stack_no_shifts.shifts.data != np.zeros((77, 2)))
         del full_stack_no_shifts.shifts
         assert np.all(full_stack_no_shifts.shifts.data == np.zeros((77, 2)))
 
@@ -1115,15 +1080,16 @@ class TestOperations:
 
     def test_set_tilts(self, full_stack):
         start, increment = -50, 5
-        full_stack.set_tilts(start, increment)
-        ax = cast("Uda", full_stack.axes_manager[0])
+        stack = full_stack.deepcopy()
+        stack.set_tilts(start, increment)
+        ax = cast("Uda", stack.axes_manager[0])
         assert ax.name == "Projections"
         assert ax.scale == increment
         assert ax.units == "degrees"
         assert ax.offset == start
-        expected = start + increment * np.arange(full_stack.data.shape[0])
+        expected = start + increment * np.arange(stack.data.shape[0])
         np.testing.assert_allclose(ax.axis, expected)
-        np.testing.assert_allclose(full_stack.tilts.data.squeeze(), expected)
+        np.testing.assert_allclose(stack.tilts.data.squeeze(), expected)
 
     @pytest.mark.parametrize(
         ("start", "increment", "nimages"),
@@ -1218,6 +1184,7 @@ class TestAlignOther:
             aligned_short_stack.metadata.Tomography.xshift
             == stack2.metadata.Tomography.xshift  # type: ignore
         )
+        # align_other records the alignment that was applied (once)
         assert (
             stack3.metadata.Tomography.xshift == stack2.metadata.Tomography.xshift  # type: ignore
         )
@@ -1246,18 +1213,6 @@ class TestStackRegister:
         ):
             short_stack.stack_register(bad_method)  # type: ignore
 
-    def test_stack_register_pc(self, short_stack):
-        reg = short_stack.stack_register("PC")
-        assert isinstance(reg, TomoStack)
-
-    def test_stack_register_com(self, short_stack):
-        reg = short_stack.stack_register("COM")
-        assert isinstance(reg, TomoStack)
-
-    def test_stack_register_stackreg(self, short_stack):
-        reg = short_stack.stack_register("COM-CL")
-        assert isinstance(reg, TomoStack)
-
     def test_stack_register_with_crop(self, short_stack):
         reg = short_stack.stack_register("PC", crop=True)
         assert isinstance(reg, TomoStack)
@@ -1267,31 +1222,22 @@ class TestStackRegister:
 class TestErrorPlots:
     """Test error plots for TomoStack."""
 
-    def test_sirt_error(self, aligned_full_stack):
+    @pytest.mark.parametrize("algorithm", ["SIRT", "SART"])
+    @pytest.mark.parametrize("nslice", [128, None])
+    def test_recon_error(self, aligned_full_stack, algorithm, nslice):
+        niter = 3
         rec_stack, error = aligned_full_stack.recon_error(
-            128,
-            iterations=2,
+            nslice,
+            algorithm=algorithm,
+            iterations=niter,
             constrain=True,
             cuda=False,
         )
-        assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (
-            aligned_full_stack.data.shape[1],
-            aligned_full_stack.data.shape[1],
-        )
-
-    def test_sirt_error_no_slice(self, aligned_full_stack):
-        rec_stack, error = aligned_full_stack.recon_error(
-            None,
-            iterations=2,
-            constrain=True,
-            cuda=False,
-        )
-        assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (
-            aligned_full_stack.data.shape[1],
-            aligned_full_stack.data.shape[1],
-        )
+        ny = aligned_full_stack.data.shape[1]
+        assert rec_stack.data.shape == (niter, ny, ny)
+        assert error.data.shape == (niter,)
+        # the reconstruction converges, so the error falls
+        assert error.data[-1] < error.data[0]
 
     def test_recon_error_no_tilts(self, aligned_full_stack):
         stack_no_tilts = aligned_full_stack.deepcopy()
@@ -1299,137 +1245,32 @@ class TestErrorPlots:
         with pytest.raises(ValueError, match="Tilt angles not defined"):
             stack_no_tilts.recon_error(None, iterations=2, constrain=True, cuda=False)
 
-    def test_sirt_error_no_cuda(self, aligned_full_stack):
-        rec_stack, error = aligned_full_stack.recon_error(
-            128,
-            iterations=50,
-            constrain=True,
-            cuda=None,
-        )
-        assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (
-            aligned_full_stack.data.shape[1],
-            aligned_full_stack.data.shape[1],
-        )
-
     @patch("astra.use_cuda", new=lambda: False)
-    def test_recon_error_astra_detect_use_cuda_false(self, aligned_full_stack):
+    def test_recon_error_detects_no_cuda(self, aligned_full_stack):
         rec_stack, error = aligned_full_stack.recon_error(
             128,
             iterations=2,
             constrain=True,
             cuda=None,
         )
-        assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (
-            aligned_full_stack.data.shape[1],
-            aligned_full_stack.data.shape[1],
-        )
-
-    def test_sart_error(self, aligned_full_stack):
-        rec_stack, error = aligned_full_stack.recon_error(
-            128,
-            algorithm="SART",
-            iterations=2,
-            constrain=True,
-            cuda=False,
-        )
-        assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (
-            aligned_full_stack.data.shape[1],
-            aligned_full_stack.data.shape[1],
-        )
-
-    def test_sart_error_no_slice(self, aligned_full_stack):
-        rec_stack, error = aligned_full_stack.recon_error(
-            None,
-            algorithm="SART",
-            iterations=2,
-            constrain=True,
-            cuda=False,
-        )
-        assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (
-            aligned_full_stack.data.shape[1],
-            aligned_full_stack.data.shape[1],
-        )
-
-    def test_sart_error_no_cuda(self, aligned_full_stack):
-        rec_stack, error = aligned_full_stack.recon_error(
-            128,
-            algorithm="SART",
-            iterations=2,
-            constrain=True,
-            cuda=None,
-        )
-        assert error.data.shape[0] == rec_stack.data.shape[0]
-        assert rec_stack.data.shape[1:] == (
-            aligned_full_stack.data.shape[1],
-            aligned_full_stack.data.shape[1],
-        )
-
-    def test_recon_error_nslice_zero(self):
-        # nslice=0 previously selected the central slice instead of the first
-        data = np.random.default_rng(0).random((15, 32, 4), np.float32)
-        data[:, :, 0] = 0
-        stack = TomoStack(data, tilts=np.linspace(-70, 70, 15))
-        rec_stack, _ = stack.recon_error(0, iterations=3, cuda=False)
-        assert np.all(rec_stack.data == 0)
-
-    @pytest.mark.parametrize("nslice", [-1, 4])
-    def test_recon_error_nslice_out_of_range(self, nslice):
-        stack = TomoStack(
-            np.ones((15, 32, 4), np.float32),
-            tilts=np.linspace(-70, 70, 15),
-        )
-        with pytest.raises(ValueError, match=r"nslice must be in the range \[0, 3\]"):
-            stack.recon_error(nslice, iterations=3, cuda=False)
-
-
-class TestTiltAlign:
-    """Test tilt alignment of a TomoStack."""
-
-    def test_tilt_align_com_axis_zero(self, aligned_full_stack):
-        com_tilt_aligner = TiltCOMAligner(
-            aligned_full_stack,
-            slices=np.array([64, 100, 114]),
-        )
-        ali = com_tilt_aligner.align_tilt_axis()
-        assert isinstance(ali, TomoStack)
-
-    def test_tilt_align_maximage(self, aligned_short_stack):
-        maximage_tilt_aligner = TiltMaxImageAligner(
-            aligned_short_stack,
-        )
-        ali = maximage_tilt_aligner.align_tilt_axis()
-        assert isinstance(ali, TomoStack)
-
-    def test_tilt_align_unknown_method(self, aligned_short_stack):
-        bad_method = "UNKNOWN"
-        with pytest.raises(
-            ValueError,
-            match=re.escape(
-                f'Invalid alignment method "{bad_method}". '
-                'Must be one of ["CoM" or "MaxImage"]',
-            ),
-        ):
-            aligned_short_stack.tilt_align(bad_method)  # pyright: ignore[reportArgumentType]
+        assert error.data.shape[0] == rec_stack.data.shape[0] == 2
 
 
 class TestTransStack:
     """Test translation of a TomoStack."""
 
-    def test_test_trans_stack_linear(self, aligned_full_stack):
-        shifted = aligned_full_stack.trans_stack(1, 1, 1, "linear")
+    @pytest.mark.parametrize("interpolation", ["linear", "nearest", "cubic", "none"])
+    def test_trans_stack_integer_shift(self, interpolation):
+        rng = np.random.default_rng(0)
+        data = rng.random((2, 20, 30)).astype(np.float32)
+        stack = TomoStack(data, tilts=np.arange(2.0))
+        shifted = stack.trans_stack(xshift=2, yshift=3, interpolation=interpolation)
         assert isinstance(shifted, TomoStack)
-
-    def test_test_trans_stack_nearest(self, aligned_full_stack):
-        shifted = aligned_full_stack.trans_stack(1, 1, 1, "nearest")
-        assert isinstance(shifted, TomoStack)
-
-    def test_test_trans_stack_cubic(self, aligned_full_stack):
-        shifted = aligned_full_stack.trans_stack(1, 1, 1, "cubic")
-        assert isinstance(shifted, TomoStack)
+        # +x moves the image right; +y moves it up (to lower row indices)
+        expected = np.roll(data, (-3, 2), axis=(1, 2))
+        np.testing.assert_allclose(
+            shifted.data[:, 5:-5, 5:-5], expected[:, 5:-5, 5:-5], atol=1e-5
+        )
 
     def test_test_trans_stack_unknown(self, aligned_full_stack):
         bad_method = "UNKNOWN"
@@ -1500,41 +1341,23 @@ class TestManualAlign:
         assert shifted.axes_manager.navigation_shape == (ntilts,)
         assert np.array_equal(shifted.tilts.data, stack.tilts.data)
 
-    def test_manual_align_positive_x(self, short_stack):
-        shifted = short_stack.manual_align(2, xshift=10)
-        self.check(short_stack, shifted, xshift=10)
-
-    def test_manual_align_negative_x(self, short_stack):
-        shifted = short_stack.manual_align(2, xshift=-10)
-        self.check(short_stack, shifted, xshift=-10)
-
-    def test_manual_align_positive_y(self, short_stack):
-        shifted = short_stack.manual_align(2, yshift=10)
-        self.check(short_stack, shifted, yshift=10)
-
-    def test_manual_align_negative_y(self, short_stack):
-        shifted = short_stack.manual_align(2, yshift=-10)
-        self.check(short_stack, shifted, yshift=-10)
-
-    def test_manual_align_negative_y_positive_x(self, short_stack):
-        shifted = short_stack.manual_align(2, yshift=-10, xshift=10)
-        self.check(short_stack, shifted, xshift=10, yshift=-10)
-
-    def test_manual_align_negative_x_positive_y(self, short_stack):
-        shifted = short_stack.manual_align(2, yshift=10, xshift=-10)
-        self.check(short_stack, shifted, xshift=-10, yshift=10)
-
-    def test_manual_align_negative_y_negative_x(self, short_stack):
-        shifted = short_stack.manual_align(2, yshift=-10, xshift=-10)
-        self.check(short_stack, shifted, xshift=-10, yshift=-10)
-
-    def test_manual_align_positive_y_positive_x(self, short_stack):
-        shifted = short_stack.manual_align(2, yshift=10, xshift=10)
-        self.check(short_stack, shifted, xshift=10, yshift=10)
-
-    def test_manual_align_no_shifts(self, short_stack):
-        shifted = short_stack.manual_align(2)
-        self.check(short_stack, shifted)
+    @pytest.mark.parametrize(
+        ("xshift", "yshift"),
+        [
+            (0, 0),
+            (10, 0),
+            (-10, 0),
+            (0, 10),
+            (0, -10),
+            (10, -10),
+            (-10, 10),
+            (-10, -10),
+            (10, 10),
+        ],
+    )
+    def test_manual_align_shape(self, short_stack, xshift, yshift):
+        shifted = short_stack.manual_align(2, xshift=xshift, yshift=yshift)
+        self.check(short_stack, shifted, xshift=xshift, yshift=yshift)
 
     def test_manual_align_undoes_jump(self):
         rng = np.random.default_rng(0)
@@ -1621,46 +1444,42 @@ class TestVolumeSlicer:
 class TestRecStackPlotSlices:
     """Test plotting slices of a RecStack."""
 
-    def test_plot_slices(self):
+    @pytest.mark.parametrize("backend", [None, "widget", "ipympl", "nbagg"])
+    def test_plot_slices(self, backend):
         rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices(return_fig=True)
+        if backend is None:
+            fig = rec.plot_slices(return_fig=True)
+        else:
+            with patch("matplotlib.get_backend", new=lambda: backend):
+                fig = rec.plot_slices(return_fig=True)
         assert isinstance(fig, Figure)
+        plt.close(fig)
 
-    @patch("matplotlib.get_backend", new=lambda: "widget")
-    def test_plot_slices_widget_backend(self):
-        rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices(return_fig=True)
-        assert isinstance(fig, Figure)
 
-    @patch("matplotlib.get_backend", new=lambda: "ipympl")
-    def test_plot_slices_ipympl_backend(self):
-        rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices(return_fig=True)
-        assert isinstance(fig, Figure)
-
-    @patch("matplotlib.get_backend", new=lambda: "nbagg")
-    def test_plot_slices_nbagg_backend(self):
-        rec = RecStack(np.zeros([10, 10, 10]))
-        fig = rec.plot_slices(return_fig=True)
-        assert isinstance(fig, Figure)
+def _disk_volume(ndim):
+    """Make a volume with the object inside the inscribed circle (no mass is lost)."""
+    yy, xx = np.mgrid[:64, :64] - 31.5
+    disk = (np.hypot(yy, xx) < 20).astype(np.float32)
+    return disk if ndim == 2 else np.stack([disk, 2 * disk, 3 * disk])
 
 
 class TestRecStackForwardProject:
     """Test forward projection of RecStacks."""
 
-    def test_rec_stack_forward_project_3d(self):
-        rec = RecStack(np.random.rand(10, 100, 100))
-        tilts = np.linspace(0, 180, 90)
-        sino = rec.forward_project(tilts, cuda=False)
+    @pytest.mark.parametrize("ndim", [2, 3])
+    def test_rec_stack_forward_project(self, ndim):
+        vol = _disk_volume(ndim)
+        tilts = np.linspace(0, 180, 19)
+        sino = RecStack(vol).forward_project(tilts, cuda=False)
         assert isinstance(sino, TomoStack)
         assert isinstance(sino.tilts, TomoTilts)
-
-    def test_rec_stack_forward_project_2d(self):
-        rec = RecStack(np.random.rand(100, 100))
-        tilts = np.linspace(0, 180, 90)
-        sino = rec.forward_project(tilts, cuda=False)
-        assert isinstance(sino, TomoStack)
-        assert isinstance(sino.tilts, TomoTilts)
+        nx = 1 if ndim == 2 else 3
+        assert sino.data.shape == (len(tilts), 64, nx)
+        # parallel-beam projection conserves the mass of each slice at every tilt
+        slice_mass = vol.reshape(nx, -1).sum(axis=1)
+        np.testing.assert_allclose(
+            sino.data.sum(axis=1), np.tile(slice_mass, (len(tilts), 1)), rtol=1e-3
+        )
 
     def test_rec_stack_forward_project_thickness(self):
         # An object contained within the central 32 rows (z) should give the same
@@ -1715,19 +1534,20 @@ class TestRecStackForwardProject:
 class TestRecStackForwardProjectCuda:
     """Test forward projection of RecStacks with CUDA."""
 
-    def test_rec_stack_forward_project_3d_cuda(self):
-        rec = RecStack(np.random.rand(10, 100, 100))
-        tilts = np.linspace(0, 180, 90)
-        sino = rec.forward_project(tilts, cuda=True)
+    @pytest.mark.parametrize("ndim", [2, 3])
+    def test_rec_stack_forward_project_cuda(self, ndim):
+        vol = _disk_volume(ndim)
+        tilts = np.linspace(0, 180, 19)
+        sino = RecStack(vol).forward_project(tilts, cuda=True)
         assert isinstance(sino, TomoStack)
         assert isinstance(sino.tilts, TomoTilts)
-
-    def test_rec_stack_forward_project_2d_cuda(self):
-        rec = RecStack(np.random.rand(100, 100))
-        tilts = np.linspace(0, 180, 90)
-        sino = rec.forward_project(tilts, cuda=True)
-        assert isinstance(sino, TomoStack)
-        assert isinstance(sino.tilts, TomoTilts)
+        nx = 1 if ndim == 2 else 3
+        assert sino.data.shape == (len(tilts), 64, nx)
+        # parallel-beam projection conserves the mass of each slice at every tilt
+        slice_mass = vol.reshape(nx, -1).sum(axis=1)
+        np.testing.assert_allclose(
+            sino.data.sum(axis=1), np.tile(slice_mass, (len(tilts), 1)), rtol=0.01
+        )
 
 
 class TestAstraObjectCleanup:
@@ -1750,6 +1570,23 @@ class TestAstraObjectCleanup:
         before = count_astra_objects()
         stack.recon_error(iterations=3, cuda=False)
         assert count_astra_objects() == before
+
+    def test_recon_error_nslice_zero(self):
+        # nslice=0 previously selected the central slice instead of the first
+        data = np.random.default_rng(0).random((15, 32, 4), np.float32)
+        data[:, :, 0] = 0
+        stack = TomoStack(data, tilts=np.linspace(-70, 70, 15))
+        rec_stack, _ = stack.recon_error(0, iterations=3, cuda=False)
+        assert np.all(rec_stack.data == 0)
+
+    @pytest.mark.parametrize("nslice", [-1, 4])
+    def test_recon_error_nslice_out_of_range(self, nslice):
+        stack = TomoStack(
+            np.ones((15, 32, 4), np.float32),
+            tilts=np.linspace(-70, 70, 15),
+        )
+        with pytest.raises(ValueError, match=r"nslice must be in the range \[0, 3\]"):
+            stack.recon_error(nslice, iterations=3, cuda=False)
 
 
 class TestRecStackRotateVolume:

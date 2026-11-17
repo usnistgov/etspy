@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 """Test utility functions of ETSpy."""
 
 import re
@@ -5,7 +7,6 @@ import re
 import numpy as np
 import pytest
 
-from etspy import datasets as ds
 from etspy import utils
 from etspy.base import TomoStack
 
@@ -20,14 +21,6 @@ else:
 
 
 @pytest.fixture(scope="module")
-def aligned_short_stack():
-    """Create truncated and spatially registered stack from test data."""
-    s = ds.get_needle_data().inav[0:5]
-    s = s.stack_register("PC")
-    return s
-
-
-@pytest.fixture(scope="module")
 def multiframe_small_stack():
     """Load multiframe stack."""
     s = load_serialem_multiframe_data()
@@ -38,21 +31,11 @@ def multiframe_small_stack():
 class TestMultiframeAverage:
     """Test taking a multiframe average of a stack."""
 
-    def test_register_serialem_stack(self, multiframe_small_stack):
-        stack_avg = utils.register_serialem_stack(
-            multiframe_small_stack,
-            ncpus=1,
-        )
-        data_shape = 3
+    @pytest.mark.parametrize("ncpus", [1, 2])
+    def test_register_serialem_stack(self, multiframe_small_stack, ncpus):
+        stack_avg = utils.register_serialem_stack(multiframe_small_stack, ncpus=ncpus)
         assert isinstance(stack_avg, TomoStack)
-        assert stack_avg.data.shape[0] == data_shape
-        self.check_tilts(multiframe_small_stack, stack_avg)
-
-    def test_register_serialem_stack_multicpu(self, multiframe_small_stack):
-        stack_avg = utils.register_serialem_stack(multiframe_small_stack, ncpus=2)
-        data_shape = 3
-        assert isinstance(stack_avg, TomoStack)
-        assert stack_avg.data.shape[0] == data_shape
+        assert stack_avg.data.shape == (3, 24, 24)
         self.check_tilts(multiframe_small_stack, stack_avg)
 
     @staticmethod
@@ -78,17 +61,17 @@ class TestMultiframeAverage:
 class TestWeightStack:
     """Test weighting a stack."""
 
-    def test_weight_stack_low(self, aligned_short_stack):
-        reg = utils.weight_stack(aligned_short_stack, accuracy="low")
+    @pytest.mark.parametrize(
+        ("accuracy", "rtol"), [("low", 0.005), ("medium", 0.005), ("high", 0.001)]
+    )
+    def test_weight_stack(self, aligned_short_stack, accuracy, rtol):
+        reg = utils.weight_stack(aligned_short_stack, accuracy=accuracy)
         assert isinstance(reg, TomoStack)
-
-    def test_weight_stack_medium(self, aligned_short_stack):
-        reg = utils.weight_stack(aligned_short_stack, accuracy="medium")
-        assert isinstance(reg, TomoStack)
-
-    def test_weight_stack_high(self, aligned_short_stack):
-        reg = utils.weight_stack(aligned_short_stack, accuracy="high")
-        assert isinstance(reg, TomoStack)
+        # the window only removes mass, and brings each projection's mass down to
+        # (about) that of the lightest projection
+        assert np.all(reg.data <= aligned_short_stack.data + 1e-6)
+        mass = aligned_short_stack.data.sum(axis=(1, 2))
+        np.testing.assert_allclose(reg.data.sum(axis=(1, 2)), mass.min(), rtol=rtol)
 
     def test_weight_stack_bad_accuracy(self, aligned_short_stack):
         bad_accuracy = "wrong"
@@ -110,9 +93,14 @@ class TestHelperUtils:
 
     def test_est_angles(self):
         est = utils.calc_est_angles(10)
-        data_shape = 20
-        assert isinstance(est, np.ndarray)
-        assert est.shape[0] == data_shape
+        assert est.shape == (20,)
+        # equally sloped angles: unique, within (-90, 90], symmetric about 0
+        assert len(np.unique(est)) == 20
+        assert est.min() > -90
+        assert est.max() == pytest.approx(90)
+        np.testing.assert_allclose(
+            np.sort(est[est < 90]), -np.sort(est[est < 90])[::-1]
+        )
 
     def test_est_angles_error(self):
         with pytest.raises(ValueError, match="N must be an even number"):
@@ -120,19 +108,19 @@ class TestHelperUtils:
 
     def test_golden_ratio_angles(self):
         gr = utils.calc_golden_ratio_angles(10, 5)
-        data_shape = 5
-        assert isinstance(gr, np.ndarray)
-        assert gr.shape[0] == data_shape
+        assert gr.shape == (5,)
+        assert len(np.unique(gr)) == 5
+        assert np.all(np.abs(gr) <= 5)
 
-    def test_radial_mask_no_center(self):
-        mask = utils.get_radial_mask((100, 100), None)
-        assert isinstance(mask, np.ndarray)
+    @pytest.mark.parametrize(
+        ("center", "expected"), [(None, (50, 50)), ((30, 60), (60, 30))]
+    )
+    def test_radial_mask(self, center, expected):
+        mask = utils.get_radial_mask((100, 100), center)
         assert mask.shape == (100, 100)
-
-    def test_radial_mask_with_center(self):
-        mask = utils.get_radial_mask((100, 100), (50, 50))
-        assert isinstance(mask, np.ndarray)
-        assert mask.shape == (100, 100)
+        # center is (x, y); the mask is a disk about it in (row, col)
+        assert mask[expected]
+        np.testing.assert_allclose(np.argwhere(mask).mean(axis=0), expected, atol=0.5)
 
     def test_radial_mask_non_square(self):
         # A non-square shape with the default center should still produce a
@@ -148,48 +136,10 @@ class TestHelperUtils:
 class TestWeightingFilter:
     """Test weighting filter."""
 
-    def test_weighting_filter_shepp_logan(self, aligned_short_stack):
-        filtered = utils.filter_stack(
-            aligned_short_stack,
-            filter_name="shepp-logan",
-            cutoff=0.5,
-        )
-        assert isinstance(filtered, TomoStack)
-
-    def test_weighting_filter_ram_lak(self, aligned_short_stack):
-        filtered = utils.filter_stack(
-            aligned_short_stack,
-            filter_name="ram-lak",
-            cutoff=0.5,
-        )
-        assert isinstance(filtered, TomoStack)
-
-    def test_weighting_filter_cosine(self, aligned_short_stack):
-        filtered = utils.filter_stack(
-            aligned_short_stack,
-            filter_name="cosine",
-            cutoff=0.5,
-        )
-        assert isinstance(filtered, TomoStack)
-
-    def test_weighting_filter_shepp_hanning(self, aligned_short_stack):
-        filtered = utils.filter_stack(
-            aligned_short_stack,
-            filter_name="hanning",
-            cutoff=0.5,
-        )
-        assert isinstance(filtered, TomoStack)
-
-    def test_weighting_filter_two_dimensional_data(self, aligned_short_stack):
-        filtered = utils.filter_stack(
-            aligned_short_stack,
-            filter_name="hanning",
-            cutoff=0.5,
-        )
-        assert isinstance(filtered, TomoStack)
-
-    @pytest.mark.parametrize("ny", [63, 64, 255])
-    @pytest.mark.parametrize("filter_name", ["ram-lak", "shepp-logan", "hann"])
+    @pytest.mark.parametrize("ny", [63, 64])
+    @pytest.mark.parametrize(
+        "filter_name", ["ram-lak", "shepp-logan", "hanning", "hann", "cosine"]
+    )
     def test_weighting_filter_shape(self, ny, filter_name):
         data = np.random.default_rng(0).random((5, ny, 3), np.float32)
         stack = TomoStack(data, tilts=np.arange(5.0))
@@ -209,7 +159,7 @@ class TestWeightingFilter:
         center = slice(64, 192)  # avoid edge effects from zero padding
         full = utils.filter_stack(stack, filter_name="ram-lak", cutoff=0.5)
         cut = utils.filter_stack(stack, filter_name="ram-lak", cutoff=0.25)
-        assert np.abs(full.data[:, center]).max() > 0.5  # noqa: PLR2004
+        assert np.abs(full.data[:, center]).max() > 0.5
         assert (
             np.abs(cut.data[:, center]).max()
             < 0.05

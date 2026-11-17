@@ -11,7 +11,6 @@ from scipy import ndimage
 from scipy.stats import pearsonr
 
 import etspy.api as etspy
-from etspy import datasets as ds
 from etspy import projmatch
 from etspy import simulation as sim
 
@@ -189,10 +188,10 @@ class TestBackgroundFill:
         np.testing.assert_allclose(ali.shifts.data[:, 1], 0)
 
     @pytest.mark.parametrize("offset", [0.2, -0.2])
-    def test_alignment_with_background_offset(self, offset):
+    def test_alignment_with_background_offset(self, catalyst_stack, offset):
         # with zero fill, an offset background made the alignment fail (errors
         # of 2-3 px rms for shifts within +/-4 px)
-        small = ds.get_catalyst_data().inav[::2].rebin(scale=(1, 2, 2))
+        small = catalyst_stack.inav[::2].rebin(scale=(1, 2, 2))
         small.data = small.data / small.data.max()
         np.random.seed(3)
         stack = sim.misalign_stack(small, min_shift=-4, max_shift=4, y_only=True)
@@ -208,18 +207,13 @@ class TestBackgroundFill:
         assert np.sqrt((error**2).mean()) < 1.0
 
 
-@pytest.fixture(scope="module")
-def small_misaligned_stack():
-    """Small misaligned catalyst tilt series (45 tilts, 150 x 150 pixels)."""
-    small = ds.get_catalyst_data().inav[::2].rebin(scale=(1, 4, 4))
-    np.random.seed(3)
-    return sim.misalign_stack(small, min_shift=-2, max_shift=2, y_only=True)
-
-
 class TestAlignedInput:
     """Projection matching of an already aligned series."""
 
     def test_no_axis_offset_from_coarse_levels(self):
+        # the coarse levels saw a tilt axis offset (downsampling moved the centre),
+        # and fixing the median of the Y-shifts kept the full-resolution level from
+        # removing it (+0.03 px here; about -0.2 px on larger objects)
         obj = np.zeros([96, 96])
         obj[60:70, 58:72] = 10
         obj[28:56, 30:52] = 8
@@ -234,10 +228,19 @@ class TestAlignedInput:
         thetas = np.deg2rad(stack.tilts.data.squeeze())
         basis = np.array([np.ones_like(thetas), np.cos(thetas), np.sin(thetas)]).T
         coeffs = np.linalg.lstsq(basis, pm.total_shifts[:, 0])[0]
-        # the constant term is the tilt axis offset: determinable over 180 deg
+        # the constant term is the tilt axis offset: determinable over 180 deg;
+        # b cos(theta) + c sin(theta) only translates the object
         assert abs(coeffs[0]) < AXIS_OFFSET_THRESH
         rest = pm.total_shifts[:, 0] - basis @ coeffs
         assert np.sqrt((rest**2).mean()) < ALIGNED_RMS_THRESH
+
+
+@pytest.fixture(scope="module")
+def small_misaligned_stack(catalyst_stack):
+    """Small misaligned catalyst tilt series (45 tilts, 150 x 150 pixels)."""
+    small = catalyst_stack.inav[::2].rebin(scale=(1, 4, 4))
+    np.random.seed(3)
+    return sim.misalign_stack(small, min_shift=-2, max_shift=2, y_only=True)
 
 
 class TestHistory:
