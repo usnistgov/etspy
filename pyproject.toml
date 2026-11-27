@@ -10,9 +10,9 @@ authors = [
     { name = "Joshua Taillon", email = "joshua.taillon@nist.gov" }
 ]
 dependencies = [
-    "pystackreg>=0.2.8,<0.3.0",
+    "pystackreg>=0.2.8",
     "astra-toolbox>=2.1",
-    "hyperspy>=2.1.1,<3.0.0",
+    "hyperspy>=2.6.0,<3.0.0",
     "hyperspy-gui-ipywidgets>=2.0.2,<3.0.0",
     "typing-extensions>=4.12.2,<5.0.0",
     "h5py>=3.12.1,<4.0.0",
